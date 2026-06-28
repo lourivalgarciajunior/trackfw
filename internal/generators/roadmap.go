@@ -1,0 +1,473 @@
+package generators
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/kgsaran/trackfw/internal/config"
+)
+
+// RoadmapContent contém os dados para criação de um roadmap.
+type RoadmapContent struct {
+	Title   string
+	REQPath string
+	Body    string
+}
+
+// stateDir retorna o caminho do diretório para um estado válido no modo flat, ou "", false se inválido.
+func stateDir(state string) (string, bool) {
+	cfg := config.Load()
+	validStateNames := map[string]bool{
+		"backlog": true, "wip": true, "blocked": true, "done": true, "abandoned": true,
+	}
+	if !validStateNames[state] {
+		return "", false
+	}
+	return cfg.RoadmapDir + "/" + state, true
+}
+
+// agentStateDir retorna o diretório para um agente+estado em modo by_agent.
+// agent="" usa o primeiro agente configurado (ou "default" se lista vazia).
+func agentStateDir(agent, state string) (string, bool) {
+	cfg := config.Load()
+	validStateNames := map[string]bool{
+		"backlog": true, "wip": true, "blocked": true, "done": true, "abandoned": true,
+	}
+	if !validStateNames[state] {
+		return "", false
+	}
+	if agent == "" {
+		if len(cfg.Agents) > 0 {
+			agent = cfg.Agents[0]
+		} else {
+			agent = "default"
+		}
+	}
+	return cfg.RoadmapDir + "/" + agent + "/" + state, true
+}
+
+// logPath retorna o caminho do arquivo de log de transições.
+func logPath() string {
+	return config.Load().RoadmapDir + "/.trackfw-log"
+}
+
+// NewRoadmap cria um roadmap com template padrão a partir de um título simples.
+func NewRoadmap(title string) error {
+	return NewRoadmapFromContent(RoadmapContent{Title: title})
+}
+
+// NewRoadmapFromContent cria um roadmap a partir de um RoadmapContent.
+// Se Body for preenchido, usa diretamente; caso contrário, gera template padrão.
+func NewRoadmapFromContent(content RoadmapContent) error {
+	cfg := config.Load()
+
+	var backlogDir string
+	if cfg.RoadmapNamespacing == config.NamespacingByAgent {
+		dir, ok := agentStateDir("", "backlog")
+		if !ok {
+			return fmt.Errorf("cannot resolve backlog dir in by_agent mode")
+		}
+		backlogDir = dir
+	} else {
+		backlogDir = cfg.RoadmapDir + "/backlog"
+	}
+
+	if err := os.MkdirAll(backlogDir, 0755); err != nil {
+		return err
+	}
+
+	slug := toSlug(content.Title)
+	date := time.Now().Format("2006-01-02")
+	filename := fmt.Sprintf("%s/ROADMAP-%s-%s.md", backlogDir, date, slug)
+
+	var body string
+	if content.Body != "" {
+		body = content.Body
+	} else {
+		body = fmt.Sprintf(`---
+status: backlog
+date: %s
+req: ""
+squad: ""
+---
+
+# Roadmap: %s
+
+> Created: %s | Status: backlog
+
+## Context
+<!-- What problem does this roadmap solve? Link the REQ. -->
+REQ: %s
+squad:
+
+## Wave 1 — <name> (parallel MLs)
+> Dependencies: none
+
+### ML-1A — <title>
+**Status:** pending
+**Files affected:**
+**Actions:**
+**Acceptance criteria:**
+- [ ] build passes
+- [ ] tests green
+- [ ] validate passes
+`, date, content.Title, date, content.REQPath)
+	}
+
+	if err := os.WriteFile(filename, []byte(body), 0644); err != nil {
+		return fmt.Errorf("writing roadmap: %w", err)
+	}
+
+	fmt.Printf("✓ created %s\n", filename)
+	return nil
+}
+
+// NewRoadmapFromREQ cria um roadmap pré-preenchido lendo o conteúdo de uma REQ.
+// Extrai título e critérios de aceite; gera MLs rascunho para cada critério.
+func NewRoadmapFromREQ(reqPath string) error {
+	data, err := os.ReadFile(reqPath)
+	if err != nil {
+		return fmt.Errorf("reading REQ: %w", err)
+	}
+
+	title, criteria, linkedADR := parseREQForRoadmap(string(data))
+	if title == "" {
+		title = strings.TrimSuffix(filepath.Base(reqPath), ".md")
+		title = strings.TrimPrefix(title, "REQ-")
+	}
+
+	date := time.Now().Format("2006-01-02")
+
+	// Gerar seção de MLs a partir dos critérios de aceite
+	var mlSection strings.Builder
+	mlSection.WriteString("## Wave 1 — Implementation (derived from REQ criteria)\n")
+	mlSection.WriteString("> Dependencies: none\n")
+	for i, criterion := range criteria {
+		mlLabel := fmt.Sprintf("ML-1%c", rune('A'+i))
+		mlSection.WriteString(fmt.Sprintf("\n### %s — %s\n", mlLabel, criterion))
+		mlSection.WriteString("**Status:** pending\n")
+		mlSection.WriteString("**Files affected:**\n")
+		mlSection.WriteString("**Actions:**\n")
+		mlSection.WriteString("**Acceptance criteria:**\n")
+		mlSection.WriteString(fmt.Sprintf("- [ ] %s\n", criterion))
+		mlSection.WriteString("- [ ] build passes\n")
+		mlSection.WriteString("- [ ] tests green\n")
+	}
+
+	adrRef := ""
+	if linkedADR != "" {
+		adrRef = "\nADR: " + linkedADR
+	}
+
+	body := fmt.Sprintf(`---
+status: backlog
+date: %s
+req: "%s"
+squad: ""
+---
+
+# Roadmap: %s
+
+> Created: %s | Status: backlog
+
+## Context
+<!-- Derived from REQ: %s -->
+REQ: %s%s
+
+%s`, date, filepath.Base(reqPath), title, date, filepath.Base(reqPath), reqPath, adrRef, mlSection.String())
+
+	return NewRoadmapFromContent(RoadmapContent{
+		Title: title,
+		Body:  body,
+	})
+}
+
+// parseREQForRoadmap extrai título, critérios de aceite e ADR linkada de um arquivo REQ.
+func parseREQForRoadmap(content string) (title string, criteria []string, linkedADR string) {
+	scanner := bufio.NewScanner(strings.NewReader(content))
+	inCriteria := false
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if strings.HasPrefix(line, "# REQ: ") {
+			title = strings.TrimPrefix(line, "# REQ: ")
+			continue
+		}
+		if strings.HasPrefix(line, "# REQ — ") {
+			title = strings.TrimPrefix(line, "# REQ — ")
+			continue
+		}
+		if strings.HasPrefix(line, "# REQ - ") {
+			title = strings.TrimPrefix(line, "# REQ - ")
+			continue
+		}
+		if strings.HasPrefix(line, "**ADR:**") {
+			linkedADR = strings.TrimSpace(strings.TrimPrefix(line, "**ADR:**"))
+			continue
+		}
+
+		// Detectar seção de critérios (pt-BR e en-US)
+		lower := strings.ToLower(strings.TrimSpace(line))
+		if lower == "## critérios de aceite" || lower == "## acceptance criteria" {
+			inCriteria = true
+			continue
+		}
+		if inCriteria && strings.HasPrefix(line, "## ") {
+			inCriteria = false
+			continue
+		}
+		if inCriteria {
+			// Capturar itens de checklist: "- [ ] texto"
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "- [ ]") || strings.HasPrefix(trimmed, "- [x]") || strings.HasPrefix(trimmed, "- [X]") {
+				item := strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(trimmed, "- [ ]"), "- [x]"), "- [X]"))
+				// Remover backticks de código para nome do ML
+				item = strings.ReplaceAll(item, "`", "")
+				if item != "" {
+					criteria = append(criteria, item)
+				}
+			}
+		}
+	}
+	return title, criteria, linkedADR
+}
+
+func MoveRoadmap(name, state string) error {
+	cfg := config.Load()
+
+	// Validar estado antes de buscar o roadmap (melhor UX)
+	validStateNames := map[string]bool{
+		"backlog": true, "wip": true, "blocked": true, "done": true, "abandoned": true,
+	}
+	if !validStateNames[state] {
+		return fmt.Errorf("invalid state %q — valid states: backlog, wip, blocked, done, abandoned", state)
+	}
+
+	src, err := findRoadmap(name)
+	if err != nil {
+		return err
+	}
+
+	var targetDir string
+	var fromState string
+
+	if cfg.RoadmapNamespacing == config.NamespacingByAgent {
+		// em by_agent: src = roadmapDir/agent/state/file → agentDir é a pasta avó
+		agentDir := filepath.Dir(filepath.Dir(src))
+		agent := filepath.Base(agentDir)
+		fromState = filepath.Base(filepath.Dir(src))
+		var ok bool
+		targetDir, ok = agentStateDir(agent, state)
+		if !ok {
+			return fmt.Errorf("invalid state %q — valid states: backlog, wip, blocked, done, abandoned", state)
+		}
+	} else {
+		fromState = filepath.Base(filepath.Dir(src))
+		var ok bool
+		targetDir, ok = stateDir(state)
+		if !ok {
+			return fmt.Errorf("invalid state %q — valid states: backlog, wip, blocked, done, abandoned", state)
+		}
+	}
+
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return fmt.Errorf("creating target dir: %w", err)
+	}
+
+	dst := filepath.Join(targetDir, filepath.Base(src))
+	if err := os.Rename(src, dst); err != nil {
+		return fmt.Errorf("moving roadmap: %w", err)
+	}
+
+	logBasename := filepath.Base(src)
+	if cfg.RoadmapNamespacing == config.NamespacingByAgent {
+		agent := filepath.Base(filepath.Dir(filepath.Dir(src)))
+		logBasename = agent + "/" + filepath.Base(src)
+	}
+	appendTransitionLog(logBasename, fromState, state)
+
+	fmt.Printf("✓ moved %s → %s\n", filepath.Base(src), targetDir)
+	return nil
+}
+
+func findRoadmap(name string) (string, error) {
+	cfg := config.Load()
+	states := []string{"backlog", "wip", "blocked", "done", "abandoned"}
+
+	if cfg.RoadmapNamespacing == config.NamespacingByAgent {
+		agents := cfg.Agents
+		if len(agents) == 0 {
+			dirEntries, err := os.ReadDir(cfg.RoadmapDir)
+			if err == nil {
+				for _, e := range dirEntries {
+					if e.IsDir() {
+						agents = append(agents, e.Name())
+					}
+				}
+			}
+		}
+		for _, agent := range agents {
+			for _, state := range states {
+				dir := cfg.RoadmapDir + "/" + agent + "/" + state
+				entries, err := os.ReadDir(dir)
+				if err != nil {
+					continue
+				}
+				for _, e := range entries {
+					if containsIgnoreCase(e.Name(), name) {
+						return filepath.Join(dir, e.Name()), nil
+					}
+				}
+			}
+		}
+	} else {
+		for _, state := range states {
+			dir := cfg.RoadmapDir + "/" + state
+			entries, err := os.ReadDir(dir)
+			if err != nil {
+				continue
+			}
+			for _, e := range entries {
+				if containsIgnoreCase(e.Name(), name) {
+					return filepath.Join(dir, e.Name()), nil
+				}
+			}
+		}
+	}
+	return "", fmt.Errorf("roadmap %q not found in any state directory", name)
+}
+
+func containsIgnoreCase(s, sub string) bool {
+	return strings.Contains(strings.ToLower(s), strings.ToLower(sub))
+}
+
+func appendTransitionLog(basename, fromState, toState string) {
+	f, err := os.OpenFile(logPath(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	line := fmt.Sprintf("%s  %-50s  %s → %s\n",
+		time.Now().Format("2006-01-02 15:04"),
+		basename,
+		fromState,
+		toState,
+	)
+	f.WriteString(line)
+}
+
+// ShowRoadmap exibe o conteúdo de um roadmap identificado por nome parcial.
+func ShowRoadmap(name string) error {
+	cfg := config.Load()
+
+	var pattern string
+	if cfg.RoadmapNamespacing == config.NamespacingByAgent {
+		// 3 níveis: roadmapDir/agent/state/file
+		pattern = filepath.Join(cfg.RoadmapDir, "*", "*", "*"+name+"*.md")
+	} else {
+		pattern = filepath.Join(cfg.RoadmapDir, "*", "*"+name+"*.md")
+	}
+
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return err
+	}
+	if len(matches) == 0 {
+		return fmt.Errorf("no roadmap found matching %q", name)
+	}
+	if len(matches) > 1 {
+		fmt.Println("Multiple roadmaps found — be more specific:")
+		for _, m := range matches {
+			fmt.Printf("  %s\n", m)
+		}
+		return fmt.Errorf("ambiguous match for %q", name)
+	}
+	path := matches[0]
+	state := filepath.Base(filepath.Dir(path))
+	base := filepath.Base(path)
+	fmt.Printf("── %s ── [%s] ──────────────────────\n\n", base, strings.ToUpper(state))
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(data))
+	fmt.Printf("Location: %s\n", path)
+	return nil
+}
+
+// ListRoadmaps imprime todos os roadmaps agrupados por estado (e por agente em modo by_agent).
+func ListRoadmaps() error {
+	cfg := config.Load()
+	stateOrder := []string{"wip", "backlog", "blocked", "done", "abandoned"}
+	found := false
+
+	if cfg.RoadmapNamespacing == config.NamespacingByAgent {
+		agents := cfg.Agents
+		if len(agents) == 0 {
+			// descobrir subdirs dinamicamente
+			entries, err := os.ReadDir(cfg.RoadmapDir)
+			if err == nil {
+				for _, e := range entries {
+					if e.IsDir() {
+						agents = append(agents, e.Name())
+					}
+				}
+			}
+		}
+		for _, agent := range agents {
+			for _, state := range stateOrder {
+				dir := cfg.RoadmapDir + "/" + agent + "/" + state
+				entries, err := os.ReadDir(dir)
+				if err != nil {
+					continue
+				}
+				var files []string
+				for _, e := range entries {
+					if !e.IsDir() && filepath.Ext(e.Name()) == ".md" {
+						files = append(files, e.Name())
+					}
+				}
+				if len(files) == 0 {
+					continue
+				}
+				found = true
+				fmt.Printf("[%s/%s]\n", agent, state)
+				for _, f := range files {
+					fmt.Printf("  %s\n", f)
+				}
+			}
+		}
+	} else {
+		for _, state := range stateOrder {
+			dir := cfg.RoadmapDir + "/" + state
+			entries, err := os.ReadDir(dir)
+			if err != nil {
+				continue
+			}
+			var files []string
+			for _, e := range entries {
+				if !e.IsDir() && filepath.Ext(e.Name()) == ".md" {
+					files = append(files, e.Name())
+				}
+			}
+			if len(files) == 0 {
+				continue
+			}
+			found = true
+			fmt.Printf("[%s]\n", state)
+			for _, f := range files {
+				fmt.Printf("  %s\n", f)
+			}
+		}
+	}
+
+	if !found {
+		fmt.Println("Nenhum roadmap encontrado. Crie um com 'trackfw roadmap new'.")
+	}
+	return nil
+}
