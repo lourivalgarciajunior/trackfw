@@ -1,7 +1,7 @@
 ---
 name: cli-python-utf8-windows-2026-08-16
 title: "CLI Python força UTF-8 na saída e para de quebrar no Windows"
-status: wip
+status: done
 date: 2026-08-16
 req: REQ-2026-08-16-cli-python-utf8-windows
 branch: fix/cli-python-utf8-windows
@@ -9,7 +9,7 @@ branch: fix/cli-python-utf8-windows
 
 # Roadmap: CLI Python UTF-8 no Windows
 
-> Criado em: 2026-08-16 | Status: 🔄 WIP
+> Criado em: 2026-08-16 | Status: ✅ Done
 
 REQ: `docs/requisições/claude/REQ-2026-08-16-cli-python-utf8-windows.md`
 
