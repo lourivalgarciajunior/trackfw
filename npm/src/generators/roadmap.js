@@ -526,6 +526,8 @@ function toSlug(s) {
 
 module.exports = {
   listRoadmaps,
+  setFrontmatterStatus,
+  setHeaderStatus,
   showRoadmap,
   moveRoadmap,
   appendTransitionLog,
