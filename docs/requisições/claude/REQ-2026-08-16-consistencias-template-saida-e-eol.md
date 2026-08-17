@@ -82,10 +82,10 @@ atual.
 
 ## Critérios de Aceite
 
-- [ ] `roadmap new` produz frontmatter e header idênticos nos três runtimes
-- [ ] Após `roadmap move X done`, a linha `> … | Status:` declara `done` nos três runtimes
-- [ ] Roadmap sem a linha de header não é modificado por causa dela
-- [ ] Nenhum caminho de home hardcoded em `Printf` no Go; a saída normal segue exibindo `~/…`
-- [ ] `.gitattributes` existe e `gofmt -l internal/ cmd/` devolve zero
-- [ ] `go test ./...` com zero falhas; suíte pypi na baseline de 6 errors + 1 failure
-- [ ] Os três gates de paridade passam sem prefixo de ambiente
+- [x] `roadmap new` produz frontmatter e header idênticos nos três runtimes
+- [x] Após `roadmap move X done`, a linha `> … | Status:` declara `done` nos três runtimes
+- [x] Roadmap sem a linha de header não é modificado por causa dela
+- [x] Nenhum caminho de home hardcoded em `Printf` no Go; a saída normal segue exibindo `~/…`
+- [x] `.gitattributes` existe e `gofmt -l internal/ cmd/` devolve zero
+- [x] `go test ./...` com zero falhas; suíte pypi na baseline de 6 errors + 1 failure
+- [x] Os três gates de paridade passam sem prefixo de ambiente

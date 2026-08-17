@@ -25,11 +25,11 @@ nascer no formato que D2 vai sincronizar.
 
 ## Critérios de Aceite
 
-- [ ] `roadmap new` produz frontmatter e header idênticos nos três runtimes
-- [ ] Após `move X done`, a linha `> … | Status:` declara `done` nos três runtimes
-- [ ] Nenhum caminho de home hardcoded em `Printf` no Go
-- [ ] `gofmt -l internal/ cmd/` devolve zero
-- [ ] `go test ./...` verde, pypi na baseline, gates sem prefixo
+- [x] `roadmap new` produz frontmatter e header idênticos nos três runtimes
+- [x] Após `move X done`, a linha `> … | Status:` declara `done` nos três runtimes
+- [x] Nenhum caminho de home hardcoded em `Printf` no Go
+- [x] `gofmt -l internal/ cmd/` devolve zero
+- [x] `go test ./...` verde, pypi na baseline, gates sem prefixo
 
 ---
 
@@ -127,7 +127,7 @@ Ou seja: 13 arquivos eram CRLF puro, 9 estavam de fato desformatados e agora est
 ## Wave 3 — Fechamento
 
 ### ML-5 — Suítes e gates
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** nenhum (verificação)
 **Ações:**
 1. `go test ./...` com zero falhas e `go vet ./...` limpo.
@@ -135,6 +135,17 @@ Ou seja: 13 arquivos eram CRLF puro, 9 estavam de fato desformatados e agora est
 3. Testes npm.
 4. Os três gates de paridade, sem prefixo.
 **Critérios de aceite:**
-- [ ] Go verde, pypi na baseline, npm verde
-- [ ] Gates passam sem prefixo
+- [x] `go test ./...` com zero falhas; `go vet ./...` limpo
+- [x] npm verde: `roadmap_move` 7/7, `config` 13/13
+- [x] pypi na baseline exata: 245 testes, failures=1 errors=6
+- [x] Os três gates passam sem prefixo de ambiente
+
+**Uma asserção me escapou no ML-1** e só apareceu aqui: `test_commands_roadmap_discover.py`
+também asseverava `status: Backlog`. Corrigida. A ocorrência restante em `test_validator.py:573`
+é fixture de entrada — testa que o validator aceita o valor capitalizado via `EqualFold` — e deve
+continuar como está.
+
+**A falha pré-existente agora está explicada**, não só contada: `test_stale_wip_warning_arquivo_antigo`
+espera a string `"10 days"` e recebe `"9 days"`. É teste dependente de data, com asserção frágil
+sobre a idade calculada. Candidato a REQ própria.
 **Comandos de validação:** `go test ./... && bash scripts/check-cli-parity.sh && bash scripts/check-validate-parity.sh`
