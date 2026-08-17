@@ -29,8 +29,20 @@ Decisão de rota (usuário, 2026-08-16): **Opção 1 — pinar a config na reali
 
 > ML-2 depende do ML-1: sem o `trackfw.yaml` o CLI não valida os caminhos de destino.
 
+## Critérios de Aceite
+
+- [ ] `trackfw.yaml` existe na raiz e `trackfw status` enxerga as 62 peças das árvores B e C
+- [ ] `docs/req/`, `docs/roadmap/`, `docs/roadmaps/wip/` e `docs/roadmaps/done/` não existem mais
+- [ ] Nenhum artefato fora de `docs/adr/`, `docs/requisições/<agente>/` e `docs/roadmaps/<agente>/`
+- [ ] `REQ-2026-06-20-attention-hooks-agent-clis.md` existe e o warning de link quebrado sumiu
+- [ ] `trackfw status` reporta exatamente 1 roadmap em WIP (o deste roadmap)
+- [ ] `CLAUDE.md` descreve os caminhos reais
+- [ ] `go build ./...` e `go test ./...` verdes
+
+---
+
 ### ML-1 — `trackfw.yaml` pinando a árvore B como canônica
-**Status:** 🔄 Em andamento
+**Status:** ✅ Concluído
 **Arquivos afetados:** `trackfw.yaml` (NOVO)
 **Ações:**
 1. Criar `trackfw.yaml` na raiz com `adr_dirs: [docs/adr]`, `req_dir: docs/requisições`, `roadmap_dir: docs/roadmaps`, `roadmap_namespacing: by_agent`, `agents: [apolo, artemis, claude]`, `wip_limit: 1`, `governance_mode: strict`.
