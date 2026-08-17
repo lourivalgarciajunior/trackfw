@@ -3,6 +3,7 @@ package generators
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -29,7 +30,11 @@ func TestGenerateCommitMsgHook_Husky(t *testing.T) {
 	}
 
 	// Verificar permissão executável
-	if info.Mode()&0111 == 0 {
+	// NTFS nao tem bit de execucao POSIX: o Go reporta -rw-rw-rw- ali e a
+	// assercao e inverificavel por construcao. Guardamos so ela; o resto do
+	// teste continua rodando no Windows.
+	// Ver REQ-2026-08-16-testes-go-portaveis-windows.
+	if runtime.GOOS != "windows" && info.Mode()&0111 == 0 {
 		t.Errorf("hook não tem permissão executável: mode=%v", info.Mode())
 	}
 
@@ -104,7 +109,11 @@ func TestGenerateCommitMsgHook_Lefthook(t *testing.T) {
 	if err != nil {
 		t.Fatalf("script não encontrado em %s: %v", scriptPath, err)
 	}
-	if info.Mode()&0111 == 0 {
+	// NTFS nao tem bit de execucao POSIX: o Go reporta -rw-rw-rw- ali e a
+	// assercao e inverificavel por construcao. Guardamos so ela; o resto do
+	// teste continua rodando no Windows.
+	// Ver REQ-2026-08-16-testes-go-portaveis-windows.
+	if runtime.GOOS != "windows" && info.Mode()&0111 == 0 {
 		t.Errorf("script não tem permissão executável: mode=%v", info.Mode())
 	}
 

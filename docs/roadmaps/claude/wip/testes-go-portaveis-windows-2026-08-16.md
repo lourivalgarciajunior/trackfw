@@ -28,10 +28,10 @@ Só afeta o runtime Go: os testes de npm e pypi não têm equivalente para esses
 
 ## Critérios de Aceite
 
-- [ ] `go test ./...` verde no Windows, zero falhas
-- [ ] Nenhum arquivo tocado em `~/.claude`, `~/.gemini` ou `~/.codeium` durante a suíte
-- [ ] Comportamento de produção inalterado
-- [ ] `go vet ./...` limpo e gates de paridade passam
+- [x] `go test ./...` verde no Windows, zero falhas
+- [x] Nenhum arquivo tocado em `~/.claude`, `~/.gemini` ou `~/.codeium` durante a suíte
+- [x] Comportamento de produção inalterado — `userHomeDir` continua sendo `os.UserHomeDir`
+- [x] `go vet ./...` limpo e os três gates de paridade passam
 
 ---
 
@@ -75,19 +75,21 @@ Só afeta o runtime Go: os testes de npm e pypi não têm equivalente para esses
 ## Wave 2 — Bit de execução e fechamento
 
 ### ML-3 — Asserção de bit de execução guardada por sistema
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `internal/generators/commitmsghook_test.go`
 **Ações:**
 1. Guardar **apenas** a verificação `info.Mode()&0111` com `runtime.GOOS != "windows"`, deixando o
    resto do teste rodando normalmente.
 2. Comentar o porquê no código: NTFS não tem bit de execução, a asserção é inverificável ali.
 **Critérios de aceite:**
-- [ ] Os 2 testes passam no Windows
-- [ ] A asserção continua ativa fora do Windows (verificada por leitura do guard)
+- [x] Os 2 testes passam no Windows
+- [x] A asserção continua ativa fora do Windows: o guard é
+      `runtime.GOOS != "windows" && info.Mode()&0111 == 0`, então em Linux e macOS a condição
+      original é avaliada igual a antes
 **Comandos de validação:** `go test ./internal/generators/ -run CommitMsgHook`
 
 ### ML-4 — Suíte verde e verificação de não-poluição
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** nenhum (verificação)
 **Ações:**
 1. `go test ./...` — exigir **zero** falhas, não mais comparar com baseline.
@@ -95,7 +97,25 @@ Só afeta o runtime Go: os testes de npm e pypi não têm equivalente para esses
    `~/.codeium/windsurf/memories` antes e depois da suíte e comparar.
 3. Os três gates de paridade.
 **Critérios de aceite:**
-- [ ] `go test ./...` sem nenhuma falha
-- [ ] Snapshot do home idêntico antes e depois
-- [ ] Gates passam
+- [x] `go test ./...` com **zero** falhas — primeira vez na história recente deste repo no Windows
+- [x] `go vet ./...` limpo
+- [x] Snapshot do home idêntico: 36 arquivos em `~/.claude/{agents,skills}`, `~/.gemini/skills` e
+      `~/.codeium/windsurf/memories` com caminho, tamanho e mtime inalterados após a suíte completa
+- [x] Os três gates passam
+
+**Prova do antes/depois.** O snapshot sozinho não bastaria: os instaladores são idempotentes, então
+num home que já tem os arquivos eles não mudariam mtime de qualquer jeito. O que fecha o caso é a
+troca de mensagem do próprio instalador durante o teste — de `✓ … (já existe — não sobrescrito)`,
+que só aparece quando ele encontra o home real povoado, para `✅ …`, que é a criação num diretório
+limpo.
+
+**Achado de passagem (fora de escopo):** o instalador imprime `~/.claude/agents/` como **literal
+hardcoded** (`internal/generators/agents.go:39` e `:50`), não o caminho que resolveu. A saída
+mente sobre o destino quando o home não é o padrão. Cosmético, mas atrapalha exatamente este tipo
+de diagnóstico. Candidato a REQ própria.
+
+**Achado de passagem 2:** `gofmt -l` acusa 17 dos 104 arquivos `.go` — todos por CRLF, efeito de
+`core.autocrlf=true` sem `.gitattributes` no repo. É artefato de working copy: o blob commitado
+vai como LF, e por isso a CI nunca reclamou. `go build`, `go vet` e `go test` passam. Um
+`.gitattributes` com `*.go text eol=lf` resolveria. Candidato a REQ própria.
 **Comandos de validação:** `go test ./... && bash scripts/check-cli-parity.sh`

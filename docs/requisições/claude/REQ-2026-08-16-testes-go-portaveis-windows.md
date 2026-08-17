@@ -71,9 +71,9 @@ do teste (conteúdo do hook, caminho, idempotência) continua rodando no Windows
 
 ## Critérios de Aceite
 
-- [ ] `go test ./...` verde no Windows, zero falhas
-- [ ] Nenhum arquivo criado ou alterado em `~/.claude`, `~/.gemini` ou `~/.codeium` durante a suíte
-- [ ] `go vet ./...` limpo
-- [ ] Comportamento de produção inalterado: `userHomeDir` continua sendo `os.UserHomeDir`
-- [ ] A asserção de bit de execução continua ativa fora do Windows
-- [ ] `check-cli-parity.sh`, `check-validate-parity.sh` e `check-static-assets.sh` passam
+- [x] `go test ./...` verde no Windows, zero falhas
+- [x] Nenhum arquivo criado ou alterado em `~/.claude`, `~/.gemini` ou `~/.codeium` durante a suíte
+- [x] `go vet ./...` limpo
+- [x] Comportamento de produção inalterado: `userHomeDir` continua sendo `os.UserHomeDir`
+- [x] A asserção de bit de execução continua ativa fora do Windows
+- [x] `check-cli-parity.sh`, `check-validate-parity.sh` e `check-static-assets.sh` passam
