@@ -13,7 +13,7 @@ import (
 // chainNode represents an ADR, REQ, or Roadmap node in the governance chain graph.
 type chainNode struct {
 	ID    string `json:"id"`
-	Type  string `json:"type"`  // "adr" | "req" | "roadmap"
+	Type  string `json:"type"` // "adr" | "req" | "roadmap"
 	Title string `json:"title"`
 	State string `json:"state"`
 }

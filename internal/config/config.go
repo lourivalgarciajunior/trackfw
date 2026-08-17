@@ -99,9 +99,9 @@ func parse(content string, cfg *ProjectConfig) {
 	var agents []string
 
 	// v2.4 nested block states
-	inLinkFields        := false
-	inLinkFieldsReq     := false
-	inLinkFieldsADR     := false
+	inLinkFields := false
+	inLinkFieldsReq := false
+	inLinkFieldsADR := false
 	inLinkFieldsRoadmap := false
 	var linkFieldsReq, linkFieldsADR, linkFieldsRoadmap []string
 
@@ -109,7 +109,7 @@ func parse(content string, cfg *ProjectConfig) {
 	var acceptanceMarkers []string
 
 	inRules := false
-	rules   := map[string]string{}
+	rules := map[string]string{}
 
 	for _, rawLine := range lines {
 		trimmed := strings.TrimSpace(rawLine)

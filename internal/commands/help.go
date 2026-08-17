@@ -25,7 +25,7 @@ var configDocs = []configKeyDoc{
 		Type:        "list of strings",
 		Default:     `["docs/adr"]`,
 		Description: "Diretórios onde os ADRs são armazenados.",
-		Example:     `adr_dirs:
+		Example: `adr_dirs:
   - docs/adr
   - docs/adr/zeus`,
 		Impact: "Alterar adiciona ou remove diretórios rastreados nas validações de ADR.",
