@@ -68,11 +68,15 @@ Mover os dois primeiros para `done/`; o `trackfw-update-command` em `wip/` é du
 
 ## Critérios de Aceite
 
-- [ ] `trackfw.yaml` existe na raiz e `trackfw status` enxerga as 62 peças das árvores B e C
-- [ ] `docs/req/`, `docs/roadmap/`, `docs/roadmaps/wip/` e `docs/roadmaps/done/` não existem mais
-- [ ] Nenhum artefato fora de `docs/adr/`, `docs/requisições/<agente>/` e `docs/roadmaps/<agente>/`
-- [ ] `REQ-2026-06-20-attention-hooks-agent-clis.md` existe e o warning de link quebrado sumiu
-- [ ] `trackfw status` reporta exatamente 1 roadmap em WIP (o desta REQ)
-- [ ] `trackfw validate` com zero violations e zero warnings
-- [ ] `CLAUDE.md` descreve os caminhos reais
-- [ ] `go build ./...` e `go test ./...` verdes (nenhuma mudança de código do produto é esperada)
+- [x] `trackfw.yaml` existe na raiz e `trackfw status` enxerga as 62 peças das árvores B e C
+- [x] `docs/req/`, `docs/roadmap/`, `docs/roadmaps/wip/` e `docs/roadmaps/done/` não existem mais
+- [x] Nenhum artefato fora de `docs/adr/`, `docs/requisições/<agente>/` e `docs/roadmaps/<agente>/`
+- [x] `REQ-2026-06-20-attention-hooks-agent-clis.md` existe e o warning de link quebrado sumiu
+- [x] `trackfw status` reporta exatamente 1 roadmap em WIP (o desta REQ)
+- [x] `trackfw validate` com **zero warnings** (10 → 0)
+- [ ] `trackfw validate` com zero violations — **não atingido**: 20 → 5. As 5 restantes são
+      `req_has_adr` e exigem ADRs que não existem no repositório. Ver Residual no roadmap.
+- [x] `CLAUDE.md` descreve os caminhos reais
+- [x] `go build ./...` verde e nenhuma mudança de código do produto foi necessária
+- [ ] `go test ./...` verde — **não atingido**: 10 falhas em `internal/generators`, pré-existentes
+      e específicas de Windows, confirmadamente independentes deste trabalho. Ver Residual.

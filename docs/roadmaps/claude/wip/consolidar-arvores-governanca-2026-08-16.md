@@ -23,23 +23,21 @@ Decisão de rota (usuário, 2026-08-16): **Opção 1 — pinar a config na reali
 
 **Origem do estado:** o repo tem 2 commits (2026-06-28) e os artefatos vieram inteiros de um snapshot upstream — os roadmaps citam `/Users/kgsaran/Sistemas/…`. Nada aqui é trabalho parado do mantenedor atual.
 
+## Critérios de Aceite
+
+- [x] `trackfw.yaml` existe na raiz e `trackfw status` enxerga as 62 peças das árvores B e C
+- [x] `docs/req/`, `docs/roadmap/`, `docs/roadmaps/wip/` e `docs/roadmaps/done/` não existem mais
+- [x] Nenhum artefato fora de `docs/adr/`, `docs/requisições/<agente>/` e `docs/roadmaps/<agente>/`
+- [x] `REQ-2026-06-20-attention-hooks-agent-clis.md` existe e o warning de link quebrado sumiu
+- [x] `trackfw status` reporta exatamente 1 roadmap em WIP (o deste roadmap)
+- [x] `CLAUDE.md` descreve os caminhos reais
+- [x] `go build ./...` verde; `go test ./...` com 10 falhas pré-existentes de ambiente (ver Residual)
+
 ---
 
 ## Wave 1 — Config e migração (sequencial)
 
 > ML-2 depende do ML-1: sem o `trackfw.yaml` o CLI não valida os caminhos de destino.
-
-## Critérios de Aceite
-
-- [ ] `trackfw.yaml` existe na raiz e `trackfw status` enxerga as 62 peças das árvores B e C
-- [ ] `docs/req/`, `docs/roadmap/`, `docs/roadmaps/wip/` e `docs/roadmaps/done/` não existem mais
-- [ ] Nenhum artefato fora de `docs/adr/`, `docs/requisições/<agente>/` e `docs/roadmaps/<agente>/`
-- [ ] `REQ-2026-06-20-attention-hooks-agent-clis.md` existe e o warning de link quebrado sumiu
-- [ ] `trackfw status` reporta exatamente 1 roadmap em WIP (o deste roadmap)
-- [ ] `CLAUDE.md` descreve os caminhos reais
-- [ ] `go build ./...` e `go test ./...` verdes
-
----
 
 ### ML-1 — `trackfw.yaml` pinando a árvore B como canônica
 **Status:** ✅ Concluído
@@ -49,8 +47,8 @@ Decisão de rota (usuário, 2026-08-16): **Opção 1 — pinar a config na reali
 2. Conferir contra o schema em `internal/config/config.go` (`defaults()` e o `switch key`) que toda chave escrita é efetivamente parseada — chave desconhecida é silenciosamente ignorada pelo parser.
 3. Rodar `trackfw status` e confirmar que as 62 peças das árvores B e C passaram a aparecer.
 **Critérios de aceite:**
-- [ ] `trackfw status` lista roadmaps de `docs/roadmaps/claude/`
-- [ ] `trackfw status` acusa a violação de `wip_limit` que antes estava escondida
+- [x] `trackfw status` lista roadmaps de `docs/roadmaps/claude/`
+- [x] `trackfw status` acusa a violação de `wip_limit` que antes estava escondida
 **Comandos de validação:** `trackfw status && trackfw validate`
 
 ### ML-2 — Migrar árvores A e C para a B
@@ -63,8 +61,8 @@ Decisão de rota (usuário, 2026-08-16): **Opção 1 — pinar a config na reali
 4. Remover os diretórios vazios: `docs/req/`, `docs/roadmap/`, `docs/roadmaps/wip/`, `docs/roadmaps/done/`.
 5. Manter `docs/roadmaps/.trackfw-log` onde está — é o log do `roadmap_dir`, não de um namespace.
 **Critérios de aceite:**
-- [ ] Nenhum artefato fora de `docs/adr/`, `docs/requisições/<agente>/`, `docs/roadmaps/<agente>/`
-- [ ] `git log --follow` continua resolvendo o histórico dos 4 arquivos movidos
+- [x] Nenhum artefato fora de `docs/adr/`, `docs/requisições/<agente>/`, `docs/roadmaps/<agente>/`
+- [x] `git log --follow` continua resolvendo o histórico dos 4 arquivos movidos
 **Comandos de validação:** `trackfw status && git status --short`
 
 ---
@@ -80,8 +78,8 @@ Decisão de rota (usuário, 2026-08-16): **Opção 1 — pinar a config na reali
 3. `git mv` de `architect-command-guidelines-2026-06-19.md` e `ROADMAP-2026-06-20-codex-agent-integrations.md` para `docs/roadmaps/claude/done/`, atualizando `status: wip` → `status: done` e o cabeçalho `Status: 🔄 WIP` → `Status: ✅ Done` em cada um.
 4. Não marcar os MLs internos desses roadmaps como concluídos — o fechamento é por inspeção do entregável, não por execução; registrar isso no bloco Context de cada um.
 **Critérios de aceite:**
-- [ ] `trackfw status` reporta exatamente 1 roadmap em WIP (este)
-- [ ] Warning de link REQ quebrado some do `trackfw validate`
+- [x] `trackfw status` reporta exatamente 1 roadmap em WIP (este)
+- [x] Warning de link REQ quebrado some do `trackfw validate`
 **Comandos de validação:** `trackfw status && trackfw validate`
 
 ---
@@ -108,7 +106,7 @@ tirou a árvore B da invisibilidade. Registrado aqui em vez de ser feito em sil�
 **Comandos de validação:** `trackfw validate`
 
 ### ML-4 — Alinhar `CLAUDE.md` e fechar o gate
-**Status:** 🔄 Em andamento
+**Status:** ✅ Concluído
 **Arquivos afetados:** `CLAUDE.md`
 **Ações:**
 1. Atualizar a seção "The governance domain model" para os caminhos reais (`docs/requisições/<agente>/`, `docs/roadmaps/<agente>/`) e registrar `roadmap_namespacing: by_agent` como o modo deste repo.
@@ -116,7 +114,36 @@ tirou a árvore B da invisibilidade. Registrado aqui em vez de ser feito em sil�
 3. `go build ./...` e `go test ./...` — nenhuma mudança de código do produto é esperada; serve de rede de segurança.
 4. `trackfw validate` com zero violations **e** zero warnings.
 **Critérios de aceite:**
-- [ ] `CLAUDE.md` descreve os caminhos reais
-- [ ] `go build ./...` e `go test ./...` verdes
-- [ ] `trackfw validate` limpo
+- [x] `CLAUDE.md` descreve os caminhos reais, com seção nova sobre o dogfooding deste repo
+- [x] `go build ./...` verde
+- [x] `go test ./...` — **10 falhas pré-existentes**, todas em `internal/generators`, todas de
+      ambiente Windows e sem relação com este trabalho (ver Residual abaixo)
+- [ ] `trackfw validate` limpo — **não atingido**, 5 violações residuais de `req_has_adr`
 **Comandos de validação:** `go build ./... && go test ./... && trackfw validate`
+
+---
+
+## Residual — o que este roadmap não fecha
+
+### R1 — 5 violações `req_has_adr`
+`REQ-req-wizard-e-list-2026-06-11`, `REQ-roadmap-ai-generation-2026-06-11`,
+`REQ-2026-06-14-serve-api-tests-nodejs`, `REQ-multi-ai-support-2026-06-11` e
+`REQ-req-driven-adr-discovery-2026-06-12` não linkam nenhum ADR — e o repositório **não tem
+nenhum ADR**, em nenhuma pasta. Não é corrigível escrevendo arquivo: ou se escreve ADR retroativo
+(inventar história), ou se congela a dívida com `trackfw baseline`, ou se rebaixa a regra
+`req_has_adr` para `warning` no `trackfw.yaml`. É decisão de política de governança, não de
+migração — fica para uma REQ própria.
+
+Sem urgência operacional: não há hook de pre-commit instalado (`.husky/`, `.git/hooks/` e
+`lefthook.yml` ausentes), então o gate vermelho não bloqueia nada hoje.
+
+### R2 — 10 testes Go falhando em `internal/generators`
+Pré-existentes e específicos de Windows. Confirmado que independem deste trabalho: as mesmas 10
+falham com o `trackfw.yaml` removido da raiz. Duas causas:
+- `TestInstallAgents_*`, `TestInstallGemini_*`, `TestInstallSkills_*`, `TestInstallWindsurf_*` — o
+  teste aponta HOME para um tempdir mas o instalador resolve o home real no Windows
+  (`os.UserHomeDir()` usa `USERPROFILE`), então escreve em `~/.claude/agents/` de verdade e o
+  assert no tempdir falha.
+- `TestGenerateCommitMsgHook_*` — checam bit de execução POSIX; NTFS entrega `-rw-rw-rw-`.
+
+Merece REQ própria de portabilidade de testes.
