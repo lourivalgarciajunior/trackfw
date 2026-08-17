@@ -1,7 +1,7 @@
 ---
 name: suite-pypi-verde-2026-08-16
 title: "Suíte pypi fecha verde — pytest declarado e asserção de borda corrigida"
-status: wip
+status: done
 date: 2026-08-16
 req: REQ-2026-08-16-suite-pypi-verde
 branch: fix/suite-pypi-verde
@@ -9,7 +9,7 @@ branch: fix/suite-pypi-verde
 
 # Roadmap: suíte pypi verde
 
-> Created: 2026-08-16 | Status: wip
+> Created: 2026-08-16 | Status: done
 
 REQ: `docs/requisições/claude/REQ-2026-08-16-suite-pypi-verde.md`
 
