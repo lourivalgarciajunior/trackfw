@@ -1,7 +1,7 @@
 ---
 name: resolvedor-req-unificado-2026-08-17
 title: "Unificar os três resolvedores de REQ"
-status: wip
+status: done
 date: 2026-08-17
 req: REQ-2026-08-17-resolvedor-req-unificado
 branch: feat/resolvedor-req-unificado
@@ -9,7 +9,7 @@ branch: feat/resolvedor-req-unificado
 
 # Roadmap: resolvedor de REQ unificado
 
-> Created: 2026-08-17 | Status: wip
+> Created: 2026-08-17 | Status: done
 
 REQ: `docs/requisições/claude/REQ-2026-08-17-resolvedor-req-unificado.md`
 
