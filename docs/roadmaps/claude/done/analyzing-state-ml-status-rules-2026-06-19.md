@@ -1,7 +1,7 @@
 ---
 id: analyzing-state-ml-status-rules-2026-06-19
 req: REQ-2026-06-19-analyzing-state-ml-status-rules
-status: wip
+status: done
 created: 2026-06-19
 ---
 

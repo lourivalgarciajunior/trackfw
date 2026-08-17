@@ -1,3 +1,15 @@
+---
+id: REQ-multi-ai-support-2026-06-11
+title: Suporte multi-AI — subcomandos por ferramenta
+status: backlog
+priority: medium
+type: feature
+created: 2026-06-11
+author: claude
+---
+
+Roadmap: roadmap-multi-ai-support-2026-06-11.md
+
 # REQ: Suporte Multi-AI — Subcomandos por Ferramenta
 
 > Criado em: 2026-06-11 | Status: Backlog | Agente: Zeus (Arquiteto)

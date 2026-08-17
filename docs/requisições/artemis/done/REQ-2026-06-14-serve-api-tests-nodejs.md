@@ -1,3 +1,15 @@
+---
+id: REQ-2026-06-14-serve-api-tests-nodejs
+title: Testes da API do serve em Node.js
+status: done
+priority: medium
+type: feature
+created: 2026-06-14
+author: artemis
+---
+
+Roadmap: ROADMAP-2026-06-14-serve-api-tests-nodejs.md
+
 # REQ-2026-06-14-serve-api-tests-nodejs
 
 > Criada em: 2026-06-14 | Status: WIP

@@ -1,3 +1,15 @@
+---
+id: REQ-req-wizard-e-list-2026-06-11
+title: REQ — wizard interativo nas seções e req list
+status: done
+priority: medium
+type: feature
+created: 2026-06-11
+author: apolo
+---
+
+Roadmap: roadmap-req-wizard-e-list-2026-06-11.md
+
 # REQ: REQ — Wizard Interativo nas Seções e req list
 
 > Criado em: 2026-06-11 | Status: WIP | Agente: Apolo

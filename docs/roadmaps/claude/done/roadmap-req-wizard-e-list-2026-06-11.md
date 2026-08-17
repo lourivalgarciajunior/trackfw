@@ -1,6 +1,6 @@
 ---
 name: roadmap-req-wizard-e-list-2026-06-11
-status: wip
+status: done
 req: REQ-req-wizard-e-list-2026-06-11
 ---
 

@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-06-20
 req: "REQ-2026-06-20-attention-hooks-agent-clis.md"
 squad: ""
@@ -7,9 +7,17 @@ squad: ""
 
 # Roadmap: codex-agent-integrations
 
-> Criado em: 2026-06-20 | Status: 🔄 WIP
+> Criado em: 2026-06-20 | Status: ✅ Done
 
 REQ: REQ-2026-06-20-attention-hooks-agent-clis.md
+
+> **Fechado retroativamente em 2026-08-16.** Ficou preso em `wip/` porque o repo não tinha
+> `trackfw.yaml` e o CLI, no default `flat`, enxergava só `docs/roadmaps/{wip,done}/`. A REQ
+> linkada também não existia e foi reconstruída na mesma data. O entregável está presente nos
+> três runtimes: `codex.*` e `hooks.*` em `internal/generators/`, `npm/src/generators/` e
+> `pypi/trackfw/generators/`. Os MLs abaixo permanecem ⬜ Pendente de propósito — o fechamento
+> foi por inspeção do entregável, não por execução deste roadmap.
+> Ver `REQ-2026-08-16-consolidar-arvores-governanca`.
 
 ## Diagnóstico / Contexto
 

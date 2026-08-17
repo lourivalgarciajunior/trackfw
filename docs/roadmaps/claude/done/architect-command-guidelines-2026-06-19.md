@@ -1,7 +1,15 @@
 # Roadmap: Slash command /trackfw:architect + diretrizes de arquitetura
 
-> Criado em: 2026-06-19 | Status: 🔄 WIP
+> Criado em: 2026-06-19 | Status: ✅ Done
 > REQ: `docs/requisições/claude/REQ-2026-06-19-architect-command-guidelines.md`
+
+> **Fechado retroativamente em 2026-08-16.** Este roadmap ficou preso em `wip/` porque o repo
+> não tinha `trackfw.yaml` e o CLI, rodando no default `flat`, não enxergava
+> `docs/roadmaps/claude/`. O entregável está presente nos três runtimes —
+> `internal/generators/scaffold.go:306`, `npm/src/generators/init.js:831`,
+> `pypi/trackfw/generators/init_gen.py:463`. Os MLs abaixo permanecem ⬜ Pendente de propósito:
+> o fechamento foi por inspeção do entregável, não por execução deste roadmap.
+> Ver `REQ-2026-08-16-consolidar-arvores-governanca`.
 
 ## Diagnóstico / Contexto
 

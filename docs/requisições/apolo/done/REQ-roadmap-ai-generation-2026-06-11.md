@@ -1,3 +1,15 @@
+---
+id: REQ-roadmap-ai-generation-2026-06-11
+title: Geração de roadmap por IA
+status: done
+priority: medium
+type: feature
+created: 2026-06-11
+author: apolo
+---
+
+Roadmap: roadmap-roadmap-ai-generation-2026-06-11.md
+
 # REQ: Geração de Roadmap por IA
 
 > Criado em: 2026-06-11 | Status: Backlog | Agente: Apolo

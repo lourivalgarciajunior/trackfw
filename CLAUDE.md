@@ -63,8 +63,8 @@ bash scripts/check-static-assets.sh
 Understanding these layers is required to work on `validate`, `context`, or any generator:
 
 - **ADR** (`docs/adr/`) — the *why*. A REQ is "blocked" until every ADR it links reaches `Status: Accepted`.
-- **REQ** (`docs/req/`) — the *what*, links to an ADR.
-- **ROADMAP** (`docs/roadmaps/{backlog,wip,blocked,done,abandoned}/`) — the *when*. **Folder position IS the state** — moving a file is the state transition.
+- **REQ** (`docs/req/` by default) — the *what*, links to an ADR.
+- **ROADMAP** (`docs/roadmaps/{backlog,analyzing,wip,blocked,done,abandoned}/`) — the *when*. **Folder position IS the state** — moving a file is the state transition.
 - `validate` is the heart of the tool: a configurable gate (15+ rules, each `off`/`warning`/`error`, plus `governance_mode: strict|lenient`) meant to run as a pre-commit hook and CI gate.
 
 Two config features pervade the validator and must be handled in every code path that walks artifacts:
@@ -72,6 +72,19 @@ Two config features pervade the validator and must be handled in every code path
 - **`trace_id_field`** — bidirectional REQ↔ROADMAP linking with 5 dedicated checks (see `internal/validator/validator_traceid.go`).
 
 Config is loaded from `trackfw.yaml`; the schema/loader lives in `internal/config/` (and the Node/Python mirrors).
+
+### This repo's own governance (dogfooding)
+
+trackfw governs itself, and its `trackfw.yaml` overrides two defaults — read it before assuming any path:
+
+- `req_dir: docs/requisições` (not `docs/req`) — the Portuguese name is historical.
+- `roadmap_namespacing: by_agent` with `agents: [apolo, artemis, claude]`, so artifacts live in
+  `docs/requisições/<agent>/` and `docs/roadmaps/<agent>/{backlog,wip,done}/`.
+
+Until 2026-08-16 there was no `trackfw.yaml` at all: the CLI ran on the flat defaults and saw 2 of
+the repo's 66 artifacts, which hid 3 roadmaps stuck in `wip/` and 20 validate violations. If you
+find artifacts outside the two paths above, that is drift — see
+`docs/requisições/claude/REQ-2026-08-16-consolidar-arvores-governanca.md`.
 
 ## Key internal packages (Go)
 
@@ -92,4 +105,4 @@ Config is loaded from `trackfw.yaml`; the schema/loader lives in `internal/confi
 
 - Go code uses `github.com/spf13/cobra` for command wiring and `github.com/kgsaran/trackfw` as the module path.
 - Every command/feature change should add tests in all three runtimes (`*_test.go`, `npm/tests/*.test.js`, `pypi/tests/`).
-- Project planning artifacts live under `docs/requisições/`, `docs/roadmaps/`, and `docs/roadmap/` organized by agent and lifecycle (`backlog/wip/done`). This repo dogfoods trackfw on itself.
+- Project planning artifacts live under `docs/requisições/<agent>/` and `docs/roadmaps/<agent>/`, organized by lifecycle (`backlog/wip/done`). This repo dogfoods trackfw on itself — see "This repo's own governance" above. `docs/req/` and `docs/roadmap/` (singular) were drift and no longer exist.

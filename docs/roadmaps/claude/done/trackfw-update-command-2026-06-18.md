@@ -1,7 +1,7 @@
 ---
 name: trackfw-update-command-2026-06-18
 title: "trackfw update — comando de atualização de artefatos gerenciados"
-status: wip
+status: done
 date: 2026-06-18
 req: REQ-2026-06-18-trackfw-update-command
 branch: feat/kanban-roadmap-progress

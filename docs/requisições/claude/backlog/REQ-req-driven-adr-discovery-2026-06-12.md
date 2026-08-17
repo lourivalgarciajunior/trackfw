@@ -1,3 +1,15 @@
+---
+id: REQ-req-driven-adr-discovery-2026-06-12
+title: REQ-driven ADR discovery
+status: backlog
+priority: medium
+type: feature
+created: 2026-06-12
+author: claude
+---
+
+Roadmap: roadmap-req-driven-adr-discovery-2026-06-12.md
+
 # REQ: REQ-Driven ADR Discovery
 
 > Criado em: 2026-06-12 | Status: Backlog | Agente: Zeus (Arquiteto)

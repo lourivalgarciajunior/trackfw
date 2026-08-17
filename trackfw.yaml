@@ -1,0 +1,20 @@
+# trackfw — configuração de governança deste repositório
+#
+# Este repo faz dogfooding do próprio trackfw. Os artefatos ficam namespaced por
+# agente (by_agent) e o diretório de requisitos usa o nome em português, herdado
+# do histórico do projeto. Ver REQ-2026-08-16-consolidar-arvores-governanca.
+
+adr_dirs:
+  - docs/adr
+
+req_dir: docs/requisições
+roadmap_dir: docs/roadmaps
+
+roadmap_namespacing: by_agent
+agents:
+  - apolo
+  - artemis
+  - claude
+
+governance_mode: strict
+wip_limit: 1
