@@ -1,7 +1,7 @@
 ---
 name: req-list-python-2026-08-17
 title: "Comando req list no runtime Python"
-status: wip
+status: done
 date: 2026-08-17
 req: REQ-2026-08-17-req-list-python
 branch: feat/req-list-python
@@ -9,7 +9,7 @@ branch: feat/req-list-python
 
 # Roadmap: req list no Python
 
-> Created: 2026-08-17 | Status: wip
+> Created: 2026-08-17 | Status: done
 
 REQ: `docs/requisições/claude/REQ-2026-08-17-req-list-python.md`
 
