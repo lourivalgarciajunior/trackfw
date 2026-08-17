@@ -26,6 +26,18 @@ def register(subparsers):
         help="REQ title (prompted if omitted)",
     )
 
+    # req move <name> <state>
+    #
+    # O roadmap tinha transicao de estado como comando desde sempre; a REQ nao,
+    # apesar de o validator ja varrer os cinco estados dela.
+    # Ver REQ-2026-08-17-req-move.
+    move_parser = req_sub.add_parser(
+        "move",
+        help="Move a REQ between states (backlog|wip|blocked|done|abandoned)",
+    )
+    move_parser.add_argument("name", help="REQ name (partial match)")
+    move_parser.add_argument("state", help="Target state")
+
     req_parser.set_defaults(func=_dispatch)
 
 
@@ -33,10 +45,25 @@ def _dispatch(args):
     """Despacha para o sub-subcomando correto."""
     if args.req_command == "new":
         _cmd_new(args)
+    elif args.req_command == "move":
+        _cmd_move(args)
     else:
         print("Usage: trackfw req <command>")
-        print("Commands: new")
+        print("Commands: new, move")
         sys.exit(0)
+
+
+def _cmd_move(args):
+    from trackfw.config import load as load_config
+    from trackfw.generators.req import move_req
+
+    try:
+        dst = move_req(args.name, args.state, load_config())
+    except (ValueError, FileNotFoundError) as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(1)
+
+    print(f"✓ moved {args.name} → {dst}")
 
 
 def _cmd_new(args):

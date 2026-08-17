@@ -73,12 +73,12 @@ Mesmo exit code e mesmo arquivo resultante nos três, nas três formas de origem
 
 ## Critérios de Aceite
 
-- [ ] `req move <nome> <estado>` existe e funciona nos três runtimes
-- [ ] Encontra a REQ nas três formas de organização
-- [ ] Em `by_agent`, o agente é preservado no destino
-- [ ] `status:` e linha humana sincronizados; arquivo sem frontmatter intocado
-- [ ] Estado inválido e nome ambíguo dão erro claro com exit ≠ 0
-- [ ] Transição registrada em `<req_dir>/.trackfw-log`
-- [ ] Teste por runtime, cada um confirmado não-vacuoso
-- [ ] `check-cli-parity.sh` reconhece o comando novo nos três
-- [ ] Suítes dos três runtimes verdes; `trackfw validate` limpo
+- [x] `req move <nome> <estado>` existe e funciona nos três runtimes
+- [x] Encontra a REQ nas três formas de organização
+- [x] Em `by_agent`, o agente é preservado no destino
+- [x] `status:` e linha humana sincronizados; arquivo sem frontmatter intocado
+- [x] Estado inválido e nome ambíguo dão erro claro com exit ≠ 0
+- [x] Transição registrada em `<req_dir>/.trackfw-log`
+- [x] Teste por runtime, cada um confirmado não-vacuoso
+- [x] `check-cli-parity.sh` reconhece o comando novo nos três
+- [x] Suítes dos três runtimes verdes; `trackfw validate` limpo
