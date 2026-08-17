@@ -54,7 +54,7 @@ Origem: item 11 da dívida, achado de passagem em
 **Comandos de validação:** `go build ./... && go test ./internal/commands/ -run RoadmapNew`
 
 ### ML-2 — Node.js: aviso quando não há REQ
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `npm/src/commands/roadmap.js`, `npm/src/generators/roadmap.js`,
 `npm/tests/roadmap_new.test.js` (NOVO)
 **Ações:**
@@ -63,9 +63,12 @@ Origem: item 11 da dívida, achado de passagem em
    roadmap chamado "New Roadmap" silenciosamente.
 3. Teste equivalente ao do Go.
 **Critérios de aceite:**
-- [ ] Aviso em stderr sem REQ
-- [ ] `--req` grava `REQ:`
-- [ ] Sem `--title` e sem REQ: erro claro em vez de "New Roadmap"
+- [x] Aviso em stderr sem REQ, com a mesma consequência que o Go anuncia
+- [x] `--req` grava `REQ:`
+- [x] Sem `--title` e sem REQ: erro claro e exit ≠ 0, em vez de criar "New Roadmap"
+- [x] Sem `--title` mas com `--req`, o título passa a vir do nome da REQ — como no Go
+- [x] Não-vacuoso: 1 passed / 2 failed sem o fix
+- [x] O teste roda o CLI por subprocesso, então cobre o contrato de verdade, não só o generator
 **Comandos de validação:** `node npm/tests/roadmap_new.test.js`
 
 ### ML-3 — Python: ganha `--title`, `--req` e `--from-req`
