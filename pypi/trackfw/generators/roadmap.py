@@ -200,32 +200,63 @@ def move_roadmap(filename: str, to_state: str, cfg: dict) -> str:
     os.makedirs(target_dir, exist_ok=True)
     dst = os.path.join(target_dir, basename)
 
-    # Lê conteúdo e atualiza status: no frontmatter
-    with open(src, "r", encoding="utf-8") as f:
-        content = f.read()
+    # Move primeiro, depois reescreve só se o frontmatter mudar — mesmo fluxo do
+    # Go e do Node.js. newline="" nos dois lados desliga a tradução automática de
+    # quebra de linha: sem isso o Windows converteria LF em CRLF no arquivo
+    # inteiro, mesmo quando não há nada a alterar.
+    os.replace(src, dst)
 
-    # Mapeamento de estado para label legível do frontmatter
-    state_labels = {
-        "backlog": "Backlog",
-        "wip": "WIP",
-        "blocked": "Blocked",
-        "done": "Done",
-        "abandoned": "Abandoned",
-    }
-    new_label = state_labels.get(to_state, to_state.capitalize())
-    content = re.sub(
-        r"^(status:\s*).*$",
-        f"\\g<1>{new_label}",
-        content,
-        count=1,
-        flags=re.MULTILINE,
-    )
-
-    with open(dst, "w", encoding="utf-8") as f:
-        f.write(content)
-
-    os.remove(src)
+    try:
+        with open(dst, "r", encoding="utf-8", newline="") as f:
+            content = f.read()
+        updated = _set_frontmatter_status(content, to_state)
+        if updated != content:
+            with open(dst, "w", encoding="utf-8", newline="") as f:
+                f.write(updated)
+    except OSError:
+        pass
 
     _append_transition_log(basename, from_state, to_state, cfg)
 
     return dst
+
+
+def _set_frontmatter_status(content: str, state: str) -> str:
+    """Devolve content com o campo status: do frontmatter valendo state.
+
+    So mexe dentro do bloco delimitado pelos "---" do topo do arquivo, e so se a
+    chave status ja existir ali.
+
+    Devolve content intocado quando nao ha frontmatter ou quando o bloco nao
+    declara status - mesmo contrato do validator, que ignora quem nao declara.
+    Isso protege roadmaps sem frontmatter, cujo corpo pode conter uma linha
+    comecando com "status:". Ver REQ-2026-08-16-roadmap-move-sincroniza-status.
+    """
+    if not (content.startswith("---\n") or content.startswith("---\r\n")):
+        return content
+
+    lines = content.split("\n")
+    if len(lines) < 2:
+        return content
+
+    # Procura o "---" de fechamento; fora dele nada e reescrito.
+    end = -1
+    for i in range(1, len(lines)):
+        if lines[i].rstrip("\r") == "---":
+            end = i
+            break
+    if end < 0:
+        return content
+
+    for i in range(1, end):
+        line = lines[i]
+        trimmed = line.rstrip("\r")
+        idx = trimmed.find(":")
+        if idx < 0:
+            continue
+        if trimmed[:idx].strip() != "status":
+            continue
+        lines[i] = "status: " + state + ("\r" if line.endswith("\r") else "")
+        return "\n".join(lines)
+
+    return content

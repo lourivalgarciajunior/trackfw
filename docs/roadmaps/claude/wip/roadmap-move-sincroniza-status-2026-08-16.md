@@ -72,7 +72,7 @@ O defeito se reproduziu duas vezes ao vivo durante aquele trabalho.
 **Comandos de validação:** `node npm/tests/roadmap_move.test.js`
 
 ### ML-3 — Python: restringe ao frontmatter e alinha o rótulo
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `pypi/trackfw/generators/roadmap.py`, `pypi/tests/test_roadmap_move.py` (NOVO)
 **Ações:**
 1. Trocar o `re.sub` global por um helper com o mesmo contrato do ML-1.
@@ -80,8 +80,21 @@ O defeito se reproduziu duas vezes ao vivo durante aquele trabalho.
    `roadmap new` e com os dois outros runtimes. Remover o dict `state_labels`.
 3. Teste equivalente, mesmos quatro casos.
 **Critérios de aceite:**
-- [ ] `python -m unittest tests.test_roadmap_move` verde
-- [ ] Teste cobre o caso do arquivo sem frontmatter, que hoje seria corrompido pela regex global
+- [x] `python -m unittest tests.test_roadmap_move` verde — 4 testes, OK
+- [x] Teste cobre o arquivo sem frontmatter, que a regex global corrompia
+- [x] Não-vacuoso: FAILED (failures=4) sem o fix
+- [x] Suíte completa volta à baseline exata: 6 errors + 1 failure pré-existentes, nada novo
+
+**Defeito extra encontrado pelo teste (não previsto):** o `move_roadmap` lia com newline universal
+e regravava com tradução automática, o que no Windows convertia **o arquivo inteiro de LF para
+CRLF** — inclusive quando não havia nada a alterar. Corrigido junto: agora move primeiro com
+`os.replace` e só reescreve se o frontmatter mudar, com `newline=""` nos dois lados. É o mesmo
+fluxo do Go e do Node.js.
+
+**Efeito colateral assumido:** três testes existentes asseveravam `status: WIP` capitalizado e
+foram atualizados para minúsculo, conforme R3. Fica registrado que o template de `roadmap new` do
+Python ainda grava `status: Backlog` capitalizado enquanto o do Go grava `backlog` — divergência
+pré-existente entre runtimes, no comando `new`, fora do escopo desta REQ. Merece REQ própria.
 **Comandos de validação:** `cd pypi && python -m unittest tests.test_roadmap_move`
 
 ---
