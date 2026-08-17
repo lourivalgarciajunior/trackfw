@@ -202,8 +202,17 @@ class TestValidateStaleWip(unittest.TestCase):
         file_path = os.path.join(wip_dir, "roadmap-antigo.md")
         _write(file_path, "# Roadmap antigo")
 
-        # Retrocede o mtime em 10 dias
-        old_time = time.time() - (10 * 24 * 60 * 60)
+        # Retrocede o mtime em 10 dias e 1 hora.
+        #
+        # A folga de 1 hora não é decorativa: sem ela a asserção sobre "10 days"
+        # fica exatamente sobre a borda de truncamento. A produção calcula a idade
+        # com datetime.now().timestamp() e este teste ancora com time.time() — e
+        # medido nesta plataforma, a leitura da produção cai ANTES da do teste em
+        # 84% das amostras. Com o recuo exato de 10 dias isso dá 9.999999 dias, e
+        # o int() da produção trunca para 9.
+        #
+        # Ver REQ-2026-08-16-suite-pypi-verde.
+        old_time = time.time() - (10 * 24 * 60 * 60) - (60 * 60)
         os.utime(file_path, (old_time, old_time))
 
         result = v.validate_stale_wip(cfg, days=7)
