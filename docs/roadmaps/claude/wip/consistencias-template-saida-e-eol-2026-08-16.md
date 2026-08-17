@@ -1,0 +1,118 @@
+---
+name: consistencias-template-saida-e-eol-2026-08-16
+title: "Consistências de template, header, saída e EOL"
+status: wip
+date: 2026-08-16
+req: REQ-2026-08-16-consistencias-template-saida-e-eol
+branch: fix/consistencias-6-a-9
+---
+
+# Roadmap: consistências de template, header, saída e EOL
+
+> Criado em: 2026-08-16 | Status: 🔄 WIP
+
+REQ: `docs/requisições/claude/REQ-2026-08-16-consistencias-template-saida-e-eol.md`
+
+## Diagnóstico / Contexto
+
+Quatro achados independentes registrados como dívida ao longo desta sessão, nenhum grande o
+bastante para REQ própria. Diagnóstico de cada um está na REQ: template do `roadmap new` divergente
+no Python, linha humana de status não sincronizada pelo `move`, caminhos de home hardcoded na saída
+do instalador Go, e falta de `.gitattributes`.
+
+Ordem de execução: D1 e D2 mexem no mesmo arquivo por runtime, então D1 primeiro para o template já
+nascer no formato que D2 vai sincronizar.
+
+## Critérios de Aceite
+
+- [ ] `roadmap new` produz frontmatter e header idênticos nos três runtimes
+- [ ] Após `move X done`, a linha `> … | Status:` declara `done` nos três runtimes
+- [ ] Nenhum caminho de home hardcoded em `Printf` no Go
+- [ ] `gofmt -l internal/ cmd/` devolve zero
+- [ ] `go test ./...` verde, pypi na baseline, gates sem prefixo
+
+---
+
+## Wave 1 — Template e header (sequencial por dependência de formato)
+
+### ML-1 — D1: alinhar o template do `roadmap new` no Python
+**Status:** ⬜ Pendente
+**Arquivos afetados:** `pypi/trackfw/generators/roadmap.py`, `pypi/tests/test_generators_roadmap.py`
+**Ações:**
+1. Em `_roadmap_template`, trocar `status: Backlog` por `status: backlog` e
+   `> Criado em: {date} | Status: ⬜ Backlog` por `> Created: {date} | Status: backlog`.
+2. Atualizar a asserção `assertIn("status: Backlog", content)` do teste existente.
+**Critérios de aceite:**
+- [ ] `roadmap new` dos três runtimes gera frontmatter e header iguais
+- [ ] Suíte pypi sem falha nova
+**Comandos de validação:** `cd pypi && python -m unittest discover -s tests -t .`
+
+### ML-2 — D2: `move` sincroniza a linha humana nos três runtimes
+**Status:** ⬜ Pendente
+**Arquivos afetados:** `internal/generators/roadmap.go` + teste; `npm/src/generators/roadmap.js` +
+teste; `pypi/trackfw/generators/roadmap.py` + teste
+**Ações:**
+1. Helper `setHeaderStatus(content, state)` em cada runtime: acha a primeira linha que comece com
+   `> ` **e** contenha `| Status: `, e substitui tudo após esse marcador pelo estado.
+2. Encadear com o `setFrontmatterStatus` já existente no fluxo do `move`.
+3. Contrato conservador, igual ao do frontmatter: nenhuma linha casando o padrão → conteúdo
+   intocado; a linha nunca é criada.
+4. Teste em cada runtime cobrindo: linha presente, linha ausente, e header com emoji
+   (`Status: 🔄 WIP`), que é o formato herdado neste repositório.
+**Critérios de aceite:**
+- [ ] Após `move X done`, a linha declara `done` nos três runtimes
+- [ ] Arquivo sem a linha sai byte a byte idêntico
+- [ ] Testes não-vacuosos nos três
+**Comandos de validação:** `go test ./internal/generators/ -run Move && node npm/tests/roadmap_move.test.js && cd pypi && python -m unittest tests.test_roadmap_move`
+
+---
+
+## Wave 2 — Saída e repositório (independentes)
+
+### ML-3 — D3: saída do instalador mostra o caminho real
+**Status:** ⬜ Pendente
+**Arquivos afetados:** `internal/generators/home.go`, `agents.go`, `gemini.go`, `scaffold.go`,
+`windsurf.go`, `internal/generators/home_test.go`
+**Ações:**
+1. Em `home.go`, criar `displayPath(abs string) string`: devolve o caminho com o home resolvido
+   substituído por `~`, ou o absoluto quando não estiver sob o home.
+2. Trocar as 12 `Printf` com `~/…` hardcoded por `displayPath` do caminho que a função já calculou.
+3. Teste do helper: caminho sob o home vira `~/…`; fora do home fica absoluto; home irresolúvel não
+   quebra.
+**Critérios de aceite:**
+- [ ] Nenhum literal `~/.claude`, `~/.gemini` ou `~/.codeium` em `Printf` no pacote
+- [ ] Saída no uso normal continua exibindo `~/…`
+- [ ] Num home de teste, a saída aponta o tempdir e não `~`
+**Comandos de validação:** `go test ./internal/generators/`
+
+### ML-4 — D4: `.gitattributes` e normalização do working copy
+**Status:** ⬜ Pendente
+**Arquivos afetados:** `.gitattributes` (NOVO)
+**Ações:**
+1. Criar `.gitattributes` com `* text=auto` e `eol=lf` para as extensões de fonte
+   (`*.go`, `*.js`, `*.py`, `*.sh`, `*.md`, `*.yaml`, `*.yml`, `*.json`).
+2. Normalizar o working copy com `git add --renormalize .` e, se necessário,
+   `git checkout-index -a -f` para reescrever os arquivos aplicando o novo filtro.
+3. Conferir `gofmt -l internal/ cmd/` em zero.
+**Critérios de aceite:**
+- [ ] `.gitattributes` presente
+- [ ] `gofmt -l internal/ cmd/` devolve zero
+- [ ] Nenhuma mudança de conteúdo real no diff, só final de linha
+**Comandos de validação:** `gofmt -l internal/ cmd/ && go build ./...`
+
+---
+
+## Wave 3 — Fechamento
+
+### ML-5 — Suítes e gates
+**Status:** ⬜ Pendente
+**Arquivos afetados:** nenhum (verificação)
+**Ações:**
+1. `go test ./...` com zero falhas e `go vet ./...` limpo.
+2. Suíte pypi contra a baseline de 6 errors + 1 failure, sem prefixo de ambiente.
+3. Testes npm.
+4. Os três gates de paridade, sem prefixo.
+**Critérios de aceite:**
+- [ ] Go verde, pypi na baseline, npm verde
+- [ ] Gates passam sem prefixo
+**Comandos de validação:** `go test ./... && bash scripts/check-cli-parity.sh && bash scripts/check-validate-parity.sh`
