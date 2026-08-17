@@ -169,13 +169,17 @@ func parse(content string, cfg *ProjectConfig) {
 		if hasIndent {
 			if inADRDirs {
 				if strings.HasPrefix(trimmed, "- ") {
-					adrDirs = append(adrDirs, strings.TrimPrefix(trimmed, "- "))
+					val := strings.TrimPrefix(trimmed, "- ")
+					val = strings.Trim(val, `"'`)
+					adrDirs = append(adrDirs, val)
 				}
 				continue
 			}
 			if inAgents {
 				if strings.HasPrefix(trimmed, "- ") {
-					agents = append(agents, strings.TrimPrefix(trimmed, "- "))
+					val := strings.TrimPrefix(trimmed, "- ")
+					val = strings.Trim(val, `"'`)
+					agents = append(agents, val)
 				}
 				continue
 			}

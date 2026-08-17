@@ -39,7 +39,7 @@ gap real estava nos itens de lista, onde ninguém tinha olhado. O corpo do PR #2
 > Arquivos distintos por runtime; podem ser feitos em qualquer ordem. Go é a referência.
 
 ### ML-1 — Go: `adr_dirs` e `agents` + teste
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `internal/config/config.go`, `internal/config/config_test.go`
 **Ações:**
 1. No bloco `if inADRDirs`, trocar `append(adrDirs, strings.TrimPrefix(trimmed, "- "))` por uma
@@ -48,8 +48,9 @@ gap real estava nos itens de lista, onde ninguém tinha olhado. O corpo do PR #2
 3. Teste novo em `config_test.go`: `trackfw.yaml` com `adr_dirs` e `agents` usando aspas duplas e
    simples; asseverar valores limpos.
 **Critérios de aceite:**
-- [ ] `go build ./...` sem erros
-- [ ] `go test ./internal/config/` verde, incluindo o teste novo
+- [x] `go build ./...` sem erros
+- [x] `go test ./internal/config/` verde, incluindo o teste novo
+- [x] Teste confirmado não-vacuoso: falha sem o fix, passa com ele
 **Comandos de validação:** `go build ./... && go test ./internal/config/`
 
 ### ML-2 — Node.js: `adr_dirs` e `agents` + teste

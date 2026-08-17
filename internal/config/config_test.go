@@ -238,3 +238,53 @@ func TestReset(t *testing.T) {
 		t.Errorf("after Reset: WipLimit want 5, got %d", cfg2.WipLimit)
 	}
 }
+
+// TestLoad_ListItemsWithQuotes cobre o bug em que itens de lista de adr_dirs e
+// agents mantinham as aspas envolventes. Com roadmap_namespacing: by_agent, um
+// agente lido como `"claude"` nunca casa com docs/roadmaps/claude/ e o namespace
+// inteiro some da validação em silêncio.
+func TestLoad_ListItemsWithQuotes(t *testing.T) {
+	Reset()
+	tmp := t.TempDir()
+	orig, _ := os.Getwd()
+	defer func() { _ = os.Chdir(orig) }()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatal(err)
+	}
+
+	yaml := `adr_dirs:
+  - "docs/adr"
+  - 'docs/decisions'
+  - docs/adr-extra
+roadmap_namespacing: by_agent
+agents:
+  - "claude"
+  - 'apolo'
+  - artemis
+`
+	if err := os.WriteFile(filepath.Join(tmp, "trackfw.yaml"), []byte(yaml), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := Load()
+
+	wantDirs := []string{"docs/adr", "docs/decisions", "docs/adr-extra"}
+	if len(cfg.ADRDirs) != len(wantDirs) {
+		t.Fatalf("ADRDirs: want %v, got %v", wantDirs, cfg.ADRDirs)
+	}
+	for i, want := range wantDirs {
+		if cfg.ADRDirs[i] != want {
+			t.Errorf("ADRDirs[%d]: want %q, got %q", i, want, cfg.ADRDirs[i])
+		}
+	}
+
+	wantAgents := []string{"claude", "apolo", "artemis"}
+	if len(cfg.Agents) != len(wantAgents) {
+		t.Fatalf("Agents: want %v, got %v", wantAgents, cfg.Agents)
+	}
+	for i, want := range wantAgents {
+		if cfg.Agents[i] != want {
+			t.Errorf("Agents[%d]: want %q, got %q", i, want, cfg.Agents[i])
+		}
+	}
+}
