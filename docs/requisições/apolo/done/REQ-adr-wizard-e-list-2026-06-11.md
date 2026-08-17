@@ -1,3 +1,13 @@
+---
+id: REQ-adr-wizard-e-list-2026-06-11
+title: ADR — wizard interativo nas seções e adr list
+status: done
+priority: medium
+type: feature
+created: 2026-06-11
+author: apolo
+---
+
 # REQ: ADR — Wizard Interativo nas Seções e adr list
 
 > Criado em: 2026-06-11 | Status: WIP | Agente: Apolo

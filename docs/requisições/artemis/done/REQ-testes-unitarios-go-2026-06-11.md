@@ -1,3 +1,15 @@
+---
+id: REQ-testes-unitarios-go-2026-06-11
+title: Testes unitários Go — validator e generators
+status: done
+priority: medium
+type: feature
+created: 2026-06-11
+author: artemis
+---
+
+Roadmap: ROADMAP-testes-unitarios-go-2026-06-11.md
+
 # REQ: Testes Unitários Go — validator e generators
 
 > Criado em: 2026-06-11 | Status: WIP | Agente: Artemis

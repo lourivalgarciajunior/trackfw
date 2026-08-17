@@ -88,8 +88,27 @@ Decisão de rota (usuário, 2026-08-16): **Opção 1 — pinar a config na reali
 
 ## Wave 3 — Fechamento
 
+### ML-5 — Higiene das REQs legadas reveladas pelo ML-1
+**Status:** ✅ Concluído
+**Escopo acrescentado em 2026-08-16.** Não estava previsto: só ficou visível depois que o ML-1
+tirou a árvore B da invisibilidade. Registrado aqui em vez de ser feito em silêncio.
+**Arquivos afetados:** 7 roadmaps em `docs/roadmaps/claude/done/`; 7 REQs em `docs/requisições/`
+**Ações:**
+1. Alinhar `status:` ao diretório em 7 roadmaps de `done/` que declaravam `wip`/`WIP`/`backlog` —
+   a pasta é a verdade no modelo do trackfw. Zerou os 7 avisos de `folder_status`.
+2. Prepender bloco de frontmatter às 7 REQs legadas que não tinham nenhum, derivando os campos do
+   próprio cabeçalho `> Criado em: … | Status: … | Agente: …` de cada arquivo e usando o diretório
+   como verdade para o status. Corpo preservado byte a byte.
+3. Adicionar campo `Roadmap:` nas 5 REQs cujo roadmap já existia mas não estava linkado.
+**Critérios de aceite:**
+- [x] `folder_status` zerado (7 → 0 avisos)
+- [x] `req_frontmatter` zerado (7 → 0 violações)
+- [x] `req_has_roadmap` zerado (3 → 0 violações)
+- [x] Nenhuma alteração de conteúdo além do frontmatter prependado
+**Comandos de validação:** `trackfw validate`
+
 ### ML-4 — Alinhar `CLAUDE.md` e fechar o gate
-**Status:** ⬜ Pendente
+**Status:** 🔄 Em andamento
 **Arquivos afetados:** `CLAUDE.md`
 **Ações:**
 1. Atualizar a seção "The governance domain model" para os caminhos reais (`docs/requisições/<agente>/`, `docs/roadmaps/<agente>/`) e registrar `roadmap_namespacing: by_agent` como o modo deste repo.

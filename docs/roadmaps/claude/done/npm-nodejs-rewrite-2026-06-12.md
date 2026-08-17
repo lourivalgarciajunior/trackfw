@@ -3,7 +3,7 @@ name: npm-nodejs-rewrite
 description: Reescrever o pacote npm de fat-package (Go binary) para Node.js puro
 metadata:
   type: project
-status: backlog
+status: done
 ---
 
 # Roadmap: Reescrita do pacote npm em Node.js puro
