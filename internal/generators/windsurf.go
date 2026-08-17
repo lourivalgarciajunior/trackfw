@@ -105,7 +105,7 @@ func appendWindsurfGlobalRules() error {
 
 	existing, readErr := os.ReadFile(globalPath)
 	if readErr == nil && strings.Contains(string(existing), "trackfw") {
-		fmt.Printf("  ✓ ~/.codeium/windsurf/memories/global_rules.md (trackfw já presente — não modificado)\n")
+		fmt.Printf("  ✓ %s (trackfw já presente — não modificado)\n", displayPath(globalPath))
 		return nil
 	}
 
@@ -130,6 +130,6 @@ func appendWindsurfGlobalRules() error {
 		}
 	}
 
-	fmt.Printf("  ✅ ~/.codeium/windsurf/memories/global_rules.md (trackfw adicionado)\n")
+	fmt.Printf("  ✅ %s (trackfw adicionado)\n", displayPath(globalPath))
 	return nil
 }

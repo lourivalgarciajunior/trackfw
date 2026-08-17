@@ -288,7 +288,8 @@ func MoveRoadmap(name, state string) error {
 	// frontmatter. Sem esta sincronização o próprio move produz a incoerência que
 	// o validate reclama. Ver REQ-2026-08-16-roadmap-move-sincroniza-status.
 	if content, err := os.ReadFile(dst); err == nil {
-		if updated := setFrontmatterStatus(string(content), state); updated != string(content) {
+		updated := setHeaderStatus(setFrontmatterStatus(string(content), state), state)
+		if updated != string(content) {
 			_ = os.WriteFile(dst, []byte(updated), 0644)
 		}
 	}
@@ -529,5 +530,40 @@ func setFrontmatterStatus(content, state string) string {
 		return strings.Join(lines, "\n")
 	}
 
+	return content
+}
+
+// headerStatusMarker separa o rótulo do estado na linha humana logo abaixo do
+// título, no formato "> Created: 2026-08-16 | Status: backlog".
+const headerStatusMarker = "| Status: "
+
+// setHeaderStatus devolve content com o estado da linha humana valendo state.
+//
+// Age na primeira linha que comece com "> " e contenha o marcador; tudo depois
+// dele é substituído. Conteúdo intocado quando nenhuma linha casa — a linha nunca
+// é criada, mesmo contrato de setFrontmatterStatus.
+//
+// Tolera o formato herdado com emoji ("| Status: 🔄 WIP"), porque substitui o
+// trecho inteiro em vez de tentar casar o valor anterior.
+//
+// Ver REQ-2026-08-16-consistencias-template-saida-e-eol.
+func setHeaderStatus(content, state string) string {
+	lines := strings.Split(content, "\n")
+	for i, line := range lines {
+		trimmed := strings.TrimRight(line, "\r")
+		if !strings.HasPrefix(trimmed, "> ") {
+			continue
+		}
+		idx := strings.Index(trimmed, headerStatusMarker)
+		if idx < 0 {
+			continue
+		}
+		replacement := trimmed[:idx+len(headerStatusMarker)] + state
+		if strings.HasSuffix(line, "\r") {
+			replacement += "\r"
+		}
+		lines[i] = replacement
+		return strings.Join(lines, "\n")
+	}
 	return content
 }

@@ -177,7 +177,7 @@ function moveRoadmap(name, state) {
   // o validate reclama. Ver REQ-2026-08-16-roadmap-move-sincroniza-status.
   try {
     const content = fs.readFileSync(dst, 'utf8')
-    const updated = setFrontmatterStatus(content, state)
+    const updated = setHeaderStatus(setFrontmatterStatus(content, state), state)
     if (updated !== content) fs.writeFileSync(dst, updated, 'utf8')
   } catch (_) {}
 
@@ -218,6 +218,39 @@ function setFrontmatterStatus(content, state) {
     return lines.join('\n')
   }
 
+  return content
+}
+
+// headerStatusMarker — separa o rótulo do estado na linha humana logo abaixo do
+// título, no formato "> Created: 2026-08-16 | Status: backlog".
+const HEADER_STATUS_MARKER = '| Status: '
+
+/**
+ * setHeaderStatus — devolve content com o estado da linha humana valendo state.
+ *
+ * Age na primeira linha que comece com "> " e contenha o marcador; tudo depois
+ * dele é substituído. Conteúdo intocado quando nenhuma linha casa — a linha nunca
+ * é criada, mesmo contrato de setFrontmatterStatus.
+ *
+ * Tolera o formato herdado com emoji ("| Status: 🔄 WIP"), porque substitui o
+ * trecho inteiro em vez de tentar casar o valor anterior.
+ *
+ * Ver REQ-2026-08-16-consistencias-template-saida-e-eol.
+ */
+function setHeaderStatus(content, state) {
+  const lines = content.split('\n')
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const trimmed = line.replace(/\r+$/, '')
+    if (!trimmed.startsWith('> ')) continue
+    const idx = trimmed.indexOf(HEADER_STATUS_MARKER)
+    if (idx < 0) continue
+    lines[i] =
+      trimmed.slice(0, idx + HEADER_STATUS_MARKER.length) +
+      state +
+      (line.endsWith('\r') ? '\r' : '')
+    return lines.join('\n')
+  }
   return content
 }
 

@@ -68,6 +68,41 @@ class TestMoveRoadmapStatus(unittest.TestCase):
         want = "---\nstatus: blocked\n---\n\n# Roadmap: w\n\nstatus: isto e corpo\n"
         self.assertEqual(self._read("blocked", "w.md"), want)
 
+    def test_sincroniza_linha_humana(self):
+        src = (
+            "---\nstatus: wip\n---\n\n# Roadmap: h\n\n"
+            "> Created: 2026-08-16 | Status: wip\n\ncorpo\n"
+        )
+        self._write("h.md", src)
+        move_roadmap("h.md", "done", self.cfg)
+        want = (
+            "---\nstatus: done\n---\n\n# Roadmap: h\n\n"
+            "> Created: 2026-08-16 | Status: done\n\ncorpo\n"
+        )
+        self.assertEqual(self._read("done", "h.md"), want)
+
+    def test_linha_humana_com_emoji(self):
+        """Formato herdado neste repositorio: o trecho inteiro apos o marcador
+        e substituido, entao o emoji sai junto."""
+        src = (
+            "---\nstatus: wip\n---\n\n# Roadmap: e\n\n"
+            "> Criado em: 2026-08-16 | Status: \U0001F504 WIP\n"
+        )
+        self._write("e.md", src)
+        move_roadmap("e.md", "done", self.cfg)
+        want = (
+            "---\nstatus: done\n---\n\n# Roadmap: e\n\n"
+            "> Criado em: 2026-08-16 | Status: done\n"
+        )
+        self.assertEqual(self._read("done", "e.md"), want)
+
+    def test_sem_linha_humana_nao_cria(self):
+        src = "---\nstatus: wip\n---\n\n# Roadmap: s\n\nsem linha de status aqui\n"
+        self._write("s.md", src)
+        move_roadmap("s.md", "done", self.cfg)
+        want = "---\nstatus: done\n---\n\n# Roadmap: s\n\nsem linha de status aqui\n"
+        self.assertEqual(self._read("done", "s.md"), want)
+
 
 if __name__ == "__main__":
     unittest.main()

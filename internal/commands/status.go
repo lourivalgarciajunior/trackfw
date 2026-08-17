@@ -3,8 +3,8 @@ package commands
 import (
 	"fmt"
 
-	"github.com/spf13/cobra"
 	"github.com/kgsaran/trackfw/internal/validator"
+	"github.com/spf13/cobra"
 )
 
 func newStatusCmd() *cobra.Command {

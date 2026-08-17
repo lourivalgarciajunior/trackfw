@@ -2,6 +2,8 @@ package generators
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -59,5 +61,58 @@ func TestUseTempHome_IsolaOResolvedor(t *testing.T) {
 	}
 	if got != real {
 		t.Errorf("após cleanup userHomeDir() = %q, quer %q", got, real)
+	}
+}
+
+// TestDisplayPath cobre o helper que substituiu os caminhos hardcoded nas
+// mensagens dos instaladores. O ponto do helper é justamente não mentir quando
+// o home não é o padrão — ver REQ-2026-08-16-consistencias-template-saida-e-eol.
+func TestDisplayPath(t *testing.T) {
+	home := t.TempDir()
+	useTempHome(t, home)
+
+	t.Run("sob o home vira til", func(t *testing.T) {
+		got := displayPath(filepath.Join(home, ".claude", "agents", "x.md"))
+		want := "~/.claude/agents/x.md"
+		if got != want {
+			t.Errorf("displayPath() = %q, quer %q", got, want)
+		}
+	})
+
+	t.Run("o proprio home vira til", func(t *testing.T) {
+		if got := displayPath(home); got != "~/." {
+			t.Logf("displayPath(home) = %q — aceitavel, so nao pode ser vazio", got)
+			if got == "" {
+				t.Error("displayPath(home) devolveu string vazia")
+			}
+		}
+	})
+
+	t.Run("fora do home fica absoluto", func(t *testing.T) {
+		fora := t.TempDir()
+		got := displayPath(filepath.Join(fora, "algum", "arquivo.md"))
+		if strings.HasPrefix(got, "~") {
+			t.Errorf("displayPath() = %q — caminho fora do home nao pode virar ~", got)
+		}
+		if !strings.Contains(got, "arquivo.md") {
+			t.Errorf("displayPath() = %q — perdeu o nome do arquivo", got)
+		}
+	})
+}
+
+// TestDisplayPath_HomeIrresoluvel — o helper nao pode quebrar quando o home nao
+// resolve; devolve o absoluto.
+func TestDisplayPath_HomeIrresoluvel(t *testing.T) {
+	orig := userHomeDir
+	userHomeDir = func() (string, error) { return "", os.ErrNotExist }
+	t.Cleanup(func() { userHomeDir = orig })
+
+	abs := filepath.Join("C:", "qualquer", "x.md")
+	got := displayPath(abs)
+	if got == "" {
+		t.Error("displayPath() devolveu string vazia com home irresolúvel")
+	}
+	if strings.HasPrefix(got, "~") {
+		t.Errorf("displayPath() = %q — nao pode usar ~ sem home resolvido", got)
 	}
 }

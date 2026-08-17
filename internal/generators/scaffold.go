@@ -120,7 +120,7 @@ func installGlobalSkillInner(force bool) error {
 
 	skillPath := filepath.Join(skillDir, "SKILL.md")
 	if _, err := os.Stat(skillPath); err == nil && !force {
-		fmt.Printf("  ✓ ~/.claude/skills/trackfw/SKILL.md (já existe — não sobrescrito)\n")
+		fmt.Printf("  ✓ %s (já existe — não sobrescrito)\n", displayPath(skillPath))
 		return nil
 	}
 
@@ -167,7 +167,7 @@ A cadeia obrigatória é: **ADR → REQ → ROADMAP → backlog/wip/blocked/done
 	if err := os.WriteFile(skillPath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("writing SKILL.md: %w", err)
 	}
-	fmt.Printf("  ✓ ~/.claude/skills/trackfw/SKILL.md\n")
+	fmt.Printf("  ✓ %s\n", displayPath(skillPath))
 	return nil
 }
 
@@ -669,11 +669,11 @@ trackfw validate
 		base += "echo \"→ build check (go)...\"\ngo build ./...\n"
 	case "java":
 		base += "echo \"→ build check (maven)...\"\nmvn compile -q\n"
-		case "node":
-			base += fmt.Sprintf("echo \"→ build check (node)...\"\n%s run build\n", cfg.PkgManager)
-		case "python":
-			base += "echo \"→ build check (python)...\"\npython3 -c \"import pathlib, py_compile; [py_compile.compile(str(p), doraise=True) for p in pathlib.Path('.').rglob('*.py') if '.venv' not in p.parts and 'venv' not in p.parts]\"\n"
-		}
+	case "node":
+		base += fmt.Sprintf("echo \"→ build check (node)...\"\n%s run build\n", cfg.PkgManager)
+	case "python":
+		base += "echo \"→ build check (python)...\"\npython3 -c \"import pathlib, py_compile; [py_compile.compile(str(p), doraise=True) for p in pathlib.Path('.').rglob('*.py') if '.venv' not in p.parts and 'venv' not in p.parts]\"\n"
+	}
 
 	switch cfg.Frontend {
 	case "react", "vue", "angular":

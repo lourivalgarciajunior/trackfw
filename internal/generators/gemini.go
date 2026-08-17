@@ -38,7 +38,7 @@ func InstallGemini() error {
 	}
 	globalDest := filepath.Join(geminiHomeDir, "GEMINI.md")
 	if _, err := os.Stat(globalDest); err == nil {
-		fmt.Printf("  ✓ ~/.gemini/GEMINI.md (já existe — não sobrescrito)\n")
+		fmt.Printf("  ✓ %s (já existe — não sobrescrito)\n", displayPath(globalDest))
 		skipped++
 	} else {
 		content, err := geminiTemplates.ReadFile("templates/gemini/GEMINI.md")
@@ -46,9 +46,9 @@ func InstallGemini() error {
 			return fmt.Errorf("lendo template GEMINI.md: %w", err)
 		}
 		if err := os.WriteFile(globalDest, content, 0644); err != nil {
-			return fmt.Errorf("escrevendo ~/.gemini/GEMINI.md: %w", err)
+			return fmt.Errorf("escrevendo %s: %w", globalDest, err)
 		}
-		fmt.Printf("  ✅ ~/.gemini/GEMINI.md\n")
+		fmt.Printf("  ✅ %s\n", displayPath(globalDest))
 		installed++
 	}
 
@@ -85,7 +85,7 @@ func InstallGemini() error {
 		}
 		dest := filepath.Join(skillDestDir, "SKILL.md")
 		if _, err := os.Stat(dest); err == nil {
-			fmt.Printf("  ✓ ~/.gemini/skills/%s/SKILL.md (já existe — não sobrescrito)\n", roleName)
+			fmt.Printf("  ✓ %s (já existe — não sobrescrito)\n", displayPath(dest))
 			skipped++
 			continue
 		}
@@ -96,7 +96,7 @@ func InstallGemini() error {
 		if err := os.WriteFile(dest, content, 0644); err != nil {
 			return fmt.Errorf("escrevendo %s: %w", dest, err)
 		}
-		fmt.Printf("  ✅ ~/.gemini/skills/%s/SKILL.md\n", roleName)
+		fmt.Printf("  ✅ %s\n", displayPath(dest))
 		installed++
 	}
 
@@ -119,7 +119,7 @@ func InstallGemini() error {
 		}
 		dest := filepath.Join(commandsDir, entry.Name())
 		if _, err := os.Stat(dest); err == nil {
-			fmt.Printf("  ✓ ~/.gemini/commands/%s (já existe — não sobrescrito)\n", entry.Name())
+			fmt.Printf("  ✓ %s (já existe — não sobrescrito)\n", displayPath(dest))
 			skipped++
 			continue
 		}
@@ -130,7 +130,7 @@ func InstallGemini() error {
 		if err := os.WriteFile(dest, content, 0644); err != nil {
 			return fmt.Errorf("escrevendo %s: %w", dest, err)
 		}
-		fmt.Printf("  ✅ ~/.gemini/commands/%s\n", entry.Name())
+		fmt.Printf("  ✅ %s\n", displayPath(dest))
 		installed++
 	}
 
