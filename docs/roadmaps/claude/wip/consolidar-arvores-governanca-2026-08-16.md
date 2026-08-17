@@ -72,7 +72,7 @@ Decisão de rota (usuário, 2026-08-16): **Opção 1 — pinar a config na reali
 ## Wave 2 — Fechar a cadeia herdada (sequencial)
 
 ### ML-3 — REQ retroativa + fechamento dos 3 WIPs herdados
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `docs/requisições/claude/REQ-2026-06-20-attention-hooks-agent-clis.md` (NOVO); 3 roadmaps em `docs/roadmaps/claude/wip/`
 **Ações:**
 1. Escrever a REQ retroativa a partir do conteúdo do roadmap `codex-agent-integrations` (tabela de hook por CLI + estratégia já estão lá), com nota explícita de reconstrução retroativa.
