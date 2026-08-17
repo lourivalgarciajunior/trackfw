@@ -18,6 +18,7 @@ func newReqCmd() *cobra.Command {
 	}
 	cmd.AddCommand(newReqNewCmd())
 	cmd.AddCommand(newReqListCmd())
+	cmd.AddCommand(newReqMoveCmd())
 	return cmd
 }
 
@@ -150,6 +151,21 @@ func newReqListCmd() *cobra.Command {
 		Short: "List all REQs in docs/req/",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return generators.ListREQs(config.Load().REQDir)
+		},
+	}
+}
+
+// newReqMoveCmd registra `trackfw req move <nome> <estado>`.
+//
+// O roadmap tinha transição de estado como comando desde sempre; a REQ não, apesar
+// de o validator já varrer os cinco estados dela. Ver REQ-2026-08-17-req-move.
+func newReqMoveCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "move <name> <state>",
+		Short: "Move a REQ between states (backlog|wip|blocked|done|abandoned)",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return generators.MoveREQ(args[0], args[1])
 		},
 	}
 }
