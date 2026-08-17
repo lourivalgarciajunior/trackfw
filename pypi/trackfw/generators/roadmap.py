@@ -102,14 +102,14 @@ def _roadmap_template(title: str, slug: str, date: str) -> str:
     return f"""---
 name: {slug}
 title: "{title}"
-status: Backlog
+status: backlog
 created: {date}
 author:
 ---
 
 # Roadmap: {title}
 
-> Criado em: {date} | Status: ⬜ Backlog
+> Created: {date} | Status: backlog
 
 ## Diagnóstico / Contexto
 

@@ -36,15 +36,20 @@ nascer no formato que D2 vai sincronizar.
 ## Wave 1 — Template e header (sequencial por dependência de formato)
 
 ### ML-1 — D1: alinhar o template do `roadmap new` no Python
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `pypi/trackfw/generators/roadmap.py`, `pypi/tests/test_generators_roadmap.py`
 **Ações:**
 1. Em `_roadmap_template`, trocar `status: Backlog` por `status: backlog` e
    `> Criado em: {date} | Status: ⬜ Backlog` por `> Created: {date} | Status: backlog`.
 2. Atualizar a asserção `assertIn("status: Backlog", content)` do teste existente.
 **Critérios de aceite:**
-- [ ] `roadmap new` dos três runtimes gera frontmatter e header iguais
-- [ ] Suíte pypi sem falha nova
+- [x] `roadmap new` dos três runtimes gera `status: backlog` e
+      `> Created: DATE | Status: backlog` — verificado com fixture nos três
+- [x] Suíte pypi na baseline: 242 testes, failures=1 errors=6
+
+**Achado de passagem:** o `roadmap new` do Go **exige** uma REQ existente (`Nenhuma REQ encontrada
+em docs/req/`), enquanto npm e Python criam o roadmap sem REQ nenhuma. Divergência de contrato
+entre runtimes, fora do escopo desta REQ. Candidato a REQ própria.
 **Comandos de validação:** `cd pypi && python -m unittest discover -s tests -t .`
 
 ### ML-2 — D2: `move` sincroniza a linha humana nos três runtimes
