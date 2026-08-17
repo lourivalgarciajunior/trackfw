@@ -40,7 +40,7 @@ indentado o alinhamento é para cima, porque o Python já o processa corretament
 > mesma coisa em qualquer runtime.
 
 ### ML-1 — Go: aceita bloco não indentado e avisa sobre inline
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `internal/config/config.go`, `internal/config/config_test.go`
 **Ações:**
 1. Tratar linhas `- x` como item de lista **antes** do teste de indentação, para que uma linha não
