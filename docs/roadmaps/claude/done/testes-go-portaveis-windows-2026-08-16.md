@@ -1,7 +1,7 @@
 ---
 name: testes-go-portaveis-windows-2026-08-16
 title: "Testes de internal/generators portáveis no Windows"
-status: wip
+status: done
 date: 2026-08-16
 req: REQ-2026-08-16-testes-go-portaveis-windows
 branch: fix/testes-go-portaveis-windows
@@ -9,7 +9,7 @@ branch: fix/testes-go-portaveis-windows
 
 # Roadmap: testes Go portáveis no Windows
 
-> Criado em: 2026-08-16 | Status: 🔄 WIP
+> Criado em: 2026-08-16 | Status: ✅ Done
 
 REQ: `docs/requisições/claude/REQ-2026-08-16-testes-go-portaveis-windows.md`
 
