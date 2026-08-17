@@ -66,14 +66,16 @@ gap real estava nos itens de lista, onde ninguém tinha olhado. O corpo do PR #2
 **Comandos de validação:** `cd npm && node --test tests/config.test.js`
 
 ### ML-3 — Python: `adr_dirs` e `agents` + teste
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `pypi/trackfw/config.py`, `pypi/tests/test_config.py`
 **Ações:**
 1. No bloco de itens de lista, trocar `adr_dirs.append(val)` e `agents.append(val)` por
    `.append(val.strip('"\''))` — mesmo tratamento de `acceptance_markers`.
 2. Teste equivalente em `pypi/tests/test_config.py`.
 **Critérios de aceite:**
-- [ ] `python -m pytest pypi/tests/test_config.py` verde
+- [x] `python -m unittest tests.test_config` verde — 18 tests, OK (pytest não está
+      instalado neste ambiente; o arquivo usa unittest da stdlib e roda pelos dois)
+- [x] Teste não-vacuoso: FAILED (failures=1) sem o fix
 **Comandos de validação:** `cd pypi && python -m pytest tests/test_config.py`
 
 ---

@@ -168,10 +168,10 @@ def _parse(content, cfg):
         if is_list_item:
             val = line[2:].strip()
             if in_adr_dirs:
-                adr_dirs.append(val)
+                adr_dirs.append(val.strip('"\''))
                 continue
             if in_agents:
-                agents.append(val)
+                agents.append(val.strip('"\''))
                 continue
             if in_acceptance_markers:
                 acceptance_markers.append(val.strip('"\''))
