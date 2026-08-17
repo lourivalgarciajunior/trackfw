@@ -75,9 +75,9 @@ de saída, não por discordância da regra.
 
 ## Critérios de Aceite
 
-- [ ] 5 ADRs em `docs/adr/`, com `status: Accepted` e as quatro seções
-- [ ] Cada ADR traz nota de reconstrução retroativa com o que foi verificado
-- [ ] Cada uma das 5 REQs tem linha `ADR:` apontando para a sua
-- [ ] `req_has_adr` de volta a `error` no `trackfw.yaml`
-- [ ] `trackfw validate` com zero violações **e** zero avisos
-- [ ] `go test ./...` zero falhas; suítes npm e pypi verdes; três gates passam
+- [x] 5 ADRs em `docs/adr/`, com `status: Accepted` e as quatro seções
+- [x] Cada ADR traz nota de reconstrução retroativa com o que foi verificado
+- [x] Cada uma das 5 REQs tem linha `ADR:` apontando para a sua
+- [x] `req_has_adr` de volta a `error` no `trackfw.yaml`
+- [x] `trackfw validate` com zero violações **e** zero avisos
+- [x] `go test ./...` zero falhas; suítes npm e pypi verdes; três gates passam

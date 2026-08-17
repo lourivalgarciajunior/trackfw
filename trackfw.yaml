@@ -19,10 +19,9 @@ agents:
 governance_mode: strict
 wip_limit: 1
 
-rules:
-  # Rebaixado de error para warning em 2026-08-16. O repositório não tem nenhum
-  # ADR, então 5 REQs legadas travavam o gate por uma dívida que só se paga
-  # escrevendo ADR retroativo. Fica visível como aviso até serem escritos.
-  # Sem aspas de propósito: o parser Go (internal/config/config.go, bloco inRules)
-  # não remove aspas do valor — "warning" com aspas não é reconhecido.
-  req_has_adr: warning
+# Nenhuma regra rebaixada — todas no default.
+#
+# `req_has_adr` ficou em `warning` entre 2026-08-16 e 2026-08-17, enquanto as 5
+# REQs legadas não tinham ADR nenhuma. Não era discordância da regra, era falta
+# de saída. Com as ADRs retroativas escritas em REQ-2026-08-16-adrs-retroativas,
+# voltou ao default `error`.
