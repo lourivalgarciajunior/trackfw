@@ -1,7 +1,7 @@
 ---
 name: adr-list-python-2026-08-17
 title: "adr list no Python e parser de status alinhado nos três"
-status: wip
+status: done
 date: 2026-08-17
 req: REQ-2026-08-17-adr-list-python
 branch: feat/adr-list-python
@@ -9,7 +9,7 @@ branch: feat/adr-list-python
 
 # Roadmap: adr list no Python
 
-> Created: 2026-08-17 | Status: wip
+> Created: 2026-08-17 | Status: done
 
 REQ: `docs/requisições/claude/REQ-2026-08-17-adr-list-python.md`
 
