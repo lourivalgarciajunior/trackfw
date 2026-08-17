@@ -108,11 +108,11 @@ function parse(content, cfg) {
 
     if (hasIndent) {
       if (inAdrDirs) {
-        if (line.startsWith('- ')) adrDirs.push(line.slice(2).trim());
+        if (line.startsWith('- ')) adrDirs.push(line.slice(2).trim().replace(/^["']|["']$/g, ''));
         continue;
       }
       if (inAgents) {
-        if (line.startsWith('- ')) agents.push(line.slice(2).trim());
+        if (line.startsWith('- ')) agents.push(line.slice(2).trim().replace(/^["']|["']$/g, ''));
         continue;
       }
       if (inAcceptanceMarkers) {

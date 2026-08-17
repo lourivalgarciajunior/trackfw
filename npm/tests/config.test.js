@@ -132,5 +132,25 @@ test('sem adr_dirs/req_dir/roadmap_dir → defaults corretos', () => {
   })
 })
 
+test('adr_dirs/agents - aspas envolventes sao removidas dos itens de lista', () => {
+  const yaml = [
+    'adr_dirs:',
+    '  - "docs/adr"',
+    "  - 'docs/decisions'",
+    '  - docs/adr-extra',
+    'roadmap_namespacing: by_agent',
+    'agents:',
+    '  - "claude"',
+    "  - 'apolo'",
+    '  - artemis',
+    ''
+  ].join(String.fromCharCode(10))
+  withTmpDir(yaml, (tmp) => {
+    const cfg = config.load(tmp)
+    assert.deepStrictEqual(cfg.adrDirs, ['docs/adr', 'docs/decisions', 'docs/adr-extra'])
+    assert.deepStrictEqual(cfg.agents, ['claude', 'apolo', 'artemis'])
+  })
+})
+
 console.log(`\n${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)

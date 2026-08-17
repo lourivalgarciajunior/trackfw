@@ -54,14 +54,15 @@ gap real estava nos itens de lista, onde ninguém tinha olhado. O corpo do PR #2
 **Comandos de validação:** `go build ./... && go test ./internal/config/`
 
 ### ML-2 — Node.js: `adr_dirs` e `agents` + teste
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `npm/src/config/index.js`, `npm/tests/config.test.js`
 **Ações:**
 1. Nos dois `if (line.startsWith('- '))` de `inAdrDirs` e `inAgents`, aplicar
    `.replace(/^["']|["']$/g, '')` — mesmo tratamento de `inAcceptanceMarkers`.
 2. Teste equivalente ao do Go em `npm/tests/config.test.js`.
 **Critérios de aceite:**
-- [ ] `node --test npm/tests/config.test.js` verde
+- [x] `node npm/tests/config.test.js` verde — 13 passed, 0 failed
+- [x] Teste não-vacuoso: 12 passed / 1 failed sem o fix
 **Comandos de validação:** `cd npm && node --test tests/config.test.js`
 
 ### ML-3 — Python: `adr_dirs` e `agents` + teste
