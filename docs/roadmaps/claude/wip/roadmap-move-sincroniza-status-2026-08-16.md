@@ -60,14 +60,15 @@ O defeito se reproduziu duas vezes ao vivo durante aquele trabalho.
 **Comandos de validação:** `go build ./... && go test ./internal/generators/ -run Move`
 
 ### ML-2 — Node.js: espelha o helper e o uso
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `npm/src/generators/roadmap.js`, `npm/tests/roadmap_move.test.js` (NOVO)
 **Ações:**
 1. `setFrontmatterStatus(content, state)` com o mesmo contrato do ML-1.
 2. Aplicar depois do `fs.renameSync`.
 3. Teste equivalente, mesmos quatro casos.
 **Critérios de aceite:**
-- [ ] `node npm/tests/roadmap_move.test.js` verde
+- [x] `node npm/tests/roadmap_move.test.js` verde — 4 passed, 0 failed
+- [x] Não-vacuoso: 2 passed / 2 failed sem o sync
 **Comandos de validação:** `node npm/tests/roadmap_move.test.js`
 
 ### ML-3 — Python: restringe ao frontmatter e alinha o rótulo
