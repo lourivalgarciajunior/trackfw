@@ -257,3 +257,64 @@ func TestListADRs_ParsesMeta(t *testing.T) {
 		t.Errorf("status esperado 'Proposed', obteve: %q", status)
 	}
 }
+
+// TestParseADRMeta_FrontmatterVence e os seguintes travam o contrato alinhado em
+// REQ-2026-08-17-adr-list-python. Antes dele o Go pegava a última ocorrência de
+// "| Status: " em qualquer lugar do arquivo e o Node.js pegava a primeira — os
+// dois runtimes davam respostas diferentes para a mesma ADR.
+func TestParseADRMeta_FrontmatterVence(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "ADR-x.md")
+	content := "---\nstatus: Accepted\n---\n\n# ADR: x\n\n> Date: 2026-08-17 | Status: Proposed\n"
+	if err := os.WriteFile(p, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, status := parseADRMeta(p)
+	if status != "Accepted" {
+		t.Errorf("status = %q, quer Accepted (frontmatter vence o cabeçalho)", status)
+	}
+}
+
+func TestParseADRMeta_CabecalhoSemFrontmatter(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "ADR-x.md")
+	if err := os.WriteFile(p, []byte("# ADR: x\n\n> Date: 2026-08-17 | Status: Proposed\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, status := parseADRMeta(p)
+	if status != "Proposed" {
+		t.Errorf("status = %q, quer Proposed", status)
+	}
+}
+
+// TestParseADRMeta_TabelaNoCorpoNaoDecide — este é o caso que distinguia Go de
+// Node.js. O Go devolvia "quebrado" aqui.
+func TestParseADRMeta_TabelaNoCorpoNaoDecide(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "ADR-x.md")
+	content := "---\nstatus: Accepted\n---\n\n# ADR: x\n\n" +
+		"> Date: 2026-08-17 | Status: Accepted\n\n" +
+		"## Tabela\n\n| Runtime | Status: quebrado |\n"
+	if err := os.WriteFile(p, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, status := parseADRMeta(p)
+	if status != "Accepted" {
+		t.Errorf("status = %q — o corpo não pode decidir o status", status)
+	}
+}
+
+func TestParseADRMeta_SemNada(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "ADR-x.md")
+	if err := os.WriteFile(p, []byte("# ADR: x\n\ncorpo\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, status := parseADRMeta(p); status != "unknown" {
+		t.Errorf("status = %q, quer unknown", status)
+	}
+}

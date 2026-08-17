@@ -33,6 +33,9 @@ def register(subparsers):
         help="Target directory (overrides trackfw.yaml adr_dirs)",
     )
 
+    # adr list
+    adr_sub.add_parser("list", help="List all ADRs with status")
+
     adr_parser.set_defaults(func=_dispatch)
 
 
@@ -40,9 +43,11 @@ def _dispatch(args):
     """Despacha para o sub-subcomando correto."""
     if args.adr_command == "new":
         _cmd_new(args)
+    elif args.adr_command == "list":
+        _cmd_list(args)
     else:
         print("Usage: trackfw adr <command>")
-        print("Commands: new")
+        print("Commands: new, list")
         sys.exit(0)
 
 
@@ -63,3 +68,12 @@ def _cmd_new(args):
         adr_dirs=adr_dirs,
     )
     print(f"created {filepath}")
+
+
+def _cmd_list(args):
+    from trackfw.config import load as load_config
+    from trackfw.generators.adr import list_adrs
+
+    cfg = load_config()
+    adr_dirs = cfg.get("adr_dirs") or ["docs/adr"]
+    list_adrs(adr_dirs[0])

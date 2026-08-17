@@ -28,10 +28,6 @@ commands=(adr req roadmap plugins)
 # Mesmo princípio do trackfw baseline: congela o conhecido sem esconder.
 # ---------------------------------------------------------------------------
 known_divergences=(
-  # `adr list` existe em Go e Node.js desde REQ-adr-wizard-e-list-2026-06-11,
-  # mas nunca foi portado para o Python. Lacuna real, ainda não priorizada.
-  "adr:python:list:faltando"
-
   # O `plugins` do Python foi escrito com outra superfície: tem `run`, que os
   # outros dois não têm, e não tem add/remove/search. Pode ser decisão
   # deliberada — o pacote pip não gerencia instalação de plugin da mesma forma.
