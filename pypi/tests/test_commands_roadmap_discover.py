@@ -101,7 +101,7 @@ class TestRoadmapMove(unittest.TestCase):
 
         with open(dst_path, encoding="utf-8") as f:
             content = f.read()
-        self.assertIn("status: WIP", content)
+        self.assertIn("status: wip", content)  # minúsculo desde REQ-2026-08-16-roadmap-move-sincroniza-status
 
     def test_roadmap_move_estado_invalido(self):
         """Move com estado inválido levanta ValueError."""

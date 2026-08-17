@@ -128,7 +128,7 @@ class TestMoveBacklogParaWip(unittest.TestCase):
         # Frontmatter atualizado
         with open(dst_path, encoding="utf-8") as f:
             content = f.read()
-        self.assertIn("status: WIP", content)
+        self.assertIn("status: wip", content)  # minúsculo desde REQ-2026-08-16-roadmap-move-sincroniza-status
 
     def test_move_estado_invalido_levanta_exception(self):
         cfg = _make_cfg(self.tmpdir)
@@ -197,7 +197,7 @@ class TestMoveBuscaEmTodosAgentes(unittest.TestCase):
         # Frontmatter atualizado
         with open(dst_path, encoding="utf-8") as f:
             content = f.read()
-        self.assertIn("status: WIP", content)
+        self.assertIn("status: wip", content)  # minúsculo desde REQ-2026-08-16-roadmap-move-sincroniza-status
 
 
 if __name__ == "__main__":

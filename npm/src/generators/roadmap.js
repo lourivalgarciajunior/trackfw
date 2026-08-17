@@ -172,8 +172,53 @@ function moveRoadmap(name, state) {
   const dst = path.join(targetDir, basename)
   fs.renameSync(src, dst)
 
+  // A pasta é o estado, mas a regra folder_status do validator lê o status: do
+  // frontmatter. Sem esta sincronização o próprio move produz a incoerência que
+  // o validate reclama. Ver REQ-2026-08-16-roadmap-move-sincroniza-status.
+  try {
+    const content = fs.readFileSync(dst, 'utf8')
+    const updated = setFrontmatterStatus(content, state)
+    if (updated !== content) fs.writeFileSync(dst, updated, 'utf8')
+  } catch (_) {}
+
   appendTransitionLog(logBasename, fromState, state)
   console.log(`✓ moved ${basename} → ${targetDir}`)
+}
+
+/**
+ * setFrontmatterStatus — devolve content com o campo status: do frontmatter
+ * valendo state. Só mexe dentro do bloco delimitado pelos "---" do topo do
+ * arquivo, e só se a chave status já existir ali.
+ *
+ * Devolve content intocado quando não há frontmatter ou quando o bloco não
+ * declara status — mesmo contrato do validator, que ignora quem não declara.
+ * Isso protege roadmaps sem frontmatter, cujo corpo pode conter uma linha
+ * começando com "status:".
+ */
+function setFrontmatterStatus(content, state) {
+  if (!content.startsWith('---\n') && !content.startsWith('---\r\n')) return content
+
+  const lines = content.split('\n')
+  if (lines.length < 2) return content
+
+  // Procura o "---" de fechamento; fora dele nada é reescrito.
+  let end = -1
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].replace(/\r+$/, '') === '---') { end = i; break }
+  }
+  if (end < 0) return content
+
+  for (let i = 1; i < end; i++) {
+    const line = lines[i]
+    const trimmed = line.replace(/\r+$/, '')
+    const idx = trimmed.indexOf(':')
+    if (idx < 0) continue
+    if (trimmed.slice(0, idx).trim() !== 'status') continue
+    lines[i] = 'status: ' + state + (line.endsWith('\r') ? '\r' : '')
+    return lines.join('\n')
+  }
+
+  return content
 }
 
 /**
