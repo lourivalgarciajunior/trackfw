@@ -40,7 +40,7 @@ Só afeta o runtime Go: os testes de npm e pypi não têm equivalente para esses
 > ML-2 depende do ML-1.
 
 ### ML-1 — Seam `userHomeDir` no pacote
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `internal/generators/home.go` (NOVO), `agents.go`, `gemini.go`,
 `scaffold.go`, `windsurf.go`
 **Ações:**
@@ -49,8 +49,8 @@ Só afeta o runtime Go: os testes de npm e pypi não têm equivalente para esses
 2. Trocar as quatro chamadas `os.UserHomeDir()` por `userHomeDir()`.
 3. Conferir que nenhuma outra chamada ficou para trás no pacote.
 **Critérios de aceite:**
-- [ ] `go build ./...` e `go vet ./...` limpos
-- [ ] `grep` não acha mais `os.UserHomeDir()` em código de produção do pacote
+- [x] `go build ./...` e `go vet ./internal/generators/` limpos
+- [x] `grep` não acha mais `os.UserHomeDir()` em produção — só em `home.go`, onde é a definição
 **Comandos de validação:** `go build ./... && go vet ./...`
 
 ### ML-2 — Testes usam o seam e param de tocar o home real

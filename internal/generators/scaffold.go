@@ -108,7 +108,7 @@ func installGlobalSkill() error {
 }
 
 func installGlobalSkillInner(force bool) error {
-	home, err := os.UserHomeDir()
+	home, err := userHomeDir()
 	if err != nil {
 		return fmt.Errorf("localizando home dir: %w", err)
 	}

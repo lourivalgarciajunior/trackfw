@@ -14,7 +14,7 @@ var agentTemplates embed.FS
 // InstallAgents instala os 10 agentes da constelação trackfw em ~/.claude/agents/.
 // Arquivos já existentes não são sobrescritos (idempotente).
 func InstallAgents() error {
-	home, err := os.UserHomeDir()
+	home, err := userHomeDir()
 	if err != nil {
 		return fmt.Errorf("localizando home dir: %w", err)
 	}

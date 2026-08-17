@@ -20,7 +20,7 @@ var geminiTemplates embed.FS
 //
 // Existing files are never overwritten (idempotent).
 func InstallGemini() error {
-	home, err := os.UserHomeDir()
+	home, err := userHomeDir()
 	if err != nil {
 		return fmt.Errorf("localizando home dir: %w", err)
 	}
