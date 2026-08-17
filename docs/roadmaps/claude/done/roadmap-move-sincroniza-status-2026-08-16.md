@@ -1,7 +1,7 @@
 ---
 name: roadmap-move-sincroniza-status-2026-08-16
 title: "roadmap move sincroniza o status do frontmatter nos três runtimes"
-status: wip
+status: done
 date: 2026-08-16
 req: REQ-2026-08-16-roadmap-move-sincroniza-status
 branch: fix/roadmap-move-sincroniza-status
@@ -9,7 +9,7 @@ branch: fix/roadmap-move-sincroniza-status
 
 # Roadmap: roadmap move sincroniza status
 
-> Criado em: 2026-08-16 | Status: 🔄 WIP
+> Criado em: 2026-08-16 | Status: ✅ Done
 
 REQ: `docs/requisições/claude/REQ-2026-08-16-roadmap-move-sincroniza-status.md`
 
@@ -20,6 +20,11 @@ então o comando produz exatamente a incoerência que a regra `folder_status` do
 O Python já sincroniza, o que faz disto uma quebra de paridade em que **a implementação de
 referência é a errada**. Diagnóstico completo, tabela por runtime e os dois defeitos da versão
 Python estão na REQ.
+
+**Nota de fechamento:** o `status: done` do frontmatter acima foi sincronizado automaticamente
+pelo próprio fix desta entrega. A linha `> Status:` logo abaixo do título, porém, ainda precisou
+de ajuste manual — o R2 restringiu a reescrita ao bloco de frontmatter de propósito, já que é o
+único campo que o validator lê. Sincronizar também o cabeçalho humano é candidato a REQ própria.
 
 Origem: item 1 da lista de dívida levantada ao fim de `REQ-2026-08-16-consolidar-arvores-governanca`.
 O defeito se reproduziu duas vezes ao vivo durante aquele trabalho.
