@@ -54,7 +54,7 @@ Decisão de rota (usuário, 2026-08-16): **Opção 1 — pinar a config na reali
 **Comandos de validação:** `trackfw status && trackfw validate`
 
 ### ML-2 — Migrar árvores A e C para a B
-**Status:** ⬜ Pendente
+**Status:** 🔄 Em andamento
 **Arquivos afetados:** 4 roadmaps movidos; `docs/req/`, `docs/roadmap/`, `docs/roadmaps/{wip,done}/` removidos
 **Ações:**
 1. `git mv docs/roadmaps/wip/ROADMAP-2026-06-20-codex-agent-integrations.md docs/roadmaps/claude/wip/`
