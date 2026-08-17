@@ -70,13 +70,21 @@ func newRoadmapNewCmd() *cobra.Command {
 			} else if len(args) > 0 {
 				selectedREQ = args[0]
 			} else if len(reqFiles) == 0 {
-				fmt.Fprintln(os.Stderr, "Nenhuma REQ encontrada em docs/req/. Crie uma REQ primeiro com 'trackfw req new'.")
-				return nil
+				// Antes daqui saía uma mensagem e um `return nil` — exit 0 sem
+				// criar nada, reportando sucesso a quem confia no código de saída.
+				// Agora cria e avisa: um roadmap em backlog/ sem REQ é estado
+				// legítimo do modelo, e quem cobra o link é o validate, na hora
+				// em que ele importa. Ver REQ-2026-08-16-roadmap-new-paridade-contrato.
+				fmt.Fprintln(os.Stderr, "aviso: nenhuma REQ encontrada em "+config.Load().REQDir+" — o roadmap será criado sem link de REQ.")
+				fmt.Fprintln(os.Stderr, "       isso vira violação de wip_has_req ao mover para wip/. Use --req ou --from-req para linkar.")
 			}
 
-			if title == "" {
+			if title == "" && selectedREQ != "" {
 				title = strings.TrimSuffix(filepath.Base(selectedREQ), ".md")
 				title = strings.TrimPrefix(title, "REQ-")
+			}
+			if title == "" {
+				return fmt.Errorf("informe o título com --title, ou uma REQ com --req/--from-req")
 			}
 
 			return generators.NewRoadmapFromContent(generators.RoadmapContent{
