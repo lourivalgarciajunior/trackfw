@@ -97,7 +97,7 @@ class TestMetrics(unittest.TestCase):
             "linha invalida sem formato correto\n"
         )
         log_path = os.path.join(self.tmpdir, "test.log")
-        with open(log_path, "w") as f:
+        with open(log_path, "w", encoding="utf-8") as f:
             f.write(log_content)
 
         transitions = metrics_mod._parse_log(log_path)
@@ -222,7 +222,7 @@ class TestContext(unittest.TestCase):
         ctx_mod._cmd_context(FakeArgs())
 
         self.assertTrue(os.path.exists(output_file))
-        with open(output_file, "r") as f:
+        with open(output_file, "r", encoding="utf-8") as f:
             content = f.read()
         self.assertIn("# trackfw governance context", content)
 
@@ -284,7 +284,7 @@ class TestPlugins(unittest.TestCase):
 
         # Cria executável fake no tmpdir
         plugin_file = os.path.join(self.tmpdir, "trackfw-myplugin")
-        with open(plugin_file, "w") as f:
+        with open(plugin_file, "w", encoding="utf-8") as f:
             f.write("#!/bin/sh\necho hello\n")
         os.chmod(plugin_file, 0o755)
 
@@ -317,7 +317,7 @@ class TestPlugins(unittest.TestCase):
         from trackfw.commands import plugins as plugins_mod
 
         plugin = os.path.join(self.tmpdir, "trackfw-demo")
-        with open(plugin, "w") as f:
+        with open(plugin, "w", encoding="utf-8") as f:
             f.write("#!/bin/sh\n")
         os.chmod(plugin, 0o755)
 

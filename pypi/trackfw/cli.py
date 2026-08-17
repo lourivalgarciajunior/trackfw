@@ -4,10 +4,43 @@ Usa argparse (stdlib) e delega para subcomandos em trackfw/commands/.
 """
 
 import argparse
+import sys
+
 from trackfw import __version__
 
 
+def _force_utf8_output():
+    """Reconfigura stdout e stderr para UTF-8 antes de qualquer escrita.
+
+    Console Windows entrega cp1252, que não representa nada do vocabulário
+    visual da ferramenta — setas, marcas, caixas, acentos. Sem isto, `--help`,
+    `status` e `validate` morrem com UnicodeEncodeError num Windows padrão.
+
+    UTF-8 e não a codificação do console porque é exatamente o que os outros
+    dois runtimes fazem: Go e Node.js escrevem bytes UTF-8 direto, sem consultar
+    codepage. O Python era o único fora de linha.
+
+    `errors="replace"` para degradar em vez de abortar: num ambiente que ainda
+    assim não represente um caractere, o usuário perde um glifo, não o comando.
+
+    Silencioso quando o stream não suporta: testes e pipelines substituem
+    sys.stdout por objetos sem `reconfigure`.
+
+    Ver REQ-2026-08-16-cli-python-utf8-windows.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except (ValueError, OSError):
+            pass
+
+
 def main():
+    _force_utf8_output()
+
     parser = argparse.ArgumentParser(
         prog="trackfw",
         description="trackfw — governed software delivery framework\nADR → REQ → ROADMAP → kanban",

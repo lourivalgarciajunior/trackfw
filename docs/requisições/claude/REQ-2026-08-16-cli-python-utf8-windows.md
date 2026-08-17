@@ -67,10 +67,10 @@ exemplo). A reconfiguração precisa ser condicional e silenciosa nesses casos.
 
 ## Critérios de Aceite
 
-- [ ] `python -m trackfw --help`, `status` e `validate` retornam rc=0 sem nenhuma variável de ambiente
-- [ ] Nenhum `UnicodeEncodeError` na saída dos três
-- [ ] `bash scripts/check-cli-parity.sh` passa **sem** `PYTHONIOENCODING`/`PYTHONUTF8`
-- [ ] `bash scripts/check-validate-parity.sh` passa sem prefixo
-- [ ] Suíte pypi sem falha nova: baseline atual é 6 errors + 1 failure pré-existentes
-- [ ] `go test ./...` segue com zero falhas
-- [ ] Teste cobrindo o caso de `sys.stdout` sem `reconfigure`
+- [x] `python -m trackfw --help`, `status` e `validate` retornam rc=0 sem nenhuma variável de ambiente
+- [x] Nenhum `UnicodeEncodeError` na saída dos três
+- [x] `bash scripts/check-cli-parity.sh` passa **sem** `PYTHONIOENCODING`/`PYTHONUTF8`
+- [x] `bash scripts/check-validate-parity.sh` passa sem prefixo
+- [x] Suíte pypi sem falha nova: baseline atual é 6 errors + 1 failure pré-existentes
+- [x] `go test ./...` segue com zero falhas
+- [x] Teste cobrindo o caso de `sys.stdout` sem `reconfigure`

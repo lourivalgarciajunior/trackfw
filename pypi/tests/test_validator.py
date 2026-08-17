@@ -419,7 +419,7 @@ class TestValidatorImprovements(unittest.TestCase):
         sub = os.path.join(self.tmp, "done")
         os.makedirs(sub)
         adr_path = os.path.join(sub, "ADR-001.md")
-        with open(adr_path, "w") as f:
+        with open(adr_path, "w", encoding="utf-8") as f:
             f.write("---\nstatus: Accepted\n---\n")
         result = _find_adr_file("ADR-001.md", [self.tmp])
         self.assertEqual(result, adr_path)

@@ -28,17 +28,17 @@ Correção só no Python — os outros dois já fazem o certo.
 
 ## Critérios de Aceite
 
-- [ ] `--help`, `status` e `validate` retornam rc=0 sem variável de ambiente
-- [ ] `check-cli-parity.sh` e `check-validate-parity.sh` passam sem prefixo
-- [ ] Suíte pypi sem falha nova; `go test ./...` segue com zero falhas
-- [ ] Teste cobrindo `sys.stdout` sem `reconfigure`
+- [x] `--help`, `status` e `validate` retornam rc=0 sem variável de ambiente
+- [x] `check-cli-parity.sh` e `check-validate-parity.sh` passam sem prefixo
+- [x] Suíte pypi sem falha nova; `go test ./...` segue com zero falhas
+- [x] Teste cobrindo `sys.stdout` sem `reconfigure`
 
 ---
 
 ## Wave 1 — Correção e teste
 
 ### ML-1 — Reconfigurar stdout/stderr para UTF-8 no entry point
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `pypi/trackfw/cli.py`
 **Ações:**
 1. Criar helper `_force_utf8_output()` que reconfigura `sys.stdout` e `sys.stderr` para
@@ -49,12 +49,12 @@ Correção só no Python — os outros dois já fazem o certo.
 4. Documentar no código por que UTF-8 e não a codificação do console: é o que Go e Node.js já
    fazem, e é o único jeito de imprimir os glifos que a ferramenta usa.
 **Critérios de aceite:**
-- [ ] `python -m trackfw --help`, `status`, `validate` com rc=0 e sem variável de ambiente
-- [ ] Nenhum `UnicodeEncodeError` na saída
+- [x] `--help`, `status`, `validate` e `version` com rc=0, sem variável de ambiente
+- [x] Nenhum `UnicodeEncodeError` na saída; `→` e `—` renderizam corretos
 **Comandos de validação:** `cd pypi && python -m trackfw --help && python -m trackfw status`
 
 ### ML-2 — Teste do helper
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `pypi/tests/test_cli_encoding.py` (NOVO)
 **Ações:**
 1. Teste que substitui `sys.stdout` por um objeto sem `reconfigure` e chama o helper, asseverando
@@ -65,16 +65,35 @@ Correção só no Python — os outros dois já fazem o certo.
    forçado a `cp1252` e assevera rc=0 — reproduz o console Windows de forma determinística, em
    qualquer sistema onde a suíte rodar.
 **Critérios de aceite:**
-- [ ] Os três testes passam
-- [ ] O teste de subprocesso falha se o ML-1 for revertido (não-vacuoso)
+- [x] Os cinco testes passam (2 de unidade + 3 de subprocesso)
+- [x] Não-vacuoso: removendo a chamada do ML-1, `FAILED (failures=3)`
 **Comandos de validação:** `cd pypi && python -m unittest tests.test_cli_encoding`
 
 ---
 
 ## Wave 2 — Fechamento
 
+### ML-4 — Encoding explícito em `open()` nos testes
+**Status:** ✅ Concluído
+**Escopo acrescentado.** Não estava previsto: só apareceu quando a suíte passou a rodar sem
+`PYTHONUTF8=1` e revelou um `UnicodeEncodeError` que não era de stdout, mas de **escrita de
+arquivo** — `open(log_path, "w")` sem `encoding`, gravando uma linha com `→`. O default de `open()`
+no Windows é cp1252.
+**Arquivos afetados:** `pypi/tests/test_commands_extras.py`, `pypi/tests/test_validator.py`
+**Ações:**
+1. Auditar todo `open()` sem `encoding=` no runtime Python.
+2. **Produção está limpa** — a única ocorrência é `serve.py:101` com `"rb"`, binário, onde
+   `encoding` não se aplica. O defeito era só nos testes: 5 chamadas.
+3. Acrescentar `encoding="utf-8"` nas 5.
+**Critérios de aceite:**
+- [x] Nenhum `open()` sem `encoding` nos testes, exceto binário
+- [x] Produção auditada e confirmada limpa
+**Comandos de validação:** `grep -rnE 'open\([^)]*["'"'"'][rwa]' pypi/ --include=*.py | grep -v encoding=`
+
+---
+
 ### ML-3 — Gates sem prefixo e suítes
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** nenhum (verificação)
 **Ações:**
 1. `bash scripts/check-cli-parity.sh` e `check-validate-parity.sh` **sem** `PYTHONIOENCODING` nem
@@ -82,6 +101,21 @@ Correção só no Python — os outros dois já fazem o certo.
 2. Suíte pypi: comparar com a baseline de 6 errors + 1 failure pré-existentes.
 3. `go test ./...` continua com zero falhas.
 **Critérios de aceite:**
-- [ ] Gates passam sem prefixo
-- [ ] Nenhuma falha nova em pypi; Go segue verde
+- [x] `check-cli-parity.sh`, `check-validate-parity.sh` e `check-static-assets.sh` passam **sem**
+      `PYTHONIOENCODING` nem `PYTHONUTF8`
+- [x] Suíte pypi sem prefixo bate a baseline exata: 6 errors + 1 failure
+- [x] `go test ./...` segue com zero falhas
+
+**Correção de leitura sobre a baseline.** O "6 errors + 1 failure" citado nas entregas anteriores
+foi medido **com `PYTHONUTF8=1`**. Sem o prefixo, o número real era 22 errors — os 16 extras eram o
+mesmo `UnicodeEncodeError`, em funções de biblioteca (`scaffold`, `generate_claude_commands`)
+chamadas direto pelos testes, sem passar pelo `main()`. O `tests/__init__.py` deste ML resolve.
+
+**Os 6 erros de loader estão explicados**, não só contados: são 6 módulos que fazem `import pytest`,
+e pytest não está instalado neste ambiente. Ambiental, não defeito de código.
+
+**Invocação da suíte.** Com `tests/__init__.py`, a suíte precisa ser importada como pacote:
+`python -m unittest discover -s tests -t .` ou `pytest tests/` (o comando documentado no
+`CLAUDE.md`). A forma `discover -s tests` sem `-t .` insere `tests/` no `sys.path` e importa os
+módulos como top-level, pulando o `__init__.py` — e aí os 16 erros voltam.
 **Comandos de validação:** `bash scripts/check-cli-parity.sh && bash scripts/check-validate-parity.sh`
