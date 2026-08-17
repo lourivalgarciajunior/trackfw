@@ -9,6 +9,7 @@ author: apolo
 ---
 
 Roadmap: roadmap-roadmap-ai-generation-2026-06-11.md
+ADR: ADR-2026-06-11-roadmap-derivado-sem-llm.md
 
 # REQ: Geração de Roadmap por IA
 

@@ -9,6 +9,7 @@ author: artemis
 ---
 
 Roadmap: ROADMAP-2026-06-14-serve-api-tests-nodejs.md
+ADR: ADR-2026-06-14-handlers-do-serve-testados-sem-servidor.md
 
 # REQ-2026-06-14-serve-api-tests-nodejs
 

@@ -9,6 +9,7 @@ author: claude
 ---
 
 Roadmap: roadmap-req-driven-adr-discovery-2026-06-12.md
+ADR: ADR-2026-06-12-descoberta-de-adr-guiada-pela-req.md
 
 # REQ: REQ-Driven ADR Discovery
 

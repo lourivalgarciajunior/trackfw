@@ -9,6 +9,7 @@ author: claude
 ---
 
 Roadmap: roadmap-multi-ai-support-2026-06-11.md
+ADR: ADR-2026-06-11-subcomando-nativo-por-ferramenta-de-ia.md
 
 # REQ: Suporte Multi-AI — Subcomandos por Ferramenta
 
