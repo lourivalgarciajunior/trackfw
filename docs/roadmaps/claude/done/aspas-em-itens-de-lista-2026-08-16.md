@@ -1,7 +1,7 @@
 ---
 name: aspas-em-itens-de-lista-2026-08-16
 title: "Remover aspas de itens de lista em adr_dirs e agents"
-status: wip
+status: done
 date: 2026-08-16
 req: REQ-2026-08-16-aspas-em-itens-de-lista
 branch: fix/aspas-itens-de-lista
@@ -9,7 +9,7 @@ branch: fix/aspas-itens-de-lista
 
 # Roadmap: aspas em itens de lista
 
-> Criado em: 2026-08-16 | Status: 🔄 WIP
+> Criado em: 2026-08-16 | Status: ✅ Done
 
 REQ: `docs/requisições/claude/REQ-2026-08-16-aspas-em-itens-de-lista.md`
 
