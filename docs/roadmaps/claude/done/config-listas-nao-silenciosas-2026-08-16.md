@@ -1,7 +1,7 @@
 ---
 name: config-listas-nao-silenciosas-2026-08-16
 title: "Parser de trackfw.yaml para de descartar listas em silêncio"
-status: wip
+status: done
 date: 2026-08-16
 req: REQ-2026-08-16-config-listas-nao-silenciosas
 branch: fix/config-listas-nao-silenciosas
@@ -9,7 +9,7 @@ branch: fix/config-listas-nao-silenciosas
 
 # Roadmap: listas do config não silenciosas
 
-> Created: 2026-08-16 | Status: wip
+> Created: 2026-08-16 | Status: done
 
 REQ: `docs/requisições/claude/REQ-2026-08-16-config-listas-nao-silenciosas.md`
 
