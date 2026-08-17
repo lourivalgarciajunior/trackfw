@@ -1,7 +1,7 @@
 ---
 name: consistencias-template-saida-e-eol-2026-08-16
 title: "Consistências de template, header, saída e EOL"
-status: wip
+status: done
 date: 2026-08-16
 req: REQ-2026-08-16-consistencias-template-saida-e-eol
 branch: fix/consistencias-6-a-9
@@ -9,7 +9,7 @@ branch: fix/consistencias-6-a-9
 
 # Roadmap: consistências de template, header, saída e EOL
 
-> Criado em: 2026-08-16 | Status: 🔄 WIP
+> Criado em: 2026-08-16 | Status: done
 
 REQ: `docs/requisições/claude/REQ-2026-08-16-consistencias-template-saida-e-eol.md`
 
