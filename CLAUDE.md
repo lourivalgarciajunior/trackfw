@@ -64,9 +64,18 @@ skips those six. Note the `-t .`: `pypi/tests/__init__.py` forces UTF-8 output, 
 **Parity gates (run after any cross-runtime change):**
 ```bash
 bash scripts/check-cli-parity.sh
+bash scripts/check-subcommand-parity.sh
 bash scripts/check-validate-parity.sh
 bash scripts/check-static-assets.sh
 ```
+
+`check-cli-parity.sh` only compares **top-level** commands, and only checks presence. That is why
+`req move` was missing from all three runtimes and `req list` from Python without any gate noticing —
+`req` existed everywhere, so parity passed.
+
+`check-subcommand-parity.sh` goes one level down and compares **sets** in both directions: missing
+*and* extra. Known divergences are declared inline in the script with a reason each; a new one fails
+the gate. It also warns when a declaration no longer matches reality, so the list does not rot.
 
 ## The governance domain model
 
