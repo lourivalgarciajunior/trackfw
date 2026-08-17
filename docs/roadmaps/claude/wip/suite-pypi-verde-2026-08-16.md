@@ -35,7 +35,7 @@ Origem: itens 10 e 12 da dívida acumulada nesta sessão.
 ## Wave 1 — As duas correções (independentes)
 
 ### ML-1 — D2: tirar a asserção da borda de truncamento
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `pypi/tests/test_validator.py`
 **Ações:**
 1. Trocar o recuo de mtime de `10 * 24 * 60 * 60` exatos por `10 dias + 1 hora`, mantendo a
@@ -45,8 +45,9 @@ Origem: itens 10 e 12 da dívida acumulada nesta sessão.
    o `int()` trunca para 9.
 3. Rodar o teste 10 vezes seguidas para confirmar estabilidade.
 **Critérios de aceite:**
-- [ ] 10 execuções seguidas sem falha
-- [ ] A asserção continua exigindo `"10 days"` — a folga não afrouxa o que é verificado
+- [x] 10 execuções seguidas de `tests.test_validator`, zero falhas
+- [x] A asserção segue exigindo `"10 days"` — a folga move o valor para longe da descontinuidade
+      sem afrouxar o que é verificado
 **Comandos de validação:** `cd pypi && python -m unittest tests.test_validator`
 
 ### ML-2 — D1: declarar `pytest` como dependência de desenvolvimento
