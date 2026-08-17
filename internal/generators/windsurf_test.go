@@ -26,9 +26,7 @@ func TestInstallWindsurf_CriaArquivos(t *testing.T) {
 
 	// Use a temp home so we don't touch real ~/.codeium
 	home := t.TempDir()
-	origHome := os.Getenv("HOME")
-	_ = os.Setenv("HOME", home)
-	t.Cleanup(func() { _ = os.Setenv("HOME", origHome) })
+	useTempHome(t, home)
 
 	if err := InstallWindsurf(); err != nil {
 		t.Fatalf("InstallWindsurf() erro: %v", err)
@@ -60,9 +58,7 @@ func TestInstallWindsurf_Idempotente(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(origDir) })
 
 	home := t.TempDir()
-	origHome := os.Getenv("HOME")
-	_ = os.Setenv("HOME", home)
-	t.Cleanup(func() { _ = os.Setenv("HOME", origHome) })
+	useTempHome(t, home)
 
 	if err := InstallWindsurf(); err != nil {
 		t.Fatalf("primeiro InstallWindsurf() erro: %v", err)
@@ -94,9 +90,7 @@ func TestInstallWindsurf_GlobalRulesNaoDuplica(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(origDir) })
 
 	home := t.TempDir()
-	origHome := os.Getenv("HOME")
-	_ = os.Setenv("HOME", home)
-	t.Cleanup(func() { _ = os.Setenv("HOME", origHome) })
+	useTempHome(t, home)
 
 	// First install
 	if err := InstallWindsurf(); err != nil {
@@ -131,9 +125,7 @@ func TestInstallWindsurf_RulesTemFrontmatter(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(origDir) })
 
 	home := t.TempDir()
-	origHome := os.Getenv("HOME")
-	_ = os.Setenv("HOME", home)
-	t.Cleanup(func() { _ = os.Setenv("HOME", origHome) })
+	useTempHome(t, home)
 
 	if err := InstallWindsurf(); err != nil {
 		t.Fatalf("InstallWindsurf() erro: %v", err)

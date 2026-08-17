@@ -54,7 +54,7 @@ Só afeta o runtime Go: os testes de npm e pypi não têm equivalente para esses
 **Comandos de validação:** `go build ./... && go vet ./...`
 
 ### ML-2 — Testes usam o seam e param de tocar o home real
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `internal/generators/agents_test.go`, `gemini_test.go`, `scaffold_test.go`
 (ou onde vivem `TestInstallSkills_*`), `windsurf_test.go`
 **Ações:**
@@ -64,8 +64,10 @@ Só afeta o runtime Go: os testes de npm e pypi não têm equivalente para esses
    que o isolamento valha também em sistemas onde `os.UserHomeDir` lê `HOME`.
 3. Rodar a suíte e conferir que os 8 passam.
 **Critérios de aceite:**
-- [ ] Os 8 testes passam
-- [ ] Nenhum `os.Setenv("HOME"` sozinho como único mecanismo de isolamento no pacote
+- [x] Os 8 testes passam — 11 blocos de setup substituídos em 4 arquivos
+- [x] Nenhum `os.Setenv("HOME"` fora do helper; o seam é o mecanismo, o Setenv virou reforço
+- [x] Helper coberto por teste próprio (`TestUseTempHome_IsolaOResolvedor`): sem isso, um seam
+      quebrado voltaria a escrever no home real em silêncio
 **Comandos de validação:** `go test ./internal/generators/`
 
 ---
