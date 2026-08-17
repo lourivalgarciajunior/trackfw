@@ -47,9 +47,19 @@ node bin/trackfw --help                  # npm run smoke
 
 **Python:**
 ```bash
-cd pypi && python3 -m pytest tests/      # tests live in pypi/tests/
+cd pypi && pip install -e ".[dev]"       # dev extra = pytest; the package itself is stdlib-only
+python3 -m pytest tests/                 # tests live in pypi/tests/
 PYTHONPATH=. python3 -m trackfw --help   # run the CLI from source
 ```
+
+**pytest is required, not optional.** Six test modules are pytest-style — bare `test_*` functions
+using the `tmp_path` fixture — which `unittest` cannot collect: `test_context_req_by_agent`,
+`test_discover`, `test_req_by_agent`, `test_rules_req_configuraveis`, `test_serve_api`,
+`test_traceid`. Without pytest they fail as `ModuleNotFoundError` and 37 tests silently never run.
+
+`python3 -m unittest discover -s tests -t .` still works for the `TestCase`-style modules, but it
+skips those six. Note the `-t .`: `pypi/tests/__init__.py` forces UTF-8 output, and without
+`-t .` unittest imports the modules top-level and never runs it.
 
 **Parity gates (run after any cross-runtime change):**
 ```bash

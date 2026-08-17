@@ -31,6 +31,14 @@ classifiers = [
   "Topic :: System :: Systems Administration",
 ]
 
+# O pacote em si não tem dependência externa — só stdlib.
+# Este grupo é exclusivamente de desenvolvimento: seis módulos de teste são
+# pytest-style (funções soltas com a fixture tmp_path) e o unittest não os
+# coleta. Sem pytest instalado eles viram ModuleNotFoundError e 37 testes
+# deixam de rodar. Ver REQ-2026-08-16-suite-pypi-verde.
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
 [project.urls]
 Homepage = "https://github.com/kgsaran/trackfw"
 Repository = "https://github.com/kgsaran/trackfw"

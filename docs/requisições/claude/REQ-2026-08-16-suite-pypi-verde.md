@@ -77,9 +77,9 @@ asserção sobre `"10 days"` continua valendo, agora sem depender de qual relóg
 
 ## Critérios de Aceite
 
-- [ ] `pypi/pyproject.toml` declara `pytest` em `optional-dependencies.dev`
-- [ ] `CLAUDE.md` documenta como instalar a dependência de desenvolvimento
-- [ ] `pytest tests/` fecha com **zero** falhas e roda os 6 módulos antes ignorados
-- [ ] `test_stale_wip_warning_arquivo_antigo` passa 10 execuções seguidas
-- [ ] `python -m unittest discover -s tests -t .` segue rodando, sem falha nova
-- [ ] `go test ./...` segue com zero falhas e os três gates de paridade passam
+- [x] `pypi/pyproject.toml` declara `pytest` em `optional-dependencies.dev`
+- [x] `CLAUDE.md` documenta como instalar a dependência de desenvolvimento
+- [x] `pytest tests/` fecha com **zero** falhas e roda os 6 módulos antes ignorados
+- [x] `test_stale_wip_warning_arquivo_antigo` passa 10 execuções seguidas
+- [x] `python -m unittest discover -s tests -t .` segue rodando, sem falha nova
+- [x] `go test ./...` segue com zero falhas e os três gates de paridade passam

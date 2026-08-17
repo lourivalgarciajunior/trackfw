@@ -25,10 +25,10 @@ Origem: itens 10 e 12 da dívida acumulada nesta sessão.
 
 ## Critérios de Aceite
 
-- [ ] `pytest tests/` com zero falhas, rodando os 6 módulos antes ignorados
-- [ ] `test_stale_wip_warning_arquivo_antigo` passa 10 execuções seguidas
-- [ ] `unittest discover` segue rodando sem falha nova
-- [ ] Go verde e gates passam
+- [x] `pytest tests/` com zero falhas, rodando os 6 módulos antes ignorados
+- [x] `test_stale_wip_warning_arquivo_antigo` passa 10 execuções seguidas
+- [x] `unittest discover` segue rodando sem falha nova
+- [x] Go verde e gates passam
 
 ---
 
@@ -51,7 +51,7 @@ Origem: itens 10 e 12 da dívida acumulada nesta sessão.
 **Comandos de validação:** `cd pypi && python -m unittest tests.test_validator`
 
 ### ML-2 — D1: declarar `pytest` como dependência de desenvolvimento
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `pypi/pyproject.toml`, `CLAUDE.md`
 **Ações:**
 1. Acrescentar `[project.optional-dependencies]` com grupo `dev = ["pytest>=7"]`.
@@ -59,9 +59,12 @@ Origem: itens 10 e 12 da dívida acumulada nesta sessão.
    `pytest tests/`, e registrar que 6 módulos são pytest-style e não rodam sob `unittest`.
 3. Confirmar que o runtime segue sem dependência externa — a adição é só de desenvolvimento.
 **Critérios de aceite:**
-- [ ] `pyproject.toml` declara o grupo `dev`
-- [ ] `CLAUDE.md` explica a instalação e a limitação do `unittest`
-- [ ] Nenhuma dependência acrescentada ao pacote em si
+- [x] `pyproject.toml` declara `dev = ["pytest>=7"]` em `optional-dependencies`
+- [x] `CLAUDE.md` explica a instalação, nomeia os 6 módulos pytest-style e registra o `-t .` do
+      `unittest discover`
+- [x] Nenhuma dependência no pacote em si — `[project]` segue sem `dependencies`
+- [x] Validado num venv limpo: `pip install -e ".[dev]"` seguido de `pytest tests/` dá
+      **283 passed**
 **Comandos de validação:** `grep -A4 optional-dependencies pypi/pyproject.toml`
 
 ---
@@ -69,14 +72,19 @@ Origem: itens 10 e 12 da dívida acumulada nesta sessão.
 ## Wave 2 — Fechamento
 
 ### ML-3 — Suíte verde e não-regressão
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** nenhum (verificação)
 **Ações:**
 1. `pytest tests/` num venv com o grupo `dev` instalado — exigir zero falhas.
 2. `python -m unittest discover -s tests -t .` — sem falha nova.
 3. `go test ./...` e os três gates de paridade.
 **Critérios de aceite:**
-- [ ] `pytest tests/` verde
-- [ ] `unittest discover` sem falha nova
-- [ ] Go verde e gates passam
+- [x] `pytest tests/` — **283 passed, zero falhas**
+- [x] `unittest discover -s tests -t .` — 245 testes, **zero failures**; restam só os 6 erros de
+      import dos módulos pytest-style, agora documentados como esperados
+- [x] `go test ./...` zero falhas, `gofmt -l` zero
+- [x] Os três gates de paridade passam
+
+**Ganho de cobertura:** 283 testes rodando contra os 245 de antes. Os 37 a mais vêm dos 6 módulos
+que nunca haviam rodado nesta máquina.
 **Comandos de validação:** `cd pypi && pytest tests/ -q`
