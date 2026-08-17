@@ -209,7 +209,9 @@ def move_roadmap(filename: str, to_state: str, cfg: dict) -> str:
     try:
         with open(dst, "r", encoding="utf-8", newline="") as f:
             content = f.read()
-        updated = _set_frontmatter_status(content, to_state)
+        updated = _set_header_status(
+            _set_frontmatter_status(content, to_state), to_state
+        )
         if updated != content:
             with open(dst, "w", encoding="utf-8", newline="") as f:
                 f.write(updated)
@@ -259,4 +261,35 @@ def _set_frontmatter_status(content: str, state: str) -> str:
         lines[i] = "status: " + state + ("\r" if line.endswith("\r") else "")
         return "\n".join(lines)
 
+    return content
+
+
+# Separa o rotulo do estado na linha humana logo abaixo do titulo, no formato
+# "> Created: 2026-08-16 | Status: backlog".
+_HEADER_STATUS_MARKER = "| Status: "
+
+
+def _set_header_status(content: str, state: str) -> str:
+    """Devolve content com o estado da linha humana valendo state.
+
+    Age na primeira linha que comece com "> " e contenha o marcador; tudo depois
+    dele e substituido. Conteudo intocado quando nenhuma linha casa - a linha
+    nunca e criada, mesmo contrato de _set_frontmatter_status.
+
+    Tolera o formato herdado com emoji ("| Status: WIP" precedido de emoji),
+    porque substitui o trecho inteiro em vez de tentar casar o valor anterior.
+
+    Ver REQ-2026-08-16-consistencias-template-saida-e-eol.
+    """
+    lines = content.split("\n")
+    for i, line in enumerate(lines):
+        trimmed = line.rstrip("\r")
+        if not trimmed.startswith("> "):
+            continue
+        idx = trimmed.find(_HEADER_STATUS_MARKER)
+        if idx < 0:
+            continue
+        novo = trimmed[: idx + len(_HEADER_STATUS_MARKER)] + state
+        lines[i] = novo + ("\r" if line.endswith("\r") else "")
+        return "\n".join(lines)
     return content

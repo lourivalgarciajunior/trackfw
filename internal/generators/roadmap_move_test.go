@@ -105,3 +105,57 @@ func TestMoveRoadmap_StatusNoCorpoNaoEhTocado(t *testing.T) {
 		t.Errorf("conteúdo após move:\n got: %q\nwant: %q", got, want)
 	}
 }
+
+// TestMoveRoadmap_SincronizaLinhaHumana — a linha "> … | Status: …" logo abaixo
+// do título também acompanha a pasta. Antes disto o arquivo ia para done/
+// declarando status: done no frontmatter e Status: wip na linha que o humano lê.
+func TestMoveRoadmap_SincronizaLinhaHumana(t *testing.T) {
+	const name = "h.md"
+	src := "---\nstatus: wip\n---\n\n# Roadmap: h\n\n> Created: 2026-08-16 | Status: wip\n\ncorpo\n"
+	dir := setupMove(t, name, src)
+
+	if err := MoveRoadmap(name, "done"); err != nil {
+		t.Fatalf("MoveRoadmap: %v", err)
+	}
+
+	got := readMoved(t, dir, "done", name)
+	want := "---\nstatus: done\n---\n\n# Roadmap: h\n\n> Created: 2026-08-16 | Status: done\n\ncorpo\n"
+	if got != want {
+		t.Errorf("conteúdo após move:\n got: %q\nwant: %q", got, want)
+	}
+}
+
+// TestMoveRoadmap_LinhaHumanaComEmoji — formato herdado neste repositório. O
+// trecho inteiro após o marcador é substituído, então o emoji sai junto.
+func TestMoveRoadmap_LinhaHumanaComEmoji(t *testing.T) {
+	const name = "e.md"
+	src := "---\nstatus: wip\n---\n\n# Roadmap: e\n\n> Criado em: 2026-08-16 | Status: \U0001F504 WIP\n"
+	dir := setupMove(t, name, src)
+
+	if err := MoveRoadmap(name, "done"); err != nil {
+		t.Fatalf("MoveRoadmap: %v", err)
+	}
+
+	got := readMoved(t, dir, "done", name)
+	want := "---\nstatus: done\n---\n\n# Roadmap: e\n\n> Criado em: 2026-08-16 | Status: done\n"
+	if got != want {
+		t.Errorf("conteúdo após move:\n got: %q\nwant: %q", got, want)
+	}
+}
+
+// TestMoveRoadmap_SemLinhaHumanaNaoCria — a linha nunca é inventada.
+func TestMoveRoadmap_SemLinhaHumanaNaoCria(t *testing.T) {
+	const name = "s.md"
+	src := "---\nstatus: wip\n---\n\n# Roadmap: s\n\nsem linha de status aqui\n"
+	dir := setupMove(t, name, src)
+
+	if err := MoveRoadmap(name, "done"); err != nil {
+		t.Fatalf("MoveRoadmap: %v", err)
+	}
+
+	got := readMoved(t, dir, "done", name)
+	want := "---\nstatus: done\n---\n\n# Roadmap: s\n\nsem linha de status aqui\n"
+	if got != want {
+		t.Errorf("linha foi criada indevidamente:\n got: %q\nwant: %q", got, want)
+	}
+}

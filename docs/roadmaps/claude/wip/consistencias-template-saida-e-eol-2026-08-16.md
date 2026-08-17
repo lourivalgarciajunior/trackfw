@@ -53,7 +53,7 @@ entre runtimes, fora do escopo desta REQ. Candidato a REQ própria.
 **Comandos de validação:** `cd pypi && python -m unittest discover -s tests -t .`
 
 ### ML-2 — D2: `move` sincroniza a linha humana nos três runtimes
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `internal/generators/roadmap.go` + teste; `npm/src/generators/roadmap.js` +
 teste; `pypi/trackfw/generators/roadmap.py` + teste
 **Ações:**
@@ -65,9 +65,11 @@ teste; `pypi/trackfw/generators/roadmap.py` + teste
 4. Teste em cada runtime cobrindo: linha presente, linha ausente, e header com emoji
    (`Status: 🔄 WIP`), que é o formato herdado neste repositório.
 **Critérios de aceite:**
-- [ ] Após `move X done`, a linha declara `done` nos três runtimes
-- [ ] Arquivo sem a linha sai byte a byte idêntico
-- [ ] Testes não-vacuosos nos três
+- [x] Após `move X done`, a linha declara `done` nos três runtimes
+- [x] Arquivo sem a linha sai byte a byte idêntico — a linha nunca é criada
+- [x] Formato herdado com emoji (`| Status: 🔄 WIP`) é substituído por inteiro
+- [x] Não-vacuosos nos três: sem o encadeamento, Go 2 falhas, npm 5 passed/2 failed,
+      Python `FAILED (failures=2)`
 **Comandos de validação:** `go test ./internal/generators/ -run Move && node npm/tests/roadmap_move.test.js && cd pypi && python -m unittest tests.test_roadmap_move`
 
 ---

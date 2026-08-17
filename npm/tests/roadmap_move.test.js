@@ -70,5 +70,32 @@ test('status: no corpo, fora do frontmatter, nao e tocado', () => {
   })
 })
 
+test('move sincroniza a linha humana de status', () => {
+  const src = ['---', 'status: wip', '---', '', '# Roadmap: h', '', '> Created: 2026-08-16 | Status: wip', '', 'corpo', ''].join(NL)
+  withRoadmap('h.md', src, (tmp) => {
+    moveRoadmap('h.md', 'done')
+    const want = ['---', 'status: done', '---', '', '# Roadmap: h', '', '> Created: 2026-08-16 | Status: done', '', 'corpo', ''].join(NL)
+    assert.strictEqual(readMoved(tmp, 'done', 'h.md'), want)
+  })
+})
+
+test('linha humana com emoji e substituida por inteiro', () => {
+  const src = ['---', 'status: wip', '---', '', '# Roadmap: e', '', '> Criado em: 2026-08-16 | Status: \u{1F504} WIP', ''].join(NL)
+  withRoadmap('e.md', src, (tmp) => {
+    moveRoadmap('e.md', 'done')
+    const want = ['---', 'status: done', '---', '', '# Roadmap: e', '', '> Criado em: 2026-08-16 | Status: done', ''].join(NL)
+    assert.strictEqual(readMoved(tmp, 'done', 'e.md'), want)
+  })
+})
+
+test('sem linha humana, a linha nao e criada', () => {
+  const src = ['---', 'status: wip', '---', '', '# Roadmap: s', '', 'sem linha de status aqui', ''].join(NL)
+  withRoadmap('s.md', src, (tmp) => {
+    moveRoadmap('s.md', 'done')
+    const want = ['---', 'status: done', '---', '', '# Roadmap: s', '', 'sem linha de status aqui', ''].join(NL)
+    assert.strictEqual(readMoved(tmp, 'done', 's.md'), want)
+  })
+})
+
 console.log(`${NL}${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)
