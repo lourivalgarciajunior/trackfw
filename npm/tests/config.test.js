@@ -17,6 +17,8 @@ function withTmpDir(yaml, fn) {
   }
 }
 
+const NL = String.fromCharCode(10)
+
 let passed = 0, failed = 0
 
 function test(name, fn) {
@@ -150,6 +152,46 @@ test('adr_dirs/agents - aspas envolventes sao removidas dos itens de lista', () 
     assert.deepStrictEqual(cfg.adrDirs, ['docs/adr', 'docs/decisions', 'docs/adr-extra'])
     assert.deepStrictEqual(cfg.agents, ['claude', 'apolo', 'artemis'])
   })
+})
+
+// Captura o que o parser manda para stderr durante um load.
+function loadCapturandoAvisos(yaml) {
+  const avisos = []
+  const orig = console.error
+  console.error = (...a) => avisos.push(a.join(' '))
+  let cfg
+  try {
+    withTmpDir(yaml, (tmp) => { cfg = config.load(tmp) })
+  } finally {
+    console.error = orig
+  }
+  return { cfg, avisos }
+}
+
+test('bloco de lista sem indentacao e aceito', () => {
+  const yaml = ['agents:', '- claude', '- apolo', 'adr_dirs:', '- docs/adr', '- docs/decisions', ''].join(NL)
+  const { cfg, avisos } = loadCapturandoAvisos(yaml)
+  assert.deepStrictEqual(cfg.agents, ['claude', 'apolo'])
+  assert.deepStrictEqual(cfg.adrDirs, ['docs/adr', 'docs/decisions'])
+  assert.deepStrictEqual(avisos, [], 'config bem formada nao pode gerar ruido')
+})
+
+test('lista inline avisa e nao popula', () => {
+  const yaml = ['agents: [claude, gemini]', 'adr_dirs: [docs/adr, docs/decisions]', ''].join(NL)
+  const { cfg, avisos } = loadCapturandoAvisos(yaml)
+  assert.strictEqual(avisos.length, 2, `esperado 2 avisos, obtido ${avisos.length}`)
+  const juntos = avisos.join(NL)
+  for (const esperado of ['agents', 'adr_dirs', 'lista inline', 'Escreva em bloco']) {
+    assert.ok(juntos.includes(esperado), `aviso nao menciona ${esperado}`)
+  }
+  // O aviso nao e um parser disfarcado: a chave continua vazia.
+  assert.deepStrictEqual(cfg.agents, [])
+})
+
+test('bloco indentado nao avisa', () => {
+  const yaml = ['agents:', '  - claude', 'adr_dirs:', '  - docs/adr', ''].join(NL)
+  const { avisos } = loadCapturandoAvisos(yaml)
+  assert.deepStrictEqual(avisos, [])
 })
 
 console.log(`\n${passed} passed, ${failed} failed`)

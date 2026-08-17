@@ -91,11 +91,11 @@ Trocar o exemplo inline pela forma de bloco em `README.md:199`.
 
 ## Critérios de Aceite
 
-- [ ] `agents:` e `adr_dirs:` em bloco não indentado funcionam nos três runtimes
-- [ ] `agents: [a, b]` emite aviso em stderr nos três, nomeando a chave
-- [ ] O aviso mostra a forma equivalente suportada
-- [ ] O aviso sai uma vez, não a cada `load()`
-- [ ] Nenhum aviso quando a config usa bloco (indentado ou não)
-- [ ] `README.md` não documenta mais a forma inline
-- [ ] `go test ./...` zero falhas, `pytest tests/` zero falhas, testes npm verdes
-- [ ] Os três gates de paridade passam
+- [x] `agents:` e `adr_dirs:` em bloco não indentado funcionam nos três runtimes
+- [x] `agents: [a, b]` emite aviso em stderr nos três, nomeando a chave
+- [x] O aviso mostra a forma equivalente suportada
+- [x] O aviso sai uma vez, não a cada `load()`
+- [x] Nenhum aviso quando a config usa bloco (indentado ou não)
+- [x] `README.md` não documenta mais a forma inline
+- [x] `go test ./...` zero falhas, `pytest tests/` zero falhas, testes npm verdes
+- [x] Os três gates de paridade passam

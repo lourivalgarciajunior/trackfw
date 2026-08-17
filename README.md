@@ -196,8 +196,14 @@ trackfw v2.6.0 introduces features designed for teams where AI agents are first-
 ```yaml
 # trackfw.yaml
 roadmap_namespacing: by_agent
-agents: [claude, gemini, copilot]
+agents:
+  - claude
+  - gemini
+  - copilot
 ```
+
+> Lists must be written as blocks. The inline form (`agents: [claude, gemini]`) is valid YAML but
+> is not parsed by trackfw — it now prints a warning instead of leaving the key silently empty.
 
 Artifacts are organized by agent: `docs/roadmaps/claude/wip/`, `docs/req/gemini/done/`. `trackfw validate` and `trackfw context` are fully by_agent-aware — no false positives.
 

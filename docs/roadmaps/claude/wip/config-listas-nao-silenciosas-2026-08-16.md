@@ -26,11 +26,11 @@ indentado o alinhamento é para cima, porque o Python já o processa corretament
 
 ## Critérios de Aceite
 
-- [ ] Bloco não indentado funciona nos três
-- [ ] Lista inline avisa em stderr nos três, nomeando a chave e mostrando a forma correta
-- [ ] Aviso uma vez por processo; nenhum aviso para configs em bloco
-- [ ] README corrigido
-- [ ] Suítes e gates verdes
+- [x] Bloco não indentado funciona nos três
+- [x] Lista inline avisa em stderr nos três, nomeando a chave e mostrando a forma correta
+- [x] Aviso uma vez por processo; nenhum aviso para configs em bloco
+- [x] README corrigido
+- [x] Suítes e gates verdes
 
 ---
 
@@ -50,28 +50,32 @@ indentado o alinhamento é para cima, porque o Python já o processa corretament
 3. Emitir os avisos em stderr ao fim do `Load()`, dentro do `sync.Once` — uma vez por processo.
 4. Testes: bloco não indentado popula; inline avisa e não popula; bloco não avisa.
 **Critérios de aceite:**
-- [ ] `agents:\n- claude` popula `Agents`
-- [ ] `agents: [a, b]` deixa `Agents` vazio **e** emite aviso nomeando a chave
-- [ ] Config em bloco não emite aviso nenhum
+- [x] `agents:` e `adr_dirs:` em bloco não indentado populam corretamente
+- [x] `agents: [a, b]` deixa a chave vazia **e** emite aviso nomeando-a, com a forma correta
+- [x] Config em bloco — indentado ou não — não emite aviso nenhum
+- [x] Aviso sai uma vez, dentro do `sync.Once` do `Load()`
+- [x] Não-vacuoso: removendo só o tratamento de `- ` sem indentação,
+      `Agents: want [claude apolo], got []`; e sem a mudança de assinatura o pacote nem compila
 **Comandos de validação:** `go build ./... && go test ./internal/config/`
 
 ### ML-2 — Node.js: espelha
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `npm/src/config/index.js`, `npm/tests/config.test.js`
 **Ações:** mesmos três pontos do ML-1, com a mensagem idêntica.
 **Critérios de aceite:**
-- [ ] Mesmo comportamento e mesma mensagem do Go
+- [x] Mesmo comportamento e mensagem idêntica à do Go
+- [x] O teste captura `console.error`, cobrindo o que o usuário vê, não só o retorno do parser
 **Comandos de validação:** `node npm/tests/config.test.js`
 
 ### ML-3 — Python: aviso de inline
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `pypi/trackfw/config.py`, `pypi/tests/test_config.py`
 **Ações:**
 1. O bloco não indentado já funciona — nada a mudar ali.
 2. Acrescentar a detecção de inline e o mesmo aviso.
 **Critérios de aceite:**
-- [ ] Aviso idêntico ao dos outros dois
-- [ ] Bloco não indentado continua funcionando
+- [x] Aviso idêntico ao dos outros dois
+- [x] Bloco não indentado continua funcionando — nada foi tocado nesse caminho
 **Comandos de validação:** `cd pypi && python -m pytest tests/test_config.py -q`
 
 ---
@@ -79,7 +83,7 @@ indentado o alinhamento é para cima, porque o Python já o processa corretament
 ## Wave 2 — Documentação e fechamento
 
 ### ML-4 — README e verificação de ponta a ponta
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `README.md`
 **Ações:**
 1. Trocar `agents: [claude, gemini, copilot]` pela forma de bloco em `README.md:199`.
@@ -88,7 +92,19 @@ indentado o alinhamento é para cima, porque o Python já o processa corretament
    cada um popula e o que avisa.
 4. Suítes e os três gates.
 **Critérios de aceite:**
-- [ ] README sem forma inline em exemplo de `trackfw.yaml`
-- [ ] Os três runtimes concordam nas três formas
-- [ ] Suítes e gates verdes
+- [x] `README.md:199` passa a usar bloco, com nota explicando que a forma inline não é lida
+- [x] Varredura em `README.md`, `docs/*.md` e `site/`: nenhum outro exemplo inline de config
+- [x] Os três runtimes concordam nas três formas:
+
+```
+forma            go         npm        py
+indentado        silencio   silencio   silencio
+NAO indentado    silencio   silencio   silencio
+inline           AVISA      AVISA      AVISA
+```
+
+- [x] `go test ./...` zero falhas, `go vet` limpo, `gofmt -l` zero
+- [x] npm: 16 + 3 + 7 testes verdes
+- [x] pypi: **291 passed**
+- [x] Os três gates de paridade passam
 **Comandos de validação:** `go test ./... && bash scripts/check-cli-parity.sh`
