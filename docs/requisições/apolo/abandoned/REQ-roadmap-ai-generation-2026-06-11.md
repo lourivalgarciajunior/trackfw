@@ -1,7 +1,7 @@
 ---
 id: REQ-roadmap-ai-generation-2026-06-11
 title: Geração de roadmap por IA
-status: done
+status: abandoned
 priority: medium
 type: feature
 created: 2026-06-11
@@ -13,7 +13,22 @@ ADR: ADR-2026-06-11-roadmap-derivado-sem-llm.md
 
 # REQ: Geração de Roadmap por IA
 
-> Criado em: 2026-06-11 | Status: Backlog | Agente: Apolo
+> Criado em: 2026-06-11 | Status: Abandonada | Agente: Apolo
+
+> **Abandonada em 2026-08-17.** Esta REQ esteve marcada `done` sem que o trabalho tivesse
+> acontecido. Verificado em 2026-08-16: não existe `internal/ai/`, não há nenhuma menção a
+> `anthropic` ou `openai` em código Go, o `go.mod` não tem dependência de IA e não há tratamento de
+> chave de API em lugar nenhum. O roadmap correspondente estava em `done/` com **todos os MLs
+> ⬜ Pendente**.
+>
+> A decisão que de fato vale está registrada em
+> `ADR-2026-06-11-roadmap-derivado-sem-llm.md`: o roadmap é derivado dos critérios de aceite da REQ
+> de forma determinística, sem LLM, sem chave e sem dependência externa — implementado como
+> `roadmap new --from-req` nos três runtimes.
+>
+> A REQ vem para `abandoned/` em vez de ser apagada: o pedido original existiu, foi avaliado e foi
+> substituído por outra solução. Isso é história, e o `abandoned/` existe exatamente para guardá-la.
+> Ver `REQ-2026-08-16-adrs-retroativas`.
 
 ## Solicitação
 

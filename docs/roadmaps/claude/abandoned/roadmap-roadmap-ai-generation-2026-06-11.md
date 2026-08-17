@@ -1,6 +1,15 @@
 # Roadmap: Geração de Roadmap por IA
 
-> Criado em: 2026-06-11 | Status: 🔄 WIP
+> Criado em: 2026-06-11 | Status: abandoned
+
+> **Abandonado em 2026-08-17, com todos os MLs ⬜ Pendente.** Este roadmap esteve em `done/` sem que
+> nenhum ML tivesse sido executado. A implementação por LLM que ele planeja não existe no código:
+> sem `internal/ai/`, sem SDK no `go.mod`, sem tratamento de chave de API.
+>
+> A solução que venceu está em `ADR-2026-06-11-roadmap-derivado-sem-llm.md` — derivação
+> determinística dos critérios de aceite, entregue como `roadmap new --from-req`.
+>
+> Ver `REQ-roadmap-ai-generation-2026-06-11` e `REQ-2026-08-16-adrs-retroativas`.
 
 ## Diagnóstico / Contexto
 
