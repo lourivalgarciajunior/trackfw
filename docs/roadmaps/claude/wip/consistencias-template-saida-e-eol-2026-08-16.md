@@ -77,7 +77,7 @@ teste; `pypi/trackfw/generators/roadmap.py` + teste
 ## Wave 2 — Saída e repositório (independentes)
 
 ### ML-3 — D3: saída do instalador mostra o caminho real
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `internal/generators/home.go`, `agents.go`, `gemini.go`, `scaffold.go`,
 `windsurf.go`, `internal/generators/home_test.go`
 **Ações:**
@@ -87,9 +87,16 @@ teste; `pypi/trackfw/generators/roadmap.py` + teste
 3. Teste do helper: caminho sob o home vira `~/…`; fora do home fica absoluto; home irresolúvel não
    quebra.
 **Critérios de aceite:**
-- [ ] Nenhum literal `~/.claude`, `~/.gemini` ou `~/.codeium` em `Printf` no pacote
-- [ ] Saída no uso normal continua exibindo `~/…`
-- [ ] Num home de teste, a saída aponta o tempdir e não `~`
+- [x] Nenhum literal `~/…` em `Printf` nem `Errorf` no pacote — 12 prints e 1 mensagem de erro
+      passaram a derivar do caminho resolvido
+- [x] Saída no uso normal continua exibindo `~/…`, idêntica à de antes
+- [x] Helper coberto por teste: sob o home vira `~`, fora do home fica absoluto, home
+      irresolúvel não quebra
+
+**Precisão sobre o efeito.** Durante os testes a saída continua exibindo `~/…`, e isso está
+correto: `displayPath` colapsa o home **resolvido**, que no teste é o tempdir. A garantia deixou de
+ser cosmética e virou estrutural — a string deriva do caminho real em vez de ser literal. O caso em
+que os dois divergem está coberto no teste unitário `fora do home fica absoluto`.
 **Comandos de validação:** `go test ./internal/generators/`
 
 ### ML-4 — D4: `.gitattributes` e normalização do working copy

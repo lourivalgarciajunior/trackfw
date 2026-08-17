@@ -36,7 +36,7 @@ func InstallAgents() error {
 		}
 		dest := filepath.Join(agentsDir, entry.Name())
 		if _, err := os.Stat(dest); err == nil {
-			fmt.Printf("  ✓ ~/.claude/agents/%s (já existe — não sobrescrito)\n", entry.Name())
+			fmt.Printf("  ✓ %s (já existe — não sobrescrito)\n", displayPath(dest))
 			skipped++
 			continue
 		}
@@ -47,7 +47,7 @@ func InstallAgents() error {
 		if err := os.WriteFile(dest, content, 0644); err != nil {
 			return fmt.Errorf("escrevendo %s: %w", dest, err)
 		}
-		fmt.Printf("  ✅ ~/.claude/agents/%s\n", entry.Name())
+		fmt.Printf("  ✅ %s\n", displayPath(dest))
 		installed++
 	}
 
