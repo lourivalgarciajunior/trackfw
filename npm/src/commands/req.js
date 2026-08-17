@@ -1,6 +1,6 @@
 'use strict'
 const { Command } = require('commander')
-const { listREQs } = require('../generators/req')
+const { listREQs, moveREQ } = require('../generators/req')
 const { t } = require('../i18n')
 
 const cmd = new Command('req')
@@ -65,6 +65,17 @@ cmd.command('list')
   .description(t('req.list.description'))
   .action(async () => {
     listREQs(require('../config').load().reqDir)
+  })
+
+// `trackfw req move <nome> <estado>`.
+//
+// O roadmap tinha transicao de estado como comando desde sempre; a REQ nao,
+// apesar de o validator ja varrer os cinco estados dela.
+// Ver REQ-2026-08-17-req-move.
+cmd.command('move <name> <state>')
+  .description('Move a REQ between states (backlog|wip|blocked|done|abandoned)')
+  .action(async (name, state) => {
+    moveREQ(name, state)
   })
 
 module.exports = cmd

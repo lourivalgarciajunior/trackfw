@@ -1,6 +1,8 @@
 'use strict'
 const fs = require('fs')
 const path = require('path')
+const config = require('../config')
+const { setFrontmatterStatus, setHeaderStatus } = require('./roadmap')
 
 /**
  * listREQs — lista arquivos .md em dir, imprimindo filename e status (coluna 60 chars).
@@ -245,4 +247,137 @@ function detectDomains(intention) {
   )
 }
 
-module.exports = { listREQs, parseREQStatus, newREQ, PROBES_CATALOG, detectDomains }
+
+// REQ_STATES — os cinco estados que uma REQ pode ocupar, os mesmos que o
+// validator já varre.
+const REQ_STATES = ['backlog', 'wip', 'blocked', 'done', 'abandoned']
+
+/**
+ * findREQ — procura uma REQ por nome (match parcial, case-insensitive) nas três
+ * formas em que elas vivem: sob agente e estado, sob agente sem estado, e na raiz
+ * do req_dir.
+ *
+ * Devolve { path } ou { error }. Ver ADR-2026-08-17-req-move-resolve-as-tres-formas.
+ */
+function findREQ(name) {
+  const cfg = config.load()
+  const reqDir = cfg.reqDir
+  if (!reqDir) return { error: 'req_dir não configurado' }
+
+  const dirs = []
+  if (cfg.roadmapNamespacing === config.NAMESPACING_BY_AGENT) {
+    let agents = cfg.agents || []
+    if (agents.length === 0) {
+      try {
+        agents = fs.readdirSync(reqDir).filter(e => {
+          try { return fs.statSync(path.join(reqDir, e)).isDirectory() } catch (_) { return false }
+        })
+      } catch (_) { agents = [] }
+    }
+    for (const agent of agents) {
+      for (const state of REQ_STATES) dirs.push(path.join(reqDir, agent, state))
+      dirs.push(path.join(reqDir, agent))
+    }
+  }
+  dirs.push(reqDir)
+
+  const lower = name.toLowerCase()
+  const matches = []
+  const seen = new Set()
+  for (const d of dirs) {
+    let entries = []
+    try { entries = fs.readdirSync(d) } catch (_) { continue }
+    for (const e of entries) {
+      if (!e.endsWith('.md')) continue
+      const full = path.join(d, e)
+      if (seen.has(full)) continue
+      try { if (fs.statSync(full).isDirectory()) continue } catch (_) { continue }
+      if (e.toLowerCase().includes(lower)) { seen.add(full); matches.push(full) }
+    }
+  }
+
+  if (matches.length === 0) return { error: `req "${name}" não encontrada em ${reqDir}` }
+  if (matches.length > 1) {
+    return { error: `nome "${name}" é ambíguo — casa com ${matches.length} REQs: ${matches.join(', ')}` }
+  }
+  return { path: matches[0] }
+}
+
+/**
+ * moveREQ — move uma REQ para o diretório de um estado, preservando o agente em
+ * by_agent, e sincroniza o status: do frontmatter e a linha humana.
+ *
+ * Ver REQ-2026-08-17-req-move.
+ */
+function moveREQ(name, state) {
+  if (!REQ_STATES.includes(state)) {
+    console.error(`estado inválido "${state}" — válidos: ${REQ_STATES.join(', ')}`)
+    process.exitCode = 1
+    return
+  }
+
+  const found = findREQ(name)
+  if (found.error) {
+    console.error(found.error)
+    process.exitCode = 1
+    return
+  }
+
+  const cfg = config.load()
+  const reqDir = path.normalize(cfg.reqDir)
+  const src = found.path
+
+  // O agente é a primeira pasta abaixo de req_dir, quando existe. Preservá-lo
+  // evita que mover uma REQ a mude de dono.
+  let targetDir
+  let fromState = '—'
+  const rel = path.relative(reqDir, path.dirname(src))
+  if (rel && rel !== '.') {
+    const parts = rel.split(path.sep)
+    if (parts.length > 1) fromState = parts[1]
+    targetDir = path.join(reqDir, parts[0], state)
+  } else {
+    targetDir = path.join(reqDir, state)
+  }
+
+  const dst = path.join(targetDir, path.basename(src))
+  if (path.resolve(dst) === path.resolve(src)) {
+    console.error(`req "${path.basename(src)}" já está em ${state}`)
+    process.exitCode = 1
+    return
+  }
+
+  try { fs.mkdirSync(targetDir, { recursive: true }) } catch (_) {}
+  fs.renameSync(src, dst)
+
+  try {
+    const content = fs.readFileSync(dst, 'utf8')
+    const updated = setHeaderStatus(setFrontmatterStatus(content, state), state)
+    if (updated !== content) fs.writeFileSync(dst, updated, 'utf8')
+  } catch (_) {}
+
+  appendREQTransitionLog(path.basename(src), fromState, state)
+  console.log(`✓ moved ${path.basename(src)} → ${targetDir}`)
+}
+
+/**
+ * appendREQTransitionLog — grava em <req_dir>/.trackfw-log.
+ *
+ * Arquivo separado do log de roadmaps de propósito: `trackfw log` e
+ * `trackfw metrics` tratam cada linha daquele arquivo como transição de roadmap,
+ * e misturar REQs distorceria lead time e throughput em silêncio.
+ */
+function appendREQTransitionLog(basename, fromState, toState) {
+  const now = new Date()
+  const p2 = n => String(n).padStart(2, '0')
+  const ts = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())} ${p2(now.getHours())}:${p2(now.getMinutes())}`
+  const line = `${ts}  ${basename.padEnd(50)}  ${fromState} → ${toState}\n`
+
+  try {
+    const lp = path.join(config.load().reqDir, '.trackfw-log')
+    fs.mkdirSync(path.dirname(lp), { recursive: true })
+    fs.appendFileSync(lp, line, 'utf8')
+  } catch (_) {}
+}
+
+module.exports = { listREQs, parseREQStatus, newREQ, PROBES_CATALOG, detectDomains, moveREQ, findREQ, REQ_STATES }
