@@ -45,7 +45,7 @@ function load(cwd) {
   const yamlPath = path.join(cwd || process.cwd(), 'trackfw.yaml');
   if (!fs.existsSync(yamlPath)) return _instance;
   const content = fs.readFileSync(yamlPath, 'utf8');
-  parse(content, _instance);
+  for (const w of parse(content, _instance)) console.error(w);
   return _instance;
 }
 
@@ -54,6 +54,7 @@ function reset() {
 }
 
 function parse(content, cfg) {
+  const inlineWarnings = [];
   const lines = content.split('\n');
 
   // estados existentes
@@ -100,7 +101,17 @@ function parse(content, cfg) {
   for (const rawLine of lines) {
     const line = rawLine.trim();
     if (!line) continue;
-    const hasIndent = rawLine.length > 0 && (rawLine[0] === ' ' || rawLine[0] === '\t');
+    let hasIndent = rawLine.length > 0 && (rawLine[0] === ' ' || rawLine[0] === '\t');
+
+    // YAML aceita o bloco de lista na mesma coluna da chave:
+    //
+    //   agents:
+    //   - claude
+    //
+    // Sem isto o '- claude' seria tratado como top-level, dispararia o flush
+    // abaixo e o item sumiria em silencio. Ver
+    // REQ-2026-08-16-config-listas-nao-silenciosas.
+    if (line.startsWith('- ')) hasIndent = true;
 
     if (!hasIndent) {
       flushBlocks();
@@ -165,11 +176,15 @@ function parse(content, cfg) {
     if (!key) continue;
 
     switch (key) {
-      case 'adr_dirs':              inAdrDirs = true; adrDirs = []; break;
+      case 'adr_dirs':
+        if (val) inlineWarnings.push(inlineListWarning('adr_dirs', val));
+        inAdrDirs = true; adrDirs = []; break;
       case 'req_dir':               cfg.reqDir = val.replace(/^["']|["']$/g, ''); break;
       case 'roadmap_dir':           cfg.roadmapDir = val.replace(/^["']|["']$/g, ''); break;
       case 'roadmap_namespacing':   cfg.roadmapNamespacing = val; break;
-      case 'agents':                inAgents = true; agents = []; break;
+      case 'agents':
+        if (val) inlineWarnings.push(inlineListWarning('agents', val));
+        inAgents = true; agents = []; break;
       case 'governance_mode':       cfg.governanceMode = val; break;
       case 'lenient_until':         cfg.lenientUntil = val; break;
       case 'wip_limit':             { const n = parseInt(val, 10); if (n > 0) cfg.wipLimit = n; break; }
@@ -177,16 +192,38 @@ function parse(content, cfg) {
       case 'require_req_in_commit': cfg.requireReqInCommit = val === 'true'; break;
       case 'trace_id_field':        cfg.traceIdField = val.replace(/^["']|["']$/g, ''); break;
       case 'link_fields':           inLinkFields = true; break;
-      case 'acceptance_markers':    inAcceptanceMarkers = true; acceptanceMarkers = []; break;
+      case 'acceptance_markers':
+        if (val) inlineWarnings.push(inlineListWarning('acceptance_markers', val));
+        inAcceptanceMarkers = true; acceptanceMarkers = []; break;
       case 'rules':                 inRules = true; rules = {}; break;
     }
   }
 
   // flush final (EOF)
   flushBlocks();
+
+  return inlineWarnings;
 }
 
 const NAMESPACING_FLAT = 'flat';
 const NAMESPACING_BY_AGENT = 'by_agent';
 
 module.exports = { load, reset, defaults, NAMESPACING_FLAT, NAMESPACING_BY_AGENT };
+
+/**
+ * inlineListWarning — monta o aviso para uma lista escrita na forma inline.
+ *
+ * O parser do trackfw entende lista só na forma de bloco. A forma inline é YAML
+ * válido, mas cai fora do que ele cobre — e antes disto era descartada em
+ * silêncio, deixando a chave vazia sem nenhum sinal ao usuário. O exemplo de
+ * `agents:` no próprio README usava essa forma.
+ *
+ * Ver REQ-2026-08-16-config-listas-nao-silenciosas.
+ */
+function inlineListWarning(key, val) {
+  return 'aviso: trackfw.yaml — `' + key + ': ' + val + '` usa lista inline, que o trackfw não lê. ' +
+    'A chave ficou vazia. Escreva em bloco:\n' +
+    '       ' + key + ':\n' +
+    '         - primeiro\n' +
+    '         - segundo'
+}

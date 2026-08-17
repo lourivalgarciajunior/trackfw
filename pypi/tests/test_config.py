@@ -277,6 +277,45 @@ class TestConfigPaths(unittest.TestCase):
         )
         self.assertEqual(cfg["agents"], ["claude", "apolo", "artemis"])
 
+    def test_bloco_de_lista_sem_indentacao(self):
+        """YAML aceita o bloco na mesma coluna da chave. Go e npm descartavam
+        esses itens em silencio; o caso mais caro era adr_dirs, cujo diretorio
+        declarado nunca era varrido.
+        Ver REQ-2026-08-16-config-listas-nao-silenciosas.
+        """
+        self._write_yaml(
+            "agents:\n"
+            "- claude\n"
+            "- apolo\n"
+            "adr_dirs:\n"
+            "- docs/adr\n"
+            "- docs/decisions\n"
+        )
+        cfg = config.load(cwd=self.tmpdir)
+        self.assertEqual(cfg["agents"], ["claude", "apolo"])
+        self.assertEqual(cfg["adr_dirs"], ["docs/adr", "docs/decisions"])
+
+    def test_lista_inline_avisa_e_nao_popula(self):
+        cfg = config.defaults()
+        avisos = config._parse(
+            "agents: [claude, gemini]\nadr_dirs: [docs/adr, docs/decisions]\n", cfg
+        )
+        self.assertEqual(len(avisos), 2, avisos)
+        juntos = "\n".join(avisos)
+        for esperado in ("agents", "adr_dirs", "lista inline", "Escreva em bloco"):
+            self.assertIn(esperado, juntos)
+        # O aviso nao e um parser disfarcado: a chave continua vazia.
+        self.assertEqual(cfg["agents"], [])
+
+    def test_bloco_nao_avisa(self):
+        for nome, yaml in (
+            ("indentado", "agents:\n  - claude\nadr_dirs:\n  - docs/adr\n"),
+            ("nao indentado", "agents:\n- claude\nadr_dirs:\n- docs/adr\n"),
+        ):
+            with self.subTest(nome):
+                cfg = config.defaults()
+                self.assertEqual(config._parse(yaml, cfg), [])
+
 
 if __name__ == "__main__":
     unittest.main()

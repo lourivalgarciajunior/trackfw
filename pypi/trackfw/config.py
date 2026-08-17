@@ -4,6 +4,7 @@ Parse linha a linha, sem dependências externas de YAML.
 """
 
 import os
+import sys
 
 NAMESPACING_FLAT = "flat"
 NAMESPACING_BY_AGENT = "by_agent"
@@ -64,7 +65,8 @@ def load(cwd=None):
     with open(yaml_path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    _parse(content, _instance)
+    for w in _parse(content, _instance):
+        print(w, file=sys.stderr)
     return _instance
 
 
@@ -75,6 +77,7 @@ def reset():
 
 
 def _parse(content, cfg):
+    inline_warnings = []
     """Parse linha a linha do conteúdo YAML, espelhando a lógica do config/index.js.
     Suporta blocos aninhados de 1 nível: link_fields, acceptance_markers, rules.
 
@@ -223,6 +226,8 @@ def _parse(content, cfg):
             continue
 
         if key == "adr_dirs":
+            if val:
+                inline_warnings.append(_inline_list_warning("adr_dirs", val))
             in_adr_dirs = True
             adr_dirs.clear()
         elif key == "req_dir":
@@ -232,6 +237,8 @@ def _parse(content, cfg):
         elif key == "roadmap_namespacing":
             cfg["roadmap_namespacing"] = val.strip("\"'")
         elif key == "agents":
+            if val:
+                inline_warnings.append(_inline_list_warning("agents", val))
             in_agents = True
             agents.clear()
         elif key == "governance_mode":
@@ -254,6 +261,8 @@ def _parse(content, cfg):
         elif key == "link_fields":
             in_link_fields = True
         elif key == "acceptance_markers":
+            if val:
+                inline_warnings.append(_inline_list_warning("acceptance_markers", val))
             in_acceptance_markers = True
             acceptance_markers.clear()
         elif key == "rules":
@@ -262,3 +271,24 @@ def _parse(content, cfg):
 
     # flush final (EOF)
     flush_blocks()
+
+    return inline_warnings
+
+
+def _inline_list_warning(key: str, val: str) -> str:
+    """Monta o aviso para uma lista escrita na forma inline.
+
+    O parser do trackfw entende lista só na forma de bloco. A forma inline é YAML
+    válido, mas cai fora do que ele cobre — e antes disto era descartada em
+    silêncio, deixando a chave vazia sem nenhum sinal ao usuário. O exemplo de
+    `agents:` no próprio README usava essa forma.
+
+    Ver REQ-2026-08-16-config-listas-nao-silenciosas.
+    """
+    return (
+        f"aviso: trackfw.yaml — `{key}: {val}` usa lista inline, que o trackfw não lê. "
+        "A chave ficou vazia. Escreva em bloco:\n"
+        f"       {key}:\n"
+        "         - primeiro\n"
+        "         - segundo"
+    )

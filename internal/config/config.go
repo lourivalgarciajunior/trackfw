@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -50,7 +51,9 @@ func Load() ProjectConfig {
 		if err != nil {
 			return
 		}
-		parse(string(data), &instance)
+		for _, w := range parse(string(data), &instance) {
+			fmt.Fprintln(os.Stderr, w)
+		}
 	})
 	return instance
 }
@@ -89,7 +92,8 @@ func defaults() ProjectConfig {
 // parse reads a YAML file line by line without external dependencies.
 // Supports flat keys and one level of nested blocks (link_fields, acceptance_markers, rules).
 // Only handles the fields that trackfw uses; ignores unknown keys.
-func parse(content string, cfg *ProjectConfig) {
+func parse(content string, cfg *ProjectConfig) []string {
+	var inlineWarnings []string
 	lines := strings.Split(content, "\n")
 
 	// existing list states
@@ -117,6 +121,18 @@ func parse(content string, cfg *ProjectConfig) {
 			continue
 		}
 		hasIndent := len(rawLine) > 0 && (rawLine[0] == ' ' || rawLine[0] == '\t')
+
+		// YAML aceita o bloco de lista na mesma coluna da chave:
+		//
+		//   agents:
+		//   - claude
+		//
+		// Sem esta linha, o "- claude" seria tratado como top-level, dispararia o
+		// flush abaixo e o item sumiria em silêncio. O Python já tratava assim; Go
+		// e npm não. Ver REQ-2026-08-16-config-listas-nao-silenciosas.
+		if strings.HasPrefix(trimmed, "- ") {
+			hasIndent = true
+		}
 
 		// Sair de todos os blocos aninhados ao encontrar linha top-level
 		if !hasIndent {
@@ -251,6 +267,9 @@ func parse(content string, cfg *ProjectConfig) {
 
 		switch key {
 		case "adr_dirs":
+			if val != "" {
+				inlineWarnings = append(inlineWarnings, inlineListWarning("adr_dirs", val))
+			}
 			inADRDirs = true
 			adrDirs = nil
 		case "req_dir":
@@ -260,6 +279,9 @@ func parse(content string, cfg *ProjectConfig) {
 		case "roadmap_namespacing":
 			cfg.RoadmapNamespacing = val
 		case "agents":
+			if val != "" {
+				inlineWarnings = append(inlineWarnings, inlineListWarning("agents", val))
+			}
 			inAgents = true
 			agents = nil
 		case "governance_mode":
@@ -275,6 +297,9 @@ func parse(content string, cfg *ProjectConfig) {
 		case "link_fields":
 			inLinkFields = true
 		case "acceptance_markers":
+			if val != "" {
+				inlineWarnings = append(inlineWarnings, inlineListWarning("acceptance_markers", val))
+			}
 			inAcceptanceMarkers = true
 		case "rules":
 			inRules = true
@@ -310,6 +335,8 @@ func parse(content string, cfg *ProjectConfig) {
 			cfg.Rules[k] = v
 		}
 	}
+
+	return inlineWarnings
 }
 
 func splitKV(line string) (key, val string, ok bool) {
@@ -335,4 +362,20 @@ func parseInt(s string, def int) int {
 		return def
 	}
 	return n
+}
+
+// inlineListWarning monta o aviso para uma lista escrita na forma inline.
+//
+// O parser do trackfw entende lista só na forma de bloco. A forma inline é YAML
+// válido, mas cai fora do que ele cobre — e antes disto era descartada em
+// silêncio, deixando a chave vazia sem nenhum sinal ao usuário. O exemplo de
+// `agents:` no próprio README usava essa forma.
+//
+// Ver REQ-2026-08-16-config-listas-nao-silenciosas.
+func inlineListWarning(key, val string) string {
+	return "aviso: trackfw.yaml — `" + key + ": " + val + "` usa lista inline, que o trackfw não lê. " +
+		"A chave ficou vazia. Escreva em bloco:\n" +
+		"       " + key + ":\n" +
+		"         - primeiro\n" +
+		"         - segundo"
 }

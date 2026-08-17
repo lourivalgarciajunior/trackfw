@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -286,5 +287,96 @@ agents:
 		if cfg.Agents[i] != want {
 			t.Errorf("Agents[%d]: want %q, got %q", i, want, cfg.Agents[i])
 		}
+	}
+}
+
+// TestLoad_BlocoDeListaSemIndentacao — YAML aceita o bloco na mesma coluna da
+// chave, e antes disto Go e npm descartavam esses itens em silêncio. O caso mais
+// caro era adr_dirs: o diretório declarado nunca era varrido e as ADRs nele
+// ficavam invisíveis ao validate.
+// Ver REQ-2026-08-16-config-listas-nao-silenciosas.
+func TestLoad_BlocoDeListaSemIndentacao(t *testing.T) {
+	Reset()
+	tmp := t.TempDir()
+	orig, _ := os.Getwd()
+	defer func() { _ = os.Chdir(orig) }()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatal(err)
+	}
+
+	yaml := `roadmap_namespacing: by_agent
+agents:
+- claude
+- apolo
+adr_dirs:
+- docs/adr
+- docs/decisions
+`
+	if err := os.WriteFile(filepath.Join(tmp, "trackfw.yaml"), []byte(yaml), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := Load()
+
+	wantAgents := []string{"claude", "apolo"}
+	if len(cfg.Agents) != len(wantAgents) {
+		t.Fatalf("Agents: want %v, got %v", wantAgents, cfg.Agents)
+	}
+	for i, w := range wantAgents {
+		if cfg.Agents[i] != w {
+			t.Errorf("Agents[%d]: want %q, got %q", i, w, cfg.Agents[i])
+		}
+	}
+
+	wantDirs := []string{"docs/adr", "docs/decisions"}
+	if len(cfg.ADRDirs) != len(wantDirs) {
+		t.Fatalf("ADRDirs: want %v, got %v", wantDirs, cfg.ADRDirs)
+	}
+	for i, w := range wantDirs {
+		if cfg.ADRDirs[i] != w {
+			t.Errorf("ADRDirs[%d]: want %q, got %q", i, w, cfg.ADRDirs[i])
+		}
+	}
+}
+
+// TestParse_ListaInlineAvisa — a forma inline é YAML válido mas não é coberta
+// pelo parser. Antes ficava vazia sem nenhum sinal; era exatamente o que o
+// README documentava em `agents: [claude, gemini, copilot]`.
+func TestParse_ListaInlineAvisa(t *testing.T) {
+	cfg := defaults()
+	warnings := parse("agents: [claude, gemini]\nadr_dirs: [docs/adr, docs/decisions]\n", &cfg)
+
+	if len(warnings) != 2 {
+		t.Fatalf("esperado 2 avisos, obtido %d: %v", len(warnings), warnings)
+	}
+
+	joined := strings.Join(warnings, "\n")
+	for _, want := range []string{"agents", "adr_dirs", "lista inline", "Escreva em bloco"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("aviso não menciona %q:\n%s", want, joined)
+		}
+	}
+
+	// O valor continua não sendo parseado — o aviso não é um parser disfarçado.
+	if len(cfg.Agents) != 0 {
+		t.Errorf("Agents deveria continuar vazio, got %v", cfg.Agents)
+	}
+}
+
+// TestParse_BlocoNaoAvisa — config bem formada não pode gerar ruído.
+func TestParse_BlocoNaoAvisa(t *testing.T) {
+	for _, tc := range []struct {
+		nome string
+		yaml string
+	}{
+		{"indentado", "agents:\n  - claude\nadr_dirs:\n  - docs/adr\n"},
+		{"nao indentado", "agents:\n- claude\nadr_dirs:\n- docs/adr\n"},
+	} {
+		t.Run(tc.nome, func(t *testing.T) {
+			cfg := defaults()
+			if w := parse(tc.yaml, &cfg); len(w) != 0 {
+				t.Errorf("esperado nenhum aviso, obtido %v", w)
+			}
+		})
 	}
 }
