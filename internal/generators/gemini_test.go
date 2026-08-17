@@ -20,9 +20,7 @@ var expectedGeminiCommands = []string{
 
 func TestInstallGemini_CriaArquivos(t *testing.T) {
 	home := t.TempDir()
-	origHome := os.Getenv("HOME")
-	_ = os.Setenv("HOME", home)
-	t.Cleanup(func() { _ = os.Setenv("HOME", origHome) })
+	useTempHome(t, home)
 
 	dir := t.TempDir()
 	origDir, _ := os.Getwd()
@@ -72,9 +70,7 @@ func TestInstallGemini_CriaArquivos(t *testing.T) {
 
 func TestInstallGemini_Idempotente(t *testing.T) {
 	home := t.TempDir()
-	origHome := os.Getenv("HOME")
-	_ = os.Setenv("HOME", home)
-	t.Cleanup(func() { _ = os.Setenv("HOME", origHome) })
+	useTempHome(t, home)
 
 	dir := t.TempDir()
 	origDir, _ := os.Getwd()
@@ -106,9 +102,7 @@ func TestInstallGemini_Idempotente(t *testing.T) {
 
 func TestInstallGemini_SkillsTemFrontmatter(t *testing.T) {
 	home := t.TempDir()
-	origHome := os.Getenv("HOME")
-	_ = os.Setenv("HOME", home)
-	t.Cleanup(func() { _ = os.Setenv("HOME", origHome) })
+	useTempHome(t, home)
 
 	dir := t.TempDir()
 	origDir, _ := os.Getwd()

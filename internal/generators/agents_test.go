@@ -15,9 +15,7 @@ var expectedAgents = []string{
 
 func TestInstallAgents_CriaArquivosEmHome(t *testing.T) {
 	home := t.TempDir()
-	origHome := os.Getenv("HOME")
-	_ = os.Setenv("HOME", home)
-	t.Cleanup(func() { _ = os.Setenv("HOME", origHome) })
+	useTempHome(t, home)
 
 	if err := InstallAgents(); err != nil {
 		t.Fatalf("InstallAgents() erro: %v", err)
@@ -38,9 +36,7 @@ func TestInstallAgents_CriaArquivosEmHome(t *testing.T) {
 
 func TestInstallAgents_Idempotente(t *testing.T) {
 	home := t.TempDir()
-	origHome := os.Getenv("HOME")
-	_ = os.Setenv("HOME", home)
-	t.Cleanup(func() { _ = os.Setenv("HOME", origHome) })
+	useTempHome(t, home)
 
 	if err := InstallAgents(); err != nil {
 		t.Fatalf("primeiro InstallAgents() erro: %v", err)
@@ -67,9 +63,7 @@ func TestInstallAgents_Idempotente(t *testing.T) {
 
 func TestInstallAgents_ConteudoComFrontmatter(t *testing.T) {
 	home := t.TempDir()
-	origHome := os.Getenv("HOME")
-	_ = os.Setenv("HOME", home)
-	t.Cleanup(func() { _ = os.Setenv("HOME", origHome) })
+	useTempHome(t, home)
 
 	if err := InstallAgents(); err != nil {
 		t.Fatalf("InstallAgents() erro: %v", err)

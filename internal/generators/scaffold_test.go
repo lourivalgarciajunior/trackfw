@@ -12,13 +12,9 @@ func TestInstallSkills_CriaSlashCommandsESkillGlobal(t *testing.T) {
 	dir := t.TempDir()
 	home := t.TempDir()
 	orig, _ := os.Getwd()
-	origHome := os.Getenv("HOME")
 	_ = os.Chdir(dir)
-	_ = os.Setenv("HOME", home)
-	t.Cleanup(func() {
-		_ = os.Chdir(orig)
-		_ = os.Setenv("HOME", origHome)
-	})
+	t.Cleanup(func() { _ = os.Chdir(orig) })
+	useTempHome(t, home)
 
 	if err := InstallSkills(); err != nil {
 		t.Fatalf("InstallSkills() erro: %v", err)
