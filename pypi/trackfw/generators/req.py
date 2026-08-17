@@ -160,3 +160,87 @@ def _append_req_transition_log(basename: str, from_state: str, to_state: str, cf
             f.write(line)
     except OSError:
         pass
+
+
+def parse_req_status(path: str) -> str:
+    """Extrai o status de uma REQ.
+
+    O frontmatter e a fonte preferida. Na ausencia dele, cai para a linha humana
+    de cabecalho, parando no primeiro "## " — dai em diante e corpo.
+
+    As versoes Go e Node.js desta funcao varriam o arquivo inteiro atras de
+    "| Status: " e deixavam qualquer tabela do corpo sobrescrever o valor; foram
+    corrigidas em REQ-2026-08-17-resolvedor-req-unificado. Esta nasce ja correta.
+    """
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except OSError:
+        return "unknown"
+
+    lines = content.split("\n")
+
+    # 1) Frontmatter.
+    if lines and lines[0].rstrip("\r") == "---":
+        for line in lines[1:]:
+            line = line.rstrip("\r")
+            if line == "---":
+                break
+            idx = line.find(":")
+            if idx > 0 and line[:idx].strip() == "status":
+                val = line[idx + 1:].strip().strip("\"'")
+                if val:
+                    return val
+                break
+
+    # 2) Linha humana de cabecalho.
+    for raw in lines:
+        line = raw.rstrip("\r")
+        if line.startswith("## "):
+            break
+        if not line.startswith("> "):
+            continue
+        idx = line.find("| Status: ")
+        if idx < 0:
+            continue
+        rest = line[idx + len("| Status: "):]
+        pipe = rest.find(" |")
+        if pipe >= 0:
+            rest = rest[:pipe]
+        rest = rest.rstrip(" >|").strip()
+        if rest:
+            return rest
+
+    return "unknown"
+
+
+def list_reqs(cfg: dict) -> None:
+    """Lista todas as REQs, agrupadas por agente e estado em modo by_agent.
+
+    Usa o resolvedor unificado — mesmo alcance do validate e do move.
+    Ver REQ-2026-08-17-req-list-python.
+    """
+    entries = _reqs.all_reqs(cfg)
+
+    if not entries:
+        print(f'No REQs found in {cfg.get("req_dir")}')
+        return
+
+    last_group = ""
+    for e in entries:
+        agent, state = e["agent"], e["state"]
+        if agent and state:
+            group = f"{agent}/{state}"
+        elif agent:
+            group = agent
+        else:
+            group = ""
+
+        if group != last_group:
+            if group:
+                print(f"\n[{group}]")
+            last_group = group
+
+        filename = os.path.basename(e["path"])
+        status = parse_req_status(e["path"])
+        print(f"{filename:<60} {status}")
