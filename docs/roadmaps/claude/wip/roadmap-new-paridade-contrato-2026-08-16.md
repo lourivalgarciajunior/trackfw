@@ -27,10 +27,10 @@ Origem: item 11 da dívida, achado de passagem em
 
 ## Critérios de Aceite
 
-- [ ] `--title`, `--req` e `--from-req` presentes e equivalentes nos três
-- [ ] Sem REQ: cria com aviso e exit 0 nos três
-- [ ] Python grava a linha `REQ:` e mantém o título posicional
-- [ ] Testes por runtime; suítes e gates verdes
+- [x] `--title`, `--req` e `--from-req` presentes e equivalentes nos três
+- [x] Sem REQ: cria com aviso e exit 0 nos três
+- [x] Python grava a linha `REQ:` e mantém o título posicional
+- [x] Testes por runtime; suítes e gates verdes
 
 ---
 
@@ -72,7 +72,7 @@ Origem: item 11 da dívida, achado de passagem em
 **Comandos de validação:** `node npm/tests/roadmap_new.test.js`
 
 ### ML-3 — Python: ganha `--title`, `--req` e `--from-req`
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `pypi/trackfw/commands/roadmap.py`, `pypi/trackfw/generators/roadmap.py`,
 `pypi/tests/test_roadmap_new.py` (NOVO)
 **Ações:**
@@ -83,9 +83,11 @@ Origem: item 11 da dívida, achado de passagem em
 4. Mesmo aviso em stderr quando não há REQ.
 5. Teste equivalente.
 **Critérios de aceite:**
-- [ ] `--title`, `--req` e `--from-req` funcionam
-- [ ] Título posicional continua aceito
-- [ ] `REQ:` gravado quando há REQ
+- [x] `--title`, `-t`, `--req`, `-r` e `--from-req` funcionam
+- [x] Título posicional continua aceito — retrocompatibilidade preservada
+- [x] `REQ:` gravado quando há REQ; `--from-req` deriva os MLs dos critérios de aceite
+- [x] Sem título e sem REQ: erro claro e exit 1
+- [x] 5 testes por subprocesso, cobrindo o contrato e o exit code
 **Comandos de validação:** `cd pypi && python -m pytest tests/test_roadmap_new.py -q`
 
 ---
@@ -93,7 +95,7 @@ Origem: item 11 da dívida, achado de passagem em
 ## Wave 2 — Fechamento
 
 ### ML-4 — Paridade verificada de ponta a ponta
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** nenhum (verificação)
 **Ações:**
 1. Fixture única: rodar os três com `--title`, com `--req` e com `--from-req`, e comparar o
@@ -101,6 +103,21 @@ Origem: item 11 da dívida, achado de passagem em
 2. `go test ./...`, `pytest tests/`, testes npm.
 3. Os três gates de paridade.
 **Critérios de aceite:**
-- [ ] Mesmo exit code e mesmo conteúdo nos três, nos três modos
-- [ ] Suítes e gates verdes
+- [x] Fixture única nos três runtimes, quatro modos, resultado idêntico:
+
+```
+modo                   go     npm    py
+--title (exit)         0      0      0
+--req (exit)           0      0      0
+--req (link)           com-link com-link com-link
+--from-req (exit)      0      0      0
+--from-req (link)      com-link com-link com-link
+sem nada (exit)        1      1      1
+MLs derivados          2      2      2
+```
+
+- [x] `go test ./...` zero falhas, `go vet` limpo, `gofmt -l` zero
+- [x] npm: 3 + 7 + 13 testes verdes
+- [x] pypi: **288 passed** sob pytest
+- [x] Os três gates de paridade passam
 **Comandos de validação:** `go test ./... && bash scripts/check-cli-parity.sh`

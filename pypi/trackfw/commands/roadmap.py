@@ -9,6 +9,7 @@ import sys
 from trackfw import config as cfg_module
 from trackfw.generators.roadmap import (
     generate_roadmap,
+    generate_roadmap_from_req,
     move_roadmap,
     VALID_STATES,
 )
@@ -81,10 +82,53 @@ def _find_file(name: str, roadmap_dir: str, namespacing: str, agents=None) -> st
 
 def _cmd_new(args):
     cfg = cfg_module.load()
-    title = " ".join(args.title) if isinstance(args.title, list) else args.title
     agent = getattr(args, "agent", None)
+    from_req = getattr(args, "from_req", None)
+    req_path = getattr(args, "req", None)
+
+    if from_req:
+        try:
+            path = generate_roadmap_from_req(from_req, cfg, agent=agent)
+            print(f"Roadmap criado: {path}")
+        except Exception as e:
+            print(f"Erro ao criar roadmap: {e}", file=sys.stderr)
+            sys.exit(1)
+        return
+
+    # A flag vence o posicional quando os dois vêm.
+    pos = getattr(args, "title_pos", None) or []
+    title = getattr(args, "title_flag", None) or (" ".join(pos) if pos else "")
+
+    # Sem título e sem REQ não há de onde derivar um nome.
+    if not title and not req_path:
+        print("informe o título com --title, ou uma REQ com --req/--from-req", file=sys.stderr)
+        sys.exit(1)
+
+    # Sem --title mas com --req, o título vem do nome da REQ — mesmo que Go e Node.js fazem.
+    if not title and req_path:
+        title = os.path.basename(req_path)
+        if title.endswith(".md"):
+            title = title[:-3]
+        if title.startswith("REQ-"):
+            title = title[4:]
+
+    # Roadmap em backlog/ sem REQ é estado legítimo — quem cobra o link é o
+    # validate, quando o roadmap chega em wip/. Mas o usuário precisa saber.
+    # Ver REQ-2026-08-16-roadmap-new-paridade-contrato.
+    if not req_path:
+        print(
+            f"aviso: nenhuma REQ linkada (req_dir: {cfg['req_dir']}) — "
+            "o roadmap será criado sem link de REQ.",
+            file=sys.stderr,
+        )
+        print(
+            "       isso vira violação de wip_has_req ao mover para wip/. "
+            "Use --req ou --from-req para linkar.",
+            file=sys.stderr,
+        )
+
     try:
-        path = generate_roadmap(title, cfg, agent=agent)
+        path = generate_roadmap(title, cfg, agent=agent, req_path=req_path)
         print(f"Roadmap criado: {path}")
     except Exception as e:
         print(f"Erro ao criar roadmap: {e}", file=sys.stderr)
@@ -169,9 +213,20 @@ def register(subparsers):
     )
     sub = roadmap_parser.add_subparsers(dest="roadmap_cmd", metavar="SUBCOMMAND")
 
-    # roadmap new <title> [--agent AGENT]
+    # roadmap new [<title>] [-t TITLE] [-r REQ] [--from-req REQ] [--agent AGENT]
+    #
+    # O posicional continua aceito por retrocompatibilidade — era a única forma
+    # antes de REQ-2026-08-16-roadmap-new-paridade-contrato. As flags -t/-r e
+    # --from-req existem para casar com Go e Node.js.
     new_p = sub.add_parser("new", help="Cria um novo roadmap em backlog/")
-    new_p.add_argument("title", nargs="+", help="Titulo do roadmap")
+    new_p.add_argument("title_pos", nargs="*", metavar="TITLE",
+                       help="Titulo do roadmap (forma posicional)")
+    new_p.add_argument("-t", "--title", dest="title_flag", default=None,
+                       help="Titulo do roadmap")
+    new_p.add_argument("-r", "--req", default=None,
+                       help="Caminho da REQ a linkar")
+    new_p.add_argument("--from-req", dest="from_req", default=None,
+                       help="Gera o roadmap com MLs a partir dos criterios de aceite da REQ")
     new_p.add_argument("--agent", default=None, help="Agente responsavel (modo by_agent)")
     new_p.set_defaults(func=_cmd_new)
 

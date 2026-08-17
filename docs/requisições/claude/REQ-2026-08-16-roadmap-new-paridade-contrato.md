@@ -76,10 +76,10 @@ Registrado como divergência conhecida, fora do escopo.
 
 ## Critérios de Aceite
 
-- [ ] `roadmap new --title X` cria o roadmap nos três runtimes, sem REQ, com aviso em stderr e exit 0
-- [ ] `roadmap new --title X --req <path>` grava a linha `REQ:` nos três
-- [ ] `roadmap new --from-req <path>` funciona nos três
-- [ ] Python continua aceitando o título posicional
-- [ ] Teste por runtime cobrindo: com `--req`, sem REQ, e `--from-req`
-- [ ] `go test ./...` zero falhas; `pytest tests/` zero falhas; testes npm verdes
-- [ ] Os três gates de paridade passam
+- [x] `roadmap new --title X` cria o roadmap nos três runtimes, sem REQ, com aviso em stderr e exit 0
+- [x] `roadmap new --title X --req <path>` grava a linha `REQ:` nos três
+- [x] `roadmap new --from-req <path>` funciona nos três
+- [x] Python continua aceitando o título posicional
+- [x] Teste por runtime cobrindo: com `--req`, sem REQ, e `--from-req`
+- [x] `go test ./...` zero falhas; `pytest tests/` zero falhas; testes npm verdes
+- [x] Os três gates de paridade passam
