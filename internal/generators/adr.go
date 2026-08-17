@@ -1,7 +1,6 @@
 package generators
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -110,28 +109,58 @@ func ListADRs(dir string) error {
 
 // parseADRMeta extrai título e status de um arquivo ADR markdown.
 func parseADRMeta(path string) (title, status string) {
-	f, err := os.Open(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", "unknown"
 	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
+	content := string(data)
 	status = "unknown"
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.HasPrefix(line, "# ADR: ") {
-			title = strings.TrimPrefix(line, "# ADR: ")
-		}
-		if strings.Contains(line, "| Status: ") {
-			idx := strings.Index(line, "| Status: ")
-			if idx >= 0 {
-				rest := line[idx+len("| Status: "):]
-				rest = strings.TrimRight(rest, " >|")
-				status = strings.TrimSpace(rest)
+
+	lines := strings.Split(content, "\n")
+
+	// 1) Frontmatter e a fonte canonica — e o campo que o `adr new` grava e que o
+	// validator usa. Antes desta reescrita a funcao varria o arquivo inteiro atras
+	// de "| Status: " e a ULTIMA ocorrencia vencia, enquanto o Node.js pegava a
+	// PRIMEIRA: os dois runtimes davam respostas diferentes para a mesma ADR.
+	// Ver REQ-2026-08-17-adr-list-python.
+	if strings.HasPrefix(content, "---\n") || strings.HasPrefix(content, "---\r\n") {
+		for idx := 1; idx < len(lines); idx++ {
+			line := strings.TrimRight(lines[idx], "\r")
+			if line == "---" {
+				break
+			}
+			if k, v, ok := strings.Cut(line, ":"); ok && strings.TrimSpace(k) == "status" {
+				if v = strings.TrimSpace(strings.Trim(strings.TrimSpace(v), `"'`)); v != "" {
+					status = v
+				}
+				break
 			}
 		}
 	}
+
+	// 2) Titulo e, se o frontmatter nao disse nada, a linha humana de cabecalho.
+	// A busca para no primeiro "## " — dai em diante e corpo.
+	for _, raw := range lines {
+		line := strings.TrimRight(raw, "\r")
+		if strings.HasPrefix(line, "## ") {
+			break
+		}
+		if strings.HasPrefix(line, "# ADR: ") {
+			title = strings.TrimPrefix(line, "# ADR: ")
+		}
+		if status == "unknown" && strings.HasPrefix(line, "> ") {
+			if idx := strings.Index(line, "| Status: "); idx >= 0 {
+				rest := line[idx+len("| Status: "):]
+				if pipeIdx := strings.Index(rest, " |"); pipeIdx >= 0 {
+					rest = rest[:pipeIdx]
+				}
+				if rest = strings.TrimSpace(strings.TrimRight(rest, " >|")); rest != "" {
+					status = rest
+				}
+			}
+		}
+	}
+
 	return title, status
 }
 

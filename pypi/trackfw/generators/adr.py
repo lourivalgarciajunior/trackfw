@@ -113,3 +113,83 @@ created: {today}
         f.write(body)
 
     return filepath
+
+
+def parse_adr_status(path: str) -> str:
+    """Extrai o status de uma ADR.
+
+    O frontmatter e a fonte canonica — e o campo que o `adr new` grava e que o
+    validator usa. Na ausencia dele, cai para a linha humana de cabecalho,
+    parando no primeiro "## ".
+
+    As versoes Go e Node.js discordavam entre si antes de
+    REQ-2026-08-17-adr-list-python: o Go pegava a ultima ocorrencia de
+    "| Status: " em qualquer lugar do arquivo, o npm pegava a primeira, e nenhum
+    lia o frontmatter. Esta nasce ja com o contrato alinhado.
+    """
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except OSError:
+        return "unknown"
+
+    lines = content.split("\n")
+
+    # 1) Frontmatter.
+    if lines and lines[0].rstrip("\r") == "---":
+        for line in lines[1:]:
+            line = line.rstrip("\r")
+            if line == "---":
+                break
+            idx = line.find(":")
+            if idx > 0 and line[:idx].strip() == "status":
+                val = line[idx + 1:].strip().strip("\"'")
+                if val:
+                    return val
+                break
+
+    # 2) Linha humana de cabecalho.
+    for raw in lines:
+        line = raw.rstrip("\r")
+        if line.startswith("## "):
+            break
+        if not line.startswith("> "):
+            continue
+        idx = line.find("| Status: ")
+        if idx < 0:
+            continue
+        rest = line[idx + len("| Status: "):]
+        pipe = rest.find(" |")
+        if pipe >= 0:
+            rest = rest[:pipe]
+        rest = rest.rstrip(" >|").strip()
+        if rest:
+            return rest
+
+    return "unknown"
+
+
+def list_adrs(adr_dir: str) -> None:
+    """Lista as ADRs de adr_dir, com nome e status.
+
+    Glob plano no diretorio recebido, igual ao Go e ao Node.js — os tres
+    consomem apenas o PRIMEIRO adr_dirs, sem recursao, enquanto o validator
+    percorre todos recursivamente. Limitacao herdada de proposito e registrada em
+    REQ-2026-08-17-adr-list-python; unificar o resolvedor de ADR e trabalho
+    proprio.
+    """
+    try:
+        names = sorted(
+            n for n in os.listdir(adr_dir)
+            if n.endswith(".md") and os.path.isfile(os.path.join(adr_dir, n))
+        )
+    except OSError:
+        names = []
+
+    if not names:
+        print(f"No ADRs found in {adr_dir}")
+        return
+
+    for name in names:
+        status = parse_adr_status(os.path.join(adr_dir, name))
+        print(f"{name:<60} {status}")

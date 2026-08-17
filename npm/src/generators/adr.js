@@ -112,20 +112,47 @@ async function listADRs(dir) {
  * @returns {string}
  */
 function parseADRStatus(filepath) {
+  let content
   try {
-    const content = fs.readFileSync(filepath, 'utf8')
-    const lines = content.split('\n')
-    for (const line of lines) {
-      const idx = line.indexOf('| Status: ')
-      if (idx >= 0) {
-        let rest = line.slice(idx + '| Status: '.length)
-        rest = rest.replace(/[ >|]+$/, '').trim()
-        return rest
+    content = fs.readFileSync(filepath, 'utf8')
+  } catch (_) {
+    return 'unknown'
+  }
+
+  const lines = content.split(String.fromCharCode(10))
+
+  // 1) Frontmatter e a fonte canonica — e o campo que o `adr new` grava e que o
+  // validator usa. Antes desta reescrita esta funcao pegava a PRIMEIRA ocorrencia
+  // de "| Status: " em qualquer lugar do arquivo, enquanto o Go pegava a ULTIMA:
+  // os dois runtimes davam respostas diferentes para a mesma ADR.
+  // Ver REQ-2026-08-17-adr-list-python.
+  if (lines[0] !== undefined && lines[0].replace(/\r+$/, '') === '---') {
+    for (let k = 1; k < lines.length; k++) {
+      const line = lines[k].replace(/\r+$/, '')
+      if (line === '---') break
+      const colon = line.indexOf(':')
+      if (colon > 0 && line.slice(0, colon).trim() === 'status') {
+        const v = line.slice(colon + 1).trim().replace(/^["']|["']$/g, '')
+        if (v) return v
+        break
       }
     }
-  } catch (_) {
-    // ignorar erros de leitura
   }
+
+  // 2) Linha humana de cabecalho. A busca para no primeiro "## ".
+  for (const raw of lines) {
+    const line = raw.replace(/\r+$/, '')
+    if (line.startsWith('## ')) break
+    if (!line.startsWith('> ')) continue
+    const idx = line.indexOf('| Status: ')
+    if (idx < 0) continue
+    let rest = line.slice(idx + '| Status: '.length)
+    const pipeIdx = rest.indexOf(' |')
+    if (pipeIdx >= 0) rest = rest.slice(0, pipeIdx)
+    rest = rest.replace(/[ >|]+$/, '').trim()
+    if (rest) return rest
+  }
+
   return 'unknown'
 }
 

@@ -74,11 +74,11 @@ ADRs são planas.
 
 ## Critérios de Aceite
 
-- [ ] `python -m trackfw adr list` existe e aparece em `adr --help`
-- [ ] Saída byte a byte idêntica à do Go e à do npm neste repositório
-- [ ] Os três dão a mesma resposta para uma ADR com `| Status: ` no corpo
-- [ ] Status vem do frontmatter quando existe; cai para o cabeçalho quando não
-- [ ] Diretório sem ADR produz a mesma mensagem nos três
-- [ ] `adr:python:list:faltando` removida do allowlist e o gate passa
-- [ ] Teste por runtime cobrindo a fonte do status e o caso do corpo
-- [ ] Quatro gates passam; suítes dos três sem falha nova
+- [x] `python -m trackfw adr list` existe e aparece em `adr --help`
+- [x] Saída byte a byte idêntica à do Go e à do npm neste repositório
+- [x] Os três dão a mesma resposta para uma ADR com `| Status: ` no corpo
+- [x] Status vem do frontmatter quando existe; cai para o cabeçalho quando não
+- [x] Diretório sem ADR produz a mesma mensagem nos três
+- [x] `adr:python:list:faltando` removida do allowlist e o gate passa
+- [x] Teste por runtime cobrindo a fonte do status e o caso do corpo
+- [x] Quatro gates passam; suítes dos três sem falha nova

@@ -24,17 +24,17 @@ Portar sem resolver isso acrescentaria uma terceira resposta.
 
 ## Critérios de Aceite
 
-- [ ] `adr list` no Python, saída byte a byte igual à dos outros dois
-- [ ] Os três concordam para uma ADR com `| Status: ` no corpo
-- [ ] Declaração removida do allowlist do gate, e o gate passa
-- [ ] Suítes e quatro gates verdes
+- [x] `adr list` no Python, saída byte a byte igual à dos outros dois
+- [x] Os três concordam para uma ADR com `| Status: ` no corpo
+- [x] Declaração removida do allowlist do gate, e o gate passa
+- [x] Suítes e quatro gates verdes
 
 ---
 
 ## Wave 1 — Alinhar o contrato
 
 ### ML-1 — Parser de status nos três
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `internal/generators/adr.go`, `npm/src/generators/adr.js`,
 `pypi/trackfw/generators/adr.py`
 **Ações:**
@@ -43,12 +43,15 @@ Portar sem resolver isso acrescentaria uma terceira resposta.
 2. Go: reescrever `parseADRMeta`. Node.js: reescrever o equivalente. Python: nasce correto.
 3. Teste em cada runtime com o caso da tabela no corpo — é o que distingue os três hoje.
 **Critérios de aceite:**
-- [ ] Os três devolvem o mesmo status para a mesma ADR com tabela no corpo
-- [ ] Frontmatter vence o cabeçalho quando os dois existem e divergem
+- [x] Os três devolvem `Accepted` para a ADR com tabela no corpo — antes o Go dizia `quebrado` e o
+      npm dizia `Accepted`
+- [x] Frontmatter vence o cabeçalho quando divergem
+- [x] 4 testes no Go e 5 no Python cobrindo frontmatter, cabeçalho, tabela no corpo e ausência
+- [x] `bufio` saiu do `adr.go` — a reescrita passou a ler o arquivo inteiro em vez de scanner
 **Comandos de validação:** `go test ./internal/generators/ -run ADR`
 
 ### ML-2 — `adr list` no Python
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `pypi/trackfw/generators/adr.py`, `pypi/trackfw/commands/adr.py`,
 `pypi/tests/test_adr_list.py` (NOVO)
 **Ações:**
@@ -57,22 +60,26 @@ Portar sem resolver isso acrescentaria uma terceira resposta.
 2. Registrar `adr list` no argparse e no dispatch.
 3. Teste: listagem, fonte do status, corpo que não decide, diretório vazio.
 **Critérios de aceite:**
-- [ ] `adr list` aparece no `adr --help` e funciona
-- [ ] Saída byte a byte igual à do Go e do npm
+- [x] `adr list` aparece no `adr --help` e funciona
+- [x] Saída **byte a byte** igual à do Go e do npm neste repositório
+- [x] Diretório sem ADR: `No ADRs found in docs/adr` nos três
+- [x] A linha de uso do dispatch também passou a citar `list`, não só `new`
 
 ---
 
 ## Wave 2 — Fechamento
 
 ### ML-3 — Gate e verificação
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `scripts/check-subcommand-parity.sh`
 **Ações:**
 1. Remover `adr:python:list:faltando` do allowlist.
 2. Conferir que o gate passa sem ela e que as outras quatro declarações continuam válidas.
 3. `diff` das três saídas; fixture com diretório vazio; suítes e os quatro gates.
 **Critérios de aceite:**
-- [ ] Allowlist com 4 entradas, todas ainda reais
-- [ ] `diff` vazio entre os três
-- [ ] Quatro gates passam; suítes sem falha nova
+- [x] `adr:python:list:faltando` removida; allowlist com 4 entradas, todas ainda reais — o gate
+      não emitiu aviso de declaração obsoleta
+- [x] `diff` vazio entre os três
+- [x] Os quatro gates passam
+- [x] Go zero falhas; npm 24 testes; pypi **315 passed**; `trackfw validate` rc=0
 **Comandos de validação:** `bash scripts/check-subcommand-parity.sh`
