@@ -26,12 +26,12 @@ O defeito se reproduziu duas vezes ao vivo durante aquele trabalho.
 
 ## Critérios de Aceite
 
-- [ ] Após `roadmap move X done`, o frontmatter de X declara `status: done` nos três runtimes
-- [ ] Roadmap sem frontmatter sai byte a byte idêntico
-- [ ] Frontmatter sem a chave `status:` não ganha a chave
-- [ ] Linha `status:` no corpo, fora do frontmatter, não é tocada
-- [ ] Teste novo nos três runtimes, cada um confirmado não-vacuoso
-- [ ] Gates de paridade passam
+- [x] Após `roadmap move X done`, o frontmatter de X declara `status: done` nos três runtimes
+- [x] Roadmap sem frontmatter sai byte a byte idêntico
+- [x] Frontmatter sem a chave `status:` não ganha a chave
+- [x] Linha `status:` no corpo, fora do frontmatter, não é tocada
+- [x] Teste novo nos três runtimes, cada um confirmado não-vacuoso
+- [x] Gates de paridade passam
 
 ---
 
@@ -102,7 +102,7 @@ pré-existente entre runtimes, no comando `new`, fora do escopo desta REQ. Merec
 ## Wave 2 — Fechamento
 
 ### ML-4 — Gates e verificação de ponta a ponta
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** nenhum (verificação)
 **Ações:**
 1. `go test ./...` — nenhuma falha nova além das 10 pré-existentes de ambiente Windows em
@@ -111,7 +111,10 @@ pré-existente entre runtimes, no comando `new`, fora do escopo desta REQ. Merec
 3. Ponta a ponta: mover um roadmap com cada runtime e conferir que `validate` não gera
    `folder_status` para ele.
 **Critérios de aceite:**
-- [ ] Nenhuma falha de teste nova
-- [ ] Gates passam
-- [ ] `validate` limpo de `folder_status` após move em cada runtime
+- [x] Nenhuma falha de teste nova: Go fecha com as mesmas 10 pré-existentes; pypi volta à
+      baseline exata de 6 errors + 1 failure
+- [x] Os três gates passam: `check-cli-parity.sh`, `check-validate-parity.sh`,
+      `check-static-assets.sh`
+- [x] Ponta a ponta nos três runtimes: após `roadmap move r.md done`, o frontmatter declara
+      `status: done` e `validate` acusa **zero** `folder_status`
 **Comandos de validação:** `go test ./... && bash scripts/check-cli-parity.sh && bash scripts/check-validate-parity.sh`

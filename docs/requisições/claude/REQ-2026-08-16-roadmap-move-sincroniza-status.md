@@ -72,11 +72,11 @@ arquivo sem frontmatter, que deve sair byte a byte idêntico.
 
 ## Critérios de Aceite
 
-- [ ] Após `roadmap move X done`, o frontmatter de X declara `status: done` nos três runtimes
-- [ ] Roadmap sem frontmatter não é modificado — conteúdo byte a byte idêntico após o move
-- [ ] Roadmap com frontmatter sem a chave `status:` não ganha a chave
-- [ ] Uma linha `status:` no corpo, fora do frontmatter, não é tocada
-- [ ] Teste novo nos três runtimes, cada um confirmado não-vacuoso
-- [ ] `go build ./...` verde; nenhuma falha de teste nova além das 10 pré-existentes de ambiente
-- [ ] `check-cli-parity.sh`, `check-validate-parity.sh` e `check-static-assets.sh` passam
-- [ ] Verificação de ponta a ponta: mover um roadmap e rodar `validate` não gera `folder_status`
+- [x] Após `roadmap move X done`, o frontmatter de X declara `status: done` nos três runtimes
+- [x] Roadmap sem frontmatter não é modificado — conteúdo byte a byte idêntico após o move
+- [x] Roadmap com frontmatter sem a chave `status:` não ganha a chave
+- [x] Uma linha `status:` no corpo, fora do frontmatter, não é tocada
+- [x] Teste novo nos três runtimes, cada um confirmado não-vacuoso
+- [x] `go build ./...` verde; nenhuma falha de teste nova além das 10 pré-existentes de ambiente
+- [x] `check-cli-parity.sh`, `check-validate-parity.sh` e `check-static-assets.sh` passam
+- [x] Verificação de ponta a ponta: mover um roadmap e rodar `validate` não gera `folder_status`
