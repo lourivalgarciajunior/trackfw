@@ -1,7 +1,7 @@
 ---
 name: gate-paridade-subcomando-2026-08-17
 title: "Gate de paridade de subcomando"
-status: wip
+status: done
 date: 2026-08-17
 req: REQ-2026-08-17-gate-paridade-subcomando
 branch: feat/gate-paridade-subcomando
@@ -9,7 +9,7 @@ branch: feat/gate-paridade-subcomando
 
 # Roadmap: gate de paridade de subcomando
 
-> Created: 2026-08-17 | Status: wip
+> Created: 2026-08-17 | Status: done
 
 REQ: `docs/requisições/claude/REQ-2026-08-17-gate-paridade-subcomando.md`
 
