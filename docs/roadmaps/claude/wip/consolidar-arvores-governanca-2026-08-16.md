@@ -30,7 +30,7 @@ Decisão de rota (usuário, 2026-08-16): **Opção 1 — pinar a config na reali
 > ML-2 depende do ML-1: sem o `trackfw.yaml` o CLI não valida os caminhos de destino.
 
 ### ML-1 — `trackfw.yaml` pinando a árvore B como canônica
-**Status:** ⬜ Pendente
+**Status:** 🔄 Em andamento
 **Arquivos afetados:** `trackfw.yaml` (NOVO)
 **Ações:**
 1. Criar `trackfw.yaml` na raiz com `adr_dirs: [docs/adr]`, `req_dir: docs/requisições`, `roadmap_dir: docs/roadmaps`, `roadmap_namespacing: by_agent`, `agents: [apolo, artemis, claude]`, `wip_limit: 1`, `governance_mode: strict`.
