@@ -1,7 +1,7 @@
 ---
 name: roadmap-new-paridade-contrato-2026-08-16
 title: "Contrato de roadmap new igual nos três runtimes"
-status: wip
+status: done
 date: 2026-08-16
 req: REQ-2026-08-16-roadmap-new-paridade-contrato
 branch: fix/roadmap-new-paridade-contrato
@@ -9,7 +9,7 @@ branch: fix/roadmap-new-paridade-contrato
 
 # Roadmap: contrato de roadmap new
 
-> Created: 2026-08-16 | Status: wip
+> Created: 2026-08-16 | Status: done
 
 REQ: `docs/requisições/claude/REQ-2026-08-16-roadmap-new-paridade-contrato.md`
 
