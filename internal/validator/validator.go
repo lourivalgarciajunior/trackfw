@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/kgsaran/trackfw/internal/config"
+	"github.com/kgsaran/trackfw/internal/reqs"
 )
 
 // BaselineFile representa o conteúdo de .trackfw-baseline.json
@@ -41,6 +42,16 @@ func LoadBaseline() (*BaselineFile, error) {
 
 // SaveBaseline salva violations e warnings atuais em .trackfw-baseline.json.
 func SaveBaseline(violations, warnings []string) error {
+	// Slice nil vira `null` no JSON, e o runtime Python estourava com
+	// set(None) ao ler um baseline gravado aqui. O arquivo é artefato
+	// compartilhado entre os três runtimes — grava sempre lista.
+	// Ver REQ-2026-08-17-resolvedor-req-unificado.
+	if violations == nil {
+		violations = []string{}
+	}
+	if warnings == nil {
+		warnings = []string{}
+	}
 	bf := BaselineFile{
 		Created:    time.Now().UTC().Format(time.RFC3339),
 		Violations: violations,
@@ -734,42 +745,13 @@ func resolveWIPDirs(cfg config.ProjectConfig) []string {
 
 // resolveREQFiles retorna paths completos de todos os .md em req_dir,
 // consciente de roadmap_namespacing: by_agent percorre req_dir/<agente>/<estado>/.
+// resolveREQFiles delega ao pacote reqs.
+//
+// Antes desta delegação varria apenas reqDir/<agente>/<estado>/*.md e ignorava
+// as REQs que moram direto em reqDir/<agente>/ — 31 das 36 deste repositório,
+// que nunca passaram pelo gate. Ver REQ-2026-08-17-resolvedor-req-unificado.
 func resolveREQFiles(cfg config.ProjectConfig) []string {
-	reqDir := cfg.REQDir
-	if reqDir == "" {
-		return nil
-	}
-	if cfg.RoadmapNamespacing == config.NamespacingByAgent {
-		stateDirs := []string{"backlog", "wip", "blocked", "done", "abandoned"}
-		agents := cfg.Agents
-		if len(agents) == 0 {
-			entries, err := os.ReadDir(reqDir)
-			if err == nil {
-				for _, e := range entries {
-					if e.IsDir() {
-						agents = append(agents, e.Name())
-					}
-				}
-			}
-		}
-		var files []string
-		for _, agent := range agents {
-			for _, state := range stateDirs {
-				pattern := filepath.Join(reqDir, agent, state, "*.md")
-				matches, err := filepath.Glob(pattern)
-				if err == nil {
-					files = append(files, matches...)
-				}
-			}
-		}
-		return files
-	}
-	// flat (comportamento anterior)
-	matches, err := filepath.Glob(filepath.Join(reqDir, "*.md"))
-	if err != nil {
-		return nil
-	}
-	return matches
+	return reqs.Files(cfg)
 }
 
 func validateWIPHasREQ() ([]string, error) {

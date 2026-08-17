@@ -78,10 +78,10 @@ seguinte.
 
 ## Critérios de Aceite
 
-- [ ] Um resolvedor por runtime; `resolveREQFiles`, `ListREQs` e `findREQ` delegam a ele
-- [ ] `req list` mostra as 36 REQs, agrupadas por agente e estado
-- [ ] `validate` passa a enxergar as 36
-- [ ] Violações reveladas medidas e registradas por regra
-- [ ] Teste por runtime cobrindo as três formas de organização
-- [ ] `go test ./...` sem falha nova; suítes npm e pypi sem falha nova
-- [ ] Os três gates de paridade passam
+- [x] Um resolvedor por runtime; `resolveREQFiles`, `ListREQs` e `findREQ` delegam a ele
+- [x] `req list` mostra as 36 REQs, agrupadas por agente e estado
+- [x] `validate` passa a enxergar as 36
+- [x] Violações reveladas medidas e registradas por regra
+- [x] Teste por runtime cobrindo as três formas de organização
+- [x] `go test ./...` sem falha nova; suítes npm e pypi sem falha nova
+- [x] Os três gates de paridade passam

@@ -1,6 +1,7 @@
 package generators
 
 import (
+	"github.com/kgsaran/trackfw/internal/config"
 	"os"
 	"path/filepath"
 	"strings"
@@ -137,9 +138,11 @@ func TestNewREQ_EmptyFields(t *testing.T) {
 func TestListREQs_Empty(t *testing.T) {
 	dir := t.TempDir()
 	chdirREQ(t, dir)
+	config.Reset()
+	t.Cleanup(config.Reset)
 
 	// docs/req/ não existe — ListREQs deve retornar nil sem erro
-	if err := ListREQs("docs/req"); err != nil {
+	if err := ListREQs(); err != nil {
 		t.Fatalf("ListREQs() com diretório ausente deveria retornar nil, obteve: %v", err)
 	}
 }
@@ -148,6 +151,8 @@ func TestListREQs_Empty(t *testing.T) {
 func TestListREQs_WithFiles(t *testing.T) {
 	dir := t.TempDir()
 	chdirREQ(t, dir)
+	config.Reset()
+	t.Cleanup(config.Reset)
 
 	if err := NewREQ(REQContent{Title: "Req Alpha", Motivation: "motivo A"}); err != nil {
 		t.Fatalf("NewREQ alpha: %v", err)
@@ -161,7 +166,7 @@ func TestListREQs_WithFiles(t *testing.T) {
 		t.Fatalf("esperado 2 REQs, obteve %d", len(matches))
 	}
 
-	if err := ListREQs("docs/req"); err != nil {
+	if err := ListREQs(); err != nil {
 		t.Fatalf("ListREQs() com 2 arquivos deveria retornar nil, obteve: %v", err)
 	}
 }
