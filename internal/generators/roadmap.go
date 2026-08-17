@@ -284,6 +284,15 @@ func MoveRoadmap(name, state string) error {
 		return fmt.Errorf("moving roadmap: %w", err)
 	}
 
+	// A pasta é o estado, mas a regra folder_status do validator lê o status: do
+	// frontmatter. Sem esta sincronização o próprio move produz a incoerência que
+	// o validate reclama. Ver REQ-2026-08-16-roadmap-move-sincroniza-status.
+	if content, err := os.ReadFile(dst); err == nil {
+		if updated := setFrontmatterStatus(string(content), state); updated != string(content) {
+			_ = os.WriteFile(dst, []byte(updated), 0644)
+		}
+	}
+
 	logBasename := filepath.Base(src)
 	if cfg.RoadmapNamespacing == config.NamespacingByAgent {
 		agent := filepath.Base(filepath.Dir(filepath.Dir(src)))
@@ -470,4 +479,55 @@ func ListRoadmaps() error {
 		fmt.Println("Nenhum roadmap encontrado. Crie um com 'trackfw roadmap new'.")
 	}
 	return nil
+}
+
+// setFrontmatterStatus devolve content com o campo status: do frontmatter valendo
+// state. Só mexe dentro do bloco delimitado pelos "---" do topo do arquivo, e só
+// se a chave status já existir ali.
+//
+// Devolve content intocado quando não há frontmatter ou quando o bloco não declara
+// status — mesmo contrato do validator, que ignora quem não declara. Isso protege
+// roadmaps sem frontmatter, cujo corpo pode conter uma linha começando com "status:".
+func setFrontmatterStatus(content, state string) string {
+	// O frontmatter precisa abrir na primeira linha do arquivo.
+	if !strings.HasPrefix(content, "---\n") && !strings.HasPrefix(content, "---\r\n") {
+		return content
+	}
+
+	lines := strings.Split(content, "\n")
+	if len(lines) < 2 {
+		return content
+	}
+
+	// Procura o "---" de fechamento; fora dele nada é reescrito.
+	end := -1
+	for i := 1; i < len(lines); i++ {
+		if strings.TrimRight(lines[i], "\r") == "---" {
+			end = i
+			break
+		}
+	}
+	if end < 0 {
+		return content
+	}
+
+	for i := 1; i < end; i++ {
+		line := lines[i]
+		trimmed := strings.TrimRight(line, "\r")
+		idx := strings.Index(trimmed, ":")
+		if idx < 0 {
+			continue
+		}
+		if strings.TrimSpace(trimmed[:idx]) != "status" {
+			continue
+		}
+		replacement := "status: " + state
+		if strings.HasSuffix(line, "\r") {
+			replacement += "\r"
+		}
+		lines[i] = replacement
+		return strings.Join(lines, "\n")
+	}
+
+	return content
 }

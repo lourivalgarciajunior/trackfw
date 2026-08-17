@@ -41,7 +41,7 @@ O defeito se reproduziu duas vezes ao vivo durante aquele trabalho.
 > sincroniza mas com dois defeitos.
 
 ### ML-1 — Go: helper de reescrita do frontmatter + uso no `MoveRoadmap`
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `internal/generators/roadmap.go`, `internal/generators/roadmap_move_test.go` (NOVO)
 **Ações:**
 1. Criar `setFrontmatterStatus(content, state string) string` em `roadmap.go`: localiza o bloco de
@@ -53,8 +53,10 @@ O defeito se reproduziu duas vezes ao vivo durante aquele trabalho.
 3. Teste novo em `roadmap_move_test.go` cobrindo: com frontmatter, sem frontmatter (byte a byte),
    frontmatter sem `status:`, e `status:` no corpo.
 **Critérios de aceite:**
-- [ ] `go build ./...` sem erros
-- [ ] `go test ./internal/generators/ -run Move` verde
+- [x] `go build ./...` sem erros, `gofmt` limpo
+- [x] `go test ./internal/generators/ -run TestMoveRoadmap` verde — 8 testes, incluindo os 4
+      pré-existentes
+- [x] Não-vacuoso: sem o sync, 2 dos 4 testes novos falham
 **Comandos de validação:** `go build ./... && go test ./internal/generators/ -run Move`
 
 ### ML-2 — Node.js: espelha o helper e o uso
