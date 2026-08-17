@@ -26,11 +26,11 @@ gap real estava nos itens de lista, onde ninguém tinha olhado. O corpo do PR #2
 
 ## Critérios de Aceite
 
-- [ ] `- "claude"` e `- 'claude'` produzem o agente `claude` nos três runtimes
-- [ ] `- "docs/adr"` produz o diretório `docs/adr` nos três runtimes
-- [ ] Teste novo nos três runtimes
-- [ ] Build e testes de config verdes nos três
-- [ ] `check-cli-parity.sh` e `check-validate-parity.sh` passam
+- [x] `- "claude"` e `- 'claude'` produzem o agente `claude` nos três runtimes
+- [x] `- "docs/adr"` produz o diretório `docs/adr` nos três runtimes
+- [x] Teste novo nos três runtimes, cada um confirmado não-vacuoso
+- [x] Build e testes de config verdes nos três
+- [x] `check-cli-parity.sh` e `check-validate-parity.sh` passam
 
 ---
 
@@ -83,18 +83,26 @@ gap real estava nos itens de lista, onde ninguém tinha olhado. O corpo do PR #2
 ## Wave 2 — Fechamento
 
 ### ML-4 — Gates de paridade e verificação de ponta a ponta
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** nenhum (verificação)
 **Ações:**
 1. `go test ./...` — comparar o conjunto de falhas com a baseline conhecida (10 falhas
    pré-existentes de ambiente Windows em `internal/generators`, registradas em
    `REQ-2026-08-16-consolidar-arvores-governanca`). Nenhuma falha nova é aceitável.
+
+**Nota de ambiente (Windows):** os gates de paridade não rodam limpos aqui sem dois preparos —
+`cd npm && npm install` (senão o CLI Node quebra com `MODULE_NOT_FOUND` em commander) e
+`PYTHONIOENCODING=utf-8 PYTHONUTF8=1` (senão `python -m trackfw --help` estoura
+`UnicodeEncodeError` no `→` do help, porque o console usa cp1252). Nenhum dos dois tem relação
+com este fix; ambos são atrito de ambiente que vale documentar.
 2. `bash scripts/check-cli-parity.sh` e `bash scripts/check-validate-parity.sh`.
 3. Verificação de ponta a ponta: rodar `validate` com `agents: - "claude"` e com `- claude`,
    confirmando o mesmo número de achados nos dois runtimes disponíveis.
 4. `trackfw validate` limpo (gate verde, avisos herdados permitidos).
 **Critérios de aceite:**
-- [ ] Nenhuma falha de teste nova além das 10 pré-existentes
-- [ ] Gates de paridade passam
-- [ ] Contagem de achados idêntica com e sem aspas
+- [x] Nenhuma falha de teste nova: `go test ./...` fecha com as mesmas 10 falhas, todas em
+      `internal/generators`, nenhuma em `internal/config`
+- [x] Os três gates passam: `check-cli-parity.sh`, `check-validate-parity.sh` e
+      `check-static-assets.sh`
+- [x] Contagem idêntica com e sem aspas: 5 = 5 nos dois runtimes (antes do fix era 5 → 3)
 **Comandos de validação:** `go test ./... && bash scripts/check-cli-parity.sh && bash scripts/check-validate-parity.sh`

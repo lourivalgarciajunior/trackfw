@@ -70,11 +70,12 @@ duplas) e assevera que os valores chegam limpos. Sem esse teste o bug volta.
 
 ## Critérios de Aceite
 
-- [ ] `- "claude"` e `- 'claude'` produzem o agente `claude` nos três runtimes
-- [ ] `- "docs/adr"` produz o diretório `docs/adr` nos três runtimes
-- [ ] Teste novo em `internal/config/`, `npm/tests/config.test.js` e `pypi/tests/test_config.py`
-- [ ] `go build ./...` verde e `go test ./internal/config/` verde
-- [ ] `node --test npm/tests/config.test.js` verde
-- [ ] `python -m pytest pypi/tests/test_config.py` verde
-- [ ] `bash scripts/check-cli-parity.sh` e `bash scripts/check-validate-parity.sh` passam
-- [ ] `trackfw validate` acha o mesmo número de itens com e sem aspas no `agents:`
+- [x] `- "claude"` e `- 'claude'` produzem o agente `claude` nos três runtimes
+- [x] `- "docs/adr"` produz o diretório `docs/adr` nos três runtimes
+- [x] Teste novo em `internal/config/`, `npm/tests/config.test.js` e `pypi/tests/test_config.py`
+- [x] `go build ./...` verde e `go test ./internal/config/` verde
+- [x] `node npm/tests/config.test.js` verde — 13 passed, 0 failed
+- [x] `python -m unittest tests.test_config` verde (pytest não instalado no ambiente; o arquivo
+      usa unittest da stdlib)
+- [x] `bash scripts/check-cli-parity.sh` e `bash scripts/check-validate-parity.sh` passam
+- [x] `trackfw validate` acha o mesmo número de itens com e sem aspas no `agents:`
