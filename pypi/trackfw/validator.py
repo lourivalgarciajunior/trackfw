@@ -169,29 +169,14 @@ def _extract_ref_path(content: str, field: str) -> str:
 
 
 def resolve_req_files(cfg: dict) -> list:
+    """Delega ao modulo reqs.
+
+    Antes desta delegacao varria apenas req_dir/<agente>/<estado>/ e ignorava as
+    REQs que moram direto em req_dir/<agente>/ — a maioria dos casos reais, que
+    nunca passaram pelo gate. Ver REQ-2026-08-17-resolvedor-req-unificado.
     """
-    Retorna lista de paths completos de .md em req_dir,
-    consciente de roadmap_namespacing: by_agent percorre req_dir/<agente>/<estado>/.
-    """
-    req_dir = cfg.get("req_dir", "docs/req")
-    namespacing = cfg.get("roadmap_namespacing", "")
-    if namespacing == "by_agent":
-        states = ["backlog", "wip", "blocked", "done", "abandoned"]
-        agents = cfg.get("agents", [])
-        if not agents:
-            try:
-                agents = [e for e in os.listdir(req_dir)
-                          if os.path.isdir(os.path.join(req_dir, e))]
-            except OSError:
-                return []
-        files = []
-        for agent in agents:
-            for state in states:
-                pattern = os.path.join(req_dir, agent, state, "*.md")
-                files.extend(_glob.glob(pattern))
-        return files
-    # flat (comportamento anterior)
-    return _glob.glob(os.path.join(req_dir, "*.md"))
+    from trackfw import reqs as _reqs
+    return _reqs.files(cfg)
 
 
 def resolve_wip_dirs(cfg: dict) -> list:
@@ -998,11 +983,13 @@ def validate(cwd: str = None) -> dict:
     # Ratchet: filtrar violations e warnings que já estavam no baseline
     baseline = load_baseline()
     if baseline is not None:
-        baseline_set = set(baseline.get("violations", []))
+        # `or []` e nao `get(..., [])`: um baseline gravado por outro
+        # runtime pode trazer a chave presente com valor null.
+        baseline_set = set(baseline.get("violations") or [])
         net_new = [v for v in violations
                    if _extract_messages([v])[0] not in baseline_set]
         violations = net_new
-        baseline_warn_set = set(baseline.get("warnings", []))
+        baseline_warn_set = set(baseline.get("warnings") or [])
         warnings = [w for w in warnings
                     if _extract_messages([w])[0] not in baseline_warn_set]
 

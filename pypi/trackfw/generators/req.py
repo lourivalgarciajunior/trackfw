@@ -10,6 +10,7 @@ import unicodedata
 from datetime import date
 
 from trackfw import config as cfg_module
+from trackfw import reqs as _reqs
 from trackfw.generators.roadmap import _set_frontmatter_status, _set_header_status
 
 
@@ -90,66 +91,10 @@ author:
     return filepath
 
 
-# Os cinco estados que uma REQ pode ocupar — os mesmos que o validator ja varre.
-REQ_STATES = ["backlog", "wip", "blocked", "done", "abandoned"]
-
-
 def find_req(name: str, cfg: dict) -> str:
-    """Procura uma REQ por nome (match parcial, case-insensitive) nas tres formas
-    em que elas vivem: sob agente e estado, sob agente sem estado, e na raiz do
-    req_dir.
-
-    Devolve o caminho. Levanta FileNotFoundError se nao achar e ValueError se o
-    nome for ambiguo.
-
-    Ver ADR-2026-08-17-req-move-resolve-as-tres-formas.
-    """
-    req_dir = cfg.get("req_dir")
-    if not req_dir:
-        raise ValueError("req_dir nao configurado")
-
-    dirs = []
-    if cfg.get("roadmap_namespacing") == cfg_module.NAMESPACING_BY_AGENT:
-        agents = list(cfg.get("agents") or [])
-        if not agents:
-            try:
-                agents = [
-                    e for e in os.listdir(req_dir)
-                    if os.path.isdir(os.path.join(req_dir, e))
-                ]
-            except OSError:
-                agents = []
-        for agent in agents:
-            for state in REQ_STATES:
-                dirs.append(os.path.join(req_dir, agent, state))
-            dirs.append(os.path.join(req_dir, agent))
-    dirs.append(req_dir)
-
-    lower = name.lower()
-    matches = []
-    seen = set()
-    for d in dirs:
-        try:
-            entries = os.listdir(d)
-        except OSError:
-            continue
-        for e in entries:
-            if not e.endswith(".md"):
-                continue
-            full = os.path.join(d, e)
-            if full in seen or os.path.isdir(full):
-                continue
-            if lower in e.lower():
-                seen.add(full)
-                matches.append(full)
-
-    if not matches:
-        raise FileNotFoundError(f'req "{name}" nao encontrada em {req_dir}')
-    if len(matches) > 1:
-        raise ValueError(
-            f'nome "{name}" e ambiguo — casa com {len(matches)} REQs: {", ".join(matches)}'
-        )
-    return matches[0]
+    """Delega ao modulo reqs. Mantida para nao mexer nos chamadores; a logica de
+    caminho vive num lugar so."""
+    return _reqs.find(cfg, name)["path"]
 
 
 def move_req(name: str, state: str, cfg: dict) -> str:
@@ -158,9 +103,9 @@ def move_req(name: str, state: str, cfg: dict) -> str:
 
     Ver REQ-2026-08-17-req-move.
     """
-    if state not in REQ_STATES:
+    if state not in _reqs.STATES:
         raise ValueError(
-            f'estado invalido "{state}" — validos: {", ".join(REQ_STATES)}'
+            f'estado invalido "{state}" — validos: {", ".join(_reqs.STATES)}'
         )
 
     src = find_req(name, cfg)

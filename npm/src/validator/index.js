@@ -82,41 +82,13 @@ function gitLastModifiedTime(filePath) {
   return null
 }
 
-// resolveReqFiles retorna array de paths completos de arquivos .md de REQs.
-// Em modo by_agent percorre reqDir/<agente>/<estado>/; em modo flat varre reqDir/ diretamente.
+// resolveReqFiles delega ao modulo reqs.
+//
+// Antes desta delegacao varria apenas reqDir/<agente>/<estado>/ e ignorava as
+// REQs que moram direto em reqDir/<agente>/ — a maioria dos casos reais, que
+// nunca passaram pelo gate. Ver REQ-2026-08-17-resolvedor-req-unificado.
 function resolveReqFiles(cfg) {
-  const reqDir = cfg.reqDir || cfg.req_dir || ''
-  if (!reqDir) return []
-  const namespacing = cfg.roadmapNamespacing || cfg.roadmap_namespacing || ''
-  if (namespacing === 'by_agent') {
-    const STATES = ['backlog', 'wip', 'blocked', 'done', 'abandoned']
-    let agents = cfg.agents || []
-    if (!agents.length) {
-      try {
-        agents = fs.readdirSync(reqDir).filter(e => {
-          try { return fs.statSync(path.join(reqDir, e)).isDirectory() } catch (_) { return false }
-        })
-      } catch (_) { return [] }
-    }
-    const files = []
-    for (const agent of agents) {
-      for (const state of STATES) {
-        const dir = path.join(reqDir, agent, state)
-        try {
-          for (const name of fs.readdirSync(dir)) {
-            if (name.endsWith('.md')) files.push(path.join(dir, name))
-          }
-        } catch (_) {}
-      }
-    }
-    return files
-  }
-  // flat (comportamento anterior) — retorna paths completos
-  try {
-    return fs.readdirSync(reqDir)
-      .filter(n => n.endsWith('.md') && !fs.statSync(path.join(reqDir, n)).isDirectory())
-      .map(n => path.join(reqDir, n))
-  } catch (_) { return [] }
+  return require('../reqs').files(cfg)
 }
 
 // resolveWIPDirs retorna todos os diretórios wip/ conforme o modo de namespacing.

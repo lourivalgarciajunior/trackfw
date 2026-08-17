@@ -1,7 +1,6 @@
 package generators
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +8,7 @@ import (
 	"time"
 
 	"github.com/kgsaran/trackfw/internal/config"
+	"github.com/kgsaran/trackfw/internal/reqs"
 )
 
 // REQContent contém os campos de uma REQ a ser gerada.
@@ -115,128 +115,107 @@ Roadmap: %s
 
 // ListREQs lista todos os REQs encontrados em dir, imprimindo filename e status.
 // Retorna nil se o diretório estiver ausente ou sem arquivos .md.
-func ListREQs(dir string) error {
-	matches, err := filepath.Glob(filepath.Join(dir, "*.md"))
-	if err != nil {
-		return fmt.Errorf("listing REQs: %w", err)
-	}
-	if len(matches) == 0 {
-		fmt.Printf("No REQs found in %s\n", dir)
+// ListREQs lista todas as REQs, agrupadas por agente e estado em modo by_agent.
+//
+// Antes usava glob em reqDir/*.md e por isso respondia "No REQs found" em
+// qualquer repositório com namespacing por agente — 0 das 36 REQs deste aqui.
+// Ver REQ-2026-08-17-resolvedor-req-unificado.
+func ListREQs() error {
+	cfg := config.Load()
+	entries := reqs.All(cfg)
+
+	if len(entries) == 0 {
+		fmt.Printf("No REQs found in %s\n", cfg.REQDir)
 		return nil
 	}
 
-	for _, path := range matches {
-		filename := filepath.Base(path)
-		title, status := parseREQMeta(path)
-		if title == "" {
-			title = filename
+	lastGroup := ""
+	for _, e := range entries {
+		group := ""
+		switch {
+		case e.Agent != "" && e.State != "":
+			group = e.Agent + "/" + e.State
+		case e.Agent != "":
+			group = e.Agent
 		}
+		if group != lastGroup {
+			if group != "" {
+				fmt.Printf("\n[%s]\n", group)
+			}
+			lastGroup = group
+		}
+
+		filename := filepath.Base(e.Path)
+		_, status := parseREQMeta(e.Path)
 		fmt.Printf("%-60s %s\n", filename, status)
-		_ = title
 	}
 	return nil
 }
 
 // parseREQMeta extrai título e status de um arquivo REQ markdown.
 func parseREQMeta(path string) (title, status string) {
-	f, err := os.Open(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", "unknown"
 	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
+	content := string(data)
 	status = "unknown"
-	for scanner.Scan() {
-		line := scanner.Text()
+
+	lines := strings.Split(content, "\n")
+
+	// 1) Frontmatter é a fonte preferida. Antes desta função varrer o arquivo
+	// inteiro atrás de "| Status: ", qualquer tabela ou trecho de corpo com esse
+	// texto sobrescrevia o status — e a última ocorrência vencia. Ver
+	// REQ-2026-08-17-resolvedor-req-unificado.
+	if strings.HasPrefix(content, "---\n") || strings.HasPrefix(content, "---\r\n") {
+		for idx := 1; idx < len(lines); idx++ {
+			line := strings.TrimRight(lines[idx], "\r")
+			if line == "---" {
+				break
+			}
+			if k, v, ok := strings.Cut(line, ":"); ok && strings.TrimSpace(k) == "status" {
+				if v = strings.TrimSpace(strings.Trim(strings.TrimSpace(v), `"'`)); v != "" {
+					status = v
+				}
+				break
+			}
+		}
+	}
+
+	// 2) Título e, se o frontmatter não disse nada, a linha humana de cabeçalho.
+	// A busca para no primeiro "## " — daí em diante é corpo.
+	for _, raw := range lines {
+		line := strings.TrimRight(raw, "\r")
+		if strings.HasPrefix(line, "## ") {
+			break
+		}
 		if strings.HasPrefix(line, "# REQ: ") {
 			title = strings.TrimPrefix(line, "# REQ: ")
 		}
-		if strings.Contains(line, "| Status: ") {
-			idx := strings.Index(line, "| Status: ")
-			if idx >= 0 {
+		if status == "unknown" && strings.HasPrefix(line, "> ") {
+			if idx := strings.Index(line, "| Status: "); idx >= 0 {
 				rest := line[idx+len("| Status: "):]
-				// O status termina no próximo " |" ou no final da linha
 				if pipeIdx := strings.Index(rest, " |"); pipeIdx >= 0 {
 					rest = rest[:pipeIdx]
 				}
-				rest = strings.TrimRight(rest, " >|")
-				status = strings.TrimSpace(rest)
-			}
-		}
-	}
-	return title, status
-}
-
-// reqStates são os cinco estados que uma REQ pode ocupar — os mesmos que o
-// validator já varre em resolveREQFiles.
-var reqStates = []string{"backlog", "wip", "blocked", "done", "abandoned"}
-
-// findREQ procura uma REQ por nome (match parcial, case-insensitive) nas três
-// formas em que elas vivem: sob agente e estado, sob agente sem estado, e na
-// raiz do req_dir.
-//
-// Devolve o caminho encontrado. Erro quando não acha, ou quando o nome casa com
-// mais de um arquivo — nesse caso lista os candidatos.
-//
-// Ver ADR-2026-08-17-req-move-resolve-as-tres-formas.
-func findREQ(name string) (string, error) {
-	cfg := config.Load()
-	reqDir := cfg.REQDir
-	if reqDir == "" {
-		return "", fmt.Errorf("req_dir não configurado")
-	}
-
-	var patterns []string
-	if cfg.RoadmapNamespacing == config.NamespacingByAgent {
-		agents := cfg.Agents
-		if len(agents) == 0 {
-			entries, err := os.ReadDir(reqDir)
-			if err == nil {
-				for _, e := range entries {
-					if e.IsDir() {
-						agents = append(agents, e.Name())
-					}
+				if rest = strings.TrimSpace(strings.TrimRight(rest, " >|")); rest != "" {
+					status = rest
 				}
 			}
 		}
-		for _, agent := range agents {
-			for _, state := range reqStates {
-				patterns = append(patterns, filepath.Join(reqDir, agent, state, "*.md"))
-			}
-			patterns = append(patterns, filepath.Join(reqDir, agent, "*.md"))
-		}
-	}
-	patterns = append(patterns, filepath.Join(reqDir, "*.md"))
-
-	lower := strings.ToLower(name)
-	var matches []string
-	seen := map[string]bool{}
-	for _, p := range patterns {
-		found, err := filepath.Glob(p)
-		if err != nil {
-			continue
-		}
-		for _, f := range found {
-			if seen[f] {
-				continue
-			}
-			if strings.Contains(strings.ToLower(filepath.Base(f)), lower) {
-				seen[f] = true
-				matches = append(matches, f)
-			}
-		}
 	}
 
-	switch len(matches) {
-	case 0:
-		return "", fmt.Errorf("req %q não encontrada em %s", name, reqDir)
-	case 1:
-		return matches[0], nil
-	default:
-		return "", fmt.Errorf("nome %q é ambíguo — casa com %d REQs: %s",
-			name, len(matches), strings.Join(matches, ", "))
+	return title, status
+}
+
+// findREQ delega ao pacote reqs. Mantida como função para não mexer nos
+// chamadores; a lógica de caminho vive num lugar só.
+func findREQ(name string) (string, error) {
+	e, err := reqs.Find(config.Load(), name)
+	if err != nil {
+		return "", err
 	}
+	return e.Path, nil
 }
 
 // MoveREQ move uma REQ para o diretório de um estado, preservando o agente em
@@ -245,14 +224,14 @@ func findREQ(name string) (string, error) {
 // Ver REQ-2026-08-17-req-move.
 func MoveREQ(name, state string) error {
 	valid := false
-	for _, s := range reqStates {
+	for _, s := range reqs.States {
 		if s == state {
 			valid = true
 			break
 		}
 	}
 	if !valid {
-		return fmt.Errorf("estado inválido %q — válidos: %s", state, strings.Join(reqStates, ", "))
+		return fmt.Errorf("estado inválido %q — válidos: %s", state, strings.Join(reqs.States, ", "))
 	}
 
 	src, err := findREQ(name)

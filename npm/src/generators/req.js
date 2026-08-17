@@ -2,6 +2,7 @@
 const fs = require('fs')
 const path = require('path')
 const config = require('../config')
+const reqs = require('../reqs')
 const { setFrontmatterStatus, setHeaderStatus } = require('./roadmap')
 
 /**
@@ -9,30 +10,32 @@ const { setFrontmatterStatus, setHeaderStatus } = require('./roadmap')
  * Extrai status da linha `> Date: ... | Status: ...`.
  * Se dir não existe ou vazio: imprime "No REQs found in <dir>".
  */
-function listREQs(dir) {
-  let files = []
-  try {
-    files = fs.readdirSync(dir).filter(f => f.endsWith('.md'))
-  } catch (_) {
-    // dir não existe
-  }
+function listREQs() {
+  const cfg = config.load()
+  const entries = reqs.all(cfg)
 
-  if (files.length === 0) {
-    console.log(`No REQs found in ${dir}`)
+  if (entries.length === 0) {
+    console.log(`No REQs found in ${cfg.reqDir}`)
     return
   }
 
-  for (const filename of files) {
-    const filepath = path.join(dir, filename)
-    const status = parseREQStatus(filepath)
+  let lastGroup = ''
+  for (const e of entries) {
+    let group = ''
+    if (e.agent && e.state) group = `${e.agent}/${e.state}`
+    else if (e.agent) group = e.agent
+
+    if (group !== lastGroup) {
+      if (group) console.log(`${String.fromCharCode(10)}[${group}]`)
+      lastGroup = group
+    }
+
+    const filename = path.basename(e.path)
+    const status = parseREQStatus(e.path)
     console.log(`${filename.padEnd(60)} ${status}`)
   }
 }
 
-/**
- * parseREQStatus — extrai o status da linha `> Date: ... | Status: ...` de um arquivo REQ.
- * Status termina no próximo " |" ou fim da linha.
- */
 function parseREQStatus(filepath) {
   let content
   try {
@@ -41,18 +44,40 @@ function parseREQStatus(filepath) {
     return 'unknown'
   }
 
-  for (const line of content.split('\n')) {
-    const idx = line.indexOf('| Status: ')
-    if (idx >= 0) {
-      let rest = line.slice(idx + '| Status: '.length)
-      const pipeIdx = rest.indexOf(' |')
-      if (pipeIdx >= 0) {
-        rest = rest.slice(0, pipeIdx)
+  const lines = content.split(String.fromCharCode(10))
+
+  // 1) Frontmatter e a fonte preferida. Antes esta funcao varria o arquivo
+  // inteiro atras de "| Status: " e a PRIMEIRA ocorrencia vencia, entao qualquer
+  // tabela ou trecho de corpo com esse texto virava o status.
+  // Ver REQ-2026-08-17-resolvedor-req-unificado.
+  if (lines[0] !== undefined && lines[0].replace(/\r+$/, '') === '---') {
+    for (let k = 1; k < lines.length; k++) {
+      const line = lines[k].replace(/\r+$/, '')
+      if (line === '---') break
+      const colon = line.indexOf(':')
+      if (colon > 0 && line.slice(0, colon).trim() === 'status') {
+        const v = line.slice(colon + 1).trim().replace(/^["']|["']$/g, '')
+        if (v) return v
+        break
       }
-      rest = rest.replace(/[\s>|]+$/, '')
-      return rest.trim() || 'unknown'
     }
   }
+
+  // 2) Linha humana de cabecalho. A busca para no primeiro "## " — dai em
+  // diante e corpo.
+  for (const raw of lines) {
+    const line = raw.replace(/\r+$/, '')
+    if (line.startsWith('## ')) break
+    if (!line.startsWith('> ')) continue
+    const idx = line.indexOf('| Status: ')
+    if (idx < 0) continue
+    let rest = line.slice(idx + '| Status: '.length)
+    const pipeIdx = rest.indexOf(' |')
+    if (pipeIdx >= 0) rest = rest.slice(0, pipeIdx)
+    rest = rest.replace(/[\s>|]+$/, '').trim()
+    if (rest) return rest
+  }
+
   return 'unknown'
 }
 
@@ -248,59 +273,14 @@ function detectDomains(intention) {
 }
 
 
-// REQ_STATES — os cinco estados que uma REQ pode ocupar, os mesmos que o
-// validator já varre.
-const REQ_STATES = ['backlog', 'wip', 'blocked', 'done', 'abandoned']
-
 /**
- * findREQ — procura uma REQ por nome (match parcial, case-insensitive) nas três
- * formas em que elas vivem: sob agente e estado, sob agente sem estado, e na raiz
- * do req_dir.
- *
- * Devolve { path } ou { error }. Ver ADR-2026-08-17-req-move-resolve-as-tres-formas.
+ * findREQ — delega ao modulo reqs. Mantida para nao mexer nos chamadores;
+ * a logica de caminho vive num lugar so.
  */
 function findREQ(name) {
-  const cfg = config.load()
-  const reqDir = cfg.reqDir
-  if (!reqDir) return { error: 'req_dir não configurado' }
-
-  const dirs = []
-  if (cfg.roadmapNamespacing === config.NAMESPACING_BY_AGENT) {
-    let agents = cfg.agents || []
-    if (agents.length === 0) {
-      try {
-        agents = fs.readdirSync(reqDir).filter(e => {
-          try { return fs.statSync(path.join(reqDir, e)).isDirectory() } catch (_) { return false }
-        })
-      } catch (_) { agents = [] }
-    }
-    for (const agent of agents) {
-      for (const state of REQ_STATES) dirs.push(path.join(reqDir, agent, state))
-      dirs.push(path.join(reqDir, agent))
-    }
-  }
-  dirs.push(reqDir)
-
-  const lower = name.toLowerCase()
-  const matches = []
-  const seen = new Set()
-  for (const d of dirs) {
-    let entries = []
-    try { entries = fs.readdirSync(d) } catch (_) { continue }
-    for (const e of entries) {
-      if (!e.endsWith('.md')) continue
-      const full = path.join(d, e)
-      if (seen.has(full)) continue
-      try { if (fs.statSync(full).isDirectory()) continue } catch (_) { continue }
-      if (e.toLowerCase().includes(lower)) { seen.add(full); matches.push(full) }
-    }
-  }
-
-  if (matches.length === 0) return { error: `req "${name}" não encontrada em ${reqDir}` }
-  if (matches.length > 1) {
-    return { error: `nome "${name}" é ambíguo — casa com ${matches.length} REQs: ${matches.join(', ')}` }
-  }
-  return { path: matches[0] }
+  const r = reqs.find(config.load(), name)
+  if (r.error) return { error: r.error }
+  return { path: r.entry.path }
 }
 
 /**
@@ -310,8 +290,8 @@ function findREQ(name) {
  * Ver REQ-2026-08-17-req-move.
  */
 function moveREQ(name, state) {
-  if (!REQ_STATES.includes(state)) {
-    console.error(`estado inválido "${state}" — válidos: ${REQ_STATES.join(', ')}`)
+  if (!reqs.STATES.includes(state)) {
+    console.error(`estado inválido "${state}" — válidos: ${reqs.STATES.join(', ')}`)
     process.exitCode = 1
     return
   }
@@ -380,4 +360,4 @@ function appendREQTransitionLog(basename, fromState, toState) {
   } catch (_) {}
 }
 
-module.exports = { listREQs, parseREQStatus, newREQ, PROBES_CATALOG, detectDomains, moveREQ, findREQ, REQ_STATES }
+module.exports = { listREQs, parseREQStatus, newREQ, PROBES_CATALOG, detectDomains, moveREQ, findREQ }
