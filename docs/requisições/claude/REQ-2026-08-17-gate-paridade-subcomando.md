@@ -81,10 +81,10 @@ Dizer o comando, o runtime, o subcomando e a direção (faltando ou sobrando).
 
 ## Critérios de Aceite
 
-- [ ] `scripts/check-subcommand-parity.sh` existe e roda nos três runtimes
-- [ ] Extrai corretamente de cobra, commander e argparse, incluindo o metavar variável
-- [ ] Detecta subcomando faltando **e** sobrando
-- [ ] Divergências conhecidas declaradas no script, com motivo
-- [ ] Com as duas divergências atuais declaradas, o gate passa
-- [ ] Divergência nova falha — verificado removendo temporariamente uma declaração
-- [ ] Documentado no `CLAUDE.md` junto dos outros três gates
+- [x] `scripts/check-subcommand-parity.sh` existe e roda nos três runtimes
+- [x] Extrai corretamente de cobra, commander e argparse, incluindo o metavar variável
+- [x] Detecta subcomando faltando **e** sobrando
+- [x] Divergências conhecidas declaradas no script, com motivo
+- [x] Com as duas divergências atuais declaradas, o gate passa
+- [x] Divergência nova falha — verificado removendo temporariamente uma declaração
+- [x] Documentado no `CLAUDE.md` junto dos outros três gates
