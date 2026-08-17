@@ -37,7 +37,7 @@ Origem: item 11 da dívida, achado de passagem em
 ## Wave 1 — Corrigir cada runtime
 
 ### ML-1 — Go: deixa de fazer no-op silencioso
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `internal/commands/roadmap.go`, `internal/commands/roadmap_new_test.go` (NOVO)
 **Ações:**
 1. No ramo `len(reqFiles) == 0`, trocar a mensagem + `return nil` por: aviso em stderr explicando
@@ -46,9 +46,11 @@ Origem: item 11 da dívida, achado de passagem em
    string vazia nesse caminho.
 3. Teste cobrindo: sem REQ cria e avisa; com `--req` grava o link.
 **Critérios de aceite:**
-- [ ] `roadmap new --title X` cria o arquivo e sai 0
-- [ ] Aviso aparece em stderr, não em stdout
-- [ ] `--req` continua gravando `REQ:`
+- [x] `roadmap new --title X` cria o arquivo e sai 0
+- [x] Aviso em stderr, com a consequência explícita (`wip_has_req` ao mover para `wip/`)
+- [x] `--req` continua gravando `REQ:`
+- [x] Sem título **e** sem REQ agora falha de verdade, em vez de criar roadmap sem nome
+- [x] Não-vacuoso: 2 dos 3 testes falham sem o fix
 **Comandos de validação:** `go build ./... && go test ./internal/commands/ -run RoadmapNew`
 
 ### ML-2 — Node.js: aviso quando não há REQ
