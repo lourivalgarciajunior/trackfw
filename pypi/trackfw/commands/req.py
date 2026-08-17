@@ -38,6 +38,9 @@ def register(subparsers):
     move_parser.add_argument("name", help="REQ name (partial match)")
     move_parser.add_argument("state", help="Target state")
 
+    # req list
+    req_sub.add_parser("list", help="List all REQs with status")
+
     req_parser.set_defaults(func=_dispatch)
 
 
@@ -47,10 +50,19 @@ def _dispatch(args):
         _cmd_new(args)
     elif args.req_command == "move":
         _cmd_move(args)
+    elif args.req_command == "list":
+        _cmd_list(args)
     else:
         print("Usage: trackfw req <command>")
-        print("Commands: new, move")
+        print("Commands: new, list, move")
         sys.exit(0)
+
+
+def _cmd_list(args):
+    from trackfw.config import load as load_config
+    from trackfw.generators.req import list_reqs
+
+    list_reqs(load_config())
 
 
 def _cmd_move(args):

@@ -59,7 +59,10 @@ class TestForceUtf8Output(unittest.TestCase):
 
         _force_utf8_output()
 
-        esperado = {"encoding": "utf-8", "errors": "replace"}
+        # newline="\n" entrou em REQ-2026-08-17-req-list-python: sem ele o
+        # Python emite CRLF no Windows enquanto Go e Node.js emitem LF, e as
+        # três saídas divergem byte a byte.
+        esperado = {"encoding": "utf-8", "errors": "replace", "newline": "\n"}
         self.assertEqual(out.chamadas, [esperado])
         self.assertEqual(err.chamadas, [esperado])
 

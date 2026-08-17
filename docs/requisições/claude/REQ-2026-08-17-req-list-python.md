@@ -54,10 +54,10 @@ caminho nova.
 
 ## Critérios de Aceite
 
-- [ ] `python -m trackfw req list` existe e aparece em `req --help`
-- [ ] Saída byte a byte idêntica à do Go e à do npm neste repositório
-- [ ] Status vem do frontmatter quando existe; cai para a linha de cabeçalho quando não
-- [ ] Corpo do arquivo nunca sobrescreve o status
-- [ ] Diretório vazio produz a mesma mensagem dos outros dois
-- [ ] Teste cobrindo agrupamento, fonte do status e caso vazio
-- [ ] `pytest tests/` sem falha nova; três gates passam
+- [x] `python -m trackfw req list` existe e aparece em `req --help`
+- [x] Saída byte a byte idêntica à do Go e à do npm neste repositório
+- [x] Status vem do frontmatter quando existe; cai para a linha de cabeçalho quando não
+- [x] Corpo do arquivo nunca sobrescreve o status
+- [x] Diretório vazio produz a mesma mensagem dos outros dois
+- [x] Teste cobrindo agrupamento, fonte do status e caso vazio
+- [x] `pytest tests/` sem falha nova; três gates passam

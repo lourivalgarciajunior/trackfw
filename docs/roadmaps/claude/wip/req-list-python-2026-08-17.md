@@ -23,17 +23,17 @@ Origem: lacuna registrada em `REQ-2026-08-17-resolvedor-req-unificado`.
 
 ## Critérios de Aceite
 
-- [ ] `req list` no Python, com saída byte a byte igual à do Go e do npm
-- [ ] Status do frontmatter primeiro; corpo nunca sobrescreve
-- [ ] Usa `trackfw.reqs.all_reqs`, sem lógica de caminho nova
-- [ ] Testes e gates verdes
+- [x] `req list` no Python, com saída byte a byte igual à do Go e do npm
+- [x] Status do frontmatter primeiro; corpo nunca sobrescreve
+- [x] Usa `trackfw.reqs.all_reqs`, sem lógica de caminho nova
+- [x] Testes e gates verdes
 
 ---
 
 ## Wave 1 — Implementar
 
 ### ML-1 — Parser de status + `list_reqs` + subcomando
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** `pypi/trackfw/generators/req.py`, `pypi/trackfw/commands/req.py`,
 `pypi/tests/test_req_list.py` (NOVO)
 **Ações:**
@@ -45,8 +45,10 @@ Origem: lacuna registrada em `REQ-2026-08-17-resolvedor-req-unificado`.
 4. Testes: agrupamento, status do frontmatter, status do cabeçalho, corpo que não sobrescreve, e
    diretório vazio.
 **Critérios de aceite:**
-- [ ] `python -m trackfw req list` funciona e aparece no `--help`
-- [ ] `python -m unittest tests.test_req_list` verde
+- [x] `req list` funciona e aparece no `req --help`
+- [x] `python -m unittest tests.test_req_list` verde — 8 testes
+- [x] `parse_req_status` nasceu correta: 4 testes garantem que o frontmatter vence e que o corpo
+      nunca sobrescreve, inclusive numa tabela com `| Status: ` depois do primeiro `## `
 **Comandos de validação:** `cd pypi && python -m unittest tests.test_req_list`
 
 ---
@@ -54,14 +56,26 @@ Origem: lacuna registrada em `REQ-2026-08-17-resolvedor-req-unificado`.
 ## Wave 2 — Fechamento
 
 ### ML-2 — Paridade byte a byte e gates
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Arquivos afetados:** nenhum (verificação)
 **Ações:**
 1. `diff` da saída dos três runtimes neste repositório — precisa ser vazio.
 2. Fixture com `req_dir` vazio: mesma mensagem nos três.
 3. Suíte pypi e os três gates.
 **Critérios de aceite:**
-- [ ] `diff` vazio entre os três
-- [ ] Mensagem de vazio idêntica
-- [ ] Suítes e gates verdes
+- [x] `diff` vazio entre os três — saída **byte a byte idêntica** neste repositório, 51 linhas
+- [x] `req_dir` vazio: `No REQs found in docs/req` nos três
+- [x] Go zero falhas; npm 31 testes; pypi **307 passed**
+- [x] Os três gates passam; `trackfw validate` rc=0
+
+**Escopo acrescentado: newline do CLI Python.** O `diff` acusou as 51 linhas como diferentes com o
+conteúdo idêntico — o Python emitia CRLF no Windows enquanto Go e Node.js emitem LF. Não era do
+`req list`: era de **toda** saída do CLI Python, desde sempre. `_force_utf8_output` reconfigurava a
+codificação mas não o newline. Corrigido passando `newline` explícito ao `reconfigure`, com teste
+próprio que assevera ausência de CRLF na saída.
+
+**Nota de método.** Meu primeiro check de não-vacuosidade desse teste passou indevidamente: o script
+que removia o fix não casou o padrão por causa de escape, e o teste rodou duas vezes com o fix
+presente. Só percebi ao conferir o arquivo com `grep` em vez de confiar na saída do script. Refeito
+com edição direta e `__pycache__` limpo: sem o fix, `FAILED (failures=1)`.
 **Comandos de validação:** `bash scripts/check-cli-parity.sh`

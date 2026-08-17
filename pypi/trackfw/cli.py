@@ -33,8 +33,13 @@ def _force_utf8_output():
         if reconfigure is None:
             continue
         try:
-            reconfigure(encoding="utf-8", errors="replace")
-        except (ValueError, OSError):
+            # newline="\n" desliga a tradução de quebra de linha. Sem isto o
+            # Python emite CRLF no Windows enquanto Go e Node.js emitem LF — as
+            # três saídas ficam diferentes byte a byte, o que quebra diff, pipe e
+            # qualquer script que consuma a saída dos três.
+            # Ver REQ-2026-08-17-req-list-python.
+            reconfigure(encoding="utf-8", errors="replace", newline="\n")
+        except (ValueError, OSError, TypeError):
             pass
 
 
