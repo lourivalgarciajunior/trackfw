@@ -253,6 +253,30 @@ class TestConfigPaths(unittest.TestCase):
         self.assertEqual(cfg["req_dir"], "docs/req")
         self.assertEqual(cfg["roadmap_dir"], "docs/roadmaps")
 
+    def test_list_items_com_aspas(self):
+        """Aspas envolventes em itens de adr_dirs e agents devem ser removidas.
+
+        Com roadmap_namespacing: by_agent, um agente lido como '"claude"' nunca
+        casa com docs/roadmaps/claude/ e o namespace inteiro sai da validacao
+        sem erro nem aviso. Ver REQ-2026-08-16-aspas-em-itens-de-lista.
+        """
+        self._write_yaml(
+            'adr_dirs:\n'
+            '  - "docs/adr"\n'
+            "  - 'docs/decisions'\n"
+            '  - docs/adr-extra\n'
+            'roadmap_namespacing: by_agent\n'
+            'agents:\n'
+            '  - "claude"\n'
+            "  - 'apolo'\n"
+            '  - artemis\n'
+        )
+        cfg = config.load(cwd=self.tmpdir)
+        self.assertEqual(
+            cfg["adr_dirs"], ["docs/adr", "docs/decisions", "docs/adr-extra"]
+        )
+        self.assertEqual(cfg["agents"], ["claude", "apolo", "artemis"])
+
 
 if __name__ == "__main__":
     unittest.main()
