@@ -31,20 +31,77 @@ REQ: docs/requisições/claude/REQ-2026-08-29-atualizar-para-a-upstream-main-com
 > Dependencies: none. Blocks all implementation.
 
 ### ML-0A — Threat model for this roadmap
-**Status:** pending
-**Actions:**
-1. Enumerar o que o merge traz e o que ele pode derrubar — nao so os 8 arquivos em colisao, mas
-   qualquer fix local cuja funcao o upstream tenha reescrito.
-2. Threat model: quem esvazia esta wave sem quebrar regra escrita.
-3. Falsificacao nas duas direcoes.
-4. Residual declarado.
+**Status:** done
+
+#### 1. Completude da enumeracao
+
+**O que o merge traz.** 2 commits depois da `v7.3.0`, sem tag. Fora de `docs/`, `vault/` e
+`.claude/` — que nao importamos — o upstream toca **29 arquivos**: o fix de symlink em
+`update`/`discover` nos tres runtimes, o pin de versao do gate de CI, o `install.sh`, e dois gates
+novos.
+
+**O que ele pode derrubar.** Nao basta olhar os 8 em colisao: o perigo e funcao reescrita, onde o
+fix local some **sem conflito**. Capturei o estado dos marcadores antes do merge, para diff depois:
+
+| arquivo | homedir | newline | tty |
+|---|---|---|---|
+| `internal/generators/scaffold.go` | 1 | — | — |
+| `internal/generators/update.go` | 4 | — | — |
+| `npm/src/commands/update.js` | 2 | — | — |
+| `npm/src/generators/init.js` | 2 | — | — |
+| `pypi/trackfw/commands/discover.py` | 0 | 8 | — |
+| `pypi/trackfw/commands/update.py` | 3 | 4 | — |
+| `pypi/trackfw/generators/init_gen.py` | 0 | 15 | — |
+| `pypi/trackfw/integrations/scaffold_doctor.py` | 0 | 1 | — |
+
+Nenhum dos oito usa o helper de `tty` — a superficie de TTY nao esta em colisao.
+
+#### 2. Quem esvazia esta Wave 0 sem quebrar regra escrita
+
+1. **Resolver os conflitos tomando `--ours` em bloco.** Preserva os fixes locais e **descarta o fix
+   de symlink**, que e o motivo da REQ. O merge fica verde e a vulnerabilidade continua.
+   **Coberto:** criterio exige verificacao por efeito do symlink, nao leitura de diff.
+2. **Resolver com `--theirs` em bloco.** Traz o fix e derruba os locais. Os gates pegam — se
+   cobrirem. **Coberto parcialmente:** e exatamente o que o criterio de "qual gate acusou" mede.
+3. **Rodar os gates e reaplicar em silencio**, sem registrar o que caiu. Perde-se o unico dado que
+   este merge produz: se os gates cobrem o que dizem cobrir. **Coberto:** a tabela do ML-1B e
+   criterio de aceite.
+4. **Contar falha de suite em vez de comparar lista nomeada.** Ja mordeu nesta sessao — o instavel
+   de skew de relogio move o total sozinho. **Coberto:** criterio exige lista nomeada.
+
+#### 3. Alvos de falsificacao, nas duas direcoes
+
+| Regride para | Quebra o que |
+|---|---|
+| sem o fix de symlink | `update` sobrescreve alvo de symlink fora do projeto; `discover --init` cria arquivo la |
+| sem os fixes locais | volta CRLF, home nao isolada, `isatty` — e o `check-artifact-parity` reprova de novo |
+| gate reprova mas o fix e reaplicado sem registro | perde-se a medicao de cobertura, que e o produto mais valioso deste merge |
+| fix local sumiu e **nenhum** gate reprovou | buraco de cobertura — e o achado mais importante possivel aqui, e o mais facil de nao notar |
+
+A ultima linha e a que orienta o ML-1B: a pergunta nao e "os gates passam", e "os gates pegaram o
+que sumiu".
+
+#### 4. Residual declarado
+
+- Os dois gates novos do upstream vao rodar. Se falharem no Windows, viram registro — nao entram
+  como trabalho, pela mesma politica dos sete de kgsaran/trackfw#216.
+- A suite npm **nao completa nesta maquina** em nenhum estado. Nao havera total de npm; o que der
+  para comparar sera dito com o escopo explicito.
+- `upstream/main` nao tem tag. Aceito conscientemente: a vulnerabilidade pesa mais que a
+  preferencia por versao marcada.
+
 **Acceptance criteria:**
-- [ ] As quatro secoes respondidas com evidencia medida
-- [ ] Nenhuma linha de implementacao escrita nesta ML
+- [x] As quatro secoes respondidas com evidencia medida
+- [x] Nenhuma linha de implementacao escrita nesta ML
 
 **Gates da wave:**
 ```bash
-exit 1  # placeholder — substituir antes de marcar ML-0A done
+# A superficie esta enumerada quando os 8 arquivos em colisao continuam sendo os 8 —
+# um nono significa que o upstream mexeu onde este repo tambem mexeu, sem ninguem ver.
+comm -12 \
+  <(git diff --name-only v7.3.0..upstream/main | grep -vE '^docs/|^vault/|^\.claude/' | sort) \
+  <(git diff --name-only v7.3.0..HEAD -- npm/src pypi/trackfw internal scripts | sort) \
+  | wc -l | grep -qx 8
 ```
 
 ## Wave 1 — O merge
