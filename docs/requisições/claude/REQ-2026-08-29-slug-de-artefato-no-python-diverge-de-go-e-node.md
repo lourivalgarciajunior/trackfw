@@ -22,10 +22,18 @@ Node    ADR-2026-08-29-acao-c-c-cafe.md
 Python  ADR-2026-08-29-acao-cc-cafe.md
 ```
 
-A regra difere: o Python **deleta** os nao-alfanumericos
-(`re.sub(r'[^a-z0-9-]', '', slug)` em `pypi/trackfw/generators/adr.py:22`), enquanto Go e Node
-os **substituem por hifen**. Acento, `/`, `+` e `&` ja sao tratados nos tres — o defeito nao e
-sanitizacao ausente, e a regra de colapso divergente.
+A regra difere: o `adr.py` **deleta** os nao-alfanumericos
+(`re.sub(r'[^a-z0-9-]', '', slug)` em `pypi/trackfw/generators/adr.py:22`), enquanto Go, Node e os
+outros tres geradores do proprio Python os **substituem por hifen**. Acento, `/`, `+` e `&` ja sao
+tratados em todos — o defeito nao e sanitizacao ausente, e a regra de colapso divergente.
+
+> **Corrigido em ML-0A (2026-08-29):** o enunciado acima nasceu maior do que o defeito num eixo e
+> menor noutro. Nao e "o Python" — `req new`, `roadmap new` e `note new` do Python ja concordam com
+> Go e Node; so `adr.py` diverge. Em compensacao a superficie e maior: **dez implementacoes de slug
+> em cinco superficies**, quatro tipos de artefato (a REQ omitia `note`), e uma **segunda
+> divergencia independente** no `artifactId` do `pom.xml`, onde o Node nao dobra acento e o Go
+> dobra — `Cafe App` vira `caf-app` no Node e `cafe-app` no Go. O inventario completo e a medicao
+> estao no ML-0A do roadmap.
 
 Consequencia pratica: uma REQ criada pelo Python e outra criada pelo Go a partir do mesmo titulo
 viram arquivos distintos, e a cadeia ADR-REQ-ROADMAP quebra por referencia que nao resolve.
@@ -43,14 +51,16 @@ descoberto ao verificar se elas ainda faziam sentido.
 
 ## Acceptance Criteria
 
-- [ ] Os tres runtimes produzem o mesmo nome de arquivo para o mesmo titulo, verificado em
-      execucao real do CLI (nao so em teste unitario da funcao)
+- [ ] `adr new` produz o mesmo nome nos tres runtimes, verificado em execucao real do CLI (nao so
+      em teste unitario da funcao)
+- [ ] O `artifactId` do `pom.xml` concorda entre Go e Node (o Python nao tem esse gerador)
 - [ ] A regra escolhida esta documentada em `docs/cli-parity.md` — colapso por hifen ou delecao,
-      com o motivo
-- [ ] A fixture de `scripts/check-artifact-parity.sh` inclui `/` e `+`
-- [ ] O gate **falha** com a divergencia atual reintroduzida (nao-vacuidade verificada antes de
-      considerar o trabalho pronto)
-- [ ] Vale para `adr new`, `req new` e `roadmap new` — nao so `adr`
+      com o motivo. Paridade sozinha nao basta: os tres podem concordar num valor errado
+- [ ] A fixture de `scripts/check-artifact-parity.sh` inclui `/`, `+` **e acento** — as duas classes
+      na mesma fixture, ou o gate cobre uma divergencia e perde a outra
+- [ ] O gate **falha** com cada uma das duas divergencias reintroduzida separadamente
+      (nao-vacuidade verificada, nao assumida)
+- [ ] `scripts/check-slug-inventory.sh` segue verde
 
 ## Nao faz parte
 
