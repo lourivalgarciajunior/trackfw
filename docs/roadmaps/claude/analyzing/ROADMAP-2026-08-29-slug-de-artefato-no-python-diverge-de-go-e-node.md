@@ -148,14 +148,48 @@ rc=1
 > Dependencies: ML-0A
 
 ### ML-1A — Decidir e documentar a regra de colapso
-**Status:** pending
-**Files affected:** `docs/cli-parity.md`
-**Actions:**
-1. Escolher entre colapso por hifen (Go e Node, hoje 2 contra 1) e delecao (Python).
-2. Registrar a decisao e o motivo. Colapso por hifen preserva a fronteira de palavra —
-   `C/C++` vira `c-c` e nao `cc` — o que argumenta a favor dele, mas a decisao e explicita.
+**Status:** done
+**Files affected:** `docs/cli-parity.md` (nova secao `## Artifact slug contract`, linha 166)
+
+**Decisao: colapso por hifen.** `[^a-z0-9]+` -> um hifen, nunca delecao.
+
+Dois motivos, nesta ordem:
+
+1. **Delecao junta tokens que o titulo separava.** `C/C++ & Cafe` vira `cc-cafe` em vez de
+   `c-c-cafe`; `AWS+GCP` vira `awsgcp` em vez de `aws-gcp`. O nome de arquivo existe para ser lido
+   por gente, e a fronteira de palavra e o que o torna legivel.
+2. **9 das 10 implementacoes ja colapsam.** Alinhar a decima e a mudanca menor.
+
+#### A descoberta que explica a origem do defeito
+
+Ao escrever a secao, o `cli-parity.md` revelou que o contrato de slug de **identidade de agente**
+manda **descartar** o caractere fora de `[a-z0-9-]` — o oposto do de artefato. Medido:
+
+| Entrada | Identidade | Artefato |
+|---|---|---|
+| `C/C++` | `cc` | `c-c` |
+| `AWS+GCP` | `awsgcp` | `aws-gcp` |
+| `Meu Agente` | `meu-agente` | `meu-agente` |
+
+Sao dois contratos separados de proposito: identidade e identificador curto, validado e sujeito a
+colisao; artefato e nome de arquivo legivel. A terceira linha e a armadilha — eles coincidem no
+caso comum.
+
+O defeito nao e um erro aleatorio: **`pypi/trackfw/generators/adr.py:slugify` implementa a regra de
+identidade onde vai a de artefato.** As duas secoes do `cli-parity.md` agora se referenciam
+mutuamente, com a instrucao explicita de nao unificar.
+
 **Acceptance criteria:**
-- [ ] Regra escrita em `docs/cli-parity.md` com o motivo, nao so o comportamento
+- [x] Regra escrita em `docs/cli-parity.md` com o motivo, nao so o comportamento
+- [x] A separacao contra o contrato de identidade documentada nas duas direcoes
+- [x] `check-parity-contract-coverage.sh` verde (as tres subsecoes novas anotadas; a anotacao da
+      secao de identidade, que minha insercao havia deslocado, devolvida ao lugar)
+
+> **Quarto bloqueio de Windows encontrado aqui, fora de escopo:**
+> `scripts/check-parity-contract-coverage.sh` morre com `UnicodeEncodeError` no `->` em console
+> cp1252. Pre-existente — verificado rodando o gate na `main` sem esta mudanca, com 65 ocorrencias
+> do caractere no doc. So roda com `PYTHONIOENCODING=utf-8`. Junta-se ao UTF-8 do CLI, ao `homedir`
+> e ao `credential_guard_hook_resolvable`.
 
 ### ML-1B — Alinhar o `slugify` do `adr.py`
 **Status:** pending
