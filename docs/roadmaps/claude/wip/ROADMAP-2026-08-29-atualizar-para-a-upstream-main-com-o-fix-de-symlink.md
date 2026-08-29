@@ -108,38 +108,98 @@ comm -12 \
 > Dependencies: ML-0A
 
 ### ML-1A — Merge e resolucao
-**Status:** pending
-**Files affected:** os 8 em colisao, mais o que o merge trouxer limpo
-**Actions:**
-1. `git merge upstream/main`.
-2. Resolver tomando o upstream como base e reaplicando os fixes locais por cima — mesma politica da
-   ADR: produto vem do upstream, divergencia local e reaplicada com o motivo escrito.
-3. Manter a governanca do upstream fora.
+**Status:** done
+
+`git merge upstream/main`. Sete caminhos em conflito, resolvidos assim:
+
+| O que | Resolucao |
+|---|---|
+| 3 REQs + 1 roadmap do upstream, aterrissando em `docs/requisições/claude/` e `docs/roadmaps/claude/done/` | **removidos** — a deteccao de rename do git casou os `docs/req/` deles contra nomes parecidos nossos; governanca do upstream fica fora, pela ADR |
+| `vault/notes/index.md` | mantido **removido** — o `vault/` saiu na PR #19 pela mesma politica |
+| `docs/roadmaps/.trackfw-log` | 23 transicoes nossas mantidas, **206 do upstream descartadas** |
+| `pypi/trackfw/commands/discover.py` | versao do upstream (com a guarda de symlink) **mais** o `newline` local reaplicado |
+
+O conflito do `discover.py` foi didatico: o upstream reescreveu `_write_ci_workflow` inteira para
+adicionar a guarda, e a versao dele fecha com `open(dest, "w", encoding="utf-8")` — **sem** o
+`newline="\n"`. Tomar a dele e reaplicar o nosso e a politica da ADR posta em pratica.
+
 **Acceptance criteria:**
-- [ ] Nenhum marcador de conflito em arquivo versionado
-- [ ] `docs/` continua com a governanca local apenas
-- [ ] `go build ./...` verde
+- [x] Nenhum marcador de conflito em arquivo versionado
+- [x] `docs/` continua com a governanca local apenas
+- [x] `go build ./...` verde
 
 ### ML-1B — Recuperar o que o merge derrubou
-**Status:** pending
-**Actions:**
-1. Rodar os seis gates. Para cada reprovacao, reaplicar o fix local.
-2. **Registrar qual gate acusou cada perda.** Se um fix sumir sem nenhum gate reprovar, isso e
-   buraco de cobertura e entra como achado, nao como detalhe.
+**Status:** done
+
+**O gate pegou.** `check-python-writes-lf` reprovou nomeando quatro escritas que o merge derrubou —
+**nenhuma delas gerou conflito**, porque o upstream reescreveu as funcoes e o `newline` sumiu em
+silencio:
+
+| O que caiu | Qual gate pegou |
+|---|---|
+| `pypi/trackfw/commands/discover.py:491` | `check-python-writes-lf` |
+| `pypi/trackfw/commands/update.py:230` | `check-python-writes-lf` |
+| `pypi/trackfw/generators/init_gen.py:631` | `check-python-writes-lf` |
+| `pypi/trackfw/generators/init_gen.py:636` | `check-python-writes-lf` |
+
+Nada mais caiu: `homedir-parity`, `tty-detection`, `slug-inventory`, `artifact-parity` e
+`subcommand-parity` passaram na primeira tentativa pos-merge. **Nenhum buraco de cobertura** — cada
+perda teve gate que a acusou, que era a pergunta central do ML-0A.
+
+Este era o primeiro teste real dos quatro gates locais. Eles fizeram o que existem para fazer.
+
 **Acceptance criteria:**
-- [ ] Seis gates verdes
-- [ ] Tabela de "o que caiu / qual gate pegou" escrita aqui
+- [x] Seis gates verdes
+- [x] Tabela de "o que caiu / qual gate pegou" escrita acima
 
 ## Wave 2 — Verificacao
 > Dependencies: ML-1A, ML-1B
 
 ### ML-2A — Symlink e regressao
-**Status:** pending
-**Actions:**
-1. Reproduzir a vulnerabilidade em arvore pre-merge e confirmar que some pos-merge, nos tres
-   runtimes — verificacao por efeito, nao por leitura do diff.
-2. Suite pypi por lista nomeada contra 95 falhas.
+**Status:** done, com um criterio **nao cumprido** e declarado
+
+#### Regressao: zero
+
+```
+antes    95 failed / 1397 passed
+depois  100 failed / 1430 passed
+novas: 5    resolvidas: 0
+```
+
+As **5 novas sao todas do arquivo de teste que o proprio upstream trouxe** para o fix de symlink,
+`tests/test_update_discover_symlink_guard.py`. Elas falham em `os.symlink`:
+
+```
+OSError: [WinError 1314] O cliente nao tem o privilegio necessario
+```
+
+Windows exige Developer Mode ou admin para criar symlink, e este processo nao tem. **Nao e
+regressao**: e a mesma limitacao de privilegio, e a suite total cresceu (1397 -> 1430 passes)
+porque o upstream adicionou muito teste.
+
+#### O criterio que NAO foi cumprido
+
+> "A vulnerabilidade de symlink verificada como corrigida em execucao real, nos tres runtimes"
+
+**Nao foi.** Montei o teste e ele saiu **vacuoso**: o `ln -s` do Git Bash criou uma copia, nao um
+symlink — o `ls` mostrou arquivo regular de 44 bytes. Tentei com `MSYS=winsymlinks:nativestrict` e
+recebi `Operation not permitted`, o mesmo `WinError 1314` que derruba os testes do upstream.
+
+O que consegui verificar e mais fraco, e digo qual e: a guarda **esta presente** nos tres runtimes,
+nos dois comandos.
+
+```
+go      internal/generators/update.go: 7   internal/discover/discover.go: 2
+node    npm/src/commands/update.js: 6      npm/src/commands/discover.js: 5
+python  pypi/trackfw/commands/update.py: 4 pypi/trackfw/commands/discover.py: 2
+```
+
+Presenca de guarda nao e prova de comportamento. **A verificacao por efeito fica pendente e precisa
+de uma maquina com Developer Mode ligado** — vale para este repo e vale para qualquer um que rode a
+suite do trackfw em Windows sem esse privilegio.
+
 **Acceptance criteria:**
-- [ ] Symlink apontando para fora do projeto **nao** e mais sobrescrito por `update`
-- [ ] Symlink pendurado **nao** faz `discover --init` criar arquivo fora do projeto
-- [ ] Zero falhas novas na lista nomeada
+- [ ] Symlink apontando para fora do projeto **nao** e mais sobrescrito por `update` — **nao
+      verificado**, sem privilegio nesta maquina
+- [ ] Symlink pendurado **nao** faz `discover --init` criar arquivo fora — **nao verificado**, idem
+- [x] Zero falhas novas na lista nomeada, fora as 5 do proprio arquivo de teste do upstream
