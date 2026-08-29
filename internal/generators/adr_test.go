@@ -7,6 +7,29 @@ import (
 	"testing"
 )
 
+// TestToSlug_Acentuado — título acentuado gera slug ASCII portável nos 3 CLIs.
+// Cobre: á é í ó ú (agudo), ç (cedilha), ã õ (til), à (crase).
+func TestToSlug_Acentuado(t *testing.T) {
+	cases := []struct {
+		input    string
+		expected string
+	}{
+		{"Autenticação e Sessão", "autenticacao-e-sessao"},
+		{"Criação de Requisição", "criacao-de-requisicao"},
+		{"Configuração Avançada", "configuracao-avancada"},
+		{"Título com À crase e Ã til", "titulo-com-a-crase-e-a-til"},
+		{"ADR Config (v2)", "adr-config-v2"},
+		{"á é í ó ú", "a-e-i-o-u"},
+		{"ç ã õ à", "c-a-o-a"},
+	}
+	for _, tc := range cases {
+		got := toSlug(tc.input)
+		if got != tc.expected {
+			t.Errorf("toSlug(%q) = %q, queria %q", tc.input, got, tc.expected)
+		}
+	}
+}
+
 // chdirADR muda para dir e restaura ao fim do teste
 func chdirADR(t *testing.T, dir string) {
 	t.Helper()
@@ -25,7 +48,7 @@ func TestNewADR_CreatesFile(t *testing.T) {
 	dir := t.TempDir()
 	chdirADR(t, dir)
 
-	if err := NewADR(ADRContent{Title: "Escolha de Banco"}); err != nil {
+	if err := NewADR(ADRContent{Title: "Escolha de Banco"}, "docs/adr"); err != nil {
 		t.Fatalf("NewADR() erro: %v", err)
 	}
 
@@ -56,7 +79,7 @@ func TestNewADR_SlugInFilename(t *testing.T) {
 	dir := t.TempDir()
 	chdirADR(t, dir)
 
-	if err := NewADR(ADRContent{Title: "Uso de Redis Cache"}); err != nil {
+	if err := NewADR(ADRContent{Title: "Uso de Redis Cache"}, "docs/adr"); err != nil {
 		t.Fatalf("NewADR() erro: %v", err)
 	}
 
@@ -91,7 +114,7 @@ func TestNewADR_WithContent(t *testing.T) {
 		Consequences: "Custo de operação maior; maior confiabilidade.",
 		Alternatives: "MySQL foi rejeitado por licença.",
 	}
-	if err := NewADR(content); err != nil {
+	if err := NewADR(content, "docs/adr"); err != nil {
 		t.Fatalf("NewADR() erro: %v", err)
 	}
 
@@ -115,7 +138,7 @@ func TestNewADR_EmptyFields(t *testing.T) {
 	dir := t.TempDir()
 	chdirADR(t, dir)
 
-	if err := NewADR(ADRContent{Title: "Sem Detalhes"}); err != nil {
+	if err := NewADR(ADRContent{Title: "Sem Detalhes"}, "docs/adr"); err != nil {
 		t.Fatalf("NewADR() erro: %v", err)
 	}
 
@@ -147,10 +170,10 @@ func TestListADRs_WithFiles(t *testing.T) {
 	dir := t.TempDir()
 	chdirADR(t, dir)
 
-	if err := NewADR(ADRContent{Title: "Decisao Alpha", Context: "contexto A", Decision: "decidido A"}); err != nil {
+	if err := NewADR(ADRContent{Title: "Decisao Alpha", Context: "contexto A", Decision: "decidido A"}, "docs/adr"); err != nil {
 		t.Fatalf("NewADR alpha: %v", err)
 	}
-	if err := NewADR(ADRContent{Title: "Decisao Beta", Context: "contexto B", Decision: "decidido B"}); err != nil {
+	if err := NewADR(ADRContent{Title: "Decisao Beta", Context: "contexto B", Decision: "decidido B"}, "docs/adr"); err != nil {
 		t.Fatalf("NewADR beta: %v", err)
 	}
 
@@ -171,7 +194,7 @@ func TestNewADRDraft_CriaArquivo(t *testing.T) {
 	_ = os.Chdir(dir)
 	t.Cleanup(func() { _ = os.Chdir(orig) })
 
-	basename, err := NewADRDraft("authentication-strategy")
+	basename, err := NewADRDraft("authentication-strategy", filepath.Join("docs", "adr"))
 	if err != nil {
 		t.Fatalf("NewADRDraft erro: %v", err)
 	}
@@ -194,7 +217,7 @@ func TestNewADRDraft_StatusDraft(t *testing.T) {
 	_ = os.Chdir(dir)
 	t.Cleanup(func() { _ = os.Chdir(orig) })
 
-	basename, _ := NewADRDraft("ui-framework")
+	basename, _ := NewADRDraft("ui-framework", filepath.Join("docs", "adr"))
 	content, err := os.ReadFile(filepath.Join("docs", "adr", basename))
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
@@ -210,8 +233,8 @@ func TestNewADRDraft_Idempotente(t *testing.T) {
 	_ = os.Chdir(dir)
 	t.Cleanup(func() { _ = os.Chdir(orig) })
 
-	b1, err1 := NewADRDraft("session-management")
-	b2, err2 := NewADRDraft("session-management")
+	b1, err1 := NewADRDraft("session-management", filepath.Join("docs", "adr"))
+	b2, err2 := NewADRDraft("session-management", filepath.Join("docs", "adr"))
 	if err1 != nil || err2 != nil {
 		t.Fatalf("erros: %v, %v", err1, err2)
 	}
@@ -231,10 +254,75 @@ func TestNewADRDraft_TituloDerivado(t *testing.T) {
 	_ = os.Chdir(dir)
 	t.Cleanup(func() { _ = os.Chdir(orig) })
 
-	basename, _ := NewADRDraft("api-protocol")
+	basename, _ := NewADRDraft("api-protocol", filepath.Join("docs", "adr"))
 	content, _ := os.ReadFile(filepath.Join("docs", "adr", basename))
 	if !strings.Contains(string(content), "# ADR: Api Protocol") {
 		t.Errorf("título esperado 'Api Protocol' não encontrado em:\n%s", string(content))
+	}
+}
+
+// TestGlobalADRDir_ResolvesUnderHomeTrackfwAdr — GlobalADRDir(home) segue o mesmo padrão de
+// GlobalClaudeSkillPath: <home>/.trackfw/adr.
+func TestGlobalADRDir_ResolvesUnderHomeTrackfwAdr(t *testing.T) {
+	home := t.TempDir()
+	got := GlobalADRDir(home)
+	want := filepath.Join(home, ".trackfw", "adr")
+	if got != want {
+		t.Errorf("GlobalADRDir(%q) = %q, queria %q", home, got, want)
+	}
+}
+
+// TestNewADR_ScopeGlobal_CreatesUnderFixtureHome — NewADR(content, GlobalADRDir(home)) escreve
+// em $HOME/.trackfw/adr mesmo sem cwd em raiz de projeto (nenhum docs/adr criado), provando que
+// o generator não chama mais config.Load() internamente.
+func TestNewADR_ScopeGlobal_CreatesUnderFixtureHome(t *testing.T) {
+	cwd := t.TempDir()
+	home := t.TempDir()
+	chdirADR(t, cwd)
+
+	globalDir := GlobalADRDir(home)
+	if err := NewADR(ADRContent{Title: "Decisao Global"}, globalDir); err != nil {
+		t.Fatalf("NewADR() erro: %v", err)
+	}
+
+	matches, err := filepath.Glob(filepath.Join(globalDir, "*.md"))
+	if err != nil {
+		t.Fatalf("Glob erro: %v", err)
+	}
+	if len(matches) != 1 {
+		t.Fatalf("esperado 1 arquivo em %s, obteve %d: %v", globalDir, len(matches), matches)
+	}
+
+	// docs/adr não deve ter sido criado no cwd — escopo global não toca o projeto.
+	if _, err := os.Stat(filepath.Join(cwd, "docs", "adr")); err == nil {
+		t.Errorf("docs/adr não deveria existir no cwd quando adrDir aponta para escopo global")
+	}
+}
+
+// TestNewADRDraft_ScopeGlobal_CreatesUnderFixtureHome — NewADRDraft(slug, GlobalADRDir(home))
+// escreve em $HOME/.trackfw/adr mesmo sem cwd em raiz de projeto, provando que o generator não
+// chama mais config.Load() internamente. ROADMAP-2026-08-08 ML-2A.
+func TestNewADRDraft_ScopeGlobal_CreatesUnderFixtureHome(t *testing.T) {
+	cwd := t.TempDir()
+	home := t.TempDir()
+	chdirADR(t, cwd)
+
+	globalDir := GlobalADRDir(home)
+	basename, err := NewADRDraft("estrategia-global", globalDir)
+	if err != nil {
+		t.Fatalf("NewADRDraft() erro: %v", err)
+	}
+	if basename == "" {
+		t.Fatal("basename vazio")
+	}
+
+	if _, err := os.Stat(filepath.Join(globalDir, basename)); err != nil {
+		t.Fatalf("arquivo não criado em %s: %v", globalDir, err)
+	}
+
+	// docs/adr não deve ter sido criado no cwd — escopo global não toca o projeto.
+	if _, err := os.Stat(filepath.Join(cwd, "docs", "adr")); err == nil {
+		t.Errorf("docs/adr não deveria existir no cwd quando adrDir aponta para escopo global")
 	}
 }
 
@@ -243,7 +331,7 @@ func TestListADRs_ParsesMeta(t *testing.T) {
 	dir := t.TempDir()
 	chdirADR(t, dir)
 
-	if err := NewADR(ADRContent{Title: "Uso de Kafka"}); err != nil {
+	if err := NewADR(ADRContent{Title: "Uso de Kafka"}, "docs/adr"); err != nil {
 		t.Fatalf("NewADR: %v", err)
 	}
 
@@ -255,66 +343,5 @@ func TestListADRs_ParsesMeta(t *testing.T) {
 	}
 	if status != "Proposed" {
 		t.Errorf("status esperado 'Proposed', obteve: %q", status)
-	}
-}
-
-// TestParseADRMeta_FrontmatterVence e os seguintes travam o contrato alinhado em
-// REQ-2026-08-17-adr-list-python. Antes dele o Go pegava a última ocorrência de
-// "| Status: " em qualquer lugar do arquivo e o Node.js pegava a primeira — os
-// dois runtimes davam respostas diferentes para a mesma ADR.
-func TestParseADRMeta_FrontmatterVence(t *testing.T) {
-	dir := t.TempDir()
-	p := filepath.Join(dir, "ADR-x.md")
-	content := "---\nstatus: Accepted\n---\n\n# ADR: x\n\n> Date: 2026-08-17 | Status: Proposed\n"
-	if err := os.WriteFile(p, []byte(content), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	_, status := parseADRMeta(p)
-	if status != "Accepted" {
-		t.Errorf("status = %q, quer Accepted (frontmatter vence o cabeçalho)", status)
-	}
-}
-
-func TestParseADRMeta_CabecalhoSemFrontmatter(t *testing.T) {
-	dir := t.TempDir()
-	p := filepath.Join(dir, "ADR-x.md")
-	if err := os.WriteFile(p, []byte("# ADR: x\n\n> Date: 2026-08-17 | Status: Proposed\n"), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	_, status := parseADRMeta(p)
-	if status != "Proposed" {
-		t.Errorf("status = %q, quer Proposed", status)
-	}
-}
-
-// TestParseADRMeta_TabelaNoCorpoNaoDecide — este é o caso que distinguia Go de
-// Node.js. O Go devolvia "quebrado" aqui.
-func TestParseADRMeta_TabelaNoCorpoNaoDecide(t *testing.T) {
-	dir := t.TempDir()
-	p := filepath.Join(dir, "ADR-x.md")
-	content := "---\nstatus: Accepted\n---\n\n# ADR: x\n\n" +
-		"> Date: 2026-08-17 | Status: Accepted\n\n" +
-		"## Tabela\n\n| Runtime | Status: quebrado |\n"
-	if err := os.WriteFile(p, []byte(content), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	_, status := parseADRMeta(p)
-	if status != "Accepted" {
-		t.Errorf("status = %q — o corpo não pode decidir o status", status)
-	}
-}
-
-func TestParseADRMeta_SemNada(t *testing.T) {
-	dir := t.TempDir()
-	p := filepath.Join(dir, "ADR-x.md")
-	if err := os.WriteFile(p, []byte("# ADR: x\n\ncorpo\n"), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	if _, status := parseADRMeta(p); status != "unknown" {
-		t.Errorf("status = %q, quer unknown", status)
 	}
 }

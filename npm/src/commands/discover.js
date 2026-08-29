@@ -4,6 +4,7 @@ const { Command } = require('commander');
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { resolve: resolveForge } = require('../forge/resolve');
 
 function scan(rootDir) {
   const r = {
@@ -20,6 +21,12 @@ function scan(rootDir) {
     governanceScore: 0,
     hookFramework: 'none',
     ciSystem: 'none',
+    forge: '',
+    // suggestedTestFramework é uma sugestão best-effort (nunca erro, '' quando nada bate) baseada
+    // em arquivos de configuração presentes na raiz do projeto. É apenas impressa como sugestão
+    // pelo comando `discover` — nunca escrita automaticamente em trackfw.yaml (a convenção de
+    // agent_conventions deve ser sempre declarada pelo time, não inferida).
+    suggestedTestFramework: '',
   };
 
   // trackfw.yaml
@@ -108,6 +115,21 @@ function scan(rootDir) {
     r.ciSystem = 'none';
   }
 
+  // Suggested test framework — best-effort heuristic, never an error.
+  r.suggestedTestFramework = detectTestFramework(rootDir);
+
+  // Forge detection — reuse forge/resolve.js (no duplicate parse).
+  // gitRemoteURL returns '' on any error; CI detection is filesystem-based.
+  try {
+    const { resolveFromRepo } = require('../forge/resolve');
+    const res = resolveFromRepo('', '', rootDir);
+    if (res.source !== 'none') {
+      r.forge = res.forge;
+    }
+  } catch (_) {
+    // forge detection is best-effort; never block scan on it
+  }
+
   r.governanceScore = calcScore(r);
   return r;
 }
@@ -145,6 +167,10 @@ function generateYAML(r) {
 
   out += `hooks: ${r.hookFramework}\n`;
   out += `ci: ${r.ciSystem}\n`;
+
+  if (r.forge) {
+    out += `forge: ${r.forge}\n`;
+  }
 
   return out;
 }
@@ -320,6 +346,60 @@ function countMD(dir) {
   return n;
 }
 
+// detectTestFramework é uma heurística best-effort para sugerir um framework de teste com base
+// em arquivos de configuração presentes na raiz do projeto. Nunca retorna erro — retorna '' quando
+// nenhum arquivo-gatilho é encontrado. Ordem de precedência: jest, vitest, pytest, go test.
+function detectTestFramework(rootDir) {
+  if (isFile(path.join(rootDir, 'jest.config.js')) || isFile(path.join(rootDir, 'jest.config.ts'))) {
+    return 'jest';
+  }
+  if (isFile(path.join(rootDir, 'vitest.config.js')) || isFile(path.join(rootDir, 'vitest.config.ts'))) {
+    return 'vitest';
+  }
+  if (isFile(path.join(rootDir, 'pytest.ini'))) {
+    return 'pytest';
+  }
+  if (hasFileWithSubstring(path.join(rootDir, 'pyproject.toml'), '[tool.pytest')) {
+    return 'pytest';
+  }
+  if (hasFileWithSubstring(path.join(rootDir, 'setup.cfg'), '[tool:pytest]')) {
+    return 'pytest';
+  }
+  if (isFile(path.join(rootDir, 'go.mod')) && hasGoTestFile(rootDir)) {
+    return 'go test';
+  }
+  return '';
+}
+
+// hasFileWithSubstring lê path e retorna true se seu conteúdo contém sub. Retorna false
+// silenciosamente se o arquivo não existir ou não puder ser lido (best-effort).
+function hasFileWithSubstring(p, sub) {
+  let content;
+  try { content = fs.readFileSync(p, 'utf8'); } catch { return false; }
+  return content.includes(sub);
+}
+
+// hasGoTestFile percorre rootDir recursivamente procurando qualquer arquivo *_test.go.
+function hasGoTestFile(rootDir) {
+  let found = false;
+  function walk(d) {
+    if (found) return;
+    let entries;
+    try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (found) return;
+      if (e.isDirectory()) {
+        walk(path.join(d, e.name));
+      } else if (e.name.endsWith('_test.go')) {
+        found = true;
+        return;
+      }
+    }
+  }
+  walk(rootDir);
+  return found;
+}
+
 function listSubDirs(dir) {
   try {
     return fs.readdirSync(dir).filter(f => {
@@ -394,6 +474,12 @@ cmd.action((opts) => {
     console.log('⚠ No CI system detected');
   }
 
+  // suggested test framework — printed only, never written to trackfw.yaml automatically
+  // (agent_conventions must always be declared by the team).
+  if (r.suggestedTestFramework) {
+    console.log(`Suggested test framework: ${r.suggestedTestFramework} (add to trackfw.yaml as agent_conventions: if correct)`);
+  }
+
   console.log(`\nGovernance Score: ${r.governanceScore}/100`);
 
   if (opts.init) {
@@ -416,6 +502,24 @@ cmd.action((opts) => {
         console.log('✓ trackfw rules injected into agent config files');
       } catch (e) {
         console.log(`⚠ agent rules inject partial: ${e.message}`);
+      }
+      try {
+        const { generateAttentionScripts } = require('../generators/hooks');
+        generateAttentionScripts({}, cwd);
+      } catch (e) {
+        console.warn(`⚠ attention scripts: ${e.message}`);
+      }
+      try {
+        const { generateCredentialGuardScript } = require('../generators/hooks');
+        generateCredentialGuardScript(cwd);
+      } catch (e) {
+        console.warn(`⚠ credential guard script: ${e.message}`);
+      }
+      try {
+        const { generateGitBranchGuardScript } = require('../generators/hooks');
+        generateGitBranchGuardScript(cwd);
+      } catch (e) {
+        console.warn(`⚠ git branch guard script: ${e.message}`);
       }
       try {
         const { injectHooksDetected } = require('../generators/hooks');
@@ -470,3 +574,4 @@ module.exports.generateBootstrapLog = generateBootstrapLog;
 module.exports.writeValidateScript = writeValidateScript;
 module.exports.writeCIWorkflow = writeCIWorkflow;
 module.exports.writeCIWorkflowForce = writeCIWorkflowForce;
+module.exports.detectTestFramework = detectTestFramework;

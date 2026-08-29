@@ -1,10 +1,5 @@
 'use strict'
 
-const fs = require('fs')
-const path = require('path')
-const { injectCodexHooks } = require('./hooks')
-const { injectRulesForTool } = require('./init')
-
 const skills = {
   'trackfw-governance': `---
 name: trackfw-governance
@@ -81,31 +76,4 @@ Review the branch as an owner. Return findings first, ordered by severity, with 
 `,
 }
 
-function writeManaged(filePath, content) {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true })
-  fs.writeFileSync(filePath, content.trim() + '\n', 'utf8')
-}
-
-function installCodex(cwd) {
-  const root = cwd || process.cwd()
-  injectRulesForTool('codex', root)
-
-  const configPath = path.join(root, '.codex', 'config.toml')
-  fs.mkdirSync(path.dirname(configPath), { recursive: true })
-  let config = fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf8') : ''
-  if (!/^\[agents\]\s*$/m.test(config)) {
-    config = config.replace(/\s*$/, '') + '\n\n[agents]\nmax_threads = 6\nmax_depth = 1\n'
-    fs.writeFileSync(configPath, config, 'utf8')
-  }
-
-  for (const [name, content] of Object.entries(skills)) {
-    writeManaged(path.join(root, '.agents', 'skills', name, 'SKILL.md'), content)
-  }
-  for (const [name, content] of Object.entries(agents)) {
-    writeManaged(path.join(root, '.codex', 'agents', name), content)
-  }
-  injectCodexHooks(root)
-  console.log('  ✓ Codex: AGENTS.md, skills, custom agents and hooks')
-}
-
-module.exports = { installCodex }
+module.exports = { legacyCodexFixtures: { skills, agents } }

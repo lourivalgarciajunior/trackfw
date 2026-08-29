@@ -17,7 +17,7 @@ mkdir -p "$(dirname "$GO_BIN")"
 GOCACHE=${GOCACHE:-/tmp/trackfw-go-cache} go build -o "$GO_BIN" ./cmd/trackfw
 
 # Comandos que têm subcomando em pelo menos um runtime.
-commands=(adr req roadmap plugins)
+commands=(adr req roadmap)
 
 # ---------------------------------------------------------------------------
 # Divergências conhecidas
@@ -28,14 +28,9 @@ commands=(adr req roadmap plugins)
 # Mesmo princípio do trackfw baseline: congela o conhecido sem esconder.
 # ---------------------------------------------------------------------------
 known_divergences=(
-  # O `plugins` do Python foi escrito com outra superfície: tem `run`, que os
-  # outros dois não têm, e não tem add/remove/search. Pode ser decisão
-  # deliberada — o pacote pip não gerencia instalação de plugin da mesma forma.
-  # Precisa de decisão antes de virar trabalho.
-  "plugins:python:add:faltando"
-  "plugins:python:remove:faltando"
-  "plugins:python:search:faltando"
-  "plugins:python:run:sobrando"
+  # Vazio desde a migracao para a 7.3.0: o subsistema de plugins foi removido
+  # pelo upstream (ADR-2026-08-15) e com ele as quatro divergencias que
+  # estavam registradas aqui. Ver REQ-2026-08-29-migrar-para-upstream-7.3.0.
 )
 
 is_known() {

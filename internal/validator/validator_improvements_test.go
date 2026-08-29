@@ -166,6 +166,18 @@ func TestExtractRefPath(t *testing.T) {
 			field:    "REQ",
 			expected: "",
 		},
+		{
+			name:     "ADR entre backticks com prosa após",
+			content:  "ADR: `docs/adr/ADR-2026-07-26-principios-de-design-de-gates-verificaveis.md` (P1–P4; esta REQ é ...)\n",
+			field:    "ADR",
+			expected: "docs/adr/ADR-2026-07-26-principios-de-design-de-gates-verificaveis.md",
+		},
+		{
+			name:     "ADR entre backticks sem prosa",
+			content:  "ADR: `docs/adr/X.md`\n",
+			field:    "ADR",
+			expected: "docs/adr/X.md",
+		},
 	}
 
 	for _, tt := range tests {
@@ -207,7 +219,7 @@ func TestRefTargetsExistWarning(t *testing.T) {
 	}
 }
 
-func TestRefTargetsExistAcceptsGeneratedBasenames(t *testing.T) {
+func TestRefTargetsExistRejectsGeneratedBasenames(t *testing.T) {
 	dir := t.TempDir()
 	config.Reset()
 	t.Cleanup(config.Reset)
@@ -220,8 +232,8 @@ func TestRefTargetsExistAcceptsGeneratedBasenames(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(warnings) != 0 {
-		t.Errorf("generated basename references should resolve, got: %v", warnings)
+	if !hasWarning(warnings, "REQ-001.md") || !hasWarning(warnings, "ROADMAP-001.md") {
+		t.Errorf("basename references should not resolve without canonical paths, got: %v", warnings)
 	}
 }
 

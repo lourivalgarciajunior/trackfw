@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/kgsaran/trackfw/internal/config"
-	"github.com/kgsaran/trackfw/internal/reqs"
 )
 
 // BaselineFile representa o conteúdo de .trackfw-baseline.json
@@ -42,16 +41,6 @@ func LoadBaseline() (*BaselineFile, error) {
 
 // SaveBaseline salva violations e warnings atuais em .trackfw-baseline.json.
 func SaveBaseline(violations, warnings []string) error {
-	// Slice nil vira `null` no JSON, e o runtime Python estourava com
-	// set(None) ao ler um baseline gravado aqui. O arquivo é artefato
-	// compartilhado entre os três runtimes — grava sempre lista.
-	// Ver REQ-2026-08-17-resolvedor-req-unificado.
-	if violations == nil {
-		violations = []string{}
-	}
-	if warnings == nil {
-		warnings = []string{}
-	}
 	bf := BaselineFile{
 		Created:    time.Now().UTC().Format(time.RFC3339),
 		Violations: violations,
@@ -66,21 +55,93 @@ func SaveBaseline(violations, warnings []string) error {
 
 const staleWIPDays = 7
 
+var staleWIPNow = time.Now
+
+func inspectionDiagnostic(rule, target string, err error) string {
+	return fmt.Sprintf("%s: could not inspect %q: %v", rule, target, err)
+}
+
+func listDirForRule(rule, dir string, msgs *[]string) []string {
+	entries, err := listDir(dir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			*msgs = append(*msgs, inspectionDiagnostic(rule, dir, err))
+		}
+		return nil
+	}
+	return entries
+}
+
+func readFileForRule(rule, path string, msgs *[]string) ([]byte, bool) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		*msgs = append(*msgs, inspectionDiagnostic(rule, path, err))
+		return nil, false
+	}
+	return content, true
+}
+
 // contentHasMarker retorna true se content contém algum dos marcadores com valor não-vazio.
+// P3: verifica tanto "\n" quanto "\r\n" para detectar campos vazios em arquivos CRLF.
+// Um marcador seguido de " \n" ou " \r\n" é tratado como "sem valor" (campo vazio).
 func contentHasMarker(content string, markers []string) bool {
 	for _, marker := range markers {
-		if strings.Contains(content, marker) && !strings.Contains(content, marker+" \n") {
+		if strings.Contains(content, marker) &&
+			!strings.Contains(content, marker+" \n") &&
+			!strings.Contains(content, marker+" \r\n") {
 			return true
 		}
 	}
 	return false
 }
 
-// ruleSeverity retorna a severidade configurada para a regra ou "error" como fallback.
+// ruleDefaults mapeia regras cujo default NÃO é "error".
+// Regras ausentes deste mapa usam "error" como default.
+var ruleDefaults = map[string]string{
+	"note_orphan": "warning",
+	// ROADMAP-2026-08-12-deteccao-de-adulteracao-do-credential-guard-regra-de-validate, ML-1A,
+	// ADR-2026-08-12 Emenda 3: the script carries no version marker, so this rule cannot tell
+	// legitimate drift (trackfw not updated yet) from tampering — kept a warning, never an error.
+	// credential_guard_mode_downgrade is deliberately absent from this map: it falls through to
+	// ruleSeverity's "error" default (see validator_credential_guard_integrity.go for why).
+	"credential_guard_script_integrity": "warning",
+	// ROADMAP-2026-08-15-trackfw-validate-deve-detectar-scripts-de-hook-ausentes-ou-
+	// desatualizados, ML-1A: same rationale as credential_guard_script_integrity above —
+	// scripts/trackfw-git-branch-guard.sh carries no version marker either, so this rule cannot
+	// tell legitimate drift from tampering. git_branch_guard_hook_resolvable is deliberately
+	// absent from this map (falls through to "error"), mirroring credential_guard_hook_resolvable.
+	"git_branch_guard_script_integrity": "warning",
+}
+
+// ruleSeverity retorna a severidade configurada para a regra.
+// Prioridade: trackfw.yaml rules: > ruleDefaults > "error".
+//
+// ADR-2026-08-12-severidade-das-regras-de-credential-guard-resolvida-pela-mais-estrita-entre-head-
+// e-disco: the 3 credential-guard rules in credentialGuardAnchoredRules resolve severity
+// DIFFERENTLY from every other rule handled here — they compare HEAD against disk and take the
+// mais estrita (stricter) of the two, instead of reading disk alone. This is deliberate, not a
+// bug: those 3 rules can otherwise be silenced by the very same uncommitted edit they exist to
+// catch (`rules: credential_guard_mode_downgrade: off` in trackfw.yaml, never committed). See
+// credentialGuardRuleSeverity in validator_credential_guard_integrity.go for the mechanism. Every
+// other rule name falls straight through to diskRuleSeverity, byte-identical to before this ADR.
 func ruleSeverity(name string) string {
+	if credentialGuardAnchoredRules[name] {
+		return credentialGuardRuleSeverity(name)
+	}
+	return diskRuleSeverity(name)
+}
+
+// diskRuleSeverity is the ordinary, disk-only resolution used by every rule except the 3
+// credential-guard rules in credentialGuardAnchoredRules: trackfw.yaml rules: (CWD) > ruleDefaults
+// > "error". This is the entire body ruleSeverity had before ADR-2026-08-12 introduced the
+// HEAD-anchored branch above — unchanged behavior, only renamed so both callers can share it.
+func diskRuleSeverity(name string) string {
 	cfg := config.Load()
 	if s, ok := cfg.Rules[name]; ok {
 		return s
+	}
+	if d, ok := ruleDefaults[name]; ok {
+		return d
 	}
 	return "error"
 }
@@ -121,41 +182,17 @@ func applyRuleTagged(ruleName string, msgs []string, violations, warnings *[]Tag
 	}
 }
 
-// WIPConfig armazena configuração de WIP limit lida do trackfw.yaml.
+// WIPConfig armazena configuração de WIP limit derivada do config.ProjectConfig já carregado.
 type WIPConfig struct {
 	Limit   int  // default 1
 	BySquad bool // default false
 }
 
-// readWIPConfig lê wip_limit e wip_by_squad do trackfw.yaml no CWD.
-// Retorna {Limit: 1, BySquad: false} se o arquivo não existe ou os campos estão ausentes.
-func readWIPConfig() WIPConfig {
-	cfg := WIPConfig{Limit: 1, BySquad: false}
-	content, err := os.ReadFile("trackfw.yaml")
-	if err != nil {
-		return cfg
-	}
-	for _, line := range strings.Split(string(content), "\n") {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "wip_limit:") {
-			val := strings.TrimSpace(strings.TrimPrefix(line, "wip_limit:"))
-			fields := strings.Fields(val)
-			if len(fields) > 0 {
-				var n int
-				if _, err := fmt.Sscanf(fields[0], "%d", &n); err == nil && n > 0 {
-					cfg.Limit = n
-				}
-			}
-		}
-		if strings.HasPrefix(line, "wip_by_squad:") {
-			val := strings.TrimSpace(strings.TrimPrefix(line, "wip_by_squad:"))
-			fields := strings.Fields(val)
-			if len(fields) > 0 && fields[0] == "true" {
-				cfg.BySquad = true
-			}
-		}
-	}
-	return cfg
+// wipConfigFrom deriva WIPConfig a partir do ProjectConfig já normalizado por config.Load() —
+// nenhuma releitura de trackfw.yaml acontece aqui. cfg.WipLimit já traz o default 1 aplicado
+// pelo loader quando o campo está ausente ou é <= 0 (config.parseInt cai no default nesse caso).
+func wipConfigFrom(cfg config.ProjectConfig) WIPConfig {
+	return WIPConfig{Limit: cfg.WipLimit, BySquad: cfg.WipBySquad}
 }
 
 // parseSquadFromFrontmatter lê um arquivo markdown e extrai o valor da linha "squad: <valor>".
@@ -191,7 +228,7 @@ func validateWIPLimit() (violations []string, warnings []string, err error) {
 				}
 			}
 		}
-		wipCfg := readWIPConfig()
+		wipCfg := wipConfigFrom(projectCfg)
 		for _, agent := range agents {
 			files, globErr := filepath.Glob(filepath.Join(projectCfg.RoadmapDir, agent, "wip", "*.md"))
 			if globErr != nil {
@@ -212,7 +249,7 @@ func validateWIPLimit() (violations []string, warnings []string, err error) {
 		return nil, nil, globErr
 	}
 
-	wipCfg := readWIPConfig()
+	wipCfg := wipConfigFrom(projectCfg)
 
 	if !wipCfg.BySquad {
 		if len(files) > wipCfg.Limit {
@@ -249,33 +286,18 @@ type GovernanceMode struct {
 	LenientUntil time.Time // zero se strict ou sem data definida
 }
 
-// readGovernanceMode lê os campos governance_mode e lenient_until do trackfw.yaml no CWD.
-// Retorna GovernanceMode{Mode: "strict"} se o arquivo não existe ou os campos estão ausentes.
-func readGovernanceMode() GovernanceMode {
-	content, err := os.ReadFile("trackfw.yaml")
-	if err != nil {
-		return GovernanceMode{Mode: "strict"}
-	}
+// governanceModeFrom deriva GovernanceMode a partir do ProjectConfig já normalizado por
+// config.Load() — nenhuma releitura de trackfw.yaml acontece aqui. cfg.GovernanceMode chega
+// como o valor bruto do campo (string vazia se ausente); lenient_until chega como a data literal
+// (ex.: "2026-08-02"), convertida aqui para time.Time.
+func governanceModeFrom(cfg config.ProjectConfig) GovernanceMode {
 	gm := GovernanceMode{Mode: "strict"}
-	for _, line := range strings.Split(string(content), "\n") {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "governance_mode:") {
-			val := strings.TrimSpace(strings.TrimPrefix(line, "governance_mode:"))
-			// Pegar apenas a primeira palavra (ignorar comentários inline)
-			fields := strings.Fields(val)
-			if len(fields) > 0 {
-				gm.Mode = fields[0]
-			}
-		}
-		if strings.HasPrefix(line, "lenient_until:") {
-			val := strings.TrimSpace(strings.TrimPrefix(line, "lenient_until:"))
-			fields := strings.Fields(val)
-			if len(fields) > 0 {
-				t, parseErr := time.Parse("2006-01-02", fields[0])
-				if parseErr == nil {
-					gm.LenientUntil = t
-				}
-			}
+	if cfg.GovernanceMode != "" {
+		gm.Mode = cfg.GovernanceMode
+	}
+	if cfg.LenientUntil != "" {
+		if t, err := time.Parse("2006-01-02", cfg.LenientUntil); err == nil {
+			gm.LenientUntil = t
 		}
 	}
 	return gm
@@ -283,7 +305,7 @@ func readGovernanceMode() GovernanceMode {
 
 // IsLenient retorna true se o projeto está em modo lenient e o prazo ainda não expirou.
 func IsLenient() bool {
-	gm := readGovernanceMode()
+	gm := governanceModeFrom(config.Load())
 	if gm.Mode != "lenient" {
 		return false
 	}
@@ -296,7 +318,7 @@ func IsLenient() bool {
 // LenientUntilDate retorna a data de expiração do modo lenient formatada em "2006-01-02".
 // Retorna string vazia se o modo não for lenient ou a data não estiver definida.
 func LenientUntilDate() string {
-	gm := readGovernanceMode()
+	gm := governanceModeFrom(config.Load())
 	if gm.Mode != "lenient" || gm.LenientUntil.IsZero() {
 		return ""
 	}
@@ -363,6 +385,12 @@ func ValidateUnfiltered() (violations []string, warnings []string, err error) {
 	}
 	applyRule("blocked_by_draft_adr", draftBlockedViolations, &violations, &warnings)
 
+	adrAcceptedViolations, e := validateADRAcceptedWhenREQDone()
+	if e != nil {
+		return nil, nil, e
+	}
+	applyRule("adr_accepted_when_req_done", adrAcceptedViolations, &violations, &warnings)
+
 	frontmatterViolations := validateFrontmatterPresence()
 	violations = append(violations, frontmatterViolations...) // sem regra configurável
 
@@ -371,6 +399,12 @@ func ValidateUnfiltered() (violations []string, warnings []string, err error) {
 		return nil, nil, e
 	}
 	applyRule("ref_targets_exist", refWarnings, &violations, &warnings)
+
+	reqLifecycleWarnings, e := validateREQRoadmapLifecycle()
+	if e != nil {
+		return nil, nil, e
+	}
+	warnings = append(warnings, reqLifecycleWarnings...)
 
 	coherenceWarnings, e := validateFolderStatusCoherence()
 	if e != nil {
@@ -390,50 +424,118 @@ func ValidateUnfiltered() (violations []string, warnings []string, err error) {
 	}
 	applyRule("branch_has_wip_roadmap", branchViolations, &violations, &warnings)
 
+	noteOrphanMsgs, e := validateNoteOrphan()
+	if e != nil {
+		return nil, nil, e
+	}
+	applyRule("note_orphan", noteOrphanMsgs, &violations, &warnings)
+
 	// v2.5: verificação bidirecional REQ↔Roadmap via trace_id_field (desativada se campo vazio)
 	traceViolations, traceWarnings := validateTraceId(cfg)
 	violations = append(violations, traceViolations...)
 	warnings = append(warnings, traceWarnings...)
 
+	// ML-2A: validação de existência dos diretórios adr_dirs (Warning por padrão, Error se strict_ci_paths)
+	adrDirViolations, adrDirWarnings := validateADRDirsExist(cfg)
+	violations = append(violations, adrDirViolations...)
+	warnings = append(warnings, adrDirWarnings...)
+
+	// ROADMAP-2026-08-12-mitigacao-do-fail-open-do-credential-guard, ML-1A: controle positivo —
+	// detecta hook de credential-guard registrado cujo script não existe ou não é executável.
+	// ROADMAP-2026-08-15-trackfw-validate-deve-detectar-scripts-de-hook-ausentes-ou-
+	// desatualizados, ML-1A: soma as mensagens de escopo GLOBAL sob a MESMA regra — ver o
+	// comentário sobre os 4 wrappers em validator_git_branch_guard.go.
+	credentialGuardHookMsgs, e := validateCredentialGuardHookResolvable()
+	if e != nil {
+		return nil, nil, e
+	}
+	credentialGuardGlobalHookMsgs, e := validateCredentialGuardGlobalHookResolvable()
+	if e != nil {
+		return nil, nil, e
+	}
+	applyRule("credential_guard_hook_resolvable", append(credentialGuardHookMsgs, credentialGuardGlobalHookMsgs...), &violations, &warnings)
+
+	// ROADMAP-2026-08-12-deteccao-de-adulteracao-do-credential-guard-regra-de-validate, ML-1A:
+	// detecta adulteração do credential-guard, âncora por alvo (ADR-2026-08-12 Emenda 1).
+	credentialGuardScriptMsgs, e := validateCredentialGuardScriptIntegrity()
+	if e != nil {
+		return nil, nil, e
+	}
+	credentialGuardGlobalScriptMsgs, e := validateCredentialGuardGlobalScriptIntegrity()
+	if e != nil {
+		return nil, nil, e
+	}
+	applyRule("credential_guard_script_integrity", append(credentialGuardScriptMsgs, credentialGuardGlobalScriptMsgs...), &violations, &warnings)
+
+	credentialGuardModeMsgs, e := validateCredentialGuardModeDowngrade()
+	if e != nil {
+		return nil, nil, e
+	}
+	applyRule("credential_guard_mode_downgrade", credentialGuardModeMsgs, &violations, &warnings)
+
+	// ROADMAP-2026-08-15-trackfw-validate-deve-detectar-scripts-de-hook-ausentes-ou-
+	// desatualizados, ML-1A: mesma cobertura acima (existência/executabilidade + integridade,
+	// projeto e global), generalizada para trackfw-git-branch-guard.sh.
+	gitBranchGuardHookMsgs, e := validateGitBranchGuardHookResolvable()
+	if e != nil {
+		return nil, nil, e
+	}
+	gitBranchGuardGlobalHookMsgs, e := validateGitBranchGuardGlobalHookResolvable()
+	if e != nil {
+		return nil, nil, e
+	}
+	applyRule("git_branch_guard_hook_resolvable", append(gitBranchGuardHookMsgs, gitBranchGuardGlobalHookMsgs...), &violations, &warnings)
+
+	gitBranchGuardScriptMsgs, e := validateGitBranchGuardScriptIntegrity()
+	if e != nil {
+		return nil, nil, e
+	}
+	gitBranchGuardGlobalScriptMsgs, e := validateGitBranchGuardGlobalScriptIntegrity()
+	if e != nil {
+		return nil, nil, e
+	}
+	applyRule("git_branch_guard_script_integrity", append(gitBranchGuardScriptMsgs, gitBranchGuardGlobalScriptMsgs...), &violations, &warnings)
+
+	// ADR-2026-08-15-gate-de-duas-fases-..., ML-3A (D2): git-anchored detection behind the
+	// TRACKFW_ORCHESTRATOR_SESSION guardrail — flags a third-party artifact claim with no
+	// matching provenance entry, or a provenance entry whose checksum cannot be reconciled
+	// against the installed content via its quarantine record.
+	thirdPartyProvenanceMsgs, e := validateThirdPartyArtifactHasProvenance()
+	if e != nil {
+		return nil, nil, e
+	}
+	applyRule("thirdparty_artifact_has_provenance", thirdPartyProvenanceMsgs, &violations, &warnings)
+
 	return violations, warnings, nil
 }
 
+// Validate executes ValidateUnfiltered's tagged twin (validateUnfilteredTagged), applies the
+// baseline filter WITH the credential-guard carve-out (see filterBaselineTagged), then strips the
+// Rule tags to preserve this function's plain-[]string signature.
+//
+// ADR-2026-08-12-severidade-das-regras-de-credential-guard-resolvida-pela-mais-estrita-entre-head-
+// e-disco: before this ADR, Validate() filtered the plain []string returned by ValidateUnfiltered
+// directly — no rule name attached to each message, so a per-rule baseline carve-out was not
+// expressible here at all. Routing through validateUnfilteredTagged (already used by
+// ValidateTagged) is what lets both entry points share one baseline-filtering implementation
+// instead of the two independently-maintained copies that predated this change — see
+// filterBaselineTagged's doc comment for the carve-out itself. validateUnfilteredTagged emits the
+// exact same rule checks, in the exact same order, as ValidateUnfiltered (see that function's own
+// doc comment) — this refactor does not change Validate()'s output for any message the
+// credential-guard carve-out does not apply to.
 func Validate() (violations []string, warnings []string, err error) {
-	violations, warnings, err = ValidateUnfiltered()
+	taggedViolations, taggedWarnings, err := validateUnfilteredTagged()
 	if err != nil {
-		return
+		return nil, nil, err
 	}
 
-	// Aplicar filtro de baseline (ratchet): falha somente em violations novas
-	baseline, bErr := LoadBaseline()
-	if bErr != nil {
-		return nil, nil, fmt.Errorf("erro ao carregar baseline: %w", bErr)
+	taggedViolations, taggedWarnings, err = filterBaselineTagged(taggedViolations, taggedWarnings)
+	if err != nil {
+		return nil, nil, err
 	}
-	if baseline != nil {
-		baselineSet := make(map[string]struct{}, len(baseline.Violations))
-		for _, v := range baseline.Violations {
-			baselineSet[v] = struct{}{}
-		}
-		var netNew []string
-		for _, v := range violations {
-			if _, exists := baselineSet[v]; !exists {
-				netNew = append(netNew, v)
-			}
-		}
-		violations = netNew
 
-		warnSet := make(map[string]struct{}, len(baseline.Warnings))
-		for _, w := range baseline.Warnings {
-			warnSet[w] = struct{}{}
-		}
-		var netNewWarn []string
-		for _, w := range warnings {
-			if _, exists := warnSet[w]; !exists {
-				netNewWarn = append(netNewWarn, w)
-			}
-		}
-		warnings = netNewWarn
-	}
+	violations = untagMsgs(taggedViolations)
+	warnings = untagMsgs(taggedWarnings)
 
 	// Modo lenient: mover violations para warnings, exit code 0
 	if IsLenient() {
@@ -442,6 +544,69 @@ func Validate() (violations []string, warnings []string, err error) {
 	}
 
 	return
+}
+
+// filterBaselineTagged applies the baseline (ratchet) filter shared by Validate() and
+// ValidateTagged(), with a carve-out: a violation/warning tagged with one of the 3 rule names in
+// credentialGuardAnchoredRules is NEVER tolerated by baseline, regardless of what
+// .trackfw-baseline.json contains for it.
+//
+// ADR-2026-08-12-severidade-das-regras-de-credential-guard-resolvida-pela-mais-estrita-entre-head-
+// e-disco: this is a DIFFERENT mechanism from the HEAD-vs-disk comparison in
+// credentialGuardRuleSeverity, deliberately — .trackfw-baseline.json is .gitignore'd on purpose
+// (see .gitignore, "baseline local de violations toleradas (nao versionado)"), so there is no HEAD
+// copy of it to compare against; "require a commit" simply does not apply to a file the project
+// decided never to version. The only closure for this channel is to exclude these 3 rule names
+// from ratchet eligibility outright, independent of message content.
+func filterBaselineTagged(violations, warnings []TaggedMsg) ([]TaggedMsg, []TaggedMsg, error) {
+	baseline, bErr := LoadBaseline()
+	if bErr != nil {
+		return nil, nil, fmt.Errorf("erro ao carregar baseline: %w", bErr)
+	}
+	if baseline == nil {
+		return violations, warnings, nil
+	}
+
+	baselineSet := make(map[string]struct{}, len(baseline.Violations))
+	for _, v := range baseline.Violations {
+		baselineSet[v] = struct{}{}
+	}
+	var netNew []TaggedMsg
+	for _, v := range violations {
+		_, tolerated := baselineSet[v.Msg]
+		if tolerated && !credentialGuardAnchoredRules[v.Rule] {
+			continue
+		}
+		netNew = append(netNew, v)
+	}
+
+	warnSet := make(map[string]struct{}, len(baseline.Warnings))
+	for _, w := range baseline.Warnings {
+		warnSet[w] = struct{}{}
+	}
+	var netNewWarn []TaggedMsg
+	for _, w := range warnings {
+		_, tolerated := warnSet[w.Msg]
+		if tolerated && !credentialGuardAnchoredRules[w.Rule] {
+			continue
+		}
+		netNewWarn = append(netNewWarn, w)
+	}
+
+	return netNew, netNewWarn, nil
+}
+
+// untagMsgs strips the Rule tag off each TaggedMsg, preserving order. Used by Validate() to
+// recover its plain []string signature after routing through the tagged pipeline.
+func untagMsgs(tagged []TaggedMsg) []string {
+	if len(tagged) == 0 {
+		return nil
+	}
+	out := make([]string, len(tagged))
+	for i, t := range tagged {
+		out[i] = t.Msg
+	}
+	return out
 }
 
 // validateUnfilteredTagged é a versão interna de ValidateUnfiltered que retorna TaggedMsg.
@@ -506,6 +671,12 @@ func validateUnfilteredTagged() (violations []TaggedMsg, warnings []TaggedMsg, e
 	}
 	applyRuleTagged("blocked_by_draft_adr", draftBlockedViolations, &violations, &warnings)
 
+	adrAcceptedViolations, e := validateADRAcceptedWhenREQDone()
+	if e != nil {
+		return nil, nil, e
+	}
+	applyRuleTagged("adr_accepted_when_req_done", adrAcceptedViolations, &violations, &warnings)
+
 	frontmatterViolations := validateFrontmatterPresence()
 	for _, m := range frontmatterViolations {
 		violations = append(violations, TaggedMsg{Rule: "", Msg: m})
@@ -516,6 +687,14 @@ func validateUnfilteredTagged() (violations []TaggedMsg, warnings []TaggedMsg, e
 		return nil, nil, e
 	}
 	applyRuleTagged("ref_targets_exist", refWarnings, &violations, &warnings)
+
+	reqLifecycleWarnings, e := validateREQRoadmapLifecycle()
+	if e != nil {
+		return nil, nil, e
+	}
+	for _, m := range reqLifecycleWarnings {
+		warnings = append(warnings, TaggedMsg{Rule: "req_roadmap_lifecycle", Msg: m})
+	}
 
 	coherenceWarnings, e := validateFolderStatusCoherence()
 	if e != nil {
@@ -535,6 +714,12 @@ func validateUnfilteredTagged() (violations []TaggedMsg, warnings []TaggedMsg, e
 	}
 	applyRuleTagged("branch_has_wip_roadmap", branchViolationsT, &violations, &warnings)
 
+	noteOrphanMsgsT, e := validateNoteOrphan()
+	if e != nil {
+		return nil, nil, e
+	}
+	applyRuleTagged("note_orphan", noteOrphanMsgsT, &violations, &warnings)
+
 	// v2.5: traceid — applyRuleTagged está no validator_traceid via applyRule; aqui fazemos tagged
 	traceViolations, traceWarnings := validateTraceId(cfg)
 	for _, m := range traceViolations {
@@ -543,6 +728,77 @@ func validateUnfilteredTagged() (violations []TaggedMsg, warnings []TaggedMsg, e
 	for _, m := range traceWarnings {
 		warnings = append(warnings, TaggedMsg{Rule: extractRulePrefix(m), Msg: m})
 	}
+
+	// ML-2A: validação de existência dos diretórios adr_dirs (Warning por padrão, Error se strict_ci_paths)
+	adrDirViolations, adrDirWarnings := validateADRDirsExist(cfg)
+	for _, m := range adrDirViolations {
+		violations = append(violations, TaggedMsg{Rule: "adr_dir_exists", Msg: m})
+	}
+	for _, m := range adrDirWarnings {
+		warnings = append(warnings, TaggedMsg{Rule: "adr_dir_exists", Msg: m})
+	}
+
+	// ROADMAP-2026-08-12-mitigacao-do-fail-open-do-credential-guard, ML-1A: controle positivo —
+	// detecta hook de credential-guard registrado cujo script não existe ou não é executável.
+	// ROADMAP-2026-08-15-trackfw-validate-deve-detectar-scripts-de-hook-ausentes-ou-
+	// desatualizados, ML-1A: soma as mensagens de escopo GLOBAL sob a MESMA regra — ver o
+	// comentário sobre os 4 wrappers em validator_git_branch_guard.go.
+	credentialGuardHookMsgsT, e := validateCredentialGuardHookResolvable()
+	if e != nil {
+		return nil, nil, e
+	}
+	credentialGuardGlobalHookMsgsT, e := validateCredentialGuardGlobalHookResolvable()
+	if e != nil {
+		return nil, nil, e
+	}
+	applyRuleTagged("credential_guard_hook_resolvable", append(credentialGuardHookMsgsT, credentialGuardGlobalHookMsgsT...), &violations, &warnings)
+
+	// ROADMAP-2026-08-12-deteccao-de-adulteracao-do-credential-guard-regra-de-validate, ML-1A:
+	// detecta adulteração do credential-guard, âncora por alvo (ADR-2026-08-12 Emenda 1).
+	credentialGuardScriptMsgsT, e := validateCredentialGuardScriptIntegrity()
+	if e != nil {
+		return nil, nil, e
+	}
+	credentialGuardGlobalScriptMsgsT, e := validateCredentialGuardGlobalScriptIntegrity()
+	if e != nil {
+		return nil, nil, e
+	}
+	applyRuleTagged("credential_guard_script_integrity", append(credentialGuardScriptMsgsT, credentialGuardGlobalScriptMsgsT...), &violations, &warnings)
+
+	credentialGuardModeMsgsT, e := validateCredentialGuardModeDowngrade()
+	if e != nil {
+		return nil, nil, e
+	}
+	applyRuleTagged("credential_guard_mode_downgrade", credentialGuardModeMsgsT, &violations, &warnings)
+
+	// ROADMAP-2026-08-15-trackfw-validate-deve-detectar-scripts-de-hook-ausentes-ou-
+	// desatualizados, ML-1A: mesma cobertura acima (existência/executabilidade + integridade,
+	// projeto e global), generalizada para trackfw-git-branch-guard.sh.
+	gitBranchGuardHookMsgsT, e := validateGitBranchGuardHookResolvable()
+	if e != nil {
+		return nil, nil, e
+	}
+	gitBranchGuardGlobalHookMsgsT, e := validateGitBranchGuardGlobalHookResolvable()
+	if e != nil {
+		return nil, nil, e
+	}
+	applyRuleTagged("git_branch_guard_hook_resolvable", append(gitBranchGuardHookMsgsT, gitBranchGuardGlobalHookMsgsT...), &violations, &warnings)
+
+	gitBranchGuardScriptMsgsT, e := validateGitBranchGuardScriptIntegrity()
+	if e != nil {
+		return nil, nil, e
+	}
+	gitBranchGuardGlobalScriptMsgsT, e := validateGitBranchGuardGlobalScriptIntegrity()
+	if e != nil {
+		return nil, nil, e
+	}
+	applyRuleTagged("git_branch_guard_script_integrity", append(gitBranchGuardScriptMsgsT, gitBranchGuardGlobalScriptMsgsT...), &violations, &warnings)
+
+	thirdPartyProvenanceMsgsT, e := validateThirdPartyArtifactHasProvenance()
+	if e != nil {
+		return nil, nil, e
+	}
+	applyRuleTagged("thirdparty_artifact_has_provenance", thirdPartyProvenanceMsgsT, &violations, &warnings)
 
 	return violations, warnings, nil
 }
@@ -576,35 +832,10 @@ func ValidateTagged() (violations []TaggedMsg, warnings []TaggedMsg, err error) 
 		return
 	}
 
-	// Filtro de baseline: excluir violations/warnings já conhecidos (por mensagem).
-	baseline, bErr := LoadBaseline()
-	if bErr != nil {
-		return nil, nil, fmt.Errorf("erro ao carregar baseline: %w", bErr)
-	}
-	if baseline != nil {
-		baselineSet := make(map[string]struct{}, len(baseline.Violations))
-		for _, v := range baseline.Violations {
-			baselineSet[v] = struct{}{}
-		}
-		var netNew []TaggedMsg
-		for _, v := range violations {
-			if _, exists := baselineSet[v.Msg]; !exists {
-				netNew = append(netNew, v)
-			}
-		}
-		violations = netNew
-
-		warnSet := make(map[string]struct{}, len(baseline.Warnings))
-		for _, w := range baseline.Warnings {
-			warnSet[w] = struct{}{}
-		}
-		var netNewWarn []TaggedMsg
-		for _, w := range warnings {
-			if _, exists := warnSet[w.Msg]; !exists {
-				netNewWarn = append(netNewWarn, w)
-			}
-		}
-		warnings = netNewWarn
+	// Filtro de baseline (com carve-out de credential-guard) — ver filterBaselineTagged.
+	violations, warnings, err = filterBaselineTagged(violations, warnings)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// Modo lenient: mover violations para warnings, exit code 0.
@@ -616,10 +847,65 @@ func ValidateTagged() (violations []TaggedMsg, warnings []TaggedMsg, err error) 
 	return
 }
 
+// inventoryBlock monta a seção "📊 Inventory" exibida no topo de `trackfw status`,
+// somando o total de ADRs, REQs (discriminadas por status real) e roadmaps (pelos
+// 6 estados de pasta, incluindo analyzing — antes ausente de qualquer contagem).
+// Roadmaps são somados via resolveStateDirs, que já resolve namespacing flat/by_agent,
+// para que a contagem funcione igual nos dois modos.
+func inventoryBlock(cfg config.ProjectConfig) string {
+	var sb strings.Builder
+
+	adrCount := 0
+	for _, adrDir := range cfg.ADRDirs {
+		adrCount += len(walkADRFilePaths(adrDir))
+	}
+
+	reqFiles := resolveREQFiles(cfg)
+	var reqOpen, reqDone, reqClosed int
+	for _, p := range reqFiles {
+		content, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		switch strings.ToLower(reqStatusValue(string(content))) {
+		case "open":
+			reqOpen++
+		case "done":
+			reqDone++
+		case "closed":
+			reqClosed++
+		}
+	}
+
+	states := []string{"backlog", "analyzing", "wip", "blocked", "done", "abandoned"}
+	roadmapCounts := make(map[string]int, len(states))
+	roadmapTotal := 0
+	for _, state := range states {
+		total := 0
+		for _, dir := range resolveStateDirs(cfg, state) {
+			entries, _ := listDir(dir)
+			total += len(entries)
+		}
+		roadmapCounts[state] = total
+		roadmapTotal += total
+	}
+
+	sb.WriteString("\n📊 Inventory\n")
+	sb.WriteString(fmt.Sprintf("   %-12s%d\n", "ADRs", adrCount))
+	sb.WriteString(fmt.Sprintf("   %-12s%d  (%d Open · %d Done · %d Closed)\n", "REQs", len(reqFiles), reqOpen, reqDone, reqClosed))
+	sb.WriteString(fmt.Sprintf("   %-12s%d\n", "Roadmaps", roadmapTotal))
+	sb.WriteString(fmt.Sprintf("     backlog %d · analyzing %d · wip %d\n", roadmapCounts["backlog"], roadmapCounts["analyzing"], roadmapCounts["wip"]))
+	sb.WriteString(fmt.Sprintf("     blocked %d · done %d · abandoned %d\n", roadmapCounts["blocked"], roadmapCounts["done"], roadmapCounts["abandoned"]))
+
+	return sb.String()
+}
+
 func GetStatus() (string, error) {
 	cfg := config.Load()
 	var sb strings.Builder
 	sb.WriteString("── trackfw status ──────────────────────\n")
+
+	sb.WriteString(inventoryBlock(cfg))
 
 	if cfg.RoadmapNamespacing == config.NamespacingByAgent {
 		agents := cfg.Agents
@@ -653,7 +939,7 @@ func GetStatus() (string, error) {
 			sb.WriteString(fmt.Sprintf("   %s\n", f))
 		}
 
-		wipCfg := readWIPConfig()
+		wipCfg := wipConfigFrom(cfg)
 		if wipCfg.BySquad && len(wip) > 0 {
 			bySquad := map[string]int{}
 			for _, f := range wip {
@@ -694,14 +980,18 @@ func GetStatus() (string, error) {
 			}
 		}
 
-		// Seção: REQs bloqueadas por ADRs Draft
+		// Seção: REQs bloqueadas por ADRs não aceitos (Draft ou Proposed). O status exibido
+		// por ADR é resolvido via adrStatusForRule (helper canônico) em vez de hardcodar
+		// "Draft" — blockedREQs() cobre ambos os status desde que passou a delegar em
+		// adrDraftStatusForRule, e um rótulo fixo "(Draft)" mentiria para um ADR Proposed.
 		blockedByDraft, err := blockedREQs()
 		if err == nil && len(blockedByDraft) > 0 {
-			sb.WriteString(fmt.Sprintf("\n⏳ REQs blocked by Draft ADRs (%d)\n", len(blockedByDraft)))
+			sb.WriteString(fmt.Sprintf("\n⏳ REQs blocked by not-accepted ADRs (%d)\n", len(blockedByDraft)))
 			for reqFile, adrs := range blockedByDraft {
 				sb.WriteString(fmt.Sprintf("   %s\n", reqFile))
 				for _, adr := range adrs {
-					sb.WriteString(fmt.Sprintf("     → %s (Draft)\n", adr))
+					status, _ := adrStatusForRule("blocked_by_draft_adr", adr, nil)
+					sb.WriteString(fmt.Sprintf("     → %s (%s)\n", adr, status))
 				}
 			}
 		}
@@ -720,8 +1010,11 @@ func GetStatus() (string, error) {
 	return sb.String(), nil
 }
 
-// resolveWIPDirs retorna todos os diretórios wip/ conforme o modo de namespacing.
-func resolveWIPDirs(cfg config.ProjectConfig) []string {
+// resolveStateDirs retorna todos os diretórios de um estado (ex: "wip", "done") conforme o modo de
+// namespacing. É a fonte única de resolução de caminho por estado — resolveWIPDirs e resolveDoneDirs
+// são wrappers finos sobre esta função. Duplicar a lógica aqui foi a causa raiz de defeitos
+// anteriores (roadmap_dir divergente entre runtimes).
+func resolveStateDirs(cfg config.ProjectConfig, state string) []string {
 	if cfg.RoadmapNamespacing == config.NamespacingByAgent {
 		agents := cfg.Agents
 		if len(agents) == 0 {
@@ -736,22 +1029,73 @@ func resolveWIPDirs(cfg config.ProjectConfig) []string {
 		}
 		var dirs []string
 		for _, agent := range agents {
-			dirs = append(dirs, cfg.RoadmapDir+"/"+agent+"/wip")
+			dirs = append(dirs, cfg.RoadmapDir+"/"+agent+"/"+state)
 		}
 		return dirs
 	}
-	return []string{cfg.RoadmapDir + "/wip"}
+	return []string{cfg.RoadmapDir + "/" + state}
+}
+
+// resolveWIPDirs retorna todos os diretórios wip/ conforme o modo de namespacing.
+func resolveWIPDirs(cfg config.ProjectConfig) []string {
+	return resolveStateDirs(cfg, "wip")
+}
+
+// resolveDoneDirs retorna todos os diretórios done/ conforme o modo de namespacing.
+func resolveDoneDirs(cfg config.ProjectConfig) []string {
+	return resolveStateDirs(cfg, "done")
+}
+
+// ResolveWIPDirs é o wrapper exportado de resolveWIPDirs, usado por consumidores fora do
+// pacote validator (ex: comando `trackfw branch new`).
+func ResolveWIPDirs(cfg config.ProjectConfig) []string {
+	return resolveWIPDirs(cfg)
+}
+
+// ResolveDoneDirs é o wrapper exportado de resolveDoneDirs, usado por consumidores fora do
+// pacote validator (ex: comando `trackfw branch new`).
+func ResolveDoneDirs(cfg config.ProjectConfig) []string {
+	return resolveDoneDirs(cfg)
 }
 
 // resolveREQFiles retorna paths completos de todos os .md em req_dir,
 // consciente de roadmap_namespacing: by_agent percorre req_dir/<agente>/<estado>/.
-// resolveREQFiles delega ao pacote reqs.
-//
-// Antes desta delegação varria apenas reqDir/<agente>/<estado>/*.md e ignorava
-// as REQs que moram direto em reqDir/<agente>/ — 31 das 36 deste repositório,
-// que nunca passaram pelo gate. Ver REQ-2026-08-17-resolvedor-req-unificado.
 func resolveREQFiles(cfg config.ProjectConfig) []string {
-	return reqs.Files(cfg)
+	reqDir := cfg.REQDir
+	if reqDir == "" {
+		return nil
+	}
+	if cfg.RoadmapNamespacing == config.NamespacingByAgent {
+		stateDirs := []string{"backlog", "analyzing", "wip", "blocked", "done", "abandoned"}
+		agents := cfg.Agents
+		if len(agents) == 0 {
+			entries, err := os.ReadDir(reqDir)
+			if err == nil {
+				for _, e := range entries {
+					if e.IsDir() {
+						agents = append(agents, e.Name())
+					}
+				}
+			}
+		}
+		var files []string
+		for _, agent := range agents {
+			for _, state := range stateDirs {
+				pattern := filepath.Join(reqDir, agent, state, "*.md")
+				matches, err := filepath.Glob(pattern)
+				if err == nil {
+					files = append(files, matches...)
+				}
+			}
+		}
+		return files
+	}
+	// flat (comportamento anterior)
+	matches, err := filepath.Glob(filepath.Join(reqDir, "*.md"))
+	if err != nil {
+		return nil
+	}
+	return matches
 }
 
 func validateWIPHasREQ() ([]string, error) {
@@ -760,13 +1104,10 @@ func validateWIPHasREQ() ([]string, error) {
 
 	var violations []string
 	for _, wipDir := range wipDirs {
-		entries, err := listDir(wipDir)
-		if err != nil {
-			continue
-		}
+		entries := listDirForRule("wip_has_req", wipDir, &violations)
 		for _, name := range entries {
-			content, err := os.ReadFile(filepath.Join(wipDir, name))
-			if err != nil {
+			content, ok := readFileForRule("wip_has_req", filepath.Join(wipDir, name), &violations)
+			if !ok {
 				continue
 			}
 			if !contentHasMarker(string(content), cfg.LinkFieldsReq) {
@@ -796,19 +1137,18 @@ func validateREQsHaveADR() ([]string, error) {
 
 func validateBlockedHasREQ() ([]string, error) {
 	cfg := config.Load()
-	entries, err := listDir(cfg.RoadmapDir + "/blocked")
-	if err != nil {
-		return nil, nil
-	}
 
 	var violations []string
-	for _, name := range entries {
-		content, err := os.ReadFile(filepath.Join(cfg.RoadmapDir+"/blocked", name))
-		if err != nil {
-			continue
-		}
-		if !contentHasMarker(string(content), cfg.LinkFieldsReq) {
-			violations = append(violations, fmt.Sprintf("roadmap %q is in blocked but has no linked REQ", name))
+	for _, blockedDir := range resolveStateDirs(cfg, "blocked") {
+		entries := listDirForRule("blocked_has_req", blockedDir, &violations)
+		for _, name := range entries {
+			content, ok := readFileForRule("blocked_has_req", filepath.Join(blockedDir, name), &violations)
+			if !ok {
+				continue
+			}
+			if !contentHasMarker(string(content), cfg.LinkFieldsReq) {
+				violations = append(violations, fmt.Sprintf("roadmap %q is in blocked but has no linked REQ", name))
+			}
 		}
 	}
 	return violations, nil
@@ -833,23 +1173,28 @@ func validateREQsHaveRoadmap() ([]string, error) {
 
 func validateADRsAreReferenced() ([]string, error) {
 	cfg := config.Load()
+	var violations []string
 	var adrs []string
 	for _, adrDir := range cfg.ADRDirs {
-		names := walkADRFiles(adrDir)
-		adrs = append(adrs, names...)
+		paths := walkADRFilePathsForRule("adr_orphan", adrDir, &violations)
+		for _, p := range paths {
+			if isOutsideCWD(p) {
+				continue
+			}
+			adrs = append(adrs, filepath.Base(p))
+		}
 	}
 
 	reqPaths := resolveREQFiles(cfg)
 	var allREQContent strings.Builder
 	for _, p := range reqPaths {
-		b, err := os.ReadFile(p)
-		if err == nil {
+		b, ok := readFileForRule("adr_orphan", p, &violations)
+		if ok {
 			allREQContent.Write(b)
 		}
 	}
 	combined := allREQContent.String()
 
-	var violations []string
 	for _, adr := range adrs {
 		if !strings.Contains(combined, adr) {
 			violations = append(violations, fmt.Sprintf("adr %q is not referenced by any REQ", adr))
@@ -864,13 +1209,10 @@ func validateWIPHasAcceptanceCriteria() ([]string, error) {
 
 	var violations []string
 	for _, wipDir := range wipDirs {
-		entries, err := listDir(wipDir)
-		if err != nil {
-			continue
-		}
+		entries := listDirForRule("wip_acceptance", wipDir, &violations)
 		for _, name := range entries {
-			content, err := os.ReadFile(filepath.Join(wipDir, name))
-			if err != nil {
+			content, ok := readFileForRule("wip_acceptance", filepath.Join(wipDir, name), &violations)
+			if !ok {
 				continue
 			}
 			s := string(content)
@@ -886,28 +1228,43 @@ func validateWIPHasAcceptanceCriteria() ([]string, error) {
 func validateStaleWIP() ([]string, error) {
 	cfg := config.Load()
 	wipDirs := resolveWIPDirs(cfg)
+	thresholdDays := cfg.StaleWIPDays
+	if thresholdDays <= 0 {
+		thresholdDays = staleWIPDays
+	}
+	now := staleWIPNow()
 
 	var warnings []string
 	for _, wipDir := range wipDirs {
-		entries, err := filepath.Glob(wipDir + "/*.md")
+		entries, err := listDir(wipDir)
 		if err != nil {
+			if !os.IsNotExist(err) {
+				warnings = append(warnings, inspectionDiagnostic("stale_wip", wipDir, err))
+			}
 			continue
 		}
-		for _, path := range entries {
-			info, err := os.Stat(path)
-			if err != nil {
+		for _, name := range entries {
+			if !strings.HasSuffix(name, ".md") {
 				continue
 			}
-			modTime := info.ModTime()
-			if gitTime, ok := gitLastModifiedTime(path); ok {
-				modTime = gitTime
+			path := filepath.Join(wipDir, name)
+			info, err := os.Stat(path)
+			if err != nil {
+				warnings = append(warnings, inspectionDiagnostic("stale_wip", path, err))
+				continue
 			}
-			age := time.Since(modTime)
+			refTime := info.ModTime()
+			logTime, ok, diagnostics := latestWIPTransitionTime(cfg, path)
+			warnings = append(warnings, diagnostics...)
+			if ok {
+				refTime = logTime
+			}
+			age := now.Sub(refTime)
 			days := int(age.Hours() / 24)
-			if days >= staleWIPDays {
+			if days >= thresholdDays {
 				warnings = append(warnings, fmt.Sprintf(
 					"roadmap/wip/%s has been in WIP for %d days (last modified %s)",
-					filepath.Base(path), days, modTime.Format("2006-01-02"),
+					filepath.Base(path), days, refTime.Format("2006-01-02"),
 				))
 			}
 		}
@@ -915,8 +1272,79 @@ func validateStaleWIP() ([]string, error) {
 	return warnings, nil
 }
 
-// blockedREQs retorna um mapa de REQ-basename → lista de ADR-basenames Draft que a bloqueiam.
-// Somente REQs com Status: Open e ADRs com Status: Draft são incluídas.
+func latestWIPTransitionTime(cfg config.ProjectConfig, roadmapPath string) (time.Time, bool, []string) {
+	logPath := filepath.Join(cfg.RoadmapDir, ".trackfw-log")
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return time.Time{}, false, nil
+		}
+		return time.Time{}, false, []string{inspectionDiagnostic("stale_wip", logPath, err)}
+	}
+	identity := roadmapLogIdentity(cfg, roadmapPath)
+	var latest time.Time
+	found := false
+	var diagnostics []string
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		timestamp, name, toState, ok := parseTransitionLogLine(line)
+		if !ok {
+			diagnostics = append(diagnostics, fmt.Sprintf("stale_wip: invalid support line in %q: %q", logPath, line))
+			continue
+		}
+		if name != identity || toState != "wip" {
+			continue
+		}
+		if !found || timestamp.After(latest) {
+			latest = timestamp
+			found = true
+		}
+	}
+	return latest, found, diagnostics
+}
+
+func roadmapLogIdentity(cfg config.ProjectConfig, roadmapPath string) string {
+	basename := filepath.Base(roadmapPath)
+	if cfg.RoadmapNamespacing != config.NamespacingByAgent {
+		return basename
+	}
+	stateDir := filepath.Dir(roadmapPath)
+	agentDir := filepath.Dir(stateDir)
+	agent := filepath.Base(agentDir)
+	if agent == "." || agent == string(filepath.Separator) || agent == "" {
+		return basename
+	}
+	return filepath.ToSlash(filepath.Join(agent, basename))
+}
+
+func parseTransitionLogLine(line string) (time.Time, string, string, bool) {
+	fields := strings.Fields(line)
+	if len(fields) < 5 {
+		return time.Time{}, "", "", false
+	}
+	timestamp, err := time.ParseInLocation("2006-01-02 15:04", fields[0]+" "+fields[1], time.Local)
+	if err != nil {
+		return time.Time{}, "", "", false
+	}
+	arrow := -1
+	for i := 3; i < len(fields); i++ {
+		if fields[i] == "→" || fields[i] == "->" {
+			arrow = i
+			break
+		}
+	}
+	if arrow < 0 || arrow+1 >= len(fields) {
+		return time.Time{}, "", "", false
+	}
+	name := fields[2]
+	toState := fields[arrow+1]
+	return timestamp, name, toState, true
+}
+
+// blockedREQs retorna um mapa de REQ-basename → lista de ADR-basenames não aceitos
+// (Draft ou Proposed) que a bloqueiam. Somente REQs com Status: Open são incluídas.
 func blockedREQs() (map[string][]string, error) {
 	cfg := config.Load()
 	files := resolveREQFiles(cfg)
@@ -935,29 +1363,31 @@ func blockedREQs() (map[string][]string, error) {
 		if err != nil {
 			continue
 		}
-		var draftADRs []string
+		var notAcceptedADRs []string
 		for _, adrBasename := range adrNames {
-			if adrIsDraft(adrBasename) {
-				draftADRs = append(draftADRs, adrBasename)
+			if notAccepted, _ := adrDraftStatusForRule("blocked_by_draft_adr", adrBasename, nil); notAccepted {
+				notAcceptedADRs = append(notAcceptedADRs, adrBasename)
 			}
 		}
-		if len(draftADRs) > 0 {
-			result[filepath.Base(reqPath)] = draftADRs
+		if len(notAcceptedADRs) > 0 {
+			result[filepath.Base(reqPath)] = notAcceptedADRs
 		}
 	}
 	return result, nil
 }
 
-// validateREQsNotBlockedByDraftADRs verifica se REQs com Status Open têm ADRs Draft vinculados.
-// Uma REQ Open com ADR Draft é uma violação: o roadmap não pode ser criado até os ADRs serem aceitos.
+// validateREQsNotBlockedByDraftADRs verifica se REQs com Status Open têm ADRs não aceitos
+// (Draft ou Proposed) vinculados. Uma REQ Open bloqueada por um ADR não aceito é uma
+// violação: o roadmap não pode ser criado até o ADR ser aceito. Corrige a cegueira
+// anterior a Proposed — ADRs criados por `adr new` (o caminho normal) não eram detectados.
 func validateREQsNotBlockedByDraftADRs() ([]string, error) {
 	cfg := config.Load()
 	entries := resolveREQFiles(cfg)
 
 	var violations []string
 	for _, path := range entries {
-		content, err := os.ReadFile(path)
-		if err != nil {
+		content, ok := readFileForRule("blocked_by_draft_adr", path, &violations)
+		if !ok {
 			continue
 		}
 		s := string(content)
@@ -968,12 +1398,13 @@ func validateREQsNotBlockedByDraftADRs() ([]string, error) {
 		// Extrair ADRs da seção "## Blocked by ADRs"
 		blockedADRs, err := parseBlockedADRs(path)
 		if err != nil {
+			violations = append(violations, inspectionDiagnostic("blocked_by_draft_adr", path, err))
 			continue
 		}
 		reqBasename := filepath.Base(path)
 		for _, adrBasename := range blockedADRs {
-			if adrIsDraft(adrBasename) {
-				violations = append(violations, fmt.Sprintf("REQ %s is blocked by Draft ADR: %s", reqBasename, adrBasename))
+			if notAccepted, _ := adrDraftStatusForRule("blocked_by_draft_adr", adrBasename, &violations); notAccepted {
+				violations = append(violations, fmt.Sprintf("REQ %s is blocked by not-accepted ADR: %s", reqBasename, adrBasename))
 			}
 		}
 	}
@@ -1014,19 +1445,96 @@ func parseBlockedADRs(path string) ([]string, error) {
 	return adrs, nil
 }
 
-// adrIsDraft verifica se o ADR identificado pelo basename contém "Status: Draft".
-// Busca recursivamente em todas as ADRDirs configuradas.
+// adrIsDraft verifica se o ADR identificado pelo basename está não-aceito (Draft ou
+// Proposed) via adrStatusIsNotAccepted. Busca recursivamente em todas as ADRDirs
+// configuradas. Nome preservado por compatibilidade com os testes existentes.
 func adrIsDraft(adrBasename string) bool {
+	notAccepted, _ := adrDraftStatusForRule("", adrBasename, nil)
+	return notAccepted
+}
+
+// adrStatusIsNotAccepted é o helper canônico para decidir se um ADR NÃO está aceito
+// (ADR-2026-08-01-nocao-canonica-de-adr-nao-aceito...). "Não aceito" cobre os status
+// Draft e Proposed — os dois caminhos de criação de ADR no trackfw (`adr new` gera
+// Proposed; `req new` gera Draft via NewADRDraft). Qualquer outro status (Accepted,
+// Superseded, Deprecated, Rejected, ou até um status desconhecido/ausente) conta como
+// aceito por exclusão — este helper nunca usa allowlist fechada.
+//
+// Prioridade de leitura: frontmatter `status:` primeiro — é o campo machine-readable
+// canônico, o mesmo que os geradores (`adr new`, `NewADRDraft`) escrevem e que a regra
+// `folder_status` já usa como fonte de verdade. Cai para a linha de cabeçalho
+// "> Date: ... | Status: X" somente se o frontmatter estiver ausente ou sem o campo —
+// cobre ADRs legados sem frontmatter. Em um ADR bem formado os dois concordam.
+//
+// Este fallback é uma extração posicional da linha de cabeçalho (não um
+// strings.Contains no corpo inteiro do arquivo): o valor hardcoded anterior
+// (`strings.Contains(content, "Status: Draft")`) casava a substring em qualquer lugar
+// do documento, inclusive em prosa (ex.: uma seção de Contexto mencionando "estava em
+// Status: Draft") — um falso positivo que piora ao somar "Proposed", string bem mais
+// comum em texto corrido. A extração por linha de cabeçalho evita essa classe de erro.
+// resolveAdrStatus extrai o valor bruto do status de um ADR: frontmatter `status:`
+// primeiro, com fallback para a linha de cabeçalho "> Date: ... | Status: X". Retorna
+// string vazia se nenhuma das duas fontes tiver o campo.
+func resolveAdrStatus(content string) string {
+	if status := extractFrontmatterField(content, "status"); status != "" {
+		return status
+	}
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		idx := strings.Index(trimmed, "| Status: ")
+		if idx < 0 {
+			continue
+		}
+		rest := trimmed[idx+len("| Status: "):]
+		if pipeIdx := strings.Index(rest, " |"); pipeIdx >= 0 {
+			rest = rest[:pipeIdx]
+		}
+		return strings.TrimSpace(rest)
+	}
+	return ""
+}
+
+// statusIsNotAccepted é a única expressão do pacote que conhece o vocabulário
+// "Draft"/"Proposed" de status de ADR não aceito. Todo ponto do código que precisa
+// dessa checagem deve chamar este helper (ou adrStatusIsNotAccepted, que o aplica
+// diretamente sobre o conteúdo de um ADR) em vez de comparar os literais.
+func statusIsNotAccepted(status string) bool {
+	return strings.EqualFold(status, "Draft") || strings.EqualFold(status, "Proposed")
+}
+
+func adrStatusIsNotAccepted(content string) bool {
+	return statusIsNotAccepted(resolveAdrStatus(content))
+}
+
+// adrStatusForRule resolve o basename do ADR nos adrDirs configurados e retorna o valor
+// bruto do status (via resolveAdrStatus). O segundo retorno indica se a resolução foi
+// bem-sucedida (ADR não encontrado conta como sucesso, com status vazio).
+func adrStatusForRule(rule, adrBasename string, msgs *[]string) (string, bool) {
 	cfg := config.Load()
 	p := findADRFile(adrBasename, cfg.ADRDirs)
 	if p == "" {
-		return false
+		return "", true
 	}
 	content, err := os.ReadFile(p)
 	if err != nil {
-		return false
+		if msgs != nil {
+			*msgs = append(*msgs, inspectionDiagnostic(rule, p, err))
+		}
+		return "", false
 	}
-	return strings.Contains(string(content), "Status: Draft")
+	return resolveAdrStatus(string(content)), true
+}
+
+// adrDraftStatusForRule resolve o basename do ADR nos adrDirs configurados e aplica
+// adrStatusIsNotAccepted() ao conteúdo. Apesar do nome (preservado por compatibilidade
+// histórica — usado por 3 chamadores, incluindo adrIsDraft), hoje cobre Draft e
+// Proposed via o helper canônico, não apenas Draft.
+func adrDraftStatusForRule(rule, adrBasename string, msgs *[]string) (bool, bool) {
+	status, ok := adrStatusForRule(rule, adrBasename, msgs)
+	if !ok {
+		return false, false
+	}
+	return statusIsNotAccepted(status), true
 }
 
 // extractFrontmatterField extrai o valor de um campo do bloco frontmatter YAML.
@@ -1105,18 +1613,76 @@ func listDir(dir string) ([]string, error) {
 	return names, nil
 }
 
-// walkADRFiles retorna basenames de todos os arquivos .md encontrados recursivamente em adrDir.
-func walkADRFiles(adrDir string) []string {
-	var names []string
+// validateADRDirsExist verifica se os diretórios em adr_dirs existem no disco.
+// Se um diretório não existir:
+// - se StrictCIPaths for true: gera violation (Error)
+// - se StrictCIPaths for false: gera warning (Warning)
+func validateADRDirsExist(cfg config.ProjectConfig) (violations []string, warnings []string) {
+	for _, adrDir := range cfg.ADRDirs {
+		expandedDir := config.ExpandPath(adrDir)
+		if _, err := os.Stat(expandedDir); os.IsNotExist(err) {
+			msg := fmt.Sprintf("adr_dir %q does not exist", adrDir)
+			if cfg.StrictCIPaths {
+				violations = append(violations, msg)
+			} else {
+				warnings = append(warnings, msg)
+			}
+		}
+	}
+	return violations, warnings
+}
+
+// isOutsideCWD verifica se o caminho do arquivo/diretório está localizado fora do diretório raiz do projeto local (CWD).
+func isOutsideCWD(path string) bool {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return false
+	}
+	absCwd, err := filepath.Abs(cwd)
+	if err != nil {
+		return false
+	}
+	absPath, err := filepath.Abs(config.ExpandPath(path))
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(absCwd, absPath)
+	if err != nil {
+		return true
+	}
+	return strings.HasPrefix(rel, "..") || filepath.IsAbs(rel)
+}
+
+// walkADRFilePaths retorna os caminhos completos de todos os arquivos .md encontrados recursivamente em adrDir.
+func walkADRFilePaths(adrDir string) []string {
+	return walkADRFilePathsForRule("", adrDir, nil)
+}
+
+func walkADRFilePathsForRule(rule, adrDir string, msgs *[]string) []string {
+	adrDir = config.ExpandPath(adrDir)
+	var paths []string
 	_ = filepath.WalkDir(adrDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
+			if msgs != nil && !os.IsNotExist(err) {
+				*msgs = append(*msgs, inspectionDiagnostic(rule, path, err))
+			}
 			return nil
 		}
 		if !d.IsDir() && strings.HasSuffix(path, ".md") {
-			names = append(names, filepath.Base(path))
+			paths = append(paths, path)
 		}
 		return nil
 	})
+	return paths
+}
+
+// walkADRFiles retorna basenames de todos os arquivos .md encontrados recursivamente em adrDir.
+func walkADRFiles(adrDir string) []string {
+	paths := walkADRFilePaths(adrDir)
+	var names []string
+	for _, p := range paths {
+		names = append(names, filepath.Base(p))
+	}
 	return names
 }
 
@@ -1124,8 +1690,9 @@ func walkADRFiles(adrDir string) []string {
 // Retorna o caminho completo ou string vazia se não encontrado.
 func findADRFile(adrBasename string, adrDirs []string) string {
 	for _, adrDir := range adrDirs {
+		expandedDir := config.ExpandPath(adrDir)
 		var found string
-		_ = filepath.WalkDir(adrDir, func(path string, d fs.DirEntry, err error) error {
+		_ = filepath.WalkDir(expandedDir, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return nil
 			}
@@ -1145,7 +1712,7 @@ func findADRFile(adrBasename string, adrDirs []string) string {
 // gitLastModifiedTime retorna o timestamp do último commit que tocou o path via git log.
 // Retorna (zero, false) se git não estiver disponível ou o arquivo não tiver histórico.
 func gitLastModifiedTime(path string) (time.Time, bool) {
-	cmd := exec.Command("git", "log", "-1", "--format=%ct", "--", path)
+	cmd := gitCommand(".", "log", "-1", "--format=%ct", "--", path)
 	out, err := cmd.Output()
 	if err != nil || strings.TrimSpace(string(out)) == "" {
 		return time.Time{}, false
@@ -1162,9 +1729,9 @@ func gitLastModifiedTime(path string) (time.Time, bool) {
 func extractRefPath(content, field string) string {
 	for _, line := range strings.Split(content, "\n") {
 		trimmed := strings.TrimSpace(line)
-		prefix := field + ":"
-		if strings.HasPrefix(trimmed, prefix) {
-			val := strings.TrimSpace(trimmed[len(prefix):])
+		key, val, ok := strings.Cut(trimmed, ":")
+		if ok && strings.EqualFold(strings.TrimSpace(key), field) {
+			val := strings.TrimSpace(val)
 			if val == "" || val == "—" || val == "-" || val == "–" {
 				return ""
 			}
@@ -1172,7 +1739,7 @@ func extractRefPath(content, field string) string {
 			if len(fields) == 0 {
 				return ""
 			}
-			v := fields[0]
+			v := strings.Trim(fields[0], "\"'`")
 			if strings.HasSuffix(v, ".md") {
 				return v
 			}
@@ -1186,17 +1753,16 @@ func validateRefTargetsExist() ([]string, error) {
 	cfg := config.Load()
 	var warnings []string
 
-	wipDirs := resolveWIPDirs(cfg)
-	blockedDir := cfg.RoadmapDir + "/blocked"
-	for _, dir := range append(wipDirs, blockedDir) {
-		entries, _ := listDir(dir)
+	dirs := append(resolveWIPDirs(cfg), resolveStateDirs(cfg, "blocked")...)
+	for _, dir := range dirs {
+		entries := listDirForRule("ref_targets_exist", dir, &warnings)
 		for _, name := range entries {
-			content, err := os.ReadFile(filepath.Join(dir, name))
-			if err != nil {
+			content, ok := readFileForRule("ref_targets_exist", filepath.Join(dir, name), &warnings)
+			if !ok {
 				continue
 			}
 			if ref := extractRefPath(string(content), "REQ"); ref != "" {
-				if !referenceExists(ref, []string{cfg.REQDir}) {
+				if !referenceExists(ref) {
 					warnings = append(warnings, fmt.Sprintf("roadmap %q links to REQ %q which does not exist", name, ref))
 				}
 			}
@@ -1205,19 +1771,19 @@ func validateRefTargetsExist() ([]string, error) {
 
 	reqFiles := resolveREQFiles(cfg)
 	for _, reqPath := range reqFiles {
-		content, err := os.ReadFile(reqPath)
-		if err != nil {
+		content, ok := readFileForRule("ref_targets_exist", reqPath, &warnings)
+		if !ok {
 			continue
 		}
 		s := string(content)
 		name := filepath.Base(reqPath)
 		if ref := extractRefPath(s, "ADR"); ref != "" {
-			if !referenceExists(ref, cfg.ADRDirs) {
+			if !referenceExists(ref) {
 				warnings = append(warnings, fmt.Sprintf("req %q links to ADR %q which does not exist", name, ref))
 			}
 		}
 		if ref := extractRefPath(s, "Roadmap"); ref != "" {
-			if !referenceExists(ref, []string{cfg.RoadmapDir}) {
+			if !referenceExists(ref) {
 				warnings = append(warnings, fmt.Sprintf("req %q links to Roadmap %q which does not exist", name, ref))
 			}
 		}
@@ -1225,31 +1791,155 @@ func validateRefTargetsExist() ([]string, error) {
 	return warnings, nil
 }
 
-func referenceExists(ref string, roots []string) bool {
-	if _, err := os.Stat(ref); err == nil {
+func referenceExists(ref string) bool {
+	expandedRef := config.ExpandPath(ref)
+	if _, err := os.Stat(expandedRef); err == nil {
 		return true
 	}
-	base := filepath.Base(ref)
-	for _, root := range roots {
-		found := false
-		_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
-			if err == nil && !entry.IsDir() && entry.Name() == base {
-				found = true
-				return filepath.SkipAll
+	return false
+}
+
+func validateREQRoadmapLifecycle() ([]string, error) {
+	cfg := config.Load()
+	var warnings []string
+	for _, reqPath := range resolveREQFiles(cfg) {
+		content, err := os.ReadFile(reqPath)
+		if err != nil {
+			continue
+		}
+		s := string(content)
+		if !reqStatusIsOpen(s) {
+			continue
+		}
+		ref := extractRefPath(s, "Roadmap")
+		if ref == "" {
+			continue
+		}
+		expandedRef := config.ExpandPath(ref)
+		info, err := os.Stat(expandedRef)
+		if err != nil || info.IsDir() {
+			continue
+		}
+		if filepath.Base(filepath.Dir(expandedRef)) == "done" {
+			warnings = append(warnings, fmt.Sprintf("req %q is Open but linked Roadmap %q is in done/", filepath.Base(reqPath), ref))
+		}
+	}
+	return warnings, nil
+}
+
+// reqStatusIsDone verifica se a REQ está com Status: Done, priorizando o frontmatter
+// (status: Done) e caindo para a linha de cabeçalho "| Status: Done" como fallback.
+// Mesmo padrão de reqStatusIsOpen.
+func reqStatusIsDone(content string) bool {
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		key, val, ok := strings.Cut(trimmed, ":")
+		if ok && strings.EqualFold(strings.TrimSpace(key), "status") {
+			val = strings.Trim(strings.TrimSpace(val), `"'`)
+			// Campo de frontmatter presente mas vazio (ex.: `status: ""`) não é
+			// resposta — cai para o cabeçalho em vez de decidir "não é Done" aqui.
+			if val == "" {
+				continue
 			}
-			return nil
-		})
-		if found {
-			return true
+			return strings.EqualFold(val, "done")
+		}
+		if idx := strings.Index(trimmed, "| Status: "); idx >= 0 {
+			rest := trimmed[idx+len("| Status: "):]
+			if pipeIdx := strings.Index(rest, " |"); pipeIdx >= 0 {
+				rest = rest[:pipeIdx]
+			}
+			return strings.EqualFold(strings.TrimSpace(rest), "done")
 		}
 	}
 	return false
+}
+
+// validateADRAcceptedWhenREQDone verifica REQs com Status Done cujo ADR vinculado
+// ainda não está aceito (Draft ou Proposed). Fecha a lacuna que blocked_by_draft_adr
+// não cobre: essa regra só olha REQs Open no momento em que são bloqueadas; uma REQ
+// que já foi concluída sem o ADR nunca ter sido aceito passava despercebida
+// (ADR-2026-08-01-nocao-canonica-de-adr-nao-aceito...).
+func validateADRAcceptedWhenREQDone() ([]string, error) {
+	cfg := config.Load()
+	files := resolveREQFiles(cfg)
+
+	var violations []string
+	for _, path := range files {
+		content, ok := readFileForRule("adr_accepted_when_req_done", path, &violations)
+		if !ok {
+			continue
+		}
+		s := string(content)
+		if !reqStatusIsDone(s) {
+			continue
+		}
+		adrRef := extractRefPath(s, "ADR")
+		if adrRef == "" {
+			continue
+		}
+		adrBasename := filepath.Base(adrRef)
+		reqBasename := filepath.Base(path)
+		status, ok := adrStatusForRule("adr_accepted_when_req_done", adrBasename, &violations)
+		if !ok {
+			continue
+		}
+		if statusIsNotAccepted(status) {
+			violations = append(violations, fmt.Sprintf("REQ %q is Done but linked ADR %q is not accepted (status: %s)", reqBasename, adrBasename, status))
+		}
+	}
+	return violations, nil
+}
+
+func reqStatusIsOpen(content string) bool {
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		key, val, ok := strings.Cut(trimmed, ":")
+		if ok && strings.EqualFold(strings.TrimSpace(key), "status") {
+			return strings.EqualFold(strings.Trim(strings.TrimSpace(val), `"'`), "open")
+		}
+		if idx := strings.Index(trimmed, "| Status: "); idx >= 0 {
+			rest := trimmed[idx+len("| Status: "):]
+			if pipeIdx := strings.Index(rest, " |"); pipeIdx >= 0 {
+				rest = rest[:pipeIdx]
+			}
+			return strings.EqualFold(strings.TrimSpace(rest), "open")
+		}
+	}
+	return false
+}
+
+// reqStatusValue extrai o valor bruto do campo Status de uma REQ, priorizando o
+// frontmatter (status: ...) e caindo para o cabeçalho "| Status: ... |" como fallback.
+// Usada pelo bloco de Inventory de GetStatus para discriminar Open/Done/Closed —
+// mesmo padrão de leitura que reqStatusIsOpen/reqStatusIsDone, mas devolvendo o
+// literal em vez de um bool para uma única string específica.
+func reqStatusValue(content string) string {
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		key, val, ok := strings.Cut(trimmed, ":")
+		if ok && strings.EqualFold(strings.TrimSpace(key), "status") {
+			v := strings.Trim(strings.TrimSpace(val), `"'`)
+			if v != "" {
+				return v
+			}
+			continue
+		}
+		if idx := strings.Index(trimmed, "| Status: "); idx >= 0 {
+			rest := trimmed[idx+len("| Status: "):]
+			if pipeIdx := strings.Index(rest, " |"); pipeIdx >= 0 {
+				rest = rest[:pipeIdx]
+			}
+			return strings.TrimSpace(rest)
+		}
+	}
+	return ""
 }
 
 // folderToExpectedStatus mapeia o nome da pasta para os valores de status aceitos.
 var folderToExpectedStatus = map[string][]string{
 	"wip":       {"WIP", "wip", "In Progress"},
 	"backlog":   {"Backlog", "backlog"},
+	"analyzing": {"Analyzing", "analyzing"},
 	"blocked":   {"Blocked", "blocked"},
 	"done":      {"Done", "done"},
 	"abandoned": {"Abandoned", "abandoned"},
@@ -1259,7 +1949,7 @@ var folderToExpectedStatus = map[string][]string{
 func validateFolderStatusCoherence() ([]string, error) {
 	cfg := config.Load()
 	var warnings []string
-	states := []string{"wip", "backlog", "blocked", "done", "abandoned"}
+	states := []string{"wip", "backlog", "analyzing", "blocked", "done", "abandoned"}
 
 	type dirState struct{ path, state string }
 	var dirs []dirState
@@ -1292,7 +1982,17 @@ func validateFolderStatusCoherence() ([]string, error) {
 	}
 
 	for _, dir := range dirs {
-		entries, _ := listDir(dir.path)
+		entries, err := listDir(dir.path)
+		if err != nil {
+			// P2: diretório ausente é esperado (projeto não usa esse estado);
+			// qualquer outro erro (ENOTDIR, EPERM…) deve ser reportado.
+			if !os.IsNotExist(err) {
+				warnings = append(warnings, fmt.Sprintf(
+					"folder_status: could not read directory %q: %v", dir.path, err,
+				))
+			}
+			continue
+		}
 		for _, name := range entries {
 			if !strings.HasSuffix(name, ".md") {
 				continue
@@ -1326,10 +2026,11 @@ func validateFolderStatusCoherence() ([]string, error) {
 // validateFilenameUniqueness detecta o mesmo filename em múltiplos estados.
 func validateFilenameUniqueness() ([]string, error) {
 	cfg := config.Load()
-	states := []string{"wip", "backlog", "blocked", "done", "abandoned"}
+	states := []string{"wip", "backlog", "analyzing", "blocked", "done", "abandoned"}
 
 	seen := map[string][]string{}
 
+	var listErrors []string
 	if cfg.RoadmapNamespacing == config.NamespacingByAgent {
 		agents := cfg.Agents
 		if len(agents) == 0 {
@@ -1343,7 +2044,16 @@ func validateFilenameUniqueness() ([]string, error) {
 		for _, agent := range agents {
 			for _, state := range states {
 				dir := filepath.Join(cfg.RoadmapDir, agent, state)
-				names, _ := listDir(dir)
+				names, err := listDir(dir)
+				if err != nil {
+					// P2: apenas reportar erros que não sejam "diretório ausente".
+					if !os.IsNotExist(err) {
+						listErrors = append(listErrors, fmt.Sprintf(
+							"filename_uniqueness: could not read directory %q: %v", dir, err,
+						))
+					}
+					continue
+				}
 				for _, name := range names {
 					key := agent + "/" + name
 					seen[key] = append(seen[key], state)
@@ -1353,7 +2063,15 @@ func validateFilenameUniqueness() ([]string, error) {
 	} else {
 		for _, state := range states {
 			dir := filepath.Join(cfg.RoadmapDir, state)
-			names, _ := listDir(dir)
+			names, err := listDir(dir)
+			if err != nil {
+				if !os.IsNotExist(err) {
+					listErrors = append(listErrors, fmt.Sprintf(
+						"filename_uniqueness: could not read directory %q: %v", dir, err,
+					))
+				}
+				continue
+			}
 			for _, name := range names {
 				seen[name] = append(seen[name], state)
 			}
@@ -1361,14 +2079,48 @@ func validateFilenameUniqueness() ([]string, error) {
 	}
 
 	var violations []string
-	for name, stateList := range seen {
+	violations = append(violations, listErrors...)
+	// P3: ordenar a lista de estados em cada mensagem e depois as próprias mensagens
+	// para garantir saída determinística independente de ordem de iteração do mapa.
+	names := make([]string, 0, len(seen))
+	for name := range seen {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		stateList := seen[name]
 		if len(stateList) > 1 {
+			sorted := make([]string, len(stateList))
+			copy(sorted, stateList)
+			sort.Strings(sorted)
 			violations = append(violations, fmt.Sprintf(
-				"roadmap %q appears in multiple states: %v", name, stateList,
+				"roadmap %q appears in multiple states: %v", name, sorted,
 			))
 		}
 	}
 	return violations, nil
+}
+
+// BranchSlugMatchesRoadmap verifica se branchSlug (já normalizado via normalizeBranchSlug) casa com o
+// nome de algum roadmap .md encontrado em wipDirs ou doneDirs. Reutilizada por
+// validateBranchHasWIPRoadmap e pelo comando `trackfw branch new` — nunca duplicar esta lógica.
+//
+// matched indica se algum candidato casou com o slug. candidates lista todos os roadmaps .md
+// encontrados em wipDirs+doneDirs (para diagnóstico/mensagem de orientação quando matched é false).
+func BranchSlugMatchesRoadmap(branchSlug string, wipDirs, doneDirs []string) (matched bool, candidates []string) {
+	dirs := append(append([]string{}, wipDirs...), doneDirs...)
+	for _, dir := range dirs {
+		entries, _ := listDir(dir)
+		for _, name := range entries {
+			if strings.HasSuffix(name, ".md") {
+				candidates = append(candidates, name)
+				if strings.Contains(normalizeBranchSlug(name), branchSlug) {
+					matched = true
+				}
+			}
+		}
+	}
+	return matched, candidates
 }
 
 // validateBranchHasWIPRoadmap verifica se a branch atual (feat/fix/refactor) tem ao menos um roadmap em wip/.
@@ -1376,7 +2128,7 @@ func validateFilenameUniqueness() ([]string, error) {
 func validateBranchHasWIPRoadmap() ([]string, error) {
 	branch := firstNonEmpty(os.Getenv("TRACKFW_BRANCH"))
 	if branch == "" && isGitWorktree(".") {
-		cmd := exec.Command("git", "symbolic-ref", "--short", "HEAD")
+		cmd := gitCommand(".", "symbolic-ref", "--short", "HEAD")
 		out, err := cmd.Output()
 		if err == nil {
 			branch = strings.TrimSpace(string(out))
@@ -1395,31 +2147,48 @@ func validateBranchHasWIPRoadmap() ([]string, error) {
 
 	cfg := config.Load()
 	wipDirs := resolveWIPDirs(cfg)
+	doneDirs := resolveDoneDirs(cfg)
 
 	branchSlug := normalizeBranchSlug(strings.SplitN(branch, "/", 2)[1])
-	var wipFiles []string
-	for _, wipDir := range wipDirs {
-		entries, _ := listDir(wipDir)
-		for _, name := range entries {
-			if strings.HasSuffix(name, ".md") {
-				wipFiles = append(wipFiles, name)
-				if strings.Contains(normalizeBranchSlug(name), branchSlug) {
-					return nil, nil
-				}
-			}
-		}
+	matched, candidates := BranchSlugMatchesRoadmap(branchSlug, wipDirs, doneDirs)
+	if matched {
+		return nil, nil
 	}
 
-	if len(wipFiles) == 0 {
-		return []string{fmt.Sprintf(
-			"branch %q is a feat/fix/refactor branch but no roadmap is in wip/ — create governance artifacts first:\n  trackfw req new \"title\"\n  trackfw roadmap new \"title\"\n  trackfw roadmap move <name> wip",
-			branch,
-		)}, nil
+	if len(candidates) == 0 {
+		return []string{BranchGovernanceOrientation(branch)}, nil
 	}
-	return []string{fmt.Sprintf(
-		"branch %q has no matching roadmap in wip/ (found: %s) — include the branch slug in the roadmap filename or set TRACKFW_BRANCH explicitly in CI",
-		branch, strings.Join(wipFiles, ", "),
-	)}, nil
+	return []string{BranchNoMatchingRoadmapMessage(branch, candidates)}, nil
+}
+
+// BranchGovernanceOrientation is the guidance message printed when a feat/fix/refactor branch
+// has no roadmap in wip/ nor done/ at all (candidates is empty). Shared by
+// validateBranchHasWIPRoadmap and `trackfw branch new` — never duplicate this string.
+func BranchGovernanceOrientation(branch string) string {
+	return fmt.Sprintf(
+		"branch %q is a feat/fix/refactor branch but no roadmap is in wip/ nor done/ — create governance artifacts first:\n  trackfw req new \"title\"\n  trackfw roadmap new \"title\"\n  trackfw roadmap move <name> wip",
+		branch,
+	)
+}
+
+// BranchNoMatchingRoadmapMessage is the guidance message printed when roadmaps exist in wip/ or
+// done/ but none of them match the branch's slug. Shared by validateBranchHasWIPRoadmap and
+// `trackfw branch new` — never duplicate this string. Does not mutate candidates.
+func BranchNoMatchingRoadmapMessage(branch string, candidates []string) string {
+	// P3: sort for deterministic output regardless of filesystem ordering.
+	sorted := make([]string, len(candidates))
+	copy(sorted, candidates)
+	sort.Strings(sorted)
+	display := sorted
+	suffix := ""
+	if len(sorted) > 3 {
+		display = sorted[:3]
+		suffix = fmt.Sprintf(", e mais %d", len(sorted)-3)
+	}
+	return fmt.Sprintf(
+		"branch %q has no matching roadmap in wip/ nor done/ (found: %s%s) — include the branch slug in the roadmap filename or set TRACKFW_BRANCH explicitly in CI",
+		branch, strings.Join(display, ", "), suffix,
+	)
 }
 
 func firstNonEmpty(values ...string) string {
@@ -1432,12 +2201,56 @@ func firstNonEmpty(values ...string) string {
 }
 
 func isGitWorktree(dir string) bool {
-	cmd := exec.Command("git", "rev-parse", "--is-inside-work-tree")
-	if dir != "" {
-		cmd.Dir = dir
-	}
-	out, err := cmd.Output()
+	out, err := gitCommand(dir, "rev-parse", "--is-inside-work-tree").Output()
 	return err == nil && strings.TrimSpace(string(out)) == "true"
+}
+
+// validateNoteOrphan detecta notas em vault/notes/ não referenciadas pelo index.md.
+// Severidade default: warning (ver ruleDefaults). Pode ser elevada a "error" via rules: no trackfw.yaml.
+// index.md não conta como nota órfã. Projeto sem vault/ não gera nenhum warning.
+func validateNoteOrphan() ([]string, error) {
+	vaultNotesDir := "vault/notes"
+	indexPath := "vault/notes/index.md"
+
+	// Vault ausente = sem warnings
+	if _, err := os.Stat(vaultNotesDir); os.IsNotExist(err) {
+		return nil, nil
+	}
+
+	matches, err := filepath.Glob(filepath.Join(vaultNotesDir, "*.md"))
+	if err != nil {
+		return nil, fmt.Errorf("listando vault/notes: %w", err)
+	}
+
+	// Lê conteúdo do index.md (pode não existir ainda)
+	var indexContent string
+	data, err := os.ReadFile(indexPath)
+	if err == nil {
+		indexContent = string(data)
+	}
+
+	var msgs []string
+	for _, match := range matches {
+		basename := filepath.Base(match)
+		if basename == "index.md" {
+			continue
+		}
+		nameWithoutExt := strings.TrimSuffix(basename, ".md")
+		// aceita link markdown `[texto](arquivo.md)` ou wikilink `[[nome]]`
+		referenced := strings.Contains(indexContent, "("+basename+")") ||
+			strings.Contains(indexContent, "[["+nameWithoutExt+"]]") ||
+			strings.Contains(indexContent, "[["+basename+"]]")
+		if !referenced {
+			msgs = append(msgs, fmt.Sprintf("note %q is not referenced in vault/notes/index.md", basename))
+		}
+	}
+	return msgs, nil
+}
+
+// NormalizeBranchSlug é o wrapper exportado de normalizeBranchSlug, usado por consumidores fora do
+// pacote validator (ex: comando `trackfw branch new`).
+func NormalizeBranchSlug(value string) string {
+	return normalizeBranchSlug(value)
 }
 
 func normalizeBranchSlug(value string) string {
@@ -1454,4 +2267,39 @@ func normalizeBranchSlug(value string) string {
 		}
 	}
 	return strings.Trim(out.String(), "-")
+}
+
+// GovernanceViolation holds the messages from a failed CheckShipGovernance call.
+type GovernanceViolation struct {
+	// Missing contains human-readable violation messages, one per line.
+	Missing []string
+}
+
+func (e *GovernanceViolation) Error() string {
+	return strings.Join(e.Missing, "\n")
+}
+
+// CheckShipGovernance is the hard gate called by `trackfw ship` at step 2.
+// Unlike Validate(), it bypasses the baseline ratchet, lenient mode and
+// per-rule severity configuration — the ship command must always enforce
+// governance regardless of project settings.
+//
+// It checks:
+//  1. The current branch has a matching roadmap in wip/ or done/ (branch_has_wip_roadmap)
+//  2. All WIP roadmaps have a linked REQ (wip_has_req)
+//
+// Returns nil when all checks pass. Returns *GovernanceViolation otherwise.
+func CheckShipGovernance() *GovernanceViolation {
+	var missing []string
+
+	branchViolations, _ := validateBranchHasWIPRoadmap()
+	missing = append(missing, branchViolations...)
+
+	wipReqViolations, _ := validateWIPHasREQ()
+	missing = append(missing, wipReqViolations...)
+
+	if len(missing) == 0 {
+		return nil
+	}
+	return &GovernanceViolation{Missing: missing}
 }

@@ -36,16 +36,64 @@ def run_trackfw(*args, cwd=None, env=None):
 
 
 class TestVersion(unittest.TestCase):
-    def test_version(self):
-        """trackfw --version retorna código 0 e imprime a versão."""
+    # Regex que pina o formato canônico do contrato de paridade:
+    #   ^trackfw [0-9]+\.[0-9]+\.[0-9]+$
+    # (sem prefixo 'v', sem sufixo, exatamente uma linha)
+    _CANONICAL_RE = r"^trackfw [0-9]+\.[0-9]+\.[0-9]+$"
+
+    def test_version_flag_format_exact(self):
+        """--version imprime exatamente 'trackfw <semver>' em stdout, sem prefixo v."""
         result = run_trackfw("--version")
         self.assertEqual(result.returncode, 0)
-        # argparse imprime versão em stdout (Python 3.9+) ou stderr (versões anteriores)
+        # O contrato exige stdout (não stderr) em Python 3.9+.
+        output = result.stdout.strip()
+        import re
+        self.assertRegex(
+            output,
+            self._CANONICAL_RE,
+            msg=(
+                f"--version deve imprimir 'trackfw X.Y.Z' (sem prefixo v) em stdout; "
+                f"obtido: {result.stdout!r}"
+            ),
+        )
+
+    def test_version_subcommand_format_exact(self):
+        """O subcomando 'version' imprime exatamente 'trackfw <semver>' em stdout, sem prefixo v."""
+        result = run_trackfw("version")
+        self.assertEqual(result.returncode, 0)
+        output = result.stdout.strip()
+        import re
+        self.assertRegex(
+            output,
+            self._CANONICAL_RE,
+            msg=(
+                f"'version' deve imprimir 'trackfw X.Y.Z' (sem prefixo v) em stdout; "
+                f"obtido: {result.stdout!r}"
+            ),
+        )
+
+    def test_version_surfaces_byte_identical(self):
+        """As duas superfícies ('version' e '--version') produzem saída idêntica byte a byte."""
+        flag_result = run_trackfw("--version")
+        sub_result = run_trackfw("version")
+        self.assertEqual(flag_result.returncode, 0)
+        self.assertEqual(sub_result.returncode, 0)
+        # Comparação byte-a-byte: os bytes de stdout devem ser iguais.
+        self.assertEqual(
+            flag_result.stdout,
+            sub_result.stdout,
+            msg=(
+                f"'--version' e 'version' devem produzir saída byte-a-byte idêntica; "
+                f"--version: {flag_result.stdout!r}, version: {sub_result.stdout!r}"
+            ),
+        )
+
+    def test_version(self):
+        """trackfw --version retorna código 0 e imprime a versão (legado — mantido para compatibilidade)."""
+        result = run_trackfw("--version")
+        self.assertEqual(result.returncode, 0)
         combined = result.stdout + result.stderr
         self.assertIn("trackfw", combined)
-        # Verifica que há uma versão no formato X.Y.Z
-        import re
-        self.assertRegex(combined, r"\d+\.\d+\.\d+")
 
 
 class TestAdrNew(unittest.TestCase):
@@ -62,7 +110,9 @@ class TestAdrNew(unittest.TestCase):
             files = os.listdir(adr_dir)
             self.assertEqual(len(files), 1, f"Esperava 1 arquivo, encontrei: {files}")
             self.assertTrue(files[0].endswith(".md"))
-            self.assertIn("ADR-001", files[0])
+            # Nome canônico: ADR-YYYY-MM-DD-<slug>.md
+            import re
+            self.assertRegex(files[0], r'^ADR-\d{4}-\d{2}-\d{2}-.*\.md$')
 
     def test_adr_new_com_status(self):
         """trackfw adr new com --status Accepted cria arquivo com status correto."""
@@ -92,38 +142,119 @@ class TestAdrNew(unittest.TestCase):
 
 
 class TestLog(unittest.TestCase):
-    def test_log_cria_arquivo(self):
-        """trackfw log 'mensagem teste' cria .trackfw-log com a mensagem."""
+    def test_log_le_roadmap_dir_configurado(self):
+        """trackfw log lê .trackfw-log em roadmap_dir."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            result = run_trackfw("log", "mensagem teste", cwd=tmpdir)
+            log_dir = os.path.join(tmpdir, "custom", "roadmaps")
+            os.makedirs(log_dir)
+            with open(os.path.join(tmpdir, "trackfw.yaml"), "w", encoding="utf-8") as f:
+                f.write("roadmap_dir: custom/roadmaps\n")
+            with open(os.path.join(log_dir, ".trackfw-log"), "w", encoding="utf-8") as f:
+                f.write("2026-07-27 10:00  RM.md  wip -> done\n")
+
+            result = run_trackfw("log", "--tail", "1", cwd=tmpdir)
             self.assertEqual(result.returncode, 0, msg=result.stderr)
-            log_path = os.path.join(tmpdir, ".trackfw-log")
-            self.assertTrue(os.path.isfile(log_path), ".trackfw-log não criado")
-            with open(log_path, encoding="utf-8") as f:
-                content = f.read()
-            self.assertIn("mensagem teste", content)
+            self.assertIn("RM.md", result.stdout)
 
-    def test_log_append(self):
-        """trackfw log faz append — múltiplas chamadas acumulam linhas."""
+    def test_log_tail_limita_saida(self):
+        """trackfw log --tail mostra apenas as últimas linhas."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            run_trackfw("log", "primeira mensagem", cwd=tmpdir)
-            run_trackfw("log", "segunda mensagem", cwd=tmpdir)
-            log_path = os.path.join(tmpdir, ".trackfw-log")
-            with open(log_path, encoding="utf-8") as f:
-                lines = [l for l in f.read().splitlines() if l.strip()]
-            self.assertEqual(len(lines), 2, f"Esperava 2 linhas, encontrei: {lines}")
-            self.assertIn("primeira mensagem", lines[0])
-            self.assertIn("segunda mensagem", lines[1])
+            log_dir = os.path.join(tmpdir, "docs", "roadmaps")
+            os.makedirs(log_dir)
+            with open(os.path.join(log_dir, ".trackfw-log"), "w", encoding="utf-8") as f:
+                f.write("2026-07-27 10:00  RM-1.md  backlog -> wip\n")
+                f.write("2026-07-27 11:00  RM-2.md  wip -> done\n")
 
-    def test_log_formato_timestamp(self):
-        """Linha do log tem timestamp no formato YYYY-MM-DD HH:MM."""
-        import re
+            result = run_trackfw("log", "--tail", "1", cwd=tmpdir)
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertNotIn("RM-1.md", result.stdout)
+            self.assertIn("RM-2.md", result.stdout)
+
+    def test_log_vazio_quando_arquivo_ausente(self):
+        """Sem .trackfw-log em roadmap_dir, comando retorna sucesso com mensagem vazia."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            run_trackfw("log", "teste timestamp", cwd=tmpdir)
-            log_path = os.path.join(tmpdir, ".trackfw-log")
-            with open(log_path, encoding="utf-8") as f:
-                content = f.read()
-            self.assertRegex(content, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}")
+            result = run_trackfw("log", cwd=tmpdir)
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("No transition log found", result.stdout)
+
+
+class TestUnknownCommand(unittest.TestCase):
+    """ADR-2026-08-15-remocao-do-subsistema-de-plugins-em-vez-de-gate-de-binario-
+    de-terceiro.md (D3): comando desconhecido nunca deve tentar executar um
+    binario trackfw-* do PATH — deve falhar com a mensagem CANONICA
+    compartilhada pelos 3 CLIs, exit code 1 (nao mais o 2 default do argparse
+    para "invalid choice"). Pinado em docs/cli-parity.md e coberto byte-a-byte
+    por scripts/check-unknown-command-parity.sh."""
+
+    def test_comando_inexistente_sem_sugestao_proxima_mensagem_canonica_exit_1(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = run_trackfw("comando-inexistente-xyz", cwd=tmpdir)
+        self.assertEqual(result.returncode, 1, msg=result.stderr)
+        self.assertEqual(
+            result.stderr.strip(),
+            'Error: unknown command "comando-inexistente-xyz" for "trackfw"\n'
+            "Run 'trackfw --help' for usage.",
+        )
+
+    def test_vaildate_typo_proximo_de_validate_inclui_did_you_mean(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = run_trackfw("vaildate", cwd=tmpdir)
+        self.assertEqual(result.returncode, 1, msg=result.stderr)
+        self.assertEqual(
+            result.stderr.strip(),
+            'Error: unknown command "vaildate" for "trackfw"\n'
+            'Did you mean "validate"?\n'
+            "Run 'trackfw --help' for usage.",
+        )
+
+    def test_plugins_nao_existe_mais_mesma_mensagem_canonica(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = run_trackfw("plugins", cwd=tmpdir)
+        self.assertEqual(result.returncode, 1, msg=result.stderr)
+        self.assertTrue(
+            result.stderr.strip().startswith('Error: unknown command "plugins" for "trackfw"'),
+            msg=result.stderr,
+        )
+
+    def test_outros_erros_de_argparse_mantem_exit_code_2(self):
+        # A sobrescrita de ArgumentParser.error() em cli.py e estritamente
+        # restrita ao "invalid choice" de COMMAND — nao deve alterar o exit
+        # code de nenhum outro erro do argparse (ex.: flag desconhecida).
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = run_trackfw("--esta-flag-nao-existe", cwd=tmpdir)
+        self.assertEqual(result.returncode, 2, msg=result.stderr)
+
+    def test_vaildate_nunca_executa_binario_externo_real_do_path(self):
+        # Falsificacao (P4): um executavel REAL trackfw-vaildate no PATH, com um
+        # marcador distintivo, nunca deve rodar — e o vetor exato que o fallback
+        # de execucao de plugin removido costumava abrir.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fake_bin_dir = os.path.join(tmpdir, "fake-bin")
+            os.makedirs(fake_bin_dir)
+            fake_bin_path = os.path.join(fake_bin_dir, "trackfw-vaildate")
+            with open(fake_bin_path, "w") as f:
+                f.write("#!/bin/sh\necho EXECUTOU_PLUGIN_MALICIOSO\n")
+            os.chmod(fake_bin_path, 0o755)
+
+            env = {"PATH": fake_bin_dir + os.pathsep + os.environ.get("PATH", "")}
+            result = run_trackfw("vaildate", cwd=tmpdir, env=env)
+
+        self.assertNotIn("EXECUTOU_PLUGIN_MALICIOSO", result.stdout + result.stderr)
+        self.assertEqual(result.returncode, 1, msg=result.stderr)
+        self.assertIn('Did you mean "validate"?', result.stderr)
+
+    def test_sem_argumento_exit_0_help_em_stdout(self):
+        """trackfw sem argumento e uso legitimo (pedir ajuda), nao um comando
+        desconhecido: exit 0, help em stdout, stderr vazio. Decisao do
+        arquiteto no ML-1C (ROADMAP-2026-08-16-higiene-sete-debitos-...), que
+        unificou o Node.js (antes exit 1/stderr, default do commander) para
+        este comportamento — Go e Python ja eram assim (cli.py: args.command
+        is None -> parser.print_help(); sys.exit(0))."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = run_trackfw(cwd=tmpdir)
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertEqual(result.stderr, "")
+        self.assertIn("usage:", result.stdout)
 
 
 class TestRealCommands(unittest.TestCase):
@@ -138,7 +269,7 @@ class TestRealCommands(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             result = run_trackfw("status", cwd=tmpdir)
         self.assertEqual(result.returncode, 0)
-        self.assertIn("Governance Status", result.stdout)
+        self.assertIn("📊 Inventory", result.stdout)
 
     def test_metrics_uses_real_handler(self):
         with tempfile.TemporaryDirectory() as tmpdir:

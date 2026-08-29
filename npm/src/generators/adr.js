@@ -2,6 +2,7 @@
 
 const fs = require('fs')
 const path = require('path')
+const { localDateISO } = require('./date')
 
 /**
  * Converte uma string em slug: lowercase + espaços → hifens.
@@ -9,7 +10,13 @@ const path = require('path')
  * @returns {string}
  */
 function toSlug(s) {
-  return s.toLowerCase().replace(/ /g, '-')
+  // NFKD normalization + remove combining marks (diacríticos) + lowercase + non-alphanumeric → hífen
+  return s
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
 /**
@@ -26,21 +33,23 @@ function slugToTitle(slug) {
 }
 
 /**
- * Retorna a data atual no formato YYYY-MM-DD.
+ * Retorna a data LOCAL atual no formato YYYY-MM-DD.
+ * Delega para localDateISO() — usa getDate/getMonth/getFullYear (hora local),
+ * não toISOString (UTC).
  * @returns {string}
  */
 function today() {
-  return new Date().toISOString().slice(0, 10)
+  return localDateISO()
 }
 
 /**
- * Cria um novo ADR em docs/adr/ADR-YYYY-MM-DD-<slug>.md.
+ * Cria um novo ADR em <adrDir>/ADR-YYYY-MM-DD-<slug>.md.
  * Campos vazios recebem placeholder HTML.
  * @param {{ title: string, context?: string, decision?: string, consequences?: string, alternatives?: string }} content
+ * @param {string} adrDir Diretório de destino (resolvido pelo chamador conforme --scope)
  * @returns {Promise<void>}
  */
-async function newADR(content) {
-  const adrDir = require('../config').load().adrDirs[0]
+async function newADR(content, adrDir) {
   fs.mkdirSync(adrDir, { recursive: true })
 
   const slug = toSlug(content.title)
@@ -112,47 +121,20 @@ async function listADRs(dir) {
  * @returns {string}
  */
 function parseADRStatus(filepath) {
-  let content
   try {
-    content = fs.readFileSync(filepath, 'utf8')
-  } catch (_) {
-    return 'unknown'
-  }
-
-  const lines = content.split(String.fromCharCode(10))
-
-  // 1) Frontmatter e a fonte canonica — e o campo que o `adr new` grava e que o
-  // validator usa. Antes desta reescrita esta funcao pegava a PRIMEIRA ocorrencia
-  // de "| Status: " em qualquer lugar do arquivo, enquanto o Go pegava a ULTIMA:
-  // os dois runtimes davam respostas diferentes para a mesma ADR.
-  // Ver REQ-2026-08-17-adr-list-python.
-  if (lines[0] !== undefined && lines[0].replace(/\r+$/, '') === '---') {
-    for (let k = 1; k < lines.length; k++) {
-      const line = lines[k].replace(/\r+$/, '')
-      if (line === '---') break
-      const colon = line.indexOf(':')
-      if (colon > 0 && line.slice(0, colon).trim() === 'status') {
-        const v = line.slice(colon + 1).trim().replace(/^["']|["']$/g, '')
-        if (v) return v
-        break
+    const content = fs.readFileSync(filepath, 'utf8')
+    const lines = content.split('\n')
+    for (const line of lines) {
+      const idx = line.indexOf('| Status: ')
+      if (idx >= 0) {
+        let rest = line.slice(idx + '| Status: '.length)
+        rest = rest.replace(/[ >|]+$/, '').trim()
+        return rest
       }
     }
+  } catch (_) {
+    // ignorar erros de leitura
   }
-
-  // 2) Linha humana de cabecalho. A busca para no primeiro "## ".
-  for (const raw of lines) {
-    const line = raw.replace(/\r+$/, '')
-    if (line.startsWith('## ')) break
-    if (!line.startsWith('> ')) continue
-    const idx = line.indexOf('| Status: ')
-    if (idx < 0) continue
-    let rest = line.slice(idx + '| Status: '.length)
-    const pipeIdx = rest.indexOf(' |')
-    if (pipeIdx >= 0) rest = rest.slice(0, pipeIdx)
-    rest = rest.replace(/[ >|]+$/, '').trim()
-    if (rest) return rest
-  }
-
   return 'unknown'
 }
 
@@ -160,10 +142,14 @@ function parseADRStatus(filepath) {
  * Cria um ADR com Status: Draft a partir de um slug.
  * Idempotente: se já existe ADR-*-<slug>.md, pula e imprime mensagem.
  * @param {string} slug
+ * @param {string} [adrDir] Diretório de destino (resolvido pelo chamador conforme escopo).
+ *   Se omitido, preserva o comportamento anterior (adrDirs[0] do trackfw.yaml).
  * @returns {Promise<string>} basename do arquivo criado
  */
-async function newADRDraft(slug) {
-  const adrDir = require('../config').load().adrDirs[0]
+async function newADRDraft(slug, adrDir) {
+  if (!adrDir) {
+    adrDir = require('../config').load().adrDirs[0]
+  }
   fs.mkdirSync(adrDir, { recursive: true })
 
   // Verificar idempotência: buscar arquivo existente com o mesmo slug
@@ -209,4 +195,4 @@ author: ""
   return filename
 }
 
-module.exports = { newADR, listADRs, newADRDraft, toSlug }
+module.exports = { newADR, listADRs, newADRDraft, toSlug, today }

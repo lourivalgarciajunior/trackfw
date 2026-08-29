@@ -8,8 +8,8 @@ created: 2026-06-12
 author: claude
 ---
 
-Roadmap: roadmap-req-driven-adr-discovery-2026-06-12.md
-ADR: ADR-2026-06-12-descoberta-de-adr-guiada-pela-req.md
+Roadmap: docs/roadmaps/claude/done/roadmap-req-driven-adr-discovery-2026-06-12.md
+ADR: docs/adr/ADR-2026-06-12-descoberta-de-adr-guiada-pela-req.md
 
 # REQ: REQ-Driven ADR Discovery
 

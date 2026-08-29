@@ -2,25 +2,108 @@
 
 const { Command } = require('commander');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+const identityStore = require('../identity');
+const projectConfig = require('../config');
+const { runFileTarget, validateTargets, buildDocument, humanReport, silenceConsole } = require('../lib/update-engine');
 
-function readUpdateConfig(rootDir) {
-  const yaml = path.join(rootDir, 'trackfw.yaml');
-  if (!fs.existsSync(yaml)) return {};
-  const lines = fs.readFileSync(yaml, 'utf8').split('\n');
-  const cfg = {};
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('#')) continue;
-    const idx = trimmed.indexOf(':');
-    if (idx < 0) continue;
-    const key = trimmed.slice(0, idx).trim();
-    let val = trimmed.slice(idx + 1).trim();
-    const ci = val.indexOf(' #');
-    if (ci >= 0) val = val.slice(0, ci).trim();
-    cfg[key] = val;
+// `trackfw update` is project-scoped only — see docs/cli-parity.md,
+// "`trackfw update` vs `trackfw update harness`". It must NEVER touch global
+// state (~/.claude, ~/.codex, etc.). Global artifacts moved to
+// `trackfw update harness` (update-harness.js).
+
+// loadUpdateConfig replaces the former artisanal line-by-line scanner (readUpdateConfig) with
+// the single config loader (../config, see ADR-2026-08-02-caminho-unico-de-leitura-do-trackfw-
+// yaml-com-namespaces-tipados.md). Returns the same snake_case shape the rest of this file
+// already consumes (cfg.hooks, cfg.ci, cfg.backend, cfg.frontend, cfg.pkg_manager) so downstream
+// code (updateHooksSurgical, buildProjectTargets) needs no further change.
+function loadUpdateConfig(rootDir) {
+  const u = projectConfig.load(rootDir).update;
+  return {
+    hooks: u.hooks,
+    ci: u.ci,
+    backend: u.backend,
+    frontend: u.frontend,
+    pkg_manager: u.pkgManager,
+  };
+}
+
+// ensureGlobalAdrDirRegistered — mirrors internal/generators/update.go's
+// ensureGlobalADRDirRegistered (Go implementation, same REQ, ML-1A). Registers
+// ~/.trackfw/adr in the project's trackfw.yaml `adr_dirs` list, but ONLY when
+// that directory exists AND contains at least one `ADR-*.md` file — an empty
+// or absent global ADR dir is a no-op, never written. The edit is surgical
+// (line-based text splice, not a YAML parse+reserialize) to preserve 100% of
+// the user's existing trackfw.yaml content (comments, key order, formatting).
+function ensureGlobalAdrDirRegistered(cwd) {
+  const home = os.homedir();
+  const globalDir = path.join(home, '.trackfw', 'adr');
+  if (!fs.existsSync(globalDir)) return;
+
+  let hasAdr = false;
+  try {
+    hasAdr = fs.readdirSync(globalDir).some((f) => /^ADR-.*\.md$/.test(f));
+  } catch (_) {
+    return;
   }
-  return cfg;
+  if (!hasAdr) return;
+
+  const yamlPath = path.join(cwd, 'trackfw.yaml');
+  let content;
+  try {
+    content = fs.readFileSync(yamlPath, 'utf8');
+  } catch (_) {
+    return;
+  }
+
+  const resolvesToGlobal = (entry) => {
+    const trimmed = entry.trim();
+    if (trimmed === '~/.trackfw/adr') return true;
+    const expanded = trimmed.startsWith('~') ? path.join(home, trimmed.slice(1)) : trimmed;
+    return path.resolve(expanded) === path.resolve(globalDir);
+  };
+
+  const lines = content.split('\n');
+  let adrDirsIndex = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^adr_dirs:\s*$/.test(lines[i])) {
+      adrDirsIndex = i;
+      break;
+    }
+  }
+
+  if (adrDirsIndex === -1) {
+    // No adr_dirs key at all — the implicit default is `docs/adr`; append a
+    // new block preserving that default explicitly, plus the global entry.
+    let newContent = content;
+    if (newContent.length && !newContent.endsWith('\n')) newContent += '\n';
+    newContent += 'adr_dirs:\n  - docs/adr\n  - ~/.trackfw/adr\n';
+    fs.writeFileSync(yamlPath, newContent, 'utf8');
+    console.log('  ✓ adr_dirs: ~/.trackfw/adr registrado');
+    return;
+  }
+
+  const itemRe = /^(\s*)-\s*(.+?)\s*$/;
+  let end = adrDirsIndex + 1;
+  let lastItemIndex = -1;
+  let indent = '  ';
+  while (end < lines.length) {
+    const m = lines[end].match(itemRe);
+    if (!m) break;
+    indent = m[1] || indent;
+    if (resolvesToGlobal(m[2])) {
+      // Already registered under this or an equivalent path form — no-op.
+      return;
+    }
+    lastItemIndex = end;
+    end++;
+  }
+
+  const insertAt = lastItemIndex === -1 ? adrDirsIndex + 1 : lastItemIndex + 1;
+  lines.splice(insertAt, 0, `${indent}- ~/.trackfw/adr`);
+  fs.writeFileSync(yamlPath, lines.join('\n'), 'utf8');
+  console.log('  ✓ adr_dirs: ~/.trackfw/adr registrado');
 }
 
 function updateHooksSurgical(cfg, rootDir) {
@@ -48,9 +131,209 @@ function updateHooksSurgical(cfg, rootDir) {
   }
 }
 
+// codexProjectAgentsTarget — installs/reports the project-scoped Codex
+// agents/skills bundle (catalog-based). Uses IntegrationManager.inspect,
+// which is read-only, to compute state under --dry-run too; only the
+// mutating manager.update() call is skipped when dryRun is true. Kept
+// separate from runFileTarget because IntegrationManager already owns a
+// correct, manifest-aware not-installed/current/outdated/modified state
+// machine — re-deriving it via directory hashing would risk diverging from
+// that source of truth (and would need the .trackfw manifest copied into
+// the simulation, which is unnecessary complexity here).
+function codexProjectAgentsTarget(cwd, identityConfig, { dryRun, installMissing }) {
+  const id = 'codex-project-agents';
+  const displayPath = '.codex/agents, .agents/skills';
+  const detected = fs.existsSync(path.join(cwd, 'AGENTS.md')) || fs.existsSync(path.join(cwd, '.codex'));
+  if (!detected) return { id, state: 'missing', path: displayPath };
+
+  try {
+    const { buildPlans, IntegrationManager } = require('../integrations');
+    const manager = new IntegrationManager({ projectRoot: cwd });
+    let wroteAny = false;
+    for (const kind of ['agents', 'skills']) {
+      const plans = buildPlans(kind, { targets: ['codex'], scope: 'project', identity: identityConfig, agentModels: projectConfig.load(cwd).agentModels || {} });
+      const statuses = manager.inspect(plans);
+      const toWrite = plans.filter((_, index) => {
+        const state = statuses[index].state;
+        return state === 'outdated' || (installMissing && state === 'not-installed');
+      });
+      if (toWrite.length) {
+        wroteAny = true;
+        if (!dryRun) manager.update(toWrite);
+      }
+    }
+    return { id, state: wroteAny ? 'updated' : 'skipped', path: displayPath };
+  } catch (e) {
+    return { id, state: 'failed', path: displayPath, message: e.message };
+  }
+}
+
+// PROJECT_TARGET_IDS — the fixed declared order for `trackfw update`
+// targets. `ci-workflow` and `git-hooks` only appear when the project's
+// trackfw.yaml opted into a CI system / hook framework — see ambiguity
+// note in the ML-6C handoff report about config-conditional target lists.
+const PROJECT_TARGET_IDS = [
+  'agent-rules',
+  'agent-hooks',
+  'codex-project-agents',
+  'validate-script',
+  'ci-workflow',
+  'git-hooks',
+  'claude-commands',
+];
+
+// buildProjectTargets — `wanted` (nullable) restricts which targets are
+// even computed/applied. This must be enforced HERE, before any apply()
+// runs, not as a post-hoc filter on the returned array: every target's
+// apply() is a real filesystem side effect (outside --dry-run), so
+// filtering afterwards would still have written every unrequested target.
+function buildProjectTargets(cwd, cfg, identityConfig, { dryRun, installMissing }, wanted) {
+  const generators = require('../generators/init');
+  const discover = require('./discover');
+  const hooksGen = require('../generators/hooks');
+  const include = (id) => !wanted || wanted.includes(id);
+
+  const targets = [];
+
+  if (include('agent-rules')) targets.push(runFileTarget({
+    id: 'agent-rules',
+    path: 'CLAUDE.md, AGENTS.md, GEMINI.md, .github/copilot-instructions.md, .windsurfrules, .amazonq/developer/guidelines.md, .cursor/rules/trackfw.mdc',
+    root: cwd,
+    relPaths: ['CLAUDE.md', 'AGENTS.md', 'GEMINI.md', '.github/copilot-instructions.md', '.windsurfrules', '.amazonq/developer/guidelines.md', '.cursor/rules/trackfw.mdc'],
+    // Gap E: injectRulesDetected → readAgentConventions reads trackfw.yaml from root;
+    // without it in the dry-run sandbox, agent_conventions is silently omitted from
+    // CLAUDE.md, producing a hash that diverges from the real run.
+    seeds: ['trackfw.yaml'],
+    apply: (root) => generators.injectRulesDetected(root),
+    dryRun,
+    installMissing,
+  }));
+
+  if (include('agent-hooks')) targets.push(runFileTarget({
+    id: 'agent-hooks',
+    path: '.claude/settings.json, .codex/hooks.json, .gemini/settings.json, .kiro/hooks/trackfw-attention.json, .github/hooks/trackfw-attention.json, .cursor/hooks.json, scripts/trackfw-attention-*.sh, scripts/trackfw-credential-guard.sh, scripts/trackfw-git-branch-guard.sh, .windsurf/hooks.json, .amazonq/cli-agents/q_cli_default.json',
+    root: cwd,
+    relPaths: [
+      '.claude/settings.json',
+      '.codex/hooks.json',
+      '.gemini/settings.json',
+      '.kiro/hooks/trackfw-attention.json',
+      '.github/hooks/trackfw-attention.json',
+      '.cursor/hooks.json',
+      'scripts/trackfw-attention-signal.sh',
+      'scripts/trackfw-attention-cleanup.sh',
+      'scripts/trackfw-credential-guard.sh',
+      'scripts/trackfw-git-branch-guard.sh',
+      '.windsurf/hooks.json',                   // Gap A: injectWindsurfHooks writes this
+      '.amazonq/cli-agents/q_cli_default.json', // Gap B: injectAmazonQHooks writes this
+    ],
+    // Gap C: injectHooksDetected checks these files to decide which hooks to
+    // inject. Without them in the dry-run sandbox, hooks for installed agents
+    // (windsurf, copilot, etc.) are silently omitted — dry-run lies by omission.
+    // Gap E: trackfw.yaml may be read by hooks generators for config.
+    seeds: [
+      'trackfw.yaml',
+      'CLAUDE.md',
+      'AGENTS.md',
+      'GEMINI.md',
+      '.github/copilot-instructions.md',
+      '.windsurfrules',
+      '.amazonq/developer/guidelines.md',
+    ],
+    apply: (root) => {
+      hooksGen.injectHooksDetected(root);
+      hooksGen.generateAttentionScripts(cfg, root);
+      hooksGen.generateCredentialGuardScript(root);
+      hooksGen.generateGitBranchGuardScript(root);
+    },
+    dryRun,
+    installMissing,
+  }));
+
+  if (include('codex-project-agents')) targets.push(codexProjectAgentsTarget(cwd, identityConfig, { dryRun, installMissing }));
+
+  if (include('validate-script')) targets.push(runFileTarget({
+    id: 'validate-script',
+    path: 'scripts/trackfw-validate.sh',
+    root: cwd,
+    relPaths: ['scripts/trackfw-validate.sh'],
+    // Reuses generators/init.js's generateValidateScript — the SAME
+    // generator `trackfw init` uses to write this file — not
+    // discover.js's writeValidateScript, which produces a different
+    // (simpler, non-per-backend) script and made every `update` re-run
+    // report "updated" against a project actually already current
+    // (ML-6H fix). loadUpdateConfig returns raw trackfw.yaml keys
+    // (snake_case, e.g. "pkg_manager"); buildValidateScript expects the
+    // camelCase shape used by the rest of the init generators.
+    apply: (root) => generators.generateValidateScript({
+      backend: cfg.backend,
+      frontend: cfg.frontend,
+      pkgManager: cfg.pkg_manager,
+    }, root),
+    dryRun,
+    installMissing,
+  }));
+
+  if (include('ci-workflow') && (cfg.ci === 'github-actions' || cfg.ci === 'github_actions')) {
+    targets.push(runFileTarget({
+      id: 'ci-workflow',
+      path: '.github/workflows/trackfw-validate.yml',
+      root: cwd,
+      relPaths: ['.github/workflows/trackfw-validate.yml'],
+      apply: (root) => discover.writeCIWorkflowForce(root),
+      dryRun,
+      installMissing,
+    }));
+  }
+
+  if (include('git-hooks') && (cfg.hooks === 'husky' || cfg.hooks === 'lefthook')) {
+    const relPath = cfg.hooks === 'husky' ? '.husky/pre-commit' : 'lefthook.yml';
+    targets.push(runFileTarget({
+      id: 'git-hooks',
+      path: relPath,
+      root: cwd,
+      relPaths: [relPath],
+      apply: (root) => updateHooksSurgical(cfg, root),
+      dryRun,
+      installMissing,
+    }));
+  }
+
+  if (include('claude-commands')) targets.push(runFileTarget({
+    id: 'claude-commands',
+    path: '.claude/commands/trackfw',
+    root: cwd,
+    relPaths: ['.claude/commands/trackfw'],
+    apply: (root) => generators.generateClaudeCommandsForce(root),
+    dryRun,
+    installMissing,
+  }));
+
+  return targets;
+}
+
 const cmd = new Command('update');
-cmd.description('Update trackfw-managed artifacts to the current version');
-cmd.action(() => {
+cmd.description('Update trackfw-managed artifacts. Bare form is project-scoped (never touches global state); `update harness` updates the global harness instead.');
+// `[mode]` is a plain positional argument, not a nested commander.Command —
+// see the long comment in update-harness.js:run for why: a real subcommand
+// redeclaring the same --json/--dry-run/--targets/--install-missing flags
+// as this parent silently drops them (commander@12 quirk, confirmed by
+// reproduction). One Command, one Option per flag, branch on `mode` inside
+// a single action — this is the only structure that parses correctly.
+cmd.argument('[mode]', 'Pass "harness" to update the global harness instead of the current project');
+cmd.option('--dry-run', 'Compute and report states without writing anything');
+cmd.option('--json', 'Emit the result document as JSON');
+cmd.option('--targets <ids>', 'Comma-separated subset of target ids');
+cmd.option('--install-missing', 'Allow missing targets to be installed');
+cmd.action((mode, options) => {
+  if (mode === 'harness') {
+    return require('./update-harness').run(options);
+  }
+  if (mode) {
+    console.error(`✗ Unknown update mode: ${mode} (expected "harness" or no argument)`);
+    process.exit(1);
+  }
+
   const cwd = process.cwd();
   const yaml = path.join(cwd, 'trackfw.yaml');
   if (!fs.existsSync(yaml)) {
@@ -58,75 +341,42 @@ cmd.action(() => {
     process.exit(1);
   }
 
-  const cfg = readUpdateConfig(cwd);
-  const generators = require('../generators/init');
-  const discover = require('./discover');
+  ensureGlobalAdrDirRegistered(cwd);
 
-  console.log('trackfw update — re-aplicando templates atuais...\n');
-
-  // 1. Agent rules (marker-delimited, idempotent)
+  let wanted;
   try {
-    generators.injectRulesDetected(cwd);
-    console.log('  ✓ agent rules atualizadas');
+    const requested = options.targets ? String(options.targets).split(',').map((s) => s.trim()).filter(Boolean) : [];
+    wanted = validateTargets(PROJECT_TARGET_IDS, requested);
   } catch (e) {
-    console.log(`  ⚠ agent rules: ${e.message}`);
-  }
-  if (fs.existsSync(path.join(cwd, 'AGENTS.md')) || fs.existsSync(path.join(cwd, '.codex'))) {
-    try {
-      require('../generators/codex').installCodex(cwd);
-    } catch (e) {
-      console.warn(`  ⚠ Codex integration: ${e.message}`);
-    }
+    console.error(`✗ ${e.message}`);
+    process.exit(1);
   }
 
-  // 1b. Agent hooks (attention signal/cleanup)
-  try {
-    const { injectHooksDetected } = require('../generators/hooks');
-    injectHooksDetected(cwd);
-    console.log('  ✓ agent hooks atualizados');
-  } catch (e) {
-    console.warn(`  ⚠ agent hooks: ${e.message}`);
+  const cfg = loadUpdateConfig(cwd);
+  const dryRun = Boolean(options.dryRun);
+  const installMissing = Boolean(options.installMissing);
+
+  // A identidade é carregada uma única vez, fora de qualquer try/catch —
+  // um identity.json corrompido deve abortar o comando inteiro, nunca cair
+  // silenciosamente para os nomes neutros default.
+  const identityConfig = identityStore.load(os.homedir());
+
+  // With --json, stdout must carry only the result document — apply()
+  // functions log human progress lines as a side effect; silence them so a
+  // consumer parsing --json output never has to skip preamble noise.
+  const targets = options.json
+    ? silenceConsole(() => buildProjectTargets(cwd, cfg, identityConfig, { dryRun, installMissing }, wanted))
+    : buildProjectTargets(cwd, cfg, identityConfig, { dryRun, installMissing }, wanted);
+
+  const doc = buildDocument('project', dryRun, targets);
+
+  if (options.json) {
+    console.log(JSON.stringify(doc, null, 2));
+  } else {
+    console.log(humanReport('project', dryRun, targets));
   }
 
-  // 2. Validate script (trackfw-owned, overwrite)
-  try {
-    discover.writeValidateScript(cwd);
-    console.log('  ✓ scripts/trackfw-validate.sh atualizado');
-  } catch (e) {
-    console.log(`  ⚠ validate script: ${e.message}`);
-  }
-
-  // 3. CI workflow (trackfw-owned, overwrite)
-  if (cfg.ci === 'github-actions' || cfg.ci === 'github_actions') {
-    try {
-      discover.writeCIWorkflowForce(cwd);
-      console.log('  ✓ .github/workflows/trackfw-validate.yml atualizado');
-    } catch (e) {
-      console.log(`  ⚠ CI workflow: ${e.message}`);
-    }
-  }
-
-  // 4. Git hooks (surgical)
-  updateHooksSurgical(cfg, cwd);
-
-  // 5. Claude commands (force overwrite)
-  try {
-    generators.generateClaudeCommandsForce(cwd);
-    console.log('  ✓ .claude/commands/trackfw/ atualizado');
-  } catch (e) {
-    console.log(`  ⚠ Claude commands: ${e.message}`);
-  }
-
-  // 6. Global skill (force overwrite)
-  try {
-    generators.installSkillsForce(cwd);
-    console.log('  ✓ skill global atualizada');
-  } catch (e) {
-    console.log(`  ⚠ skills: ${e.message}`);
-  }
-
-  console.log('\n✓ trackfw update concluído');
-  require('../generators/init').printArchitectNextSteps(process.cwd())
+  if (doc.summary.failed > 0) process.exitCode = 1;
 });
 
 module.exports = cmd;

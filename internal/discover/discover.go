@@ -9,6 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/kgsaran/trackfw/internal/forge"
+	"github.com/kgsaran/trackfw/internal/generators"
 )
 
 const externalCommandTimeout = 30 * time.Second
@@ -42,7 +45,7 @@ func runExternalCommand(rootDir, name string, args ...string) ([]byte, error) {
 }
 
 // InstallGates instala os artefatos de governança num projeto brownfield:
-// validate script, hook entry e (se github-actions) CI workflow.
+// validate script, hook entry, (se github-actions) CI workflow e injeta attention hooks dos CLIs detectados.
 func InstallGates(r DiscoveryResult, rootDir string, w io.Writer) error {
 	if err := writeValidateScript(rootDir); err != nil {
 		return err
@@ -54,6 +57,18 @@ func InstallGates(r DiscoveryResult, rootDir string, w io.Writer) error {
 		if err := writeCIWorkflow(rootDir); err != nil {
 			return err
 		}
+	}
+	if err := generators.GenerateAttentionScripts(rootDir); err != nil {
+		fmt.Fprintf(w, "  ⚠ attention scripts: %v\n", err)
+	}
+	if err := generators.GenerateCredentialGuardScript(rootDir); err != nil {
+		fmt.Fprintf(w, "  ⚠ credential guard script: %v\n", err)
+	}
+	if err := generators.GenerateGitBranchGuardScript(rootDir); err != nil {
+		fmt.Fprintf(w, "  ⚠ git branch guard script: %v\n", err)
+	}
+	if err := generators.InjectHooksDetected(rootDir); err != nil {
+		fmt.Fprintf(w, "  ⚠ agent hooks: %v\n", err)
 	}
 	return nil
 }
@@ -280,6 +295,13 @@ type DiscoveryResult struct {
 	GovernanceScore    int    // 0-100
 	HookFramework      string // "lefthook", "husky", "pre-commit", "none"
 	CISystem           string // "github-actions", "gitlab", "none"
+	Forge              string // "github", "gitlab", "bitbucket", "azure", or "" when not detected
+
+	// SuggestedTestFramework é uma sugestão best-effort (nunca erro, "" quando nada bate)
+	// baseada em arquivos de configuração presentes na raiz do projeto. É apenas impressa
+	// como sugestão pelo comando `discover` — nunca escrita automaticamente em trackfw.yaml
+	// (a convenção de agent_conventions deve ser sempre declarada pelo time, não inferida).
+	SuggestedTestFramework string
 }
 
 // Scan escaneia rootDir e retorna a estrutura de governança detectada.
@@ -380,10 +402,72 @@ func Scan(rootDir string) (DiscoveryResult, error) {
 		r.CISystem = "none"
 	}
 
-	// 7. Score
+	// 6b. Suggested test framework — best-effort heuristic, never an error.
+	r.SuggestedTestFramework = detectTestFramework(rootDir)
+
+	// 7. Forge detection — reuses internal/forge/resolve.go (no duplicate parse).
+	// gitRemoteURL returns "" in temp dirs (no git repo) or on error; CI detection
+	// is filesystem-based and works without git.
+	if res, err := forge.ResolveFromRepo("", "", rootDir); err == nil && res.Source != "none" {
+		r.Forge = res.Forge
+	}
+
+	// 8. Score
 	r.GovernanceScore = calcScore(r)
 
 	return r, nil
+}
+
+// detectTestFramework é uma heurística best-effort para sugerir um framework de teste
+// com base em arquivos de configuração presentes na raiz do projeto. Nunca retorna erro —
+// retorna "" quando nenhum arquivo-gatilho é encontrado. Ordem de precedência: jest, vitest,
+// pytest, go test.
+func detectTestFramework(rootDir string) string {
+	switch {
+	case fileExists(filepath.Join(rootDir, "jest.config.js")) || fileExists(filepath.Join(rootDir, "jest.config.ts")):
+		return "jest"
+	case fileExists(filepath.Join(rootDir, "vitest.config.js")) || fileExists(filepath.Join(rootDir, "vitest.config.ts")):
+		return "vitest"
+	case fileExists(filepath.Join(rootDir, "pytest.ini")):
+		return "pytest"
+	case hasFileWithSubstring(filepath.Join(rootDir, "pyproject.toml"), "[tool.pytest"):
+		return "pytest"
+	case hasFileWithSubstring(filepath.Join(rootDir, "setup.cfg"), "[tool:pytest]"):
+		return "pytest"
+	case fileExists(filepath.Join(rootDir, "go.mod")) && hasGoTestFile(rootDir):
+		return "go test"
+	default:
+		return ""
+	}
+}
+
+// hasFileWithSubstring lê path e retorna true se seu conteúdo contém sub. Retorna false
+// silenciosamente se o arquivo não existir ou não puder ser lido (best-effort).
+func hasFileWithSubstring(path, sub string) bool {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(content), sub)
+}
+
+// hasGoTestFile percorre rootDir recursivamente procurando qualquer arquivo *_test.go.
+func hasGoTestFile(rootDir string) bool {
+	found := false
+	filepath.WalkDir(rootDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if found {
+			return filepath.SkipDir
+		}
+		if !d.IsDir() && strings.HasSuffix(d.Name(), "_test.go") {
+			found = true
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 func calcScore(r DiscoveryResult) int {
@@ -446,6 +530,10 @@ func GenerateYAML(r DiscoveryResult) string {
 
 	sb.WriteString(fmt.Sprintf("hooks: %s\n", r.HookFramework))
 	sb.WriteString(fmt.Sprintf("ci: %s\n", r.CISystem))
+
+	if r.Forge != "" {
+		sb.WriteString(fmt.Sprintf("forge: %s\n", r.Forge))
+	}
 
 	return sb.String()
 }

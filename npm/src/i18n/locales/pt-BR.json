@@ -10,14 +10,26 @@
       "backendFramework": "Framework de backend?",
       "gitHooks": "Git hooks?",
       "ci": "Sistema de CI?",
+      "forge": "Plataforma de forge?",
       "aiTools": "Quais assistentes de IA você usa?",
       "require_req_in_commit": "Exigir referência REQ nas mensagens de commit de branches feat/fix?",
       "projectType_fullstack": "Full-stack (frontend + backend)",
       "projectType_frontend": "Somente frontend",
       "projectType_backend": "Somente backend",
-      "projectType_governance": "Somente governança (sem stack de build)"
+      "projectType_governance": "Somente governança (sem stack de build)",
+      "identityPreset": "Como você quer nomear seus agentes?",
+      "identityCustomName": "Nome de exibição para o agente",
+      "identityNickname": "Como devemos te chamar? (opcional)"
     },
     "success": "✓ trackfw inicializado — execute 'trackfw status' para ver o estado de governança."
+  },
+  "identity": {
+    "inUse": "identidade: {{count}} agente(s) personalizado(s)",
+    "wizard": {
+      "confirmHeader": "── Confirmação ──────────────────────────────",
+      "confirmQuestion": "Confirmar?",
+      "nicknameRowLabel": "Como você será chamado:"
+    }
   },
   "adr": {
     "description": "Gerenciar Architecture Decision Records",
@@ -51,7 +63,10 @@
         "domainQuestion_persistence": "Qual engine de banco de dados será usada?",
         "domainQuestion_api": "Qual protocolo de API será usado?",
         "domainQuestion_deploy": "Qual é o destino de deploy?",
-        "domainQuestion_events": "Qual message broker será usado?"
+        "domainQuestion_events": "Qual message broker será usado?",
+        "adrScope": "Escopo dos ADRs desta REQ",
+        "adrScopeLocal": "Local (padrão)",
+        "adrScopeGlobal": "Global (~/.trackfw/adr, entre projetos)"
       },
       "detectedDomains": "Domínios detectados: {{domains}}",
       "created": "✓ REQ criado: {{path}}",
@@ -75,7 +90,7 @@
       "notFound": "Roadmap não encontrado: {{name}}"
     },
     "move": {
-      "description": "Mover um roadmap entre estados (backlog|wip|blocked|done|abandoned)",
+      "description": "Mover um roadmap entre estados (backlog|analyzing|wip|blocked|done|abandoned)",
       "success": "✓ Movido {{name}} → {{state}}",
       "notFound": "Roadmap não encontrado: {{name}}"
     },
@@ -100,31 +115,10 @@
     "tail": "Número de transições recentes a exibir",
     "header": "── trackfw log ─────────────────────────"
   },
-  "plugins": {
-    "description": "Gerenciar plugins do trackfw",
-    "list": {
-      "description": "Listar plugins instalados",
-      "empty": "Nenhum plugin instalado. Use `trackfw plugins add <user/repo>` para instalar um."
-    },
-    "add": {
-      "description": "Instalar um plugin do GitHub Releases (user/repo ou user/repo@tag)",
-      "installing": "Instalando plugin de {{repo}}...",
-      "success": "Plugin \"{{name}}\" instalado com sucesso."
-    },
-    "remove": {
-      "description": "Remover um plugin instalado",
-      "success": "Plugin \"{{name}}\" removido."
-    }
-  },
   "metrics": {
     "description": "Exibe métricas de delivery",
     "no_data": "Nenhuma transição registrada ainda.",
     "since": "Filtrar por período (ex: 7d, 30d, 90d)",
     "export": "Exportar métricas para arquivo CSV"
-  },
-  "errors": {
-    "notFound": "Não encontrado: {{path}}",
-    "downloadFailed": "falha no download: HTTP {{status}} para {{url}}",
-    "pluginNotFound": "plugin \"{{name}}\" não encontrado"
   }
 }

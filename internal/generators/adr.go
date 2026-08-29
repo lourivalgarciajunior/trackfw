@@ -1,13 +1,16 @@
 package generators
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
-	"github.com/kgsaran/trackfw/internal/config"
+	"golang.org/x/text/unicode/norm"
 )
 
 // ADRContent contém os campos de um ADR a ser gerado.
@@ -19,11 +22,12 @@ type ADRContent struct {
 	Alternatives string
 }
 
-// NewADR gera um arquivo ADR em docs/adr/ com base no conteúdo fornecido.
+// NewADR gera um arquivo ADR em adrDir com base no conteúdo fornecido.
 // Campos preenchidos são inseridos diretamente; campos vazios mantêm o placeholder HTML.
-func NewADR(content ADRContent) error {
-	cfg := config.Load()
-	adrDir := cfg.ADRDirs[0]
+// O chamador resolve adrDir (via config.Load().ADRDirs[0] para escopo "project" ou via
+// GlobalADRDir(home) para escopo "global") — esta função não lê trackfw.yaml, permitindo
+// uso em --scope global sem exigir projeto/trackfw.yaml no cwd.
+func NewADR(content ADRContent, adrDir string) error {
 	if err := os.MkdirAll(adrDir, 0755); err != nil {
 		return err
 	}
@@ -109,64 +113,60 @@ func ListADRs(dir string) error {
 
 // parseADRMeta extrai título e status de um arquivo ADR markdown.
 func parseADRMeta(path string) (title, status string) {
-	data, err := os.ReadFile(path)
+	f, err := os.Open(path)
 	if err != nil {
 		return "", "unknown"
 	}
-	content := string(data)
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
 	status = "unknown"
-
-	lines := strings.Split(content, "\n")
-
-	// 1) Frontmatter e a fonte canonica — e o campo que o `adr new` grava e que o
-	// validator usa. Antes desta reescrita a funcao varria o arquivo inteiro atras
-	// de "| Status: " e a ULTIMA ocorrencia vencia, enquanto o Node.js pegava a
-	// PRIMEIRA: os dois runtimes davam respostas diferentes para a mesma ADR.
-	// Ver REQ-2026-08-17-adr-list-python.
-	if strings.HasPrefix(content, "---\n") || strings.HasPrefix(content, "---\r\n") {
-		for idx := 1; idx < len(lines); idx++ {
-			line := strings.TrimRight(lines[idx], "\r")
-			if line == "---" {
-				break
-			}
-			if k, v, ok := strings.Cut(line, ":"); ok && strings.TrimSpace(k) == "status" {
-				if v = strings.TrimSpace(strings.Trim(strings.TrimSpace(v), `"'`)); v != "" {
-					status = v
-				}
-				break
-			}
-		}
-	}
-
-	// 2) Titulo e, se o frontmatter nao disse nada, a linha humana de cabecalho.
-	// A busca para no primeiro "## " — dai em diante e corpo.
-	for _, raw := range lines {
-		line := strings.TrimRight(raw, "\r")
-		if strings.HasPrefix(line, "## ") {
-			break
-		}
+	for scanner.Scan() {
+		line := scanner.Text()
 		if strings.HasPrefix(line, "# ADR: ") {
 			title = strings.TrimPrefix(line, "# ADR: ")
 		}
-		if status == "unknown" && strings.HasPrefix(line, "> ") {
-			if idx := strings.Index(line, "| Status: "); idx >= 0 {
+		if strings.Contains(line, "| Status: ") {
+			idx := strings.Index(line, "| Status: ")
+			if idx >= 0 {
 				rest := line[idx+len("| Status: "):]
-				if pipeIdx := strings.Index(rest, " |"); pipeIdx >= 0 {
-					rest = rest[:pipeIdx]
-				}
-				if rest = strings.TrimSpace(strings.TrimRight(rest, " >|")); rest != "" {
-					status = rest
-				}
+				rest = strings.TrimRight(rest, " >|")
+				status = strings.TrimSpace(rest)
 			}
 		}
 	}
-
 	return title, status
 }
 
+// slugNonAlnum corresponde a sequências de caracteres fora de [a-z0-9].
+var slugNonAlnum = regexp.MustCompile(`[^a-z0-9]+`)
+
+// toSlug converte uma string em slug kebab-case portável:
+// 1. NFKD normalization — decompõe diacríticos em base + combining mark.
+// 2. Remove combining marks (categoria Unicode Mn) — elimina acentos.
+// 3. Lowercase.
+// 4. Substitui sequências de não-[a-z0-9] por hífen.
+// 5. Remove hífens nas extremidades.
+// Ex: "Autenticação e Sessão" → "autenticacao-e-sessao"
 func toSlug(s string) string {
+	// Passo 1+2: NFKD → filtrar combining marks
+	normalized := norm.NFKD.String(s)
+	var b strings.Builder
+	for _, r := range normalized {
+		if !unicode.Is(unicode.Mn, r) {
+			b.WriteRune(r)
+		}
+	}
+	s = b.String()
+
+	// Passo 3: lowercase
 	s = strings.ToLower(s)
-	s = strings.ReplaceAll(s, " ", "-")
+
+	// Passo 4: [^a-z0-9]+ → hífen
+	s = slugNonAlnum.ReplaceAllString(s, "-")
+
+	// Passo 5: trim hífens nas extremidades
+	s = strings.Trim(s, "-")
 	return s
 }
 
@@ -186,9 +186,10 @@ func slugToTitle(slug string) string {
 // Usado pelo wizard req new para registrar decisões pendentes.
 // Retorna o basename do arquivo criado.
 // Se o arquivo já existir, não sobrescreve (idempotente) e retorna o basename sem erro.
-func NewADRDraft(slug string) (string, error) {
-	cfg := config.Load()
-	adrDir := cfg.ADRDirs[0]
+// O chamador resolve adrDir (via config.Load().ADRDirs[0] para escopo "local" ou via
+// GlobalADRDir(home) para escopo "global") — esta função não lê trackfw.yaml, mesmo
+// padrão de NewADR.
+func NewADRDraft(slug string, adrDir string) (string, error) {
 	if err := os.MkdirAll(adrDir, 0755); err != nil {
 		return "", fmt.Errorf("creating %s: %w", adrDir, err)
 	}

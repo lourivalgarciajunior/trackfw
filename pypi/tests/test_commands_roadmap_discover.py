@@ -7,6 +7,8 @@ import sys
 import tempfile
 import unittest
 import argparse
+import pytest
+from contextlib import contextmanager
 
 from trackfw import config as cfg_module
 from trackfw.generators.roadmap import generate_roadmap, move_roadmap
@@ -31,6 +33,135 @@ def _make_cfg(tmpdir: str, namespacing: str = "flat", agents=None) -> dict:
 # tests roadmap new
 # ---------------------------------------------------------------------------
 
+def _find_subparser(parser: argparse.ArgumentParser, name: str) -> argparse.ArgumentParser:
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            return action.choices[name]
+    raise AssertionError(f"subparser {name!r} not found")
+
+
+@contextmanager
+def _cwd(path: str):
+    old = os.getcwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(old)
+
+
+def _roadmap_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="trackfw")
+    subparsers = parser.add_subparsers(dest="command", metavar="COMMAND")
+    roadmap_cmd.register(subparsers)
+    return parser
+
+
+def _write_req(root: str, filename: str = "REQ-demo.md") -> str:
+    req_dir = os.path.join(root, "docs", "req")
+    os.makedirs(req_dir, exist_ok=True)
+    req_path = os.path.join(req_dir, filename)
+    with open(req_path, "w", encoding="utf-8") as f:
+        f.write(
+            "---\nstatus: Open\n---\n\n"
+            "# REQ: Checkout seguro\n\n"
+            "**ADR:** docs/adr/ADR-demo.md\n\n"
+            "## Acceptance Criteria\n\n"
+            "- [ ] Cart validates payment token\n"
+            "- [x] Receipt is persisted\n"
+        )
+    return req_path
+
+
+def test_roadmap_new_help_exposes_go_node_parity_flags():
+    parser = _roadmap_parser()
+
+    roadmap_parser = _find_subparser(parser, "roadmap")
+    new_parser = _find_subparser(roadmap_parser, "new")
+    help_text = new_parser.format_help()
+
+    for flag in ("--title", "--req", "--from-req"):
+        assert flag in help_text, f"Python roadmap new help missing parity flag {flag}; help:\n{help_text}"
+
+
+def test_roadmap_new_accepts_valid_title_req_and_from_req_arguments(capsys):
+    parser = _roadmap_parser()
+
+    args = parser.parse_args(["roadmap", "new", "Checkout", "--req", "docs/req/REQ-demo.md"])
+    assert args.title == "Checkout"
+    assert args.req == "docs/req/REQ-demo.md"
+
+    args = parser.parse_args(["roadmap", "new", "--title", "Billing", "--from-req", "docs/req/REQ-demo.md"])
+    assert args.title_flag == "Billing"
+    assert args.from_req == "docs/req/REQ-demo.md"
+
+
+def test_roadmap_new_req_flag_generates_artifact_with_link(capsys):
+    with tempfile.TemporaryDirectory() as tmpdir, _cwd(tmpdir):
+        cfg_module.reset()
+        parser = _roadmap_parser()
+        args = parser.parse_args(["roadmap", "new", "--title", "Billing Flow", "--req", "docs/req/REQ-billing.md"])
+
+        args.func(args)
+
+        out = capsys.readouterr().out
+        assert "Roadmap criado:" in out
+        path = os.path.join(tmpdir, "docs", "roadmaps", "backlog")
+        files = os.listdir(path)
+        assert files == [f for f in files if f.endswith(".md")]
+        assert len(files) == 1
+        with open(os.path.join(path, files[0]), encoding="utf-8") as f:
+            content = f.read()
+        assert "# Roadmap: Billing Flow" in content
+        assert "REQ: docs/req/REQ-billing.md" in content
+        cfg_module.reset()
+
+
+def test_roadmap_new_title_conflict_uses_positional_before_title_flag(capsys):
+    with tempfile.TemporaryDirectory() as tmpdir, _cwd(tmpdir):
+        cfg_module.reset()
+        parser = _roadmap_parser()
+        args = parser.parse_args(["roadmap", "new", "Positional Title", "--title", "Flag Title"])
+
+        args.func(args)
+
+        files = os.listdir(os.path.join(tmpdir, "docs", "roadmaps", "backlog"))
+        with open(os.path.join(tmpdir, "docs", "roadmaps", "backlog", files[0]), encoding="utf-8") as f:
+            content = f.read()
+        assert "# Roadmap: Positional Title" in content
+        assert "Flag Title" not in content
+        cfg_module.reset()
+
+
+def test_roadmap_new_from_req_takes_precedence_over_other_inputs(capsys):
+    with tempfile.TemporaryDirectory() as tmpdir, _cwd(tmpdir):
+        req_path = _write_req(tmpdir)
+        cfg_module.reset()
+        parser = _roadmap_parser()
+        args = parser.parse_args([
+            "roadmap",
+            "new",
+            "Ignored Positional",
+            "--title",
+            "Ignored Flag",
+            "--req",
+            "docs/req/REQ-other.md",
+            "--from-req",
+            req_path,
+        ])
+
+        args.func(args)
+
+        files = os.listdir(os.path.join(tmpdir, "docs", "roadmaps", "backlog"))
+        with open(os.path.join(tmpdir, "docs", "roadmaps", "backlog", files[0]), encoding="utf-8") as f:
+            content = f.read()
+        assert "# Roadmap: Checkout seguro" in content
+        assert "REQ-other.md" not in content
+        assert "Cart validates payment token" in content
+        assert "Receipt is persisted" in content
+        cfg_module.reset()
+
+
 class TestRoadmapNew(unittest.TestCase):
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
@@ -52,7 +183,7 @@ class TestRoadmapNew(unittest.TestCase):
 
         with open(path, encoding="utf-8") as f:
             content = f.read()
-        self.assertIn("status: backlog", content)  # minúsculo desde REQ-2026-08-16-consistencias-template-saida-e-eol
+        self.assertIn("status: backlog", content)
         self.assertIn("# Roadmap: Nova Feature", content)
 
     def test_roadmap_new_by_agent(self):
@@ -101,7 +232,7 @@ class TestRoadmapMove(unittest.TestCase):
 
         with open(dst_path, encoding="utf-8") as f:
             content = f.read()
-        self.assertIn("status: wip", content)  # minúsculo desde REQ-2026-08-16-roadmap-move-sincroniza-status
+        self.assertIn("status: wip", content)
 
     def test_roadmap_move_estado_invalido(self):
         """Move com estado inválido levanta ValueError."""
@@ -172,6 +303,34 @@ class TestRoadmapList(unittest.TestCase):
         self.assertEqual(len(entries_wip), 1)
         self.assertEqual(len(entries_backlog), 1)
 
+    def test_list_flat_encontra_analyzing(self):
+        """_list_flat encontra roadmaps em analyzing/."""
+        cfg = _make_cfg(self.tmpdir)
+        src = generate_roadmap("Analyze Item", cfg)
+        move_roadmap(os.path.basename(src), "analyzing", cfg)
+
+        entries = roadmap_cmd._list_flat(cfg["roadmap_dir"], filter_state="analyzing")
+
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0][0], "analyzing")
+        self.assertIn("analyze-item", entries[0][2])
+
+    def test_list_by_agent_encontra_analyzing(self):
+        """_list_by_agent encontra roadmaps em analyzing/ preservando agente."""
+        cfg = _make_cfg(self.tmpdir, namespacing="by_agent", agents=["zeus"])
+        src = generate_roadmap("Analyze Agent", cfg, agent="zeus")
+        move_roadmap(os.path.basename(src), "analyzing", cfg)
+
+        entries = roadmap_cmd._list_by_agent(
+            cfg["roadmap_dir"],
+            filter_state="analyzing",
+            agents=["zeus"],
+        )
+
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0][0], "analyzing")
+        self.assertEqual(entries[0][1], "zeus")
+
 
 # ---------------------------------------------------------------------------
 # tests roadmap show
@@ -222,6 +381,35 @@ class TestRoadmapShow(unittest.TestCase):
             "flat",
         )
         self.assertIsNone(found)
+
+    def test_find_file_flat_em_analyzing(self):
+        """_find_file encontra roadmap em analyzing/ no modo flat."""
+        cfg = _make_cfg(self.tmpdir)
+        path = generate_roadmap("Show Analyze", cfg)
+        moved = move_roadmap(os.path.basename(path), "analyzing", cfg)
+
+        found = roadmap_cmd._find_file(
+            "show-analyze",
+            cfg["roadmap_dir"],
+            "flat",
+        )
+
+        self.assertEqual(found, moved)
+
+    def test_find_file_by_agent_em_analyzing(self):
+        """_find_file encontra roadmap em analyzing/ no modo by_agent."""
+        cfg = _make_cfg(self.tmpdir, namespacing="by_agent", agents=["zeus"])
+        path = generate_roadmap("Show Analyze Agent", cfg, agent="zeus")
+        moved = move_roadmap(os.path.basename(path), "analyzing", cfg)
+
+        found = roadmap_cmd._find_file(
+            "show-analyze-agent",
+            cfg["roadmap_dir"],
+            "by_agent",
+            agents=["zeus"],
+        )
+
+        self.assertEqual(found, moved)
 
 
 # ---------------------------------------------------------------------------

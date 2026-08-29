@@ -1,6 +1,6 @@
 # trackfw
 
-> The AI-native governance layer for software delivery — ADR → REQ → ROADMAP → backlog / wip / blocked / done / abandoned
+> AI governance CLI for software delivery teams — ADR → REQ → ROADMAP → backlog / wip / blocked / done / abandoned
 
 [![Release](https://img.shields.io/github/v/release/kgsaran/trackfw)](https://github.com/kgsaran/trackfw/releases/latest)
 [![Go](https://img.shields.io/badge/go-1.25+-00ADD8?logo=go)](go.mod)
@@ -8,7 +8,9 @@
 [![PyPI](https://img.shields.io/pypi/v/trackfw?logo=python&color=3776AB)](https://pypi.org/project/trackfw/)
 [![License](https://img.shields.io/github/license/kgsaran/trackfw)](LICENSE)
 
-**trackfw** is an open-source CLI that enforces a traceable chain from architectural decision to shipped code — without SaaS, accounts, or databases. Markdown files are state.
+**trackfw** is an open-source governance CLI for AI-native software delivery. It enforces a traceable chain from architectural decision to shipped code — without SaaS, accounts, or databases. Markdown files are state.
+
+It is designed for teams looking for an ADR / REQ / ROADMAP governance framework with native support for AI coding assistants such as Codex, Claude Code, Gemini CLI, Antigravity, Cursor, GitHub Copilot, Windsurf, Amazon Q, and Kiro.
 
 ```
 ADR → REQ → ROADMAP → backlog / wip / blocked / done / abandoned
@@ -91,8 +93,8 @@ npm install -g trackfw
 ```
 
 The npm package is pure Node.js — no compiled binary or postinstall download.
-It works wherever Node.js ≥ 18 is installed. Shared behavior and intentional
-Go-only integration installers follow the [CLI parity contract](docs/cli-parity.md).
+It works wherever Node.js ≥ 18 is installed. Shared behavior, including the AI
+integration lifecycle, follows the [CLI parity contract](docs/cli-parity.md).
 
 ### pip
 
@@ -126,6 +128,10 @@ trackfw validate
 
 # 6. See what is in flight
 trackfw status
+
+# 7. Governed commit + push + open PR/MR (feat/fix/refactor branches only)
+git add -p                        # stage your changes explicitly
+trackfw ship -m "feat(auth): add login flow"
 ```
 
 ---
@@ -138,28 +144,29 @@ trackfw status
 | `trackfw adr new "title"` | Create a new Architecture Decision Record |
 | `trackfw adr list` | List all ADRs with status |
 | `trackfw req new "title"` | Create a REQ with guided ADR discovery |
-| `trackfw req list` | List all REQs with status |
+| `trackfw req list` | List all REQs with status, discovered across flat, per-state, and by_agent layouts |
+| `trackfw req move <name> <status>` | Update a REQ's status; physically relocates the file when it already lives in a recognized state subfolder (see [Multi-agent namespacing](#multi-agent-namespacing)) |
 | `trackfw roadmap new "title"` | Create a roadmap in `backlog/` |
 | `trackfw roadmap show <name>` | Print a roadmap with its current state |
 | `trackfw roadmap move <name> <state>` | Move roadmap between states |
 | `trackfw roadmap list` | List all roadmaps grouped by state |
 | `trackfw validate` | Check governance consistency (use as CI gate) |
+| `trackfw barrier <roadmap> --wave <n>` | Deterministic wave-release gate — stack-agnostic, checks MLs, acceptance evidence, project-declared gates, and governance |
+| `trackfw ship -m "msg"` | Governed `git commit + push + open PR/MR` — enforces branch pattern and governance gate; resolves forge (GitHub/GitLab/Bitbucket/Azure) automatically or via `--forge`; falls back to a browser URL when the forge CLI is absent |
 | `trackfw context` | Print a structured summary of the project's governance state (REQs, Roadmaps, ADRs with counts and statuses) |
 | `trackfw serve` | Start a local governance dashboard (no cloud, no accounts) |
 | `trackfw status` | Show wip, blocked, REQs waiting on ADRs |
 | `trackfw log [--tail N]` | Show roadmap state transition history |
-| `trackfw plugins list` | List installed plugins |
-| `trackfw plugins add <user/repo>` | Install a plugin from GitHub Releases |
-| `trackfw plugins remove <name>` | Remove an installed plugin |
-| `trackfw agents` | Install Claude Code subagents *(Go binary only)* |
-| `trackfw gemini` | Install Gemini CLI skills and commands *(Go binary only)* |
-| `trackfw cursor` | Install Cursor rules *(Go binary only)* |
-| `trackfw copilot` | Install GitHub Copilot instructions *(Go binary only)* |
-| `trackfw windsurf` | Install Windsurf rules and workflows *(Go binary only)* |
-| `trackfw amazonq` | Install Amazon Q Developer rules *(Go binary only)* |
+| `trackfw agents list` | List available agents and deployment state across AI CLIs |
+| `trackfw agents install` | Install selected specialist agents |
+| `trackfw agents update` | Safely update managed agents |
+| `trackfw agents uninstall` | Remove selected owned agent deployments |
+| `trackfw skills list` | List available governance skills and deployment state |
+| `trackfw skills install/update/uninstall` | Manage selected governance skills |
 | `trackfw version` | Print version |
 
-> **Go binary only** commands (`agents`, `gemini`, `cursor`, `copilot`, `windsurf`, `amazonq`) are available when installed via brew, `install.sh`, or `go install`. When using the npm package, AI integrations are installed through `trackfw init`.
+The same lifecycle contract is available from the Go/Homebrew, npm, and PyPI
+distributions.
 
 ---
 
@@ -196,16 +203,33 @@ trackfw v2.6.0 introduces features designed for teams where AI agents are first-
 ```yaml
 # trackfw.yaml
 roadmap_namespacing: by_agent
-agents:
-  - claude
-  - gemini
-  - copilot
+agents: [claude, gemini, copilot]
 ```
 
-> Lists must be written as blocks. The inline form (`agents: [claude, gemini]`) is valid YAML but
-> is not parsed by trackfw — it now prints a warning instead of leaving the key silently empty.
-
 Artifacts are organized by agent: `docs/roadmaps/claude/wip/`, `docs/req/gemini/done/`. `trackfw validate` and `trackfw context` are fully by_agent-aware — no false positives.
+
+REQs reuse this same `roadmap_namespacing` setting — there is no separate `req_namespacing` key. When
+`by_agent` is configured, REQs may live under `req_dir/<agent>/<state>/` just like roadmaps do.
+
+`trackfw req list` and `trackfw req move` discover REQs across three layouts at once (each is a fixed,
+non-recursive glob — a REQ nested deeper than these patterns is not found), with no extra flag required:
+
+- **Flat (legacy):** `req_dir/*.md` — REQs loose directly in the REQ directory.
+- **Per-state:** `req_dir/<state>/*.md` — organized by state, without an agent segment.
+- **By agent:** `req_dir/<agent>/<state>/*.md` — used when `roadmap_namespacing: by_agent` is set.
+
+`trackfw req move <name> <status>` behaves conditionally depending on where the REQ currently lives:
+
+- If the REQ already sits inside a recognized state subfolder (per-state or by_agent layout above), the
+  move **physically relocates the file** to the target state's folder, mirroring `trackfw roadmap move` —
+  the folder is the source of truth for state. In this mode `<status>` must be one of the six governance
+  states (`backlog`, `analyzing`, `wip`, `blocked`, `done`, `abandoned`) — any other value is rejected
+  with `invalid state`.
+- If the REQ is loose in `req_dir/` (flat legacy layout), the move rewrites the `status:` frontmatter
+  field **in place** and does not move or create any folder. `<status>` is written verbatim in this
+  mode — it accepts the free-form values existing REQs already use (`Open`, `Done`, ...), not just the
+  six governance state names. Existing flat REQs are never migrated automatically — you are not forced
+  to reorganize a project's existing REQs to adopt this behavior.
 
 ### Bidirectional traceability (`trace_id_field`)
 
@@ -244,6 +268,32 @@ rules:
 governance_mode: strict   # CI fails on any violation
 # governance_mode: lenient # CI passes with warnings only
 ```
+
+### `update` and `sync` configuration fields
+
+`trackfw update` and `trackfw sync` read the following keys, flat at the root of `trackfw.yaml`, through
+the same loader used by every other command. All default to an empty string when absent.
+
+```yaml
+# trackfw.yaml — consumed by `trackfw update`
+hooks: husky          # husky | lefthook | native | "" (no hooks regenerated)
+ci: github             # github | gitlab | "" (no CI workflow regenerated)
+backend: node          # backend stack — informs CLAUDE.md/agent stack sections and hook commands
+frontend: react         # frontend stack — same as backend
+pkg_manager: npm        # npm | yarn | pnpm | ... — composes build/test commands in generated hooks
+
+# trackfw.yaml — consumed by `trackfw sync` (checked before the matching env var, same order in all 3 CLIs)
+linear_api_key: ""
+linear_team_id: ""
+jira_base_url: ""
+jira_email: ""
+jira_token: ""
+jira_project: ""
+```
+
+Full contract, including per-field consumers and the intentional exception for generated Git hooks
+(which read `roadmap_dir` with their own `grep`/`sed`, since they run without the `trackfw` binary
+present): `docs/cli-parity.md` → `## trackfw update vs trackfw update harness`.
 
 ---
 
@@ -327,23 +377,313 @@ $ trackfw status
 
 ---
 
+## `trackfw barrier` — deterministic wave-release gate
+
+```bash
+trackfw barrier <roadmap> --wave <n> [--json]
+```
+
+`trackfw barrier` is the stack-agnostic core of the wave-release gate: it never assumes a build
+tool, a test runner, or a parity rule. Every check either comes from the roadmap itself (the wave's
+declared gates) or from `trackfw validate` run in-process. Point it at a roadmap basename (with or
+without `.md`, resolved against `wip/` then `done/`) and a wave number, and it tells you whether
+that wave is ready to release.
+
+A wave passes only when **all four** built-in checks are green:
+
+| Check | Passes when |
+|---|---|
+| `mls_complete` | The wave has at least one ML and every ML is marked `**Status:** ✅` |
+| `acceptance_evidence` | Every ML has a non-empty `**Critérios de aceite:**` block with no unchecked `- [ ]` line |
+| `gates` | Every command declared under the wave's `**Gates da wave:**` fenced block exits 0 — a wave with no such block declares zero gates, and the barrier never invents one |
+| `validate` | `trackfw validate --json` reports `violations: 0` |
+
+### Exit codes
+
+| Exit | Meaning |
+|---|---|
+| `0` | `status: "passed"` — every check is green, the wave may release |
+| `1` | `status: "blocked"` — at least one check failed; the JSON/text report says which |
+| `2` | Usage/resolution error — the roadmap or the wave number could not be resolved. This is **not** `blocked`: a barrier that could not run is distinct from one that ran and failed |
+
+### Correcting a blocked wave
+
+```bash
+$ trackfw barrier ROADMAP-example --wave 2
+✗ mls_complete: ML-2C: not complete (status: 🔄)
+✗ acceptance_evidence: ML-2C: 2 unmet acceptance criteria
+wave 2: blocked
+```
+
+Fix the roadmap (mark the ML `✅`, check off the remaining criteria) and rerun the exact same
+command — the barrier is not a one-shot denial; a corrected wave passes on the next invocation:
+
+```bash
+$ trackfw barrier ROADMAP-example --wave 2
+✓ mls_complete
+✓ acceptance_evidence
+✓ gates
+✓ validate
+wave 2: passed
+```
+
+### JSON output
+
+```bash
+trackfw barrier ROADMAP-example --wave 2 --json
+```
+
+```json
+{
+  "roadmap": "ROADMAP-example.md",
+  "wave": 2,
+  "status": "blocked",
+  "started_at": "2026-07-29T10:30:00Z",
+  "finished_at": "2026-07-29T10:30:04Z",
+  "checks": [
+    { "name": "mls_complete", "status": "passed", "evidence": ["ML-2A: ✅"], "failures": [] },
+    { "name": "acceptance_evidence", "status": "blocked", "evidence": [], "failures": ["ML-2C: 2 unmet acceptance criteria"] },
+    { "name": "gates", "status": "passed", "commands": ["make quality"], "evidence": ["make quality: exit 0"], "failures": [] },
+    { "name": "validate", "status": "passed", "evidence": ["0 violations, 0 warnings"], "failures": [] }
+  ],
+  "failures": ["acceptance_evidence: ML-2C: 2 unmet acceptance criteria"]
+}
+```
+
+### `trackfw barrier` vs. `/trackfw:barrier`
+
+`trackfw barrier` is the deterministic, reproducible CLI — it never invokes agents and never
+performs Git operations. The `/trackfw:barrier` slash command wraps it with the parts a binary
+cannot evaluate: dispatching `code-quality`/`security` reviews, auditing the diff against scope,
+and — only for `trackfw_architect`, the sole Git authority in this workflow — committing and
+pushing once every check and review is green. A green CLI barrier is necessary but not sufficient
+to release a wave. Full contract: `docs/cli-parity.md` → `## trackfw barrier`.
+
+---
+
 ## AI assistant integration
 
-`trackfw init` asks which AI tools your team uses and installs native governance context for each. When using the Go binary (brew, `install.sh`, `go install`), each integration can also be run as a standalone command.
+`trackfw init` can install initial AI integrations. The `agents` and `skills`
+command families provide the complete lifecycle in every distribution.
 
-| Command | Installs | Format |
-|---|---|---|
-| `trackfw init --ai-tools codex` | `AGENTS.md`, 5 repository skills, 6 custom agents, Codex config and hooks | `.agents/skills/` + `.codex/` |
-| `trackfw agents` | 10 subagents in `~/.claude/agents/` | Claude Code `.md` with frontmatter |
-| `trackfw gemini` | GEMINI.md + 10 skills + 3 commands | `~/.gemini/` + project root |
-| `trackfw cursor` | 10 rules in `.cursor/rules/` | `.mdc` with YAML frontmatter |
-| `trackfw copilot` | `copilot-instructions.md` + 10 instructions + 10 prompts | `.github/` |
-| `trackfw windsurf` | 10 rules + workflows in `.windsurf/` + global rules | Appends to `~/.codeium/windsurf/memories/` |
-| `trackfw amazonq` | 10 rules in `.amazonq/rules/` | Plain Markdown |
+| Target | Native/fallback representation |
+|---|---|
+| Claude Code | Subagent Markdown and Agent Skills |
+| Codex | Custom-agent TOML and Agent Skills |
+| Gemini CLI | Agent Markdown and skills |
+| Antigravity | Agent/skill directories; explicit `legacy-cli` surface available |
+| Cursor | Agent Markdown and skills |
+| GitHub Copilot | Custom agents and Agent Skills |
+| Windsurf | Specialist-skill fallback for agents and native skills |
+| Amazon Q | CLI agent JSON and workflow-rule fallback |
+| Kiro | Native IDE/CLI agents and Agent Skills |
 
-Each installer is idempotent — running it twice never overwrites your customizations.
+```bash
+# Inspect every deployment, including legacy surfaces
+trackfw agents list --json
 
-The 10 roles installed for each tool: **architect · backend · frontend · qa · infra · security · code-quality · dba · ux · data**
+# Install selected items in the repository
+trackfw agents install --targets codex,claude --items architect,backend --scope project
+trackfw skills install --targets codex,antigravity --items governance,implement --scope project
+
+# Select an alternate surface explicitly
+trackfw agents install --targets kiro --surface kiro=cli
+trackfw agents list --targets antigravity --surface antigravity=legacy-cli
+```
+
+Without `--targets`, mutations open a numbered/checkbox selector in a TTY and
+fail with an actionable error in CI. The lifecycle reports `not-installed`,
+`current`, `outdated`, or `modified`. A manifest under `.trackfw/` records
+scope-specific ownership, version, SHA-256, and shared claims. Modified files
+are never replaced or removed unless `--force` is explicit, and unmanaged files
+are never removed. Known historical templates are adopted without overwriting;
+unknown unmanaged content cannot be adopted by `update`, even with `--force`.
+
+Without `--scope`, `install`/`update` default to `global` (`~/.claude/...`)
+when stdin is not a TTY, and otherwise prompt interactively with `global`
+pre-selected — the resolved destination paths are printed before anything is
+written. `uninstall` is the one exception: without `--scope` and without a
+TTY it fails instead of guessing, since silently defaulting a destructive
+operation could delete artifacts from the user's home directory. `list` never
+prompts and always assumes `global` unless `--scope` is given, so it reports
+the same destinations `install` actually wrote to.
+
+The **12 roles** installed for each tool: **architect · backend · frontend · qa · infra · security · code-quality · dba · ux · data · iac · tooling**
+
+The **17 skills** cover governance process (governance, implement, plan, release, review) and technical specialties (backend-skill, code-quality-skill, data-skill, dba-skill, frontend-skill, iac-skill, infra-skill, qa-skill, security-skill, tooling-skill, ux-skill, vault-skill).
+
+---
+
+## Agent identity — give your agents a name
+
+By default the agents are functional and impersonal: `trackfw-architect`,
+`trackfw-backend`, … Agent identity lets you name all twelve, pick how they
+address you, and call them by name.
+
+```bash
+# Non-interactive: pick a themed preset
+trackfw init --identity-preset greek
+
+# Or answer the wizard, which also offers "name them one by one"
+trackfw init
+```
+
+`--identity-preset` accepts ten themed presets plus two opt-outs:
+
+`greek` · `norse` · `potter` · `thrones` · `chaves` · `pioneers` · `starwars` · `tolkien` · `turma` · `egyptian` · `neutral` · `none`
+
+`neutral` and `none` write nothing and keep the current behavior.
+
+Sample mapping (three of the ten presets):
+
+| Agent | `greek` | `pioneers` | `tolkien` |
+|---|---|---|---|
+| architect | Zeus | Turing | Gandalf |
+| backend | Apolo | Ritchie | Aragorn |
+| frontend | Afrodite | Berners-Lee | Arwen |
+| qa | Ártemis | Hamilton | Legolas |
+| infra | Ares | Torvalds | Gimli |
+| security | Hades | Diffie | Boromir |
+| dba | Poseidon | Codd | Elrond |
+| ux | Atena | Norman | Galadriel |
+| code-quality | Hefesto | Knuth | Faramir |
+| data | Métis | Hopper | Bilbo |
+
+The remaining presets are `norse` (Odin, Thor, Freya…), `potter` (Dumbledore,
+Snape, Luna…), `thrones` (Tyrion, Jon, Arya…), `chaves` (Girafales, Madruga,
+Chiquinha…), `starwars` (Yoda, Han, Leia…), `turma` (Franjinha, Cebolinha,
+Magali…), and `egyptian` (Thoth, Rá, Ísis…).
+
+### Custom mode and your nickname
+
+The interactive wizard also offers **name them one by one**: you type all ten
+display names yourself. Each entry is validated as you go — an invalid name is
+rejected with an inline error, never silently corrected, and two names that
+resolve to the same identifier are rejected too.
+
+The wizard then asks for an optional **nickname for you**, which is how the
+agents will address you.
+
+### `agents install` also runs the wizard
+
+`trackfw init` is not the only entry point: `trackfw agents install`, the
+natural path in a project that is already governed, offers the same wizard.
+The rule is identical across the three CLIs — it appears **only** when
+**all** of the following hold:
+
+- the command is `agents` (never `skills`: skills have no identity);
+- stdin is a TTY (a non-interactive run never blocks on a prompt);
+- and either no `~/.trackfw/identity.json` exists yet, or `--identity` was
+  passed to force reconfiguration.
+
+With an identity already configured and no `--identity`, the command asks
+nothing — it prints `identity: N custom agent(s)` and installs directly.
+
+```bash
+# First run on this machine: offers the wizard, then installs
+trackfw agents install --targets claude
+
+# Identity already configured: no prompt, installs directly
+trackfw agents install --targets claude
+
+# Force reconfiguration
+trackfw agents install --targets claude --identity
+
+# Non-interactive, same semantics as init --identity-preset
+trackfw agents install --targets claude --identity-preset chaves
+```
+
+Two new flags exist only on `agents install` (`skills install` never
+registers them): `--identity` (bool, forces reconfiguration even if a file
+already exists) and `--identity-preset <preset>` (same ten themed presets
+plus `neutral` and `none`; an invalid value errors out listing the valid
+ones).
+
+In **name them one by one** mode, each field is now labeled by the agent's
+specialty, taken from the catalog, never by its technical id:
+
+```
+Architect — Architecture, ADRs and governed coordination
+> _
+```
+
+Before anything is written to disk — for a themed preset **or** for custom
+names — a confirmation screen lists all ten `specialty → name` pairs plus
+your nickname:
+
+```
+── Confirmation ──────────────────────────────
+  Architecture, ADRs and governed coordination   →  Girafales
+  Backend APIs, domain logic and integrations    →  Madruga
+  ...
+  What we'll call you:                              chefe
+
+? Confirm?
+```
+
+Answering no returns to preset selection; nothing is written until you
+confirm.
+
+Everything is stored in a single global file, shared by the Go, npm, and PyPI
+distributions:
+
+```json
+// ~/.trackfw/identity.json
+{
+  "schema_version": 1,
+  "user_nickname": "Kleber",
+  "agents": {
+    "architect": { "display_name": "Zeus", "slug": "zeus" }
+  }
+}
+```
+
+The generated artifact — still installed at the unchanged path
+`~/.claude/agents/trackfw-architect.md`:
+
+```markdown
+---
+name: zeus-tf
+description: Zeus — Principal software architect for system design, ADRs and governed multi-agent coordination.
+model: opus
+---
+
+Você é Zeus. Trate o usuário como Kleber.
+
+# Architect
+...
+```
+
+### Why the `-tf` suffix
+
+The `name` always ends in `-tf`. Two agents sharing the same `name` in the same
+directory make Claude Code load *"only one of them, chosen by filesystem read
+order rather than a documented precedence"* — a silent, non-deterministic
+shadowing that the user cannot detect. If you already keep a personal `zeus.md`
+agent, `zeus-tf` guarantees both survive.
+
+The suffix belongs to the technical identifier only. It never appears in how
+the agent presents itself: the `description` and the body both say **Zeus**.
+
+### How to invoke it
+
+| You type | What happens |
+|---|---|
+| `@agent-zeus-tf` | Works — explicit mention resolves against `name` |
+| "chame o Zeus" / "ask Zeus to…" | Works — natural-language routing reads `description` |
+| "quem é você?" | Answers "Sou Zeus" — the body is loaded after selection |
+
+### Cost and non-regression
+
+The agent **never reads the configuration at runtime**. Identity is
+materialized into the artifact at install time, so the per-interaction cost is
+essentially zero: the `description` is substituted rather than extended, and
+the body grows by tens of tokens that are loaded only after the agent has
+already been selected. No tool call, no file read, no permanent instruction.
+
+Without `~/.trackfw/identity.json`, the generated artifacts are **byte for byte
+identical** to the current ones in all three CLIs. The feature is opt-in and
+regresses nothing.
 
 ---
 
@@ -356,7 +696,8 @@ The 10 roles installed for each tool: **architect · backend · frontend · qa �
 ? Package manager?       npm / pnpm / yarn / bun
 ? Git hooks?             husky / lefthook / none
 ? CI system?             GitHub Actions / GitLab CI / none
-? Which AI assistants?   Claude Code / OpenAI Codex / Gemini CLI / Cursor / Copilot / Windsurf / Amazon Q
+? Which AI assistants?   Claude / Codex / Gemini / Antigravity / Cursor / Copilot / Windsurf / Amazon Q / Kiro
+? Agent identity?        Greek / Norse / Potter / Thrones / Chaves / Pioneers / Star Wars / Tolkien / Turma / Egyptian / Name them one by one / Neutral
 ```
 
 The governance structure (`docs/adr/`, `docs/req/`, `docs/roadmaps/`) is always identical — stack-agnostic. The generated hooks, workflows, and AI integrations adapt to your answers.
@@ -377,6 +718,71 @@ The Codex integration is repository-scoped: `AGENTS.md` carries persistent instr
 8. **AI-agent aware** — `roadmap_namespacing: by_agent` and `trace_id_field` make AI-generated work traceable and auditable by default.
 
 ---
+
+## Credential guard: detection, not prevention
+
+trackfw can generate a **credential guard** hook that blocks agents from materializing real
+credentials. `trackfw validate` also reports when that guard looks compromised:
+
+- the hook is registered but the script is **missing** or not executable;
+- the script's **contents diverge** from the template this version of trackfw generates;
+- `credential_guard.mode` was **downgraded** from `block` on disk relative to your last commit.
+
+**Read this before relying on it.**
+
+These checks are **detection, not prevention.** trackfw *tells you* something diverged — it does
+**not** stop it from happening. This is not an implementation gap: it was measured that no technical
+prevention is possible, within trackfw's scope, against an agent that has unrestricted write access
+to your workspace. An agent that can edit your files can delete the guard script, overwrite it with
+a no-op, or relax the mode — and on most agent CLIs, a hook that fails to run simply lets the tool
+call proceed.
+
+What these checks are **not** able to see:
+
+- **changes the adversary also commits** — once it is in your `HEAD`, there is nothing to diverge
+  from. What remains is the audit trail: the change shows up in your diff and in review.
+- **anything with no commit to compare against** — a repository with no commits, or a file that was
+  never versioned. The check stays silent rather than guessing.
+- **the difference between tampering and you being out of date.** The script carries no version
+  marker, so a divergence may simply mean you have not run `trackfw update` since upgrading. That is
+  why the message is worded neutrally and the rule defaults to a **warning**, which does **not**
+  change `validate`'s exit code. If you want CI to fail on it:
+
+```yaml
+# trackfw.yaml
+rules:
+  credential_guard_script_integrity: error
+```
+
+- **the check can be switched off by the same edit it is meant to catch.** Rule severity is read
+  from `rules:` in the `trackfw.yaml` **on disk** — so an edit that both downgrades
+  `credential_guard.mode` *and* sets `credential_guard_mode_downgrade: off` silences the report,
+  with nothing committed. Anchoring `rules:` to your last commit is a known open item.
+
+### If `trackfw update` suddenly reports something it used to ignore
+
+Since the version that introduced anchoring, the credential-guard checks are resolved against **your
+last commit**, not only against the file on disk — and they can **no longer be suppressed** via
+`.trackfw-baseline.json`. This is deliberate: a check that can be switched off by the same
+uncommitted edit it is meant to catch is not a check.
+
+If one of them starts reporting after an upgrade, you have two legitimate ways out, and both leave a
+trail:
+
+```yaml
+# trackfw.yaml — commit this change
+rules:
+  credential_guard_hook_resolvable: off
+```
+
+...or fix the underlying cause (usually `trackfw update`, to regenerate the guard script and wiring).
+
+One caveat worth knowing: `governance_mode: lenient` still turns **every** finding into a warning,
+including these. Closing that is tracked separately.
+
+The strongest protection remains the ordinary one: the guard script and `trackfw.yaml` are
+**versioned files**. Review their diffs like you review any other code. Every limitation above has
+the same escape hatch: the change is *visible* in `git diff`.
 
 ## What trackfw is not
 

@@ -1,6 +1,8 @@
 """
-generators/adr.py — geração de ADR sequencial com numeração automática.
-Espelha npm/src/generators/adr.js em Python puro (stdlib apenas).
+generators/adr.py — Gerador de ADRs para trackfw.
+Espelha npm/src/generators/adr.js (funções newADR, newADRDraft).
+Formato canônico Go/Node — REQ-2026-07-27-convergencia-templates-python.
+Stdlib apenas — sem dependências externas.
 """
 
 import os
@@ -9,45 +11,16 @@ import unicodedata
 from datetime import date
 
 
-def next_adr_number(adr_dir: str) -> int:
-    """
-    Escaneia adr_dir por arquivos ADR-NNN-*.md e retorna max(NNN)+1.
-    Retorna 1 se o diretório estiver vazio ou não existir.
-    """
-    if not os.path.isdir(adr_dir):
-        return 1
-
-    pattern = re.compile(r'^ADR-(\d+)-.*\.md$', re.IGNORECASE)
-    max_num = 0
-
-    for entry in os.listdir(adr_dir):
-        m = pattern.match(entry)
-        if m:
-            num = int(m.group(1))
-            if num > max_num:
-                max_num = num
-
-    return max_num + 1
-
-
 def slugify(title: str) -> str:
     """
     Converte título em slug: lowercase, acentos removidos via NFKD,
     espaços → hifens, remove chars não-alfanuméricos exceto hífen.
     """
-    # Normaliza para NFKD e descarta caracteres não-ASCII
     normalized = unicodedata.normalize('NFKD', title)
     ascii_str = normalized.encode('ascii', 'ignore').decode('ascii')
-
-    # Lowercase e espaços → hifens
     slug = ascii_str.lower().replace(' ', '-')
-
-    # Remove chars não-alfanuméricos exceto hífen
     slug = re.sub(r'[^a-z0-9-]', '', slug)
-
-    # Colapsa hifens múltiplos
     slug = re.sub(r'-+', '-', slug)
-
     return slug.strip('-')
 
 
@@ -57,14 +30,26 @@ def _today() -> str:
 
 def generate_adr(
     title: str,
-    status: str = 'Draft',
+    status: str = 'Proposed',
     adr_dirs: list = None,
     cwd: str = None,
 ) -> str:
     """
-    Gera arquivo ADR no primeiro diretório de adr_dirs (ou 'docs/adr' como default).
-    Cria o diretório se não existir.
-    Retorna o path absoluto do arquivo criado.
+    Cria docs/adr/ADR-YYYY-MM-DD-<slug>.md no formato canônico Go/Node.
+
+    Frontmatter: status · date · author: ""
+    Header: > Date: <data> | Status: <status>
+    Seções: ## Context, ## Decision, ## Consequences, ## Alternatives Considered
+    H1: # ADR: <title>
+
+    Args:
+        title: Título do ADR.
+        status: Status inicial (default: 'Proposed'). Use 'Draft' para rascunho.
+        adr_dirs: Lista de diretórios destino; usa o primeiro. Default: docs/adr.
+        cwd: Diretório de trabalho base (default: os.getcwd()).
+
+    Returns:
+        Path absoluto do arquivo criado.
     """
     base = cwd or os.getcwd()
 
@@ -73,40 +58,42 @@ def generate_adr(
     else:
         adr_dir = 'docs/adr'
 
-    # Tornar absoluto se relativo
     if not os.path.isabs(adr_dir):
         adr_dir = os.path.join(base, adr_dir)
 
     os.makedirs(adr_dir, exist_ok=True)
 
-    num = next_adr_number(adr_dir)
     slug = slugify(title)
-    num_str = str(num).zfill(3)
-    name = f'ADR-{num_str}-{slug}'
-    filename = f'{name}.md'
-    filepath = os.path.join(adr_dir, filename)
     today = _today()
+    filename = f'ADR-{today}-{slug}.md'
+    filepath = os.path.join(adr_dir, filename)
+
+    context_section = '<!-- What is the situation that motivates this decision? -->'
+    decision_section = '<!-- What was decided? -->'
+    consequences_section = '<!-- What are the positive and negative consequences of this decision? -->'
+    alternatives_section = '<!-- What other options were evaluated and why were they rejected? -->'
 
     body = f"""---
-name: {name}
-title: "{title}"
 status: {status}
-created: {today}
+date: {today}
+author: ""
 ---
 
-# ADR-{num_str}: {title}
+# ADR: {title}
 
-## Status
-{status}
+> Date: {today} | Status: {status}
 
 ## Context
-<!-- Descreva o contexto e o problema que motivou esta decisão -->
+{context_section}
 
 ## Decision
-<!-- Descreva a decisão tomada -->
+{decision_section}
 
 ## Consequences
-<!-- Descreva as consequências desta decisão -->
+{consequences_section}
+
+## Alternatives Considered
+{alternatives_section}
 """
 
     with open(filepath, 'w', encoding='utf-8') as f:
@@ -115,81 +102,57 @@ created: {today}
     return filepath
 
 
-def parse_adr_status(path: str) -> str:
-    """Extrai o status de uma ADR.
+def global_adr_dir(home: str) -> str:
+    """
+    Retorna o diretório global de ADRs cross-project: <home>/.trackfw/adr.
+    Espelha GlobalADRDir (Go, internal/generators/scaffold.go) e o path
+    literal usado por npm/src/commands/adr.js (resolveAdrDir).
+    """
+    return os.path.join(home, '.trackfw', 'adr')
 
-    O frontmatter e a fonte canonica — e o campo que o `adr new` grava e que o
-    validator usa. Na ausencia dele, cai para a linha humana de cabecalho,
-    parando no primeiro "## ".
 
-    As versoes Go e Node.js discordavam entre si antes de
-    REQ-2026-08-17-adr-list-python: o Go pegava a ultima ocorrencia de
-    "| Status: " em qualquer lugar do arquivo, o npm pegava a primeira, e nenhum
-    lia o frontmatter. Esta nasce ja com o contrato alinhado.
+def _parse_adr_status(filepath: str) -> str:
+    """
+    Extrai o status de um ADR a partir da linha "> Date: ... | Status: ...".
+    Espelha parseADRMeta (Go) / parseADRStatus (Node): retorna o primeiro
+    match de "| Status: " na primeira linha em que ocorrer, aparado de
+    espaços e dos caracteres '>' e '|' à direita. 'unknown' se não encontrar
+    ou se o arquivo não puder ser lido.
     """
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            content = f.read()
+        with open(filepath, encoding='utf-8') as f:
+            for line in f:
+                idx = line.find('| Status: ')
+                if idx >= 0:
+                    rest = line[idx + len('| Status: '):]
+                    rest = rest.rstrip(' >|\n\r')
+                    return rest.strip()
     except OSError:
-        return "unknown"
-
-    lines = content.split("\n")
-
-    # 1) Frontmatter.
-    if lines and lines[0].rstrip("\r") == "---":
-        for line in lines[1:]:
-            line = line.rstrip("\r")
-            if line == "---":
-                break
-            idx = line.find(":")
-            if idx > 0 and line[:idx].strip() == "status":
-                val = line[idx + 1:].strip().strip("\"'")
-                if val:
-                    return val
-                break
-
-    # 2) Linha humana de cabecalho.
-    for raw in lines:
-        line = raw.rstrip("\r")
-        if line.startswith("## "):
-            break
-        if not line.startswith("> "):
-            continue
-        idx = line.find("| Status: ")
-        if idx < 0:
-            continue
-        rest = line[idx + len("| Status: "):]
-        pipe = rest.find(" |")
-        if pipe >= 0:
-            rest = rest[:pipe]
-        rest = rest.rstrip(" >|").strip()
-        if rest:
-            return rest
-
-    return "unknown"
+        pass
+    return 'unknown'
 
 
-def list_adrs(adr_dir: str) -> None:
-    """Lista as ADRs de adr_dir, com nome e status.
-
-    Glob plano no diretorio recebido, igual ao Go e ao Node.js — os tres
-    consomem apenas o PRIMEIRO adr_dirs, sem recursao, enquanto o validator
-    percorre todos recursivamente. Limitacao herdada de proposito e registrada em
-    REQ-2026-08-17-adr-list-python; unificar o resolvedor de ADR e trabalho
-    proprio.
+def list_adrs(dir: str) -> None:
     """
-    try:
-        names = sorted(
-            n for n in os.listdir(adr_dir)
-            if n.endswith(".md") and os.path.isfile(os.path.join(adr_dir, n))
-        )
-    except OSError:
-        names = []
+    Lista todos os ADRs (*.md) encontrados em dir, imprimindo
+    "<filename padded a 60 chars> <status>" por linha, em ordem alfabética.
+    Espelha ListADRs (Go, internal/generators/adr.go) e listADRs
+    (Node, npm/src/generators/adr.js) byte a byte.
 
-    if not names:
-        print(f"No ADRs found in {adr_dir}")
+    Se dir não existir ou não tiver arquivos .md, imprime
+    "No ADRs found in <dir>".
+    """
+    if not os.path.isdir(dir):
+        print(f'No ADRs found in {dir}')
         return
 
-    for name in names:
-        status = parse_adr_status(os.path.join(adr_dir, name))
-        print(f"{name:<60} {status}")
+    files = sorted(f for f in os.listdir(dir) if f.endswith('.md'))
+
+    if not files:
+        print(f'No ADRs found in {dir}')
+        return
+
+    for filename in files:
+        filepath = os.path.join(dir, filename)
+        status = _parse_adr_status(filepath)
+        print(f'{filename:<60} {status}')
