@@ -238,15 +238,47 @@ py    ADR-...-acao-c-c-cafe.md  REQ-...-acao-c-c-cafe.md  ROADMAP-...-acao-c-c-c
 > Dependencies: ML-1B
 
 ### ML-2A — Ampliar a fixture de `check-artifact-parity.sh`
-**Status:** pending
+**Status:** blocked
 **Files affected:** `scripts/check-artifact-parity.sh`
-**Actions:**
-1. Incluir `/` e `+` no `TITLE` da linha 43 — hoje e `"Autenticacao e Sessao"`, so acento, que e
-   exatamente por que o gate passa enquanto o defeito do `adr.py` existe.
-2. Manter o acento: ele e o que pega a divergencia do `pom.xml`. As duas classes precisam estar na
-   mesma fixture, ou o gate cobre uma e perde a outra — ver ML-0A secao 3, forma 3.
+
+**Feito:** `TITLE` passou de `"Autenticacao e Sessao"` para
+`"Autenticacao e Sessao C/C++ & OAuth+"` (linha 50), com comentario explicando por que as duas
+classes de caractere precisam estar na mesma entrada — acento pega quem nao dobra NFKD, `/ + &`
+pega quem deleta em vez de colapsar. O `SLUG` esperado (linha 145) foi atualizado para
+`autenticacao-e-sessao-c-c-oauth`; sem isso o proprio vacuity guard do gate aborta, corretamente.
+
+**Bloqueio diagnosticado — nao e do slug, e de fim de linha.**
+
+O gate ja falhava nesta maquina antes da mudanca: a versao do `HEAD` e a minha dao os mesmos 8
+drifts, todos `go vs python` — `adr`, `note`, `note_index`, `req`, `roadmap`, `roadmap_flags`,
+`roadmap_from_req`, `slash_roadmap`. O diff mostrava o arquivo **inteiro** como diferente, com as
+31 linhas identicas dos dois lados: assinatura de fim de linha, nao de conteudo. Contagem de bytes
+do mesmo `adr new` nos tres runtimes:
+
+```
+go    414 bytes   LF=21   CR=0     -> LF
+node  414 bytes   LF=21   CR=0     -> LF
+py    435 bytes   CRLF=21          -> CRLF
+```
+
+**Os geradores Python escrevem CRLF no Windows; Go e Node escrevem LF.** Causa: `open(path, "w")`
+usa `newline=None`, que traduz para `os.linesep`. Sao **38 sites de escrita em 14 arquivos** de
+`pypi/trackfw/`, **nenhum** com `newline`. Invisivel para o upstream porque na CI Linux o
+`os.linesep` ja e LF.
+
+Quinto bloqueio de Windows da 7.3.0, e o unico ate agora que viola a **Regra Dura de Paridade**:
+os tres runtimes produzem artefato diferente byte a byte.
+
+O `.gitattributes` deste repo tem `*.md text eol=lf` e normaliza no commit, mas ele e local e nao
+existe no upstream — e o gate compara em tempdir, fora do git. Nao ajuda aqui.
+
+**Decisao: nao e trabalho deste roadmap.** Toca todo arquivo que o Python grava, nao so artefato de
+slug. Vai para REQ propria. **ML-2A fica bloqueado ate ela entrar** — sem isso o gate nao passa no
+Windows e nao serve como guarda.
+
 **Acceptance criteria:**
-- [ ] Gate passa com as duas correcoes
+- [x] Fixture cobre `/`, `+` e acento na mesma entrada
+- [ ] Gate passa com as duas correcoes — **bloqueado pelo CRLF do Python**
 - [ ] Gate **falha** com a divergencia do `adr.py` reintroduzida sozinha
 - [ ] Gate **falha** com a divergencia do `pom.xml` reintroduzida sozinha
 - [ ] Nao-vacuidade verificada nas duas, com a saida colada aqui
