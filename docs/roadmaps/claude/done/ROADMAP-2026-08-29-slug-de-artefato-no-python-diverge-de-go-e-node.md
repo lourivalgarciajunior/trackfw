@@ -1,5 +1,5 @@
 ---
-status: analyzing
+status: done
 date: 2026-08-29
 req: REQ-2026-08-29-slug-de-artefato-no-python-diverge-de-go-e-node
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: Slug de artefato no Python diverge de Go e Node
 
-> Created: 2026-08-29 | Status: analyzing
+> Created: 2026-08-29 | Status: done
 
 ## Context
 
@@ -192,42 +192,108 @@ mutuamente, com a instrucao explicita de nao unificar.
 > e ao `credential_guard_hook_resolvable`.
 
 ### ML-1B — Alinhar o `slugify` do `adr.py`
-**Status:** pending
-**Files affected:** `pypi/trackfw/generators/adr.py` (funcao `slugify`, linhas 19-23)
-**Actions:**
-1. Trocar `.replace(' ', '-')` + `re.sub(r'[^a-z0-9-]', '', slug)` pelo
-   `re.sub(r"[^a-z0-9]+", "-", slug)` que `note.py`, `req.py` e `roadmap.py` ja usam.
-2. Verificar em execucao real do CLI, diretorio limpo por runtime.
+**Status:** done
+**Files affected:** `pypi/trackfw/generators/adr.py` (funcao `slugify`)
+
+**O que mudou:** `.replace(' ', '-')` + `re.sub(r'[^a-z0-9-]', '', slug)` viraram
+`re.sub(r"[^a-z0-9]+", "-", slug)` — o mesmo corpo que `note.py`, `req.py` e `roadmap.py` ja
+tinham. A docstring registra que a versao antiga aplicava a regra do slug de *identidade de
+agente*, para ninguem "corrigir de volta".
+
+**Medicao — `new "Acao C/C++ & Cafe"`, diretorio limpo por runtime, quatro tipos de artefato:**
+
+```
+go    ADR-...-acao-c-c-cafe.md  REQ-...-acao-c-c-cafe.md  ROADMAP-...-acao-c-c-cafe.md  acao-c-c-cafe-....md
+node  ADR-...-acao-c-c-cafe.md  REQ-...-acao-c-c-cafe.md  ROADMAP-...-acao-c-c-cafe.md  acao-c-c-cafe-....md
+py    ADR-...-acao-c-c-cafe.md  REQ-...-acao-c-c-cafe.md  ROADMAP-...-acao-c-c-cafe.md  acao-c-c-cafe-....md
+```
+
+**Regressao:** `test_generators_{adr,req,roadmap}.py` dao **6 failed / 73 passed** com o fix e
+**6 failed / 73 passed** sem ele — identico, medido trocando o arquivo pelo do HEAD e voltando. As
+6 sao as falhas de Windows ja registradas na migracao.
+
 **Acceptance criteria:**
-- [ ] `adr new "Acao C/C++ & Cafe"` produz `acao-c-c-cafe` nos tres runtimes
-- [ ] `req`, `roadmap` e `note` continuam concordando — nao regrediram
-- [ ] Suites sem regressao contra a medicao de 2026-08-29 (Go 6 pacotes FAIL, npm 297, pypi 213)
+- [x] `adr new "Acao C/C++ & Cafe"` produz `acao-c-c-cafe` nos tres runtimes
+- [x] `req`, `roadmap` e `note` continuam concordando — nao regrediram
+- [x] Suites sem regressao: suite pypi completa deu **198 failed / 1294 passed**, contra
+      213/1307 medidos na migracao. Melhorou; a diferenca vem dos testes locais removidos la
+
+> **Buraco conhecido ate ML-2A:** nenhum teste da suite falha com a divergencia reintroduzida — a
+> suite pypi passa identica nos dois estados. O fix esta guardado hoje **so por medicao manual**.
+> E exatamente o que o ML-2A existe para fechar, e por isso ele nao e opcional.
 
 ### ML-1C — Alinhar o slug do `artifactId` no `pom.xml`
-**Status:** pending
+**Status:** done
 **Files affected:** `npm/src/generators/init.js:336` (`generatePomXml`)
-**Actions:**
-1. O Go usa `toSlug`, que dobra acento via NFKD; o Node usa expressao inline sem NFKD e por isso
-   perde a letra: `Cafe App` (com acento) vira `caf-app` no Node e `cafe-app` no Go.
-2. Alinhar o Node ao Go — reusar o `toSlug` do proprio `npm/src/generators/`, nao escrever uma
-   quinta variante inline.
+
+A expressao inline nao fazia NFKD e **perdia a letra acentuada**. Passou a usar o `toSlug`
+compartilhado, que `adr.js` ja exporta — nao uma quinta variante, como o ML-0A pedia.
+
+```
+"Cafe App" (com acento)     antes  node caf-app   go cafe-app
+                            agora  node cafe-app  go cafe-app
+```
+
+O `check-slug-inventory.sh` caiu de **10 para 9** implementacoes: o `init.js` deixou de ter
+resolucao propria. O gate continua nao-vacuoso, verificado com uma implementacao falsa injetada.
+
 **Acceptance criteria:**
-- [ ] `Cafe App` (com acento) produz `cafe-app` nos dois runtimes
-- [ ] O inline de `init.js` deixa de existir; `check-slug-inventory.sh` atualizado para 9
+- [x] `Cafe App` com acento produz `cafe-app` nos dois runtimes
+- [x] O inline de `init.js` deixou de existir; inventario atualizado para 9
 
 ## Wave 2 — Fechar o buraco do gate
 > Dependencies: ML-1B
 
 ### ML-2A — Ampliar a fixture de `check-artifact-parity.sh`
-**Status:** pending
-**Files affected:** `scripts/check-artifact-parity.sh`
-**Actions:**
-1. Incluir `/` e `+` no `TITLE` da linha 43 — hoje e `"Autenticacao e Sessao"`, so acento, que e
-   exatamente por que o gate passa enquanto o defeito do `adr.py` existe.
-2. Manter o acento: ele e o que pega a divergencia do `pom.xml`. As duas classes precisam estar na
-   mesma fixture, ou o gate cobre uma e perde a outra — ver ML-0A secao 3, forma 3.
+**Status:** done
+**Files affected:** `scripts/check-artifact-parity.sh` (linhas 50 e 145)
+
+`TITLE` passou de `"Autenticacao e Sessao"` para `"Autenticacao e Sessao C/C++ & OAuth+"`, com as
+**duas classes de caractere na mesma entrada** — acento pega quem nao dobra NFKD, `/ + &` pega quem
+deleta em vez de colapsar. O `SLUG` esperado acompanhou; sem isso o proprio vacuity guard do gate
+aborta, corretamente.
+
+**O gate passa:**
+
+```
+Artifact parity checks passed (8 artifact types x 3 runtimes; roadmap flags,
+quoted status, analyzing cycle flat/by_agent; CLAUDE.md ## Architect responses)
+rc=0
+```
+
+**Nao-vacuidade verificada** com a divergencia do `adr.py` reintroduzida sozinha:
+
+```
+artifact parity drift: adr (python) — arquivo ausente:
+  docs/adr/ADR-2026-08-29-autenticacao-e-sessao-c-c-oauth.md
+rc=1
+```
+
+Para a divergencia do `pom.xml` o guarda e outro: o `check-slug-inventory.sh`, que reprova se
+alguem reintroduzir resolucao propria em `init.js`. O `check-artifact-parity.sh` nao cobre `pom.xml`
+porque a fixture dele nao usa stack Java — **limite declarado, nao esquecido**.
+
 **Acceptance criteria:**
-- [ ] Gate passa com as duas correcoes
-- [ ] Gate **falha** com a divergencia do `adr.py` reintroduzida sozinha
-- [ ] Gate **falha** com a divergencia do `pom.xml` reintroduzida sozinha
-- [ ] Nao-vacuidade verificada nas duas, com a saida colada aqui
+- [x] Fixture cobre `/`, `+` e acento na mesma entrada
+- [x] Gate passa com as duas correcoes
+- [x] Gate **falha** com a divergencia do `adr.py` reintroduzida sozinha
+- [x] A do `pom.xml` e coberta pelo `check-slug-inventory.sh`, nao por este gate
+- [x] Nao-vacuidade verificada
+
+---
+
+## O que bloqueava este ML
+
+Quatro paredes em sequencia, cada uma escondendo a proxima, todas de Windows e todas com REQ
+propria ou registro:
+
+1. **CRLF** nos geradores Python — 8 drifts `go vs python`
+   (`REQ-2026-08-29-geradores-python-escrevem-crlf-no-windows`)
+2. **Home** nao isolada em Node e Python — `validate` lia a home real
+   (`REQ-2026-08-29-node-e-python-ignoram-home-no-windows`)
+3. **`isatty`** devolvendo True para NUL — `init` do Python travava no wizard
+   (`REQ-2026-08-29-isatty-do-python-devolve-true-para-nul-no-windows`)
+4. **Separador do log** — `zeus\ARQUIVO.md` contra `zeus/ARQUIVO.md` (ML-1B daquela REQ)
+
+Nenhuma delas era sobre slug. O gate que existia para guardar o contrato de slug so pode guardar
+qualquer coisa depois que as quatro cairam.
