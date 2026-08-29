@@ -40,7 +40,14 @@ mkdir -p "$WORK/go" "$WORK/node" "$WORK/python"
 export HOME="$WORK/home"
 mkdir -p "$HOME"
 
-TITLE="Autenticação e Sessão"
+# O título carrega DUAS classes de caractere de propósito, e as duas precisam estar
+# na mesma fixture (ver ML-0A seção 3, forma 3, do roadmap do slug):
+#   - acento  → pega quem não dobra NFKD
+#   - / + &   → pega quem deleta em vez de colapsar em hífen
+# Com só acento, este gate passava enquanto pypi/trackfw/generators/adr.py
+# produzia "acao-cc-cafe" contra "acao-c-c-cafe" dos outros dois runtimes.
+# Regra em docs/cli-parity.md, seção "Artifact slug contract".
+TITLE="Autenticação e Sessão C/C++ & OAuth+"
 FLAG_TITLE="Integração de Pagamentos"
 REQ_FLAG_REL="docs/req/REQ-flag-source.md"
 FROM_REQ_TITLE="Fluxo de Pagamentos"
@@ -135,7 +142,7 @@ if [[ "$DATE_BEFORE" != "$DATE_AFTER" ]]; then
 fi
 
 DATE="$DATE_AFTER"
-SLUG="autenticacao-e-sessao"
+SLUG="autenticacao-e-sessao-c-c-oauth"
 
 # ── Caminhos esperados por tipo ──────────────────────────────────────────────
 # EXPECTED_<KIND> é o caminho relativo dentro de cada WORK/<runtime>/.

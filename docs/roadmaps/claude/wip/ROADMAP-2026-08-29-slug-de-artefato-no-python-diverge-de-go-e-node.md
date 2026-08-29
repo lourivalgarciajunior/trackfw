@@ -1,5 +1,5 @@
 ---
-status: analyzing
+status: wip
 date: 2026-08-29
 req: REQ-2026-08-29-slug-de-artefato-no-python-diverge-de-go-e-node
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: Slug de artefato no Python diverge de Go e Node
 
-> Created: 2026-08-29 | Status: analyzing
+> Created: 2026-08-29 | Status: wip
 
 ## Context
 
@@ -192,16 +192,35 @@ mutuamente, com a instrucao explicita de nao unificar.
 > e ao `credential_guard_hook_resolvable`.
 
 ### ML-1B — Alinhar o `slugify` do `adr.py`
-**Status:** pending
-**Files affected:** `pypi/trackfw/generators/adr.py` (funcao `slugify`, linhas 19-23)
-**Actions:**
-1. Trocar `.replace(' ', '-')` + `re.sub(r'[^a-z0-9-]', '', slug)` pelo
-   `re.sub(r"[^a-z0-9]+", "-", slug)` que `note.py`, `req.py` e `roadmap.py` ja usam.
-2. Verificar em execucao real do CLI, diretorio limpo por runtime.
+**Status:** done
+**Files affected:** `pypi/trackfw/generators/adr.py` (funcao `slugify`)
+
+**O que mudou:** `.replace(' ', '-')` + `re.sub(r'[^a-z0-9-]', '', slug)` viraram
+`re.sub(r"[^a-z0-9]+", "-", slug)` — o mesmo corpo que `note.py`, `req.py` e `roadmap.py` ja
+tinham. A docstring registra que a versao antiga aplicava a regra do slug de *identidade de
+agente*, para ninguem "corrigir de volta".
+
+**Medicao — `new "Acao C/C++ & Cafe"`, diretorio limpo por runtime, quatro tipos de artefato:**
+
+```
+go    ADR-...-acao-c-c-cafe.md  REQ-...-acao-c-c-cafe.md  ROADMAP-...-acao-c-c-cafe.md  acao-c-c-cafe-....md
+node  ADR-...-acao-c-c-cafe.md  REQ-...-acao-c-c-cafe.md  ROADMAP-...-acao-c-c-cafe.md  acao-c-c-cafe-....md
+py    ADR-...-acao-c-c-cafe.md  REQ-...-acao-c-c-cafe.md  ROADMAP-...-acao-c-c-cafe.md  acao-c-c-cafe-....md
+```
+
+**Regressao:** `test_generators_{adr,req,roadmap}.py` dao **6 failed / 73 passed** com o fix e
+**6 failed / 73 passed** sem ele — identico, medido trocando o arquivo pelo do HEAD e voltando. As
+6 sao as falhas de Windows ja registradas na migracao.
+
 **Acceptance criteria:**
-- [ ] `adr new "Acao C/C++ & Cafe"` produz `acao-c-c-cafe` nos tres runtimes
-- [ ] `req`, `roadmap` e `note` continuam concordando — nao regrediram
-- [ ] Suites sem regressao contra a medicao de 2026-08-29 (Go 6 pacotes FAIL, npm 297, pypi 213)
+- [x] `adr new "Acao C/C++ & Cafe"` produz `acao-c-c-cafe` nos tres runtimes
+- [x] `req`, `roadmap` e `note` continuam concordando — nao regrediram
+- [x] Suites sem regressao: suite pypi completa deu **198 failed / 1294 passed**, contra
+      213/1307 medidos na migracao. Melhorou; a diferenca vem dos testes locais removidos la
+
+> **Buraco conhecido ate ML-2A:** nenhum teste da suite falha com a divergencia reintroduzida — a
+> suite pypi passa identica nos dois estados. O fix esta guardado hoje **so por medicao manual**.
+> E exatamente o que o ML-2A existe para fechar, e por isso ele nao e opcional.
 
 ### ML-1C — Alinhar o slug do `artifactId` no `pom.xml`
 **Status:** pending

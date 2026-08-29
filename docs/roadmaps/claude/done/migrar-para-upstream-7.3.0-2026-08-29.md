@@ -1,7 +1,7 @@
 ---
 name: migrar-para-upstream-7.3.0-2026-08-29
 title: "Migrar para a base do upstream 7.3.0"
-status: wip
+status: done
 date: 2026-08-29
 req: REQ-2026-08-29-migrar-para-upstream-7.3.0
 branch: chore/migrar-upstream-7.3.0
@@ -9,7 +9,7 @@ branch: chore/migrar-upstream-7.3.0
 
 # Roadmap: migrar para o upstream 7.3.0
 
-> Created: 2026-08-29 | Status: wip
+> Created: 2026-08-29 | Status: done
 
 REQ: `docs/requisições/claude/REQ-2026-08-29-migrar-para-upstream-7.3.0.md`
 ADR: `docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md`
