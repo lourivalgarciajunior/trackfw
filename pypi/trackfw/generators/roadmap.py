@@ -606,7 +606,10 @@ def move_roadmap(filename: str, to_state: str, cfg: dict) -> str:
         agent_dir = os.path.dirname(os.path.dirname(src))
         agent = os.path.basename(agent_dir)
         target_dir = _agent_state_dir(agent, to_state, cfg)
-        log_basename = os.path.join(agent, basename)
+        # O nome no .trackfw-log e artefato portavel, nao caminho de sistema:
+        # Go e Node gravam "agente/ARQUIVO.md" com barra em qualquer plataforma.
+        # os.path.join gravaria "agente\ARQUIVO.md" no Windows e divergiria.
+        log_basename = agent + "/" + basename
     else:
         target_dir = _state_dir(to_state, cfg)
         log_basename = basename

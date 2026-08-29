@@ -108,27 +108,110 @@ bash scripts/check-tty-detection.sh
 > Dependencies: ML-0A
 
 ### ML-1A — Helper de deteccao de TTY no Python
-**Status:** pending
-**Files affected:** `pypi/trackfw/tty.py` (novo) + os 7 sites de stdin e 1 de stdout
-**Actions:**
-1. `stdin_is_interactive()` e `stdout_is_interactive()`: `isatty()` como base e, **so no Windows**,
-   estreitar com `GetConsoleMode` via `msvcrt.get_osfhandle` + `ctypes`.
-2. Falhar para `False` em qualquer excecao — stream substituido em teste nao tem `fileno()`.
+**Status:** done
+**Files affected:** `pypi/trackfw/tty.py` (novo) + 8 sites em 4 arquivos
+
+`stdin_is_interactive()` e `stdout_is_interactive()`. O `isatty()` continua sendo a base e, **so no
+Windows**, o resultado e estreitado com `GetConsoleMode` via `msvcrt.get_osfhandle` + `ctypes` — o
+**mesmo syscall** que o `charmbracelet/x/term` do Go usa. Casa com o Go por construcao, nao por
+heuristica paralela. POSIX inalterado: o ramo Windows so roda em `sys.platform == "win32"`.
+
+**Verificacao:** `init` com `HOME` em tempdir e `stdin=/dev/null` conclui, com a mesma saida final
+do Node. Antes morria com `EOF when reading a line`.
+
+**Dois testes precisaram do seam novo.** `test_scope_resolution.py` fazia
+`monkeypatch.setattr("sys.stdin.isatty", lambda: True)` — fingir TTY sobre um fd que nao e console
+nao basta mais. Passaram a injetar `integrations_command.stdin_is_interactive`.
+
+Vale registrar: **essa foi a materializacao do risco que o ML-0A secao 2 item 3 chamou de
+over-correct.** Ele previu o modo silencioso; aqui apareceu como teste vermelho, que e o desfecho
+bom. E a causa nao era o helper estar errado — num console real o `GetConsoleMode` teria sucesso.
+
 **Acceptance criteria:**
-- [ ] `init` conclui com stdin nao interativo
-- [ ] POSIX inalterado — o ramo Windows so roda em `sys.platform == "win32"`
-- [ ] Suite pypi sem regressao por lista nomeada contra 105 falhas
+- [x] `init` conclui com stdin nao interativo
+- [x] POSIX inalterado
+- [x] Suite pypi sem regressao (ver medicao abaixo)
+
+### ML-1B — Separador de caminho no `.trackfw-log`
+**Status:** done
+**Files affected:** `pypi/trackfw/generators/roadmap.py:609`
+
+**Defeito distinto, corrigido aqui por proporcionalidade.** Depois do ML-1A o
+`check-artifact-parity.sh` avancou e parou noutro ponto: o log de transicao em modo `by_agent`.
+
+```
+go    zeus/ROADMAP-cycle-analyzing.md   backlog → analyzing
+node  zeus/ROADMAP-cycle-analyzing.md   backlog → analyzing
+py    zeus\ROADMAP-cycle-analyzing.md   backlog → analyzing
+```
+
+`os.path.join(agent, basename)` grava o separador do sistema. O nome no `.trackfw-log` e artefato
+portavel, nao caminho de sistema — Go e Node gravam `/` em qualquer plataforma. Em Linux
+coincidiria.
+
+E **uma linha**. Mandar para REQ propria seria cerimonia; o CRLF, com 38 sites e alcance sobre todo
+arquivo gravado, foi para REQ propria com razao. A regra que apliquei e proporcionalidade, e ela
+fica escrita aqui para nao virar precedente solto.
+
+**Acceptance criteria:**
+- [x] Os tres gravam `agente/ARQUIVO.md`
 
 ## Wave 2 — A guarda
 > Dependencies: ML-1A
 
 ### ML-2A — Gate de deteccao de TTY
-**Status:** pending
+**Status:** done
 **Files affected:** `scripts/check-tty-detection.sh` (novo)
-**Actions:**
-1. Por efeito: `init` com stdin nao interativo conclui nos tres runtimes.
-2. Estatico: nenhum `isatty()` cru fora do helper.
+
+Duas metades. **Por efeito:** `init` com `stdin=/dev/null` **e home isolada** conclui nos tres
+runtimes — a home isolada importa, porque com identidade ja configurada o wizard nem seria
+alcancado e o gate passaria sem exercitar nada. **Estatica:** nenhum `isatty()` cru fora do helper.
+
+**Nao-vacuidade verificada**, com o site do `init.py` restaurado:
+
+```
+tty detection: `python init` saiu 1 com stdin nao interativo (esperado 0)
+tty detection: python tem isatty() fora do helper:
+  pypi/trackfw/commands/init.py:118:    if not skip_identity_wizard and sys.stdin.isatty():
+rc=1
+```
+
+> A primeira versao do gate **falhava sem imprimir diagnostico**: com `set -euo pipefail` o subshell
+> abortava antes do `rc=$?`. Um gate que reprova sem dizer por que e quase tao ruim quanto um que
+> nao reprova. Corrigido com `|| rc=$?`.
+
 **Acceptance criteria:**
-- [ ] Gate passa depois de ML-1A
-- [ ] Gate **falha** com um site restaurado — saida colada aqui
-- [ ] `check-artifact-parity.sh` passa, desbloqueando o ML-2A do roadmap do slug
+- [x] Gate passa depois de ML-1A
+- [x] Gate **falha** com um site restaurado — saida acima
+- [x] `check-artifact-parity.sh` passa
+
+---
+
+## `check-artifact-parity.sh` passa pela primeira vez
+
+```
+Artifact parity checks passed (8 artifact types x 3 runtimes; roadmap flags,
+quoted status, analyzing cycle flat/by_agent; CLAUDE.md ## Architect responses)
+rc=0
+```
+
+Ele estava bloqueado por **quatro** coisas em sequencia, cada uma escondendo a proxima: o CRLF dos
+geradores Python, o isolamento de home em Node e Python, o `isatty`, e o separador do log. Com ele
+verde, o **ML-2A do roadmap do slug esta desbloqueado** — era o proposito da cadeia inteira.
+
+## Regressao — pypi, lista nomeada
+
+```
+antes (medicao do homedir)   105 failed / 1387 passed
+depois                        95 failed / 1397 passed
+resolvidas: 11    novas: 1
+```
+
+A unica "nova" e `test_stale_wip_warning_arquivo_antigo`, o instavel de skew de relogio ja
+caracterizado — `time.time()` no teste contra `datetime.now().timestamp()` na producao.
+
+## Pendencia herdada do ML-0A
+
+**O caso positivo continua sem verificacao nesta maquina**: nao ha console anexado, entao nao provo
+que um terminal de verdade continua promptando. A mitigacao e o mesmo syscall do Go. Um teste manual
+num terminal real fecha o buraco e segue em aberto.
