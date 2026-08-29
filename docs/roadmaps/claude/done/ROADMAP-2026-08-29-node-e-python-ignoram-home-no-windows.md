@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-08-29
 req: REQ-2026-08-29-node-e-python-ignoram-home-no-windows
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: Node e Python ignoram HOME no Windows
 
-> Created: 2026-08-29 | Status: wip
+> Created: 2026-08-29 | Status: done
 
 ## Context
 
