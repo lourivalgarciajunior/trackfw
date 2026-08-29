@@ -4,6 +4,45 @@
 
 ---
 
+## Sessão 2026-08-29 — claude (FIM: migração para a base do upstream 7.3.0 — CONCLUÍDO)
+
+Branch `chore/migrar-upstream-7.3.0`. Commit `916176a`.
+
+> **Este arquivo agora vem do upstream.** As sessões acima desta linha são do `kgsaran/trackfw`,
+> não deste repositório — entraram no merge de históricos. Este repo é cópia consumidora.
+
+**O que foi feito:** merge `v7.3.0 --allow-unrelated-histories`. `git merge-base HEAD v7.3.0`
+devolve o commit da 7.3.0, então `git merge upstream/<tag>` passa a funcionar sem flag. Antes o repo
+era cópia por ZIP da v2.12.2 — cinco majors atrás, sem ancestral comum.
+
+Produto do upstream; `docs/`, `trackfw.yaml` e `.gitattributes` locais. A governança do upstream
+(52 ADRs, 140 REQs, 142 roadmaps) ficou de fora. `docs/` final: 7 ADRs, 44 REQs, 54 roadmaps.
+
+**O que a rota C revelou:** merge de históricos não-relacionados adiciona mas nunca apaga. 110
+arquivos que o upstream deletou sobreviveram em silêncio; o `go build` denunciou com
+`undefined: injectCodexHooks`. Podados os 6 geradores legados, os plugins nos 3 runtimes, os 80
+templates e `internal/server/`.
+
+**Divergências locais deliberadas (3):**
+1. `_force_utf8_output` em `pypi/trackfw/cli.py` — sem ele, `UnicodeEncodeError` no `→` em cp1252.
+2. `internal/homedir` — os testes isolam `HOME` em 97 call sites, mas no Windows
+   `os.UserHomeDir()` lê `%USERPROFILE%`. Uma rodada de `go test ./...` escreveu na home real.
+3. `scripts/check-subcommand-parity.sh` — gate local, `known_divergences` agora vazio.
+
+**Passivo aberto — `trackfw validate` sai 1 nesta máquina.** `credential_guard_hook_resolvable`
+testa `info.Mode()&0111 == 0`; o `os.Stat` do Go no Windows devolve `-rw-rw-rw-` para todo arquivo,
+inclusive depois de `chmod +x` (verificado). O baseline não resolve: `filterBaselineTagged` isenta
+`credentialGuardAnchoredRules` da supressão (`validator.go:577`). 9 das 15 congeladas; as 6 de
+credential-guard nunca podem ser.
+
+**A 7.3.0 é vermelha no Windows.** Medido contra worktree pristina, mesma máquina — Go 6 pacotes
+FAIL nos dois lados; npm 329→297 falhas; pypi 223→213. A migração não introduziu regressão.
+
+**Decisão pendente para o usuário:** `vault/` (85 notas de conhecimento do upstream) entrou no
+merge. Mesma categoria da governança que ficou de fora, mas não colide com nada.
+
+---
+
 ## Sessão 2026-08-28 — hades-tf (INÍCIO: ML-3A — barreira do bit de execução)
 
 Branch `fix/doctor-compara-o-bit-de-execucao`.
