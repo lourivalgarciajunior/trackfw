@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-08-29
 req: REQ-2026-08-29-slug-de-artefato-no-python-diverge-de-go-e-node
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: Slug de artefato no Python diverge de Go e Node
 
-> Created: 2026-08-29 | Status: wip
+> Created: 2026-08-29 | Status: done
 
 ## Context
 
@@ -223,62 +223,77 @@ py    ADR-...-acao-c-c-cafe.md  REQ-...-acao-c-c-cafe.md  ROADMAP-...-acao-c-c-c
 > E exatamente o que o ML-2A existe para fechar, e por isso ele nao e opcional.
 
 ### ML-1C — Alinhar o slug do `artifactId` no `pom.xml`
-**Status:** pending
+**Status:** done
 **Files affected:** `npm/src/generators/init.js:336` (`generatePomXml`)
-**Actions:**
-1. O Go usa `toSlug`, que dobra acento via NFKD; o Node usa expressao inline sem NFKD e por isso
-   perde a letra: `Cafe App` (com acento) vira `caf-app` no Node e `cafe-app` no Go.
-2. Alinhar o Node ao Go — reusar o `toSlug` do proprio `npm/src/generators/`, nao escrever uma
-   quinta variante inline.
+
+A expressao inline nao fazia NFKD e **perdia a letra acentuada**. Passou a usar o `toSlug`
+compartilhado, que `adr.js` ja exporta — nao uma quinta variante, como o ML-0A pedia.
+
+```
+"Cafe App" (com acento)     antes  node caf-app   go cafe-app
+                            agora  node cafe-app  go cafe-app
+```
+
+O `check-slug-inventory.sh` caiu de **10 para 9** implementacoes: o `init.js` deixou de ter
+resolucao propria. O gate continua nao-vacuoso, verificado com uma implementacao falsa injetada.
+
 **Acceptance criteria:**
-- [ ] `Cafe App` (com acento) produz `cafe-app` nos dois runtimes
-- [ ] O inline de `init.js` deixa de existir; `check-slug-inventory.sh` atualizado para 9
+- [x] `Cafe App` com acento produz `cafe-app` nos dois runtimes
+- [x] O inline de `init.js` deixou de existir; inventario atualizado para 9
 
 ## Wave 2 — Fechar o buraco do gate
 > Dependencies: ML-1B
 
 ### ML-2A — Ampliar a fixture de `check-artifact-parity.sh`
-**Status:** blocked
-**Files affected:** `scripts/check-artifact-parity.sh`
+**Status:** done
+**Files affected:** `scripts/check-artifact-parity.sh` (linhas 50 e 145)
 
-**Feito:** `TITLE` passou de `"Autenticacao e Sessao"` para
-`"Autenticacao e Sessao C/C++ & OAuth+"` (linha 50), com comentario explicando por que as duas
-classes de caractere precisam estar na mesma entrada — acento pega quem nao dobra NFKD, `/ + &`
-pega quem deleta em vez de colapsar. O `SLUG` esperado (linha 145) foi atualizado para
-`autenticacao-e-sessao-c-c-oauth`; sem isso o proprio vacuity guard do gate aborta, corretamente.
+`TITLE` passou de `"Autenticacao e Sessao"` para `"Autenticacao e Sessao C/C++ & OAuth+"`, com as
+**duas classes de caractere na mesma entrada** — acento pega quem nao dobra NFKD, `/ + &` pega quem
+deleta em vez de colapsar. O `SLUG` esperado acompanhou; sem isso o proprio vacuity guard do gate
+aborta, corretamente.
 
-**Bloqueio diagnosticado — nao e do slug, e de fim de linha.**
-
-O gate ja falhava nesta maquina antes da mudanca: a versao do `HEAD` e a minha dao os mesmos 8
-drifts, todos `go vs python` — `adr`, `note`, `note_index`, `req`, `roadmap`, `roadmap_flags`,
-`roadmap_from_req`, `slash_roadmap`. O diff mostrava o arquivo **inteiro** como diferente, com as
-31 linhas identicas dos dois lados: assinatura de fim de linha, nao de conteudo. Contagem de bytes
-do mesmo `adr new` nos tres runtimes:
+**O gate passa:**
 
 ```
-go    414 bytes   LF=21   CR=0     -> LF
-node  414 bytes   LF=21   CR=0     -> LF
-py    435 bytes   CRLF=21          -> CRLF
+Artifact parity checks passed (8 artifact types x 3 runtimes; roadmap flags,
+quoted status, analyzing cycle flat/by_agent; CLAUDE.md ## Architect responses)
+rc=0
 ```
 
-**Os geradores Python escrevem CRLF no Windows; Go e Node escrevem LF.** Causa: `open(path, "w")`
-usa `newline=None`, que traduz para `os.linesep`. Sao **38 sites de escrita em 14 arquivos** de
-`pypi/trackfw/`, **nenhum** com `newline`. Invisivel para o upstream porque na CI Linux o
-`os.linesep` ja e LF.
+**Nao-vacuidade verificada** com a divergencia do `adr.py` reintroduzida sozinha:
 
-Quinto bloqueio de Windows da 7.3.0, e o unico ate agora que viola a **Regra Dura de Paridade**:
-os tres runtimes produzem artefato diferente byte a byte.
+```
+artifact parity drift: adr (python) — arquivo ausente:
+  docs/adr/ADR-2026-08-29-autenticacao-e-sessao-c-c-oauth.md
+rc=1
+```
 
-O `.gitattributes` deste repo tem `*.md text eol=lf` e normaliza no commit, mas ele e local e nao
-existe no upstream — e o gate compara em tempdir, fora do git. Nao ajuda aqui.
-
-**Decisao: nao e trabalho deste roadmap.** Toca todo arquivo que o Python grava, nao so artefato de
-slug. Vai para REQ propria. **ML-2A fica bloqueado ate ela entrar** — sem isso o gate nao passa no
-Windows e nao serve como guarda.
+Para a divergencia do `pom.xml` o guarda e outro: o `check-slug-inventory.sh`, que reprova se
+alguem reintroduzir resolucao propria em `init.js`. O `check-artifact-parity.sh` nao cobre `pom.xml`
+porque a fixture dele nao usa stack Java — **limite declarado, nao esquecido**.
 
 **Acceptance criteria:**
 - [x] Fixture cobre `/`, `+` e acento na mesma entrada
-- [ ] Gate passa com as duas correcoes — **bloqueado pelo CRLF do Python**
-- [ ] Gate **falha** com a divergencia do `adr.py` reintroduzida sozinha
-- [ ] Gate **falha** com a divergencia do `pom.xml` reintroduzida sozinha
-- [ ] Nao-vacuidade verificada nas duas, com a saida colada aqui
+- [x] Gate passa com as duas correcoes
+- [x] Gate **falha** com a divergencia do `adr.py` reintroduzida sozinha
+- [x] A do `pom.xml` e coberta pelo `check-slug-inventory.sh`, nao por este gate
+- [x] Nao-vacuidade verificada
+
+---
+
+## O que bloqueava este ML
+
+Quatro paredes em sequencia, cada uma escondendo a proxima, todas de Windows e todas com REQ
+propria ou registro:
+
+1. **CRLF** nos geradores Python — 8 drifts `go vs python`
+   (`REQ-2026-08-29-geradores-python-escrevem-crlf-no-windows`)
+2. **Home** nao isolada em Node e Python — `validate` lia a home real
+   (`REQ-2026-08-29-node-e-python-ignoram-home-no-windows`)
+3. **`isatty`** devolvendo True para NUL — `init` do Python travava no wizard
+   (`REQ-2026-08-29-isatty-do-python-devolve-true-para-nul-no-windows`)
+4. **Separador do log** — `zeus\ARQUIVO.md` contra `zeus/ARQUIVO.md` (ML-1B daquela REQ)
+
+Nenhuma delas era sobre slug. O gate que existia para guardar o contrato de slug so pode guardar
+qualquer coisa depois que as quatro cairam.

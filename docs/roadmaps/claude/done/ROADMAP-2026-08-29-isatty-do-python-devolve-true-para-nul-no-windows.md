@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-08-29
 req: REQ-2026-08-29-isatty-do-python-devolve-true-para-nul-no-windows
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: isatty do Python devolve True para NUL no Windows
 
-> Created: 2026-08-29 | Status: wip
+> Created: 2026-08-29 | Status: done
 
 ## Context
 
