@@ -4,6 +4,105 @@
 
 ---
 
+## Sessão 2026-08-29 — claude (FIM: upstream em dia, sétimo gate, skill publicada)
+
+`main` em `d5aa5e4`. Sete gates verdes, `wip` vazio, sem PR aberta. `git merge-base HEAD
+upstream/main` = `e0f8543`, o HEAD do upstream: **o repositório está em dia com o Kleber.**
+
+### O repositório mudou de caminho
+
+De `C:\Indieexpert\GitHub\` para `C:\dev\ferramentas\`. Consequência que custou diagnóstico: o
+marketplace `indieexpert` do Claude Code apontava para o caminho antigo, e publicar plugin não teria
+efeito nenhum — o `plugin update` responde sem erro. Foi preciso `marketplace remove` + `add`, e o
+`remove` desinstala os plugins junto.
+
+### O merge do upstream, e o que ele provou
+
+Primeiro `git merge upstream/main` real. Trouxe correção de **escrita arbitrária por symlink**
+(HIGH, `update`/`discover` seguiam symlink sem `lstat`), o pin de versão do gate de CI e o
+`install.sh` honrando `TRACKFW_VERSION`.
+
+**Os gates locais se pagaram.** O `check-python-writes-lf` nomeou quatro escritas que o merge
+derrubou — `discover.py:491`, `update.py:230`, `init_gen.py:631` e `:636` — e **nenhuma gerou
+conflito**: o upstream reescreveu as funções e o `newline="\n"` sumiu em silêncio. Os outros cinco
+passaram de primeira. Nenhum buraco de cobertura.
+
+**Critério não cumprido, declarado:** a verificação por efeito do symlink não foi feita. O `ln -s`
+do Git Bash cria cópia, e symlink nativo dá `Operation not permitted` — precisa de Developer Mode.
+Só confirmei que a guarda está presente nos três runtimes, o que não é prova de comportamento.
+
+### Sétimo gate: `check-upstream-content.sh`
+
+Conteúdo do upstream entrou **três vezes** nesta sessão — `vault/notes/index.md`, duas notas de
+`vault/`, uma ADR —, sempre **sem conflito**, porque caminho novo não colide com nada. A política da
+ADR não era auto-aplicável.
+
+Desenho por **proveniência**: arquivo sob `docs/` ou `vault/` que exista em `upstream/main` é
+conteúdo do upstream, salvo o que está no `KEEP` com o motivo escrito. Lista de caminhos proibidos
+envelheceria a cada release; a interseção não.
+
+Falsificado um a um, e o quarto critério é o que importa: **sem `upstream/main` buscado o gate
+reprova**, porque verde por não conseguir checar pareceria cobertura.
+
+### CLI e skill
+
+O CLI global saiu de 2.12.4 para 7.3.0 — **o usuário atualizou**, confirmado pelo timestamp do
+pacote (13:05:39), não foi este agente nem o hook do plugin.
+
+Antes disso havia um impasse real: o guard é global e bloqueia `git commit`, mas o CLI 2.12.4 não
+tem `trackfw commit`. Em qualquer repo sem um binário 7.x à mão, não dava para commitar.
+
+A skill `trackfw` foi para **1.4.0** e publicada, com verificação no arquivo do cache e não na
+mensagem de sucesso. O eixo: parar de afirmar comportamento sem dizer de qual versão. Ganhou a
+seção de referência entre artefatos e o `/trackfw:barrier`.
+
+### O `sync:trackfw` apagava antes de validar
+
+`npm run sync:trackfw` **apagou os 8 slash commands e abortou**, porque a 7.3.0 trouxe `barrier` e
+ele não estava no `DESCRIPTIONS`. Restaurei do `HEAD`, acrescentei o `barrier` e **inverti a ordem**:
+validar primeiro, apagar depois.
+
+### Achados novos na issue kgsaran/trackfw#216
+
+Três, além dos sete originais:
+
+- **9.** Os testes do próprio fix de symlink não rodam em Windows sem privilégio elevado — 5 Python,
+  5 Node, 2 Go. **O Windows não valida a correção de segurança do upstream.**
+- **10.** `ref_targets_exist` é **vacuoso em `by_agent`**. Mesma referência quebrada dá 2 violações
+  em `flat` e **0** em `by_agent`. Por isso este repo tem quatro REQs apontando para um
+  `docs/roadmaps/claude/wip/` que não existe e reporta zero.
+- **11.** O sync do `roadmap move` escreve separador do sistema — `docs\roadmaps\wip\...`. Resolve
+  no Windows, não resolveria em Linux.
+
+### Duas correções ao que eu mesmo havia registrado
+
+**O `roadmap move` sincroniza** a referência da REQ — eu tinha registrado o contrário. Meu teste
+setava a linha `Roadmap:` do **corpo**, que o CLI ignora; o campo vivo é o do frontmatter. Medi a
+coisa errada.
+
+**O baseline npm não estava corrompido por mim** — ele travou, no mesmo ponto exato das duas
+tentativas. E `generators.test.js` não trava só antes do fix: trava nos dois estados quando o stdin
+é herdado.
+
+### O fio que atravessou a sessão inteira
+
+**Verde que não significa nada**, com roupas diferentes: teste que passa por ler a home real;
+fixture de gate com só acento, que nunca viu a divergência de slug; regra que não roda num layout
+suportado; três testes meus de não-vacuidade que passaram vacuosos; `validate` limpo num CLI cinco
+majors atrasado; e um gate que passaria por não conseguir checar.
+
+O `check-upstream-content.sh` é o único que trata isso explicitamente — reprova quando não consegue
+verificar, com a razão escrita no próprio script.
+
+### Pendências
+
+- As 15 violações de bit de execução, aguardando o upstream.
+- Verificação por efeito do symlink, precisa de Developer Mode.
+- O `KEEP` do gate novo pode virar depósito; o motivo escrito por entrada torna isso visível a quem
+  lê, e nada mais.
+
+---
+
 ## Sessão 2026-08-29 — claude (FIM: cadeia de defeitos de Windows — ENCERRADA)
 
 `main` em `2e50ebe`. Seis PRs mescladas: #19 (migração), #22 (regra de slug), #23 (CRLF),
