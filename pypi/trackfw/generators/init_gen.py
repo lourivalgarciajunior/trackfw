@@ -160,7 +160,7 @@ def _write_trackfw_yaml(cwd: str, opts: dict) -> None:
 
     content = '\n'.join(lines)
     dest = os.path.join(cwd, 'trackfw.yaml')
-    with open(dest, 'w', encoding='utf-8') as f:
+    with open(dest, 'w', encoding='utf-8', newline="\n") as f:
         f.write(content)
     print('  checkmark trackfw.yaml')
 
@@ -214,7 +214,7 @@ Proposed
 <!-- Descreva as consequências desta decisão -->
 """
 
-    with open(filepath, 'w', encoding='utf-8') as f:
+    with open(filepath, 'w', encoding='utf-8', newline="\n") as f:
         f.write(content)
 
     rel = os.path.relpath(filepath, cwd)
@@ -302,7 +302,7 @@ def _inject_or_update_rules(file_path: str, header_if_new: str, cwd: str = None)
         if content and not content.endswith('\n'):
             content += '\n'
         content += '\n' + block + '\n'
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, 'w', encoding='utf-8', newline="\n") as f:
             f.write(content)
         return
 
@@ -314,19 +314,19 @@ def _inject_or_update_rules(file_path: str, header_if_new: str, cwd: str = None)
         if not content.endswith('\n'):
             content += '\n'
         content += '\n' + block + '\n'
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, 'w', encoding='utf-8', newline="\n") as f:
             f.write(content)
         return
 
     end = content.find(RULES_END, start)
     if end == -1:
         content += '\n' + block + '\n'
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, 'w', encoding='utf-8', newline="\n") as f:
             f.write(content)
         return
 
     new_content = content[:start] + block + content[end + len(RULES_END):]
-    with open(file_path, 'w', encoding='utf-8') as f:
+    with open(file_path, 'w', encoding='utf-8', newline="\n") as f:
         f.write(new_content)
 
 
@@ -523,7 +523,7 @@ def generate_validate_script(cwd: str) -> None:
     os.makedirs(scripts_dir, exist_ok=True)
     content = _VALIDATE_SCRIPT_CONTENT
     dest = os.path.join(scripts_dir, 'trackfw-validate.sh')
-    with open(dest, "w", encoding="utf-8") as f:
+    with open(dest, "w", encoding="utf-8", newline="\n") as f:
         f.write(content)
     os.chmod(dest, 0o755)
     print('  checkmark scripts/trackfw-validate.sh')
@@ -823,7 +823,7 @@ def generate_claude_commands(cwd: str) -> None:
         if os.path.exists(file_path):
             skipped += 1
             continue
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, 'w', encoding='utf-8', newline="\n") as f:
             f.write(content)
         created += 1
 
@@ -1722,7 +1722,7 @@ def generate_vault_index(cwd: str) -> None:
         "- [nome-da-nota-YYYY-MM-DD](nome-da-nota-YYYY-MM-DD.md)\n"
         "-->\n"
     )
-    with open(index_path, 'w', encoding='utf-8') as f:
+    with open(index_path, 'w', encoding='utf-8', newline="\n") as f:
         f.write(content)
     print('  ✓ vault/notes/index.md')
 
@@ -1733,12 +1733,12 @@ def _generate_attention_scripts(cwd: str) -> None:
     os.makedirs(scripts_dir, exist_ok=True)
 
     signal_path = os.path.join(scripts_dir, 'trackfw-attention-signal.sh')
-    with open(signal_path, 'w', encoding='utf-8') as f:
+    with open(signal_path, 'w', encoding='utf-8', newline="\n") as f:
         f.write(_ATTENTION_SIGNAL_SH.lstrip('\n'))
     os.chmod(signal_path, 0o755)
 
     cleanup_path = os.path.join(scripts_dir, 'trackfw-attention-cleanup.sh')
-    with open(cleanup_path, 'w', encoding='utf-8') as f:
+    with open(cleanup_path, 'w', encoding='utf-8', newline="\n") as f:
         f.write(_ATTENTION_CLEANUP_SH.lstrip('\n'))
     os.chmod(cleanup_path, 0o755)
 
@@ -1754,7 +1754,7 @@ def _generate_credential_guard_script(cwd: str) -> None:
     os.makedirs(scripts_dir, exist_ok=True)
 
     script_path = os.path.join(scripts_dir, 'trackfw-credential-guard.sh')
-    with open(script_path, 'w', encoding='utf-8') as f:
+    with open(script_path, 'w', encoding='utf-8', newline="\n") as f:
         f.write(_CREDENTIAL_GUARD_SH.lstrip('\n'))
     os.chmod(script_path, 0o755)
 
@@ -1771,7 +1771,7 @@ def _generate_git_branch_guard_script(cwd: str) -> None:
     os.makedirs(scripts_dir, exist_ok=True)
 
     script_path = os.path.join(scripts_dir, 'trackfw-git-branch-guard.sh')
-    with open(script_path, 'w', encoding='utf-8') as f:
+    with open(script_path, 'w', encoding='utf-8', newline="\n") as f:
         f.write(_GIT_BRANCH_GUARD_SH.lstrip('\n'))
     os.chmod(script_path, 0o755)
 
@@ -1793,7 +1793,7 @@ def generate_global_git_branch_guard_script(home: str) -> None:
     os.makedirs(scripts_dir, exist_ok=True)
 
     script_path = os.path.join(scripts_dir, 'trackfw-git-branch-guard.sh')
-    with open(script_path, 'w', encoding='utf-8') as f:
+    with open(script_path, 'w', encoding='utf-8', newline="\n") as f:
         f.write(_GIT_BRANCH_GUARD_SH.lstrip('\n'))
     os.chmod(script_path, 0o755)
 
@@ -1814,7 +1814,7 @@ def generate_global_credential_guard_script(home: str) -> None:
     os.makedirs(scripts_dir, exist_ok=True)
 
     script_path = os.path.join(scripts_dir, 'trackfw-credential-guard.sh')
-    with open(script_path, 'w', encoding='utf-8') as f:
+    with open(script_path, 'w', encoding='utf-8', newline="\n") as f:
         f.write(_GLOBAL_CREDENTIAL_GUARD_SH.lstrip('\n'))
     os.chmod(script_path, 0o755)
 

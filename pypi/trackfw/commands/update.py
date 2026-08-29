@@ -152,7 +152,7 @@ def _update_hooks_surgical(hooks: str, root_dir: str) -> None:
             print("  ✓ .husky/pre-commit — trackfw validate já presente")
             return
         os.makedirs(os.path.join(root_dir, ".husky"), exist_ok=True)
-        with open(hook_path, "a", encoding="utf-8") as f:
+        with open(hook_path, "a", encoding="utf-8", newline="\n") as f:
             f.write("\ntrackfw validate\n")
         try:
             os.chmod(hook_path, 0o755)
@@ -168,7 +168,7 @@ def _update_hooks_surgical(hooks: str, root_dir: str) -> None:
         if "trackfw-validate:" in content or "trackfw validate" in content:
             print("  ✓ lefthook.yml — trackfw já presente")
             return
-        with open(lefthook_path, "a", encoding="utf-8") as f:
+        with open(lefthook_path, "a", encoding="utf-8", newline="\n") as f:
             f.write("\npre-commit:\n  commands:\n    trackfw-validate:\n      run: trackfw validate\n")
         print("  ✓ lefthook.yml — trackfw-validate injetado")
 
@@ -264,7 +264,7 @@ def _ensure_global_adr_dir_registered(cwd: str) -> None:
         return  # already registered (literal "~/.trackfw/adr" or the expanded absolute path)
 
     updated = _insert_global_adr_dir_entry(content)
-    with open(yaml_path, "w", encoding="utf-8") as f:
+    with open(yaml_path, "w", encoding="utf-8", newline="\n") as f:
         f.write(updated)
     print("  ✓ adr_dirs: ~/.trackfw/adr registrado")
 
@@ -498,7 +498,7 @@ def _silence_stdout(active: bool):
     if not active:
         yield
         return
-    with open(os.devnull, "w", encoding="utf-8") as devnull:
+    with open(os.devnull, "w", encoding="utf-8", newline="\n") as devnull:
         with contextlib.redirect_stdout(devnull):
             yield
 
