@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-08-29
 req: REQ-2026-08-29-atualizar-para-a-upstream-main-com-o-fix-de-symlink
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: Atualizar para a upstream main com o fix de symlink
 
-> Created: 2026-08-29 | Status: wip
+> Created: 2026-08-29 | Status: done
 
 ## Context
 
