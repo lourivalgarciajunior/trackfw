@@ -1,12 +1,12 @@
 ---
-status: wip
+status: done
 date: 2026-08-29
 req: docs/requisições/claude/REQ-2026-08-29-politica-de-conteudo-do-upstream-sem-gate.md
 ---
 
 # Roadmap: Politica de conteudo do upstream sem gate
 
-> Created: 2026-08-29 | Status: wip
+> Created: 2026-08-29 | Status: done
 
 ## Context
 
@@ -17,10 +17,10 @@ REQ: docs/requisições/claude/REQ-2026-08-29-politica-de-conteudo-do-upstream-s
 
 ## Acceptance Criteria
 
-- [ ] Reprova com cada um dos tres vazamentos historicos, um a um
-- [ ] Passa no estado atual
-- [ ] Lista de mantidos explicita, cada entrada com motivo
-- [ ] Sem `upstream/main`, falha dizendo isso — nunca passa por nao conseguir checar
+- [x] Reprova com cada um dos tres vazamentos historicos, um a um
+- [x] Passa no estado atual
+- [x] Lista de mantidos explicita, cada entrada com motivo
+- [x] Sem `upstream/main`, falha dizendo isso — nunca passa por nao conseguir checar
 
 ## Wave 0 — Threat Model
 > Dependencies: none. Blocks all implementation.
@@ -88,13 +88,38 @@ bash scripts/check-upstream-content.sh
 ## Wave 1 — O gate
 
 ### ML-1A — Escrever e falsificar o gate
-**Status:** 🔄 Em andamento
+**Status:** ✅ Concluído
 **Files affected:** `scripts/check-upstream-content.sh` (novo)
 **Actions:**
 1. Comparar `git ls-files docs vault` contra `git ls-tree -r upstream/main docs vault`.
 2. Reprovar a interseccao que nao estiver na lista de mantidos.
 3. Falhar explicitamente se `upstream/main` nao existir localmente.
 **Acceptance criteria:**
-- [ ] Passa no estado atual
-- [ ] Reprova com cada um dos tres vazamentos historicos, testado um a um
-- [ ] Reprova sem `upstream/main`
+- [x] Passa no estado atual
+- [x] Reprova com cada um dos tres vazamentos historicos, testado um a um
+- [x] Reprova sem `upstream/main`
+
+---
+
+## Falsificacao — os quatro criterios, um a um
+
+Nao em bloco: cada vazamento historico reintroduzido sozinho, testado, e removido antes do proximo.
+
+```
+#28  vault/notes/index.md    rc=1  acusa vault/notes/index.md
+#29  nota de vault           rc=1  acusa update-segue-symlink-...-2026-08-28.md
+#31  ADR do upstream         rc=1  acusa ADR-2026-08-28-gate-de-ci-...
+
+sem upstream/main            rc=1  "nao consigo checar — rode git fetch upstream"
+estado atual                 rc=0  "nada indevido em docs/ nem em vault/"
+```
+
+O quarto e o que separa este gate de um teatro: **verde por nao conseguir checar seria pior que
+vermelho**, porque pareceria cobertura. Foi a licao que atravessou a sessao inteira — gate que passa
+pelo motivo errado.
+
+## O que este gate NAO resolve
+
+A lista de mantidos pode virar deposito. Nada impede que a proxima reprovacao no meio de um merge
+seja "resolvida" acrescentando uma linha ao `KEEP`. O motivo escrito por entrada torna isso visivel
+a quem le, e nao mais que isso — e por isso o motivo e criterio de aceite, nao gosto.
