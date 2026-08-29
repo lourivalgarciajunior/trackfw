@@ -4,6 +4,7 @@ const fs = require('fs')
 const path = require('path')
 const os = require('os')
 const { readAgentConventions } = require('../config/index.js')
+const { homedir } = require('../homedir');
 
 const GOV_DIRS = [
   'docs/adr',
@@ -1304,7 +1305,7 @@ async function installAmazonQ(cwd = process.cwd()) {
 async function installIntegrationTarget(target, cwd = process.cwd(), scope = 'project', { onSkip } = {}) {
   const { execute, buildPlans } = require('../integrations')
   const { resolveAgentModels } = require('../config')
-  const { models: agentModels, warning: agentModelsWarning } = resolveAgentModels(scope, os.homedir(), cwd)
+  const { models: agentModels, warning: agentModelsWarning } = resolveAgentModels(scope, homedir(), cwd)
   if (agentModelsWarning) process.stderr.write(agentModelsWarning + '\n')
   const roots = { projectRoot: cwd }
   const options = { targets: [target], scope, onSkip, agentModels }
@@ -1340,7 +1341,7 @@ function generateClaudeCommandsForce(rootDir) {
  * installSkillsForce — sobrescreve ~/.claude/skills/trackfw/SKILL.md sempre.
  */
 function installSkillsForce() {
-  const skillDir = path.join(os.homedir(), '.claude', 'skills', 'trackfw')
+  const skillDir = path.join(homedir(), '.claude', 'skills', 'trackfw')
   fs.mkdirSync(skillDir, { recursive: true })
 
   const content = `---
