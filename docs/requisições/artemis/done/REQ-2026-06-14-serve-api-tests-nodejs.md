@@ -8,8 +8,8 @@ created: 2026-06-14
 author: artemis
 ---
 
-Roadmap: ROADMAP-2026-06-14-serve-api-tests-nodejs.md
-ADR: ADR-2026-06-14-handlers-do-serve-testados-sem-servidor.md
+Roadmap: docs/roadmaps/artemis/done/ROADMAP-2026-06-14-serve-api-tests-nodejs.md
+ADR: docs/adr/ADR-2026-06-14-handlers-do-serve-testados-sem-servidor.md
 
 # REQ-2026-06-14-serve-api-tests-nodejs
 

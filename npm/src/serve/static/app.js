@@ -1,5 +1,5 @@
 /* trackfw dashboard — app.js
-   Tecnologias: HTMX + marked.js + Chart.js + D3.js (todos via CDN)
+   Tecnologias: Tailwind CSS + marked.js + DOMPurify + Chart.js + D3.js (todos via CDN)
    Sem bundler, sem npm no runtime.
 */
 
@@ -13,6 +13,12 @@ let _donutChart  = null;     // instância Chart.js donut
 let _burnChart   = null;     // instância Chart.js burndown
 let _d3Sim       = null;     // simulação D3 force
 let _drawerPath  = null;     // path atualmente aberto no drawer
+
+// ─── Views de lista (ADRs / REQs) ──────────────────────────────────────────────
+let _listState = {
+  adr: { search: '', status: '' },
+  req: { search: '', status: '' },
+};
 
 // ─── Auto-refresh ─────────────────────────────────────────────────────────────
 let _refreshInterval = parseInt(localStorage.getItem('trackfw_refresh_interval') || '60');
@@ -98,6 +104,8 @@ function switchView(view) {
     loadChain();
   } else if (view === 'metrics') {
     loadMetrics();
+  } else if (view === 'adr' || view === 'req') {
+    loadListView(view);
   }
 }
 
@@ -572,6 +580,169 @@ function renderChain(data) {
   });
 }
 
+// ─── View: ADRs / REQs (listas navegáveis) ────────────────────────────────────
+
+function normalizeText(str) {
+  return (str || '')
+    .toString()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+}
+
+async function loadListView(type) {
+  hide(`${type}-error`);
+
+  // Reusa o cache de /api/chain já usado pela aba Chain. Se o cache já foi
+  // aquecido (ex.: usuário visitou a aba Chain antes), o spinner nunca chega
+  // a ser exibido por show('${type}-loading') — mas ele parte visível no
+  // HTML (sem classe "hidden"), então precisa ser escondido explicitamente
+  // aqui também, não só no ramo de erro/loading do fetch abaixo.
+  hide(`${type}-loading`);
+  if (_chainData) {
+    renderListView(type);
+    return;
+  }
+
+  show(`${type}-loading`);
+
+  try {
+    const res = await fetch('/api/chain');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    _chainData = await res.json();
+    hide(`${type}-loading`);
+    renderListView(type);
+  } catch (err) {
+    hide(`${type}-loading`);
+    const errEl = el(`${type}-error`);
+    if (errEl) {
+      errEl.textContent = `Erro ao carregar ${type === 'adr' ? 'ADRs' : 'REQs'}: ${err.message}`;
+      errEl.classList.remove('hidden');
+    }
+  }
+}
+
+function getListNodes(type) {
+  if (!_chainData) return [];
+  return (_chainData.nodes || []).filter(n => n.type === type);
+}
+
+// Popula o <select> de status a partir dos valores distintos presentes na
+// resposta do /api/chain. NUNCA hardcodar uma lista fixa de estados aqui:
+// state é texto livre e uma lista fixa esconderia silenciosamente artefatos
+// com status inesperado (ex.: "unknown").
+function populateStatusFilter(type, nodes) {
+  const select = el(`${type}-status-filter`);
+  if (!select) return;
+
+  const current = select.value;
+  const states = Array.from(new Set(nodes.map(n => n.state || 'unknown'))).sort((a, b) => a.localeCompare(b));
+
+  select.innerHTML = '<option value="">Todos</option>';
+  states.forEach(state => {
+    const opt = document.createElement('option');
+    opt.value = state;
+    opt.textContent = state;
+    select.appendChild(opt);
+  });
+
+  if (states.includes(current)) {
+    select.value = current;
+  } else {
+    select.value = '';
+    _listState[type].status = '';
+  }
+}
+
+function renderListView(type) {
+  const nodes = getListNodes(type);
+  populateStatusFilter(type, nodes);
+  applyListFilters(type);
+}
+
+function onListSearch(type, value) {
+  _listState[type].search = value;
+  applyListFilters(type);
+}
+
+function onListStatusChange(type, value) {
+  _listState[type].status = value;
+  applyListFilters(type);
+}
+
+function applyListFilters(type) {
+  const nodes = getListNodes(type);
+  const { search, status } = _listState[type];
+  const normSearch = normalizeText(search);
+
+  const filtered = nodes.filter(n => {
+    if (status && (n.state || 'unknown') !== status) return false;
+    if (!normSearch) return true;
+    const haystack = normalizeText(`${n.title || ''} ${n.id || ''}`);
+    return haystack.includes(normSearch);
+  });
+
+  renderListRows(type, filtered, nodes.length);
+}
+
+function renderListRows(type, filtered, total) {
+  const listEl  = el(`${type}-list`);
+  const emptyEl = el(`${type}-empty`);
+  const countEl = el(`${type}-count`);
+  if (!listEl) return;
+
+  const typeLabel = type === 'adr' ? 'ADRs' : 'REQs';
+  listEl.innerHTML = '';
+
+  if (countEl) {
+    countEl.textContent = `${filtered.length} de ${total} ${typeLabel}`;
+  }
+
+  if (filtered.length === 0) {
+    if (emptyEl) {
+      emptyEl.textContent = total === 0
+        ? `Nenhum ${type === 'adr' ? 'ADR' : 'REQ'} encontrado.`
+        : 'Nenhum item corresponde à busca/filtro atual.';
+      emptyEl.classList.remove('hidden');
+    }
+    return;
+  }
+
+  if (emptyEl) emptyEl.classList.add('hidden');
+
+  filtered
+    .slice()
+    .sort((a, b) => (a.id || '').localeCompare(b.id || ''))
+    .forEach(node => listEl.appendChild(createListRow(node)));
+}
+
+function createListRow(node) {
+  const identifier = (node.id || '').split('/').pop();
+  const title      = node.title || identifier;
+  const state      = node.state || 'unknown';
+
+  const row = document.createElement('div');
+  row.className = 'list-row';
+  row.setAttribute('tabindex', '0');
+  row.setAttribute('role', 'button');
+  row.setAttribute('aria-label', `Abrir: ${title}`);
+
+  row.innerHTML = `
+    <span class="list-row-id">${escapeHtml(identifier)}</span>
+    <span class="list-row-title">${escapeHtml(title)}</span>
+    <span class="status-chip" data-state="${escapeHtml(state.toLowerCase())}">${escapeHtml(state)}</span>`;
+
+  row.addEventListener('click', () => openDrawer(node.id));
+  row.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openDrawer(node.id);
+    }
+  });
+
+  return row;
+}
+
 // ─── View: Metrics ────────────────────────────────────────────────────────────
 
 async function loadMetrics() {
@@ -699,6 +870,85 @@ function renderMetrics(data) {
 
 // ─── Drawer lateral ───────────────────────────────────────────────────────────
 
+// Allowlist do DOMPurify: cobre o markdown legítimo de ADRs/REQs/roadmaps
+// (headings, listas ordenadas/não ordenadas, blockquote, code inline e em bloco,
+// tabelas, links e checklists GFM `- [ ]`). Não inclui `img`, `iframe`, `style`,
+// `on*` (event handlers) nem `script` — nenhum é usado pelo markdown do projeto
+// e cada um ampliaria a superfície de ataque sem necessidade.
+const MARKDOWN_SANITIZE_CONFIG = {
+  ALLOWED_TAGS: [
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'p', 'br', 'hr',
+    'ul', 'ol', 'li',
+    'blockquote', 'pre', 'code',
+    'strong', 'em', 'b', 'i', 'del', 's', 'u',
+    'a',
+    'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td',
+    'input',
+  ],
+  ALLOWED_ATTR: ['href', 'title', 'class', 'id', 'align', 'type', 'checked', 'disabled'],
+  ALLOW_DATA_ATTR: false,
+};
+
+/**
+ * Converte markdown em HTML e sanitiza o resultado antes de expor ao DOM.
+ * Fail-safe: se DOMPurify não estiver carregado (CDN fora do ar, SRI falhou,
+ * uso offline), NUNCA devolve HTML — devolve null para o chamador decidir
+ * como degradar (texto puro / erro). Não há caminho silencioso e inseguro.
+ */
+function renderMarkdownSafe(md) {
+  if (typeof DOMPurify === 'undefined') {
+    return null;
+  }
+  const html = marked.parse(md || '');
+  return DOMPurify.sanitize(html, MARKDOWN_SANITIZE_CONFIG);
+}
+
+/**
+ * Resolve um href de link markdown relativo ao documento atualmente aberto no
+ * drawer, devolvendo um caminho normalizado relativo à raiz do repositório.
+ *
+ * Todos os links `.md` encontrados em docs/ são relativos ao documento que os
+ * contém (nunca à raiz) — ver ADR-2026-08-01. Formas tratadas:
+ *   - "./ARQUIVO.md"              → mesma pasta do documento atual
+ *   - "ARQUIVO.md"  (sem prefixo) → mesma pasta do documento atual
+ *   - "../dir/ARQUIVO.md"         → sobe um nível a partir da pasta atual
+ *   - "../../dir/ARQUIVO.md"      → ".." encadeados, sobe N níveis
+ *
+ * Algoritmo: concatena o href com o dirname do documento atual e resolve os
+ * segmentos com uma pilha — "." é descartado, ".." remove o topo da pilha (ou
+ * é descartado silenciosamente se a pilha já estiver vazia, para nunca deixar
+ * o resultado escapar acima da raiz do repositório).
+ *
+ * Este helper NÃO é idempotente para um caminho já completo (ex.:
+ * "docs/adr/X.md") — se recebesse um como `href`, o resultado ficaria
+ * prefixado incorretamente pelo dirname do documento atual. A segurança aqui
+ * não vem do algoritmo, vem do isolamento do ponto de chamada: os três
+ * pontos de entrada que já passam caminho completo (card do Board, nó do
+ * grafo Chain, linha das listas ADR/REQ) chamam `openDrawer` diretamente e
+ * nunca passam pelo interceptador de links do markdown renderizado — o único
+ * lugar onde este helper é invocado. O levantamento do corpus em docs/ (ver
+ * ADR-2026-08-01) confirma zero links `.md` raiz-relativos dentro de
+ * documentos, então este helper nunca recebe, na prática, algo que já não
+ * seja relativo ao documento que o contém.
+ */
+function resolveRelativeMdHref(href, currentDocPath) {
+  const lastSlash = (currentDocPath || '').lastIndexOf('/');
+  const baseDir = lastSlash === -1 ? '' : currentDocPath.slice(0, lastSlash);
+  const combined = baseDir ? `${baseDir}/${href}` : href;
+
+  const stack = [];
+  combined.split('/').forEach(part => {
+    if (part === '' || part === '.') return;
+    if (part === '..') {
+      if (stack.length > 0) stack.pop();
+      return;
+    }
+    stack.push(part);
+  });
+  return stack.join('/');
+}
+
 async function openDrawer(path) {
   if (!path) return;
   _drawerPath = path;
@@ -732,7 +982,11 @@ async function openDrawer(path) {
 
   try {
     const res = await fetch(`/api/file?path=${encodeURIComponent(path)}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      const httpErr = new Error(`HTTP ${res.status}`);
+      httpErr.status = res.status;
+      throw httpErr;
+    }
     const raw = await res.text();
 
     hide('drawer-loading');
@@ -743,23 +997,42 @@ async function openDrawer(path) {
       renderFrontmatterTable(frontmatter);
     }
 
-    // Renderizar markdown
+    // Renderizar markdown (sanitizado — ver renderMarkdownSafe)
     if (mdEl) {
-      mdEl.innerHTML = marked.parse(body || raw);
-
-      // Interceptar links internos .md
-      mdEl.querySelectorAll('a[href]').forEach(a => {
-        const href = a.getAttribute('href');
-        if (!href) return;
-        const isExternal = href.startsWith('http://') || href.startsWith('https://');
-        const isMdLink   = href.endsWith('.md');
-        if (!isExternal && isMdLink) {
-          a.addEventListener('click', e => {
-            e.preventDefault();
-            openDrawer(href);
-          });
+      const safeHtml = renderMarkdownSafe(body || raw);
+      if (safeHtml === null) {
+        // Fail-safe: sem DOMPurify carregado, nunca renderizar HTML bruto.
+        mdEl.textContent = body || raw;
+        const errEl = el('drawer-error');
+        if (errEl) {
+          errEl.textContent = 'Aviso: sanitizador de HTML indisponível — conteúdo exibido como texto puro.';
+          errEl.classList.remove('hidden');
         }
-      });
+      } else {
+        mdEl.innerHTML = safeHtml;
+
+        // Interceptar links internos .md
+        mdEl.querySelectorAll('a[href]').forEach(a => {
+          const href = a.getAttribute('href');
+          if (!href) return;
+          const isExternal = href.startsWith('http://') || href.startsWith('https://');
+          // Um link pode carregar uma âncora de seção (ex.: "outro.md#secao").
+          // O drawer não tem conceito de rolagem para âncora dentro do markdown
+          // renderizado, então a âncora é descartada na resolução — apenas o
+          // caminho do arquivo é usado para decidir se é um link .md e para
+          // montar o caminho a buscar.
+          const hashIndex = href.indexOf('#');
+          const hrefPath  = hashIndex === -1 ? href : href.slice(0, hashIndex);
+          const isMdLink  = hrefPath.endsWith('.md');
+          if (!isExternal && isMdLink) {
+            const resolved = resolveRelativeMdHref(hrefPath, _drawerPath);
+            a.addEventListener('click', e => {
+              e.preventDefault();
+              openDrawer(resolved);
+            });
+          }
+        });
+      }
     }
 
     show('drawer-content');
@@ -767,7 +1040,11 @@ async function openDrawer(path) {
     hide('drawer-loading');
     const errEl = el('drawer-error');
     if (errEl) {
-      errEl.textContent = `Erro ao carregar arquivo: ${err.message}`;
+      if (err.status === 403) {
+        errEl.textContent = `Arquivo fora dos diretórios permitidos: ${path}`;
+      } else {
+        errEl.textContent = `Erro ao carregar arquivo: ${err.message}`;
+      }
       errEl.classList.remove('hidden');
     }
   }

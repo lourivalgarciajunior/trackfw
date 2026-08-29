@@ -6,6 +6,9 @@ import (
 	"time"
 )
 
+// GlobalADRsDirective é a diretiva obrigatória para instruir os agentes sobre ADRs globais.
+const GlobalADRsDirective = "Obrigatório: Inspecione e respeite todos os ADRs globais nos diretórios listados em adr_dirs (inclusive caminhos ~/...) antes de propor alterações de arquitetura."
+
 func generateClaudeMD(cfg Config) error {
 	var sb strings.Builder
 
@@ -31,7 +34,8 @@ func generateClaudeMD(cfg Config) error {
 	sb.WriteString("4. **ML lifecycle — mandatory:** When starting a ML, change `**Status:** ⬜ Pendente` → `**Status:** 🔄 Em andamento` and commit the roadmap. When completing, change to `**Status:** ✅ Concluído` and include in the ML commit. When analyzing a roadmap before starting, move it from `backlog/` to `analyzing/`; only move to `wip/` when actually coding.\n")
 	sb.WriteString("5. **Run `trackfw validate` before every commit.** Zero violations required.\n")
 	sb.WriteString("6. **ADRs before decisions.** Any architectural or technical decision must have an ADR (`/trackfw:adr`).\n")
-	sb.WriteString("7. **Use `/trackfw:architect` to define stack and architecture before the first REQ.**\n\n")
+	sb.WriteString("6a. **Usar `/trackfw:architect` para definir stack e arquitetura antes da primeira REQ.**\n")
+	sb.WriteString("7. **" + GlobalADRsDirective + "**\n\n")
 
 	sb.WriteString("## Slash commands (Claude Code)\n\n")
 	sb.WriteString("| Command | When to use |\n")
@@ -43,7 +47,8 @@ func generateClaudeMD(cfg Config) error {
 	sb.WriteString("| `/trackfw:move <name> <state>` | Move roadmap between states manually |\n")
 	sb.WriteString("| `/trackfw:validate` | Run governance validation |\n")
 	sb.WriteString("| `/trackfw:status` | Check what is in flight |\n")
-	sb.WriteString("| `/trackfw:architect` | Guide stack and architecture decisions |\n\n")
+	sb.WriteString("| `/trackfw:architect` | Guide stack and architecture decisions |\n")
+	sb.WriteString("| `/trackfw:barrier` | Run the wave-release checklist before liberating the next wave |\n\n")
 
 	sb.WriteString("## CLI commands (terminal / CI)\n\n")
 	sb.WriteString("| Command | When to use |\n")
@@ -62,7 +67,7 @@ func generateClaudeMD(cfg Config) error {
 	sb.WriteString("4. **Docker + .env from day 1** — containerize early; all config via env vars, never hardcoded.\n")
 	sb.WriteString("5. **2-layer validation** — frontend (UX feedback) + backend (security guard). Never only one.\n")
 	sb.WriteString("6. **API-first** — define OpenAPI contract before coding frontend/backend integration.\n")
-	sb.WriteString("7. **Security wave** — include a red-team review wave at the end of every feature roadmap.\n")
+	sb.WriteString("7. **Threat model waves** — every feature roadmap opens with a Wave 0 threat model (before implementation) and closes with a red-team review wave (before release).\n")
 	sb.WriteString("8. **Test coverage** — TDD for critical business logic; min 60% (prototype) / 80% (production).\n\n")
 
 	// Frontend section
@@ -136,7 +141,79 @@ func generateClaudeMD(cfg Config) error {
 		sb.WriteString("No CI gate configured.\n")
 	}
 
-	if err := injectOrUpdateRules("CLAUDE.md", sb.String()); err != nil {
+	// Harness sections — derived from project governance conventions
+	sb.WriteString("\n## Branch strategy\n\n")
+	sb.WriteString("One active branch at a time. Name it `feat/<slug>`, `fix/<slug>` or `refactor/<slug>`. ")
+	sb.WriteString("Before creating a new branch, verify no other is genuinely open: run `git fetch origin --prune`, ")
+	sb.WriteString("then `git branch -r --no-merged origin/main`, then for each candidate `git diff origin/main <branch> --stat`. ")
+	sb.WriteString("An empty diff means it was squash-merged — ignore it. ")
+	sb.WriteString("Squash merges do not mark a branch as merged, so `--no-merged` alone is not evidence. ")
+	sb.WriteString("If the branch is stale and the diff looks inflated by main's own evolution, ")
+	sb.WriteString("compare only the files the branch itself touched since the merge base.\n\n")
+
+	sb.WriteString("## Definition of done\n\n")
+	sb.WriteString("Green build and tests do not close a microbatch. ")
+	sb.WriteString("It is done when the requirement and the roadmap sit in the correct state folder, ")
+	sb.WriteString("their declared status matches that folder, the final validation is recorded with evidence, ")
+	sb.WriteString("no duplicate copy remains in another state, and `trackfw validate` reports no violations.\n\n")
+
+	sb.WriteString("## Requirement scope\n\n")
+	sb.WriteString("Every requirement must declare an explicit negative scope: what must not be implemented. ")
+	sb.WriteString("Boundaries prevent an implementing agent from inventing work.\n\n")
+
+	sb.WriteString("## State requirements\n\n")
+	sb.WriteString("`blocked` requires a reason and an owner. ")
+	sb.WriteString("`abandoned` requires a reason and a successor. ")
+	sb.WriteString("`wip` must reflect work that is genuinely active; ")
+	sb.WriteString("anything stalled moves to `blocked` or `abandoned` instead of rotting in `wip`.\n\n")
+
+	sb.WriteString("## Roadmap format\n\n")
+	sb.WriteString("Organize work as waves of microbatches. ")
+	sb.WriteString("A wave groups microbatches that can run in parallel; a barrier separates waves. ")
+	sb.WriteString("Microbatches sharing any file — including generated trees and build outputs — must be sequential, ")
+	sb.WriteString("and the reason is documented. ")
+	sb.WriteString("Each microbatch declares exact files, exact actions, measurable acceptance criteria and exact validation commands, ")
+	sb.WriteString("so that a small model can execute it without guessing.\n\n")
+
+	sb.WriteString("## When governance is not required\n\n")
+	sb.WriteString("A closed list of exemptions: a typo or local variable rename; a documentation-only change; ")
+	sb.WriteString("a configuration tweak with no runtime effect; a direct revert; ")
+	sb.WriteString("answering a question or reviewing without changes. ")
+	sb.WriteString("Additionally, when the user reports a concrete bug, fix it directly and do not open an architectural analysis for it. ")
+	sb.WriteString("**This section takes precedence over the general rule that requires a requirement and a roadmap.** ")
+	sb.WriteString("Anything touching business logic, an API contract, a data schema, authentication or authorization, ")
+	sb.WriteString("localization, or user-facing behavior always requires governance, regardless of how few files it touches.\n\n")
+
+	sb.WriteString("## Production incidents\n\n")
+	sb.WriteString("Inspect the live environment before proposing a fix: real variables, active credentials, ")
+	sb.WriteString("granted permissions, running processes. ")
+	sb.WriteString("Confirm the root cause against real evidence, then implement the smallest fix. ")
+	sb.WriteString("Never edit static configuration files as a response to a root cause that has not been confirmed in the running environment.\n\n")
+
+	sb.WriteString("## Iterative prototyping\n\n")
+	sb.WriteString("For complex or uncertain user-facing work, validate the concept with a disposable, isolated prototype ")
+	sb.WriteString("that the user reviews visually, and only then write the decision record and the production roadmap. ")
+	sb.WriteString("Build and test success is not evidence that an interface is right.\n\n")
+
+	sb.WriteString("## Autopilot\n\n")
+	sb.WriteString("Ask everything you need before starting. ")
+	sb.WriteString("Once started, do not interrupt for confirmations that could have been anticipated. ")
+	sb.WriteString("Decide low-risk details autonomously following existing project conventions, ")
+	sb.WriteString("and record autonomous decisions in the commit message.\n")
+
+	sb.WriteString("\n## Architect responses\n\n")
+	sb.WriteString("Default: what changed · what was decided · what is needed from you. Three to five lines.\n\n")
+	sb.WriteString("Scale up only on these three triggers, and only on them: a **blocker** that stops the next wave; ")
+	sb.WriteString("a **pending user decision** that cannot be inferred from context; ")
+	sb.WriteString("an **error the architect made** that cannot be self-corrected.\n\n")
+	sb.WriteString("Never cut, even when short: measured evidence (command and result), barrier verdict, decision taken and why. ")
+	sb.WriteString("A response that buries a blocker in paragraph seven produced the same effect as not reporting it.\n\n")
+	sb.WriteString("Cut: restating what an executor already reported, re-explaining reasoning already given, ")
+	sb.WriteString("recapping state that has not changed, closing praise. ")
+	sb.WriteString("Tables and code blocks only when they replace prose, never when they add to it.\n\n")
+	sb.WriteString("Depth is on demand from the user.\n")
+
+	if err := injectOrUpdateRules("CLAUDE.md", sb.String(), "."); err != nil {
 		return fmt.Errorf("updating CLAUDE.md: %w", err)
 	}
 	fmt.Println("  ✓ CLAUDE.md")

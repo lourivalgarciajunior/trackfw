@@ -11,6 +11,8 @@ import stat
 import datetime
 import subprocess
 
+from trackfw.forge.resolve import resolve_from_repo as _forge_resolve_from_repo
+
 
 # ---------------------------------------------------------------------------
 # helpers de filesystem
@@ -54,6 +56,50 @@ def _list_subdirs(directory: str) -> list[str]:
         return []
 
 
+def _has_file_with_substring(path: str, sub: str) -> bool:
+    """Lê path e retorna True se seu conteúdo contém sub. Retorna False silenciosamente se o
+    arquivo não existir ou não puder ser lido (best-effort)."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except OSError:
+        return False
+    return sub in content
+
+
+def _has_go_test_file(root_dir: str) -> bool:
+    """Percorre root_dir recursivamente procurando qualquer arquivo *_test.go."""
+    try:
+        for _, _, files in os.walk(root_dir):
+            for f in files:
+                if f.endswith("_test.go"):
+                    return True
+    except OSError:
+        pass
+    return False
+
+
+def detect_test_framework(root_dir: str) -> str:
+    """Heurística best-effort para sugerir um framework de teste com base em arquivos de
+    configuração presentes na raiz do projeto. Nunca retorna erro — retorna "" quando nenhum
+    arquivo-gatilho é encontrado. Ordem de precedência: jest, vitest, pytest, go test. Espelha
+    detectTestFramework (Go) e detectTestFramework (Node).
+    """
+    if _is_file(os.path.join(root_dir, "jest.config.js")) or _is_file(os.path.join(root_dir, "jest.config.ts")):
+        return "jest"
+    if _is_file(os.path.join(root_dir, "vitest.config.js")) or _is_file(os.path.join(root_dir, "vitest.config.ts")):
+        return "vitest"
+    if _is_file(os.path.join(root_dir, "pytest.ini")):
+        return "pytest"
+    if _has_file_with_substring(os.path.join(root_dir, "pyproject.toml"), "[tool.pytest"):
+        return "pytest"
+    if _has_file_with_substring(os.path.join(root_dir, "setup.cfg"), "[tool:pytest]"):
+        return "pytest"
+    if _is_file(os.path.join(root_dir, "go.mod")) and _has_go_test_file(root_dir):
+        return "go test"
+    return ""
+
+
 # ---------------------------------------------------------------------------
 # scan
 # ---------------------------------------------------------------------------
@@ -77,6 +123,13 @@ def scan(root_dir: str) -> dict:
         "governance_score": 0,
         "hook_framework": "none",
         "ci_system": "none",
+        "forge": "",
+        # suggested_test_framework é uma sugestão best-effort (nunca erro, "" quando nada
+        # bate) baseada em arquivos de configuração presentes na raiz do projeto. É apenas
+        # impressa como sugestão pelo comando `discover` — nunca escrita automaticamente em
+        # trackfw.yaml (a convenção de agent_conventions deve ser sempre declarada pelo
+        # time, não inferida).
+        "suggested_test_framework": "",
     }
 
     # 1. trackfw.yaml
@@ -153,7 +206,20 @@ def scan(root_dir: str) -> dict:
     else:
         r["ci_system"] = "none"
 
-    # 7. Score
+    # 6b. Suggested test framework — best-effort heuristic, never an error.
+    r["suggested_test_framework"] = detect_test_framework(root_dir)
+
+    # 7. Forge detection — reuse forge/resolve.py (no duplicate parse).
+    # _git_remote_url returns "" when repo dir is not a git repo or on any error.
+    # CI detection is filesystem-based and always works.
+    try:
+        res = _forge_resolve_from_repo(repo_dir=root_dir)
+        if res.source != "none":
+            r["forge"] = res.forge
+    except Exception:
+        pass  # forge detection is best-effort; never block scan on it
+
+    # 8. Score
     r["governance_score"] = _calc_score(r)
 
     return r
@@ -211,6 +277,10 @@ def generate_yaml(result: dict) -> str:
 
     lines.append(f"hooks: {result['hook_framework']}")
     lines.append(f"ci: {result['ci_system']}")
+
+    if result.get("forge"):
+        lines.append(f"forge: {result['forge']}")
+
     lines.append("")
 
     return "\n".join(lines)
@@ -269,13 +339,11 @@ def install_gates(result: dict, root_dir: str) -> None:
 
 
 def _write_validate_script(root_dir: str) -> None:
-    scripts_dir = os.path.join(root_dir, "scripts")
-    os.makedirs(scripts_dir, exist_ok=True)
-    content = "#!/usr/bin/env bash\nset -euo pipefail\ntrackfw validate\n"
-    dest = os.path.join(scripts_dir, "trackfw-validate.sh")
-    with open(dest, "w", encoding="utf-8") as f:
-        f.write(content)
-    os.chmod(dest, 0o755)
+    # Delegates to the single canonical generator shared with `trackfw init`
+    # and `trackfw update`'s `validate-script` target — see
+    # trackfw/generators/init_gen.py:generate_validate_script (ML-6H).
+    from trackfw.generators.init_gen import generate_validate_script
+    generate_validate_script(root_dir)
 
 
 def _install_hook(framework: str, root_dir: str) -> None:
@@ -457,6 +525,11 @@ def _cmd_discover(args):
     else:
         print("Aviso: nenhum sistema de CI detectado")
 
+    # suggested test framework — printed only, never written to trackfw.yaml
+    # automatically (agent_conventions must always be declared by the team).
+    if r["suggested_test_framework"]:
+        print(f"Suggested test framework: {r['suggested_test_framework']} (add to trackfw.yaml as agent_conventions: if correct)")
+
     print(f"\nGovernance Score: {r['governance_score']}/100")
 
     if getattr(args, "init", False):
@@ -479,6 +552,21 @@ def _cmd_discover(args):
             print("Regras trackfw injetadas nos arquivos de agentes")
         except Exception as e:
             print(f"Aviso: injecao parcial de regras de agentes: {e}")
+        try:
+            from trackfw.generators.init_gen import _generate_attention_scripts
+            _generate_attention_scripts(cwd)
+        except Exception as e:
+            print(f"  ⚠ attention scripts: {e}")
+        try:
+            from trackfw.generators.init_gen import _generate_credential_guard_script
+            _generate_credential_guard_script(cwd)
+        except Exception as e:
+            print(f"  ⚠ credential guard script: {e}")
+        try:
+            from trackfw.generators.init_gen import _generate_git_branch_guard_script
+            _generate_git_branch_guard_script(cwd)
+        except Exception as e:
+            print(f"  ⚠ git branch guard script: {e}")
         try:
             from trackfw.generators.hooks import inject_hooks_detected
             inject_hooks_detected(cwd)

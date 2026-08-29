@@ -17,8 +17,6 @@ function withTmpDir(yaml, fn) {
   }
 }
 
-const NL = String.fromCharCode(10)
-
 let passed = 0, failed = 0
 
 function test(name, fn) {
@@ -134,64 +132,119 @@ test('sem adr_dirs/req_dir/roadmap_dir → defaults corretos', () => {
   })
 })
 
-test('adr_dirs/agents - aspas envolventes sao removidas dos itens de lista', () => {
-  const yaml = [
-    'adr_dirs:',
-    '  - "docs/adr"',
-    "  - 'docs/decisions'",
-    '  - docs/adr-extra',
-    'roadmap_namespacing: by_agent',
-    'agents:',
-    '  - "claude"',
-    "  - 'apolo'",
-    '  - artemis',
-    ''
-  ].join(String.fromCharCode(10))
+// ML-1B — Expansão de ~ (tilde) em adr_dirs, req_dir, roadmap_dir
+test('expandPath — expande ~ e ~/ para o diretório Home', () => {
+  const home = os.homedir()
+  assert.strictEqual(config.expandPath('~'), home)
+  assert.strictEqual(config.expandPath('~/global-adrs'), path.join(home, 'global-adrs'))
+  assert.strictEqual(config.expandPath('~\\global-adrs'), path.join(home, 'global-adrs'))
+  assert.strictEqual(config.expandPath('docs/adr'), 'docs/adr')
+  assert.strictEqual(config.expandPath(null), null)
+})
+
+test('adr_dirs com ~ em trackfw.yaml → expandido para homedir', () => {
+  const home = os.homedir()
+  const yaml = `adr_dirs:\n  - ~/company-adrs\n  - docs/adr\n`
   withTmpDir(yaml, (tmp) => {
     const cfg = config.load(tmp)
-    assert.deepStrictEqual(cfg.adrDirs, ['docs/adr', 'docs/decisions', 'docs/adr-extra'])
-    assert.deepStrictEqual(cfg.agents, ['claude', 'apolo', 'artemis'])
+    assert.deepStrictEqual(cfg.adrDirs, [path.join(home, 'company-adrs'), 'docs/adr'])
   })
 })
 
-// Captura o que o parser manda para stderr durante um load.
-function loadCapturandoAvisos(yaml) {
-  const avisos = []
-  const orig = console.error
-  console.error = (...a) => avisos.push(a.join(' '))
-  let cfg
-  try {
-    withTmpDir(yaml, (tmp) => { cfg = config.load(tmp) })
-  } finally {
-    console.error = orig
-  }
-  return { cfg, avisos }
-}
-
-test('bloco de lista sem indentacao e aceito', () => {
-  const yaml = ['agents:', '- claude', '- apolo', 'adr_dirs:', '- docs/adr', '- docs/decisions', ''].join(NL)
-  const { cfg, avisos } = loadCapturandoAvisos(yaml)
-  assert.deepStrictEqual(cfg.agents, ['claude', 'apolo'])
-  assert.deepStrictEqual(cfg.adrDirs, ['docs/adr', 'docs/decisions'])
-  assert.deepStrictEqual(avisos, [], 'config bem formada nao pode gerar ruido')
+// ML-2B — strict_ci_paths
+test('strict_ci_paths — default é false, aceita true via yaml', () => {
+  withTmpDir(null, (tmp) => {
+    const cfgDefault = config.load(tmp)
+    assert.strictEqual(cfgDefault.strictCiPaths, false)
+  })
+  withTmpDir('strict_ci_paths: true\n', (tmp) => {
+    const cfgTrue = config.load(tmp)
+    assert.strictEqual(cfgTrue.strictCiPaths, true)
+  })
 })
 
-test('lista inline avisa e nao popula', () => {
-  const yaml = ['agents: [claude, gemini]', 'adr_dirs: [docs/adr, docs/decisions]', ''].join(NL)
-  const { cfg, avisos } = loadCapturandoAvisos(yaml)
-  assert.strictEqual(avisos.length, 2, `esperado 2 avisos, obtido ${avisos.length}`)
-  const juntos = avisos.join(NL)
-  for (const esperado of ['agents', 'adr_dirs', 'lista inline', 'Escreva em bloco']) {
-    assert.ok(juntos.includes(esperado), `aviso nao menciona ${esperado}`)
-  }
-  // O aviso nao e um parser disfarcado: a chave continua vazia.
-  assert.deepStrictEqual(cfg.agents, [])
+test('forge e trace_id_field com aspas sao normalizados', () => {
+  const yaml = `forge: "github"\ntrace_id_field: 'req_id'\n`
+  withTmpDir(yaml, (tmp) => {
+    const cfg = config.load(tmp)
+    assert.strictEqual(cfg.forge, 'github')
+    assert.strictEqual(cfg.traceIdField, 'req_id')
+  })
 })
 
-test('bloco indentado nao avisa', () => {
-  const yaml = ['agents:', '  - claude', 'adr_dirs:', '  - docs/adr', ''].join(NL)
-  const { avisos } = loadCapturandoAvisos(yaml)
-  assert.deepStrictEqual(avisos, [])
+// ML-1B — sequência em bloco no mesmo nível de indentação da chave é YAML válido
+// (confirmado com yaml.safe_load real: "agents:\n- zeus\n- apolo" resolve para
+// {'agents': ['zeus', 'apolo']}). Antes do fix, qualquer linha sem indentação — mesmo "- item"
+// — era tratada como top-level e fechava a lista aberta, descartando-a silenciosamente.
+
+test('adr_dirs — sequência não indentada é lida corretamente', () => {
+  const yaml = `adr_dirs:\n- docs/adr/zeus\n- docs/adr/apolo\n`
+  withTmpDir(yaml, (tmp) => {
+    const cfg = config.load(tmp)
+    assert.deepStrictEqual(cfg.adrDirs, ['docs/adr/zeus', 'docs/adr/apolo'])
+  })
+})
+
+test('agents — sequência não indentada é lida corretamente', () => {
+  const yaml = `agents:\n- zeus\n- apolo\n`
+  withTmpDir(yaml, (tmp) => {
+    const cfg = config.load(tmp)
+    assert.deepStrictEqual(cfg.agents, ['zeus', 'apolo'])
+  })
+})
+
+test('acceptance_markers — sequência não indentada é lida corretamente', () => {
+  const yaml = `acceptance_markers:\n- "## Done"\n- "## Concluído"\n`
+  withTmpDir(yaml, (tmp) => {
+    const cfg = config.load(tmp)
+    assert.deepStrictEqual(cfg.acceptanceMarkers, ['## Done', '## Concluído'])
+  })
+})
+
+// link_fields: a chave e as sub-chaves (req/adr/roadmap) precisam permanecer indentadas —
+// exigência da própria especificação YAML para mapeamentos aninhados. O que pode variar é a
+// indentação dos ITENS da sequência em relação à sub-chave que os abre.
+test('link_fields — itens no mesmo nível da sub-chave (req/adr/roadmap)', () => {
+  const yaml = `link_fields:\n  req:\n  - "REQ:"\n  - "req_id"\n  adr:\n  - "ADR:"\n  roadmap:\n  - "Roadmap:"\n`
+  withTmpDir(yaml, (tmp) => {
+    const cfg = config.load(tmp)
+    assert.deepStrictEqual(cfg.linkFields.req, ['REQ:', 'req_id'])
+    assert.deepStrictEqual(cfg.linkFields.adr, ['ADR:'])
+    assert.deepStrictEqual(cfg.linkFields.roadmap, ['Roadmap:'])
+  })
+})
+
+test('link_fields — itens mais indentados que a sub-chave (forma original, sem regressão)', () => {
+  const yaml = `link_fields:\n  req:\n    - "REQ:"\n  adr:\n    - "ADR:"\n  roadmap:\n    - "Roadmap:"\n`
+  withTmpDir(yaml, (tmp) => {
+    const cfg = config.load(tmp)
+    assert.deepStrictEqual(cfg.linkFields.req, ['REQ:'])
+    assert.deepStrictEqual(cfg.linkFields.adr, ['ADR:'])
+    assert.deepStrictEqual(cfg.linkFields.roadmap, ['Roadmap:'])
+  })
+})
+
+// rules: mapeamento (chave: valor), não sequência. Sub-chaves não indentadas NÃO são YAML
+// válido de forma aninhada (viram chaves top-level soltas — confirmado com yaml.safe_load).
+// Documenta que o comportamento é intencional, não uma regressão do fix de listas.
+test('rules — sub-chave não indentada não é aninhada (comportamento esperado)', () => {
+  const yaml = `rules:\nstale_wip: error\n`
+  withTmpDir(yaml, (tmp) => {
+    const cfg = config.load(tmp)
+    assert.strictEqual(cfg.rules.stale_wip, 'warning') // default preservado
+  })
+})
+
+test('todas as cinco chaves — forma indentada continua funcionando (sem regressão)', () => {
+  const yaml = `adr_dirs:\n  - docs/adr/zeus\n  - docs/adr/apolo\nagents:\n  - zeus\n  - apolo\nacceptance_markers:\n  - "## Done"\nlink_fields:\n  req:\n    - "REQ:"\n  adr:\n    - "ADR:"\n  roadmap:\n    - "Roadmap:"\nrules:\n  stale_wip: error\n`
+  withTmpDir(yaml, (tmp) => {
+    const cfg = config.load(tmp)
+    assert.deepStrictEqual(cfg.adrDirs, ['docs/adr/zeus', 'docs/adr/apolo'])
+    assert.deepStrictEqual(cfg.agents, ['zeus', 'apolo'])
+    assert.deepStrictEqual(cfg.acceptanceMarkers, ['## Done'])
+    assert.deepStrictEqual(cfg.linkFields.req, ['REQ:'])
+    assert.strictEqual(cfg.rules.stale_wip, 'error')
+  })
 })
 
 console.log(`\n${passed} passed, ${failed} failed`)

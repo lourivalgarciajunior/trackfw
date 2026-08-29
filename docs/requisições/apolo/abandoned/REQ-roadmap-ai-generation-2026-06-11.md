@@ -8,8 +8,8 @@ created: 2026-06-11
 author: apolo
 ---
 
-Roadmap: roadmap-roadmap-ai-generation-2026-06-11.md
-ADR: ADR-2026-06-11-roadmap-derivado-sem-llm.md
+Roadmap: docs/roadmaps/claude/abandoned/roadmap-roadmap-ai-generation-2026-06-11.md
+ADR: docs/adr/ADR-2026-06-11-roadmap-derivado-sem-llm.md
 
 # REQ: Geração de Roadmap por IA
 

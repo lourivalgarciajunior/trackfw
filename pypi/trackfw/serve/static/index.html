@@ -4,16 +4,28 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>trackfw — dashboard</title>
-  <!-- Tailwind CSS CDN -->
+  <!-- Tailwind CSS CDN: URL não-versionada (JIT em runtime), HTTP/2 302 — sem integrity de propósito.
+       Um hash fixo aqui quebraria o dashboard inteiro no próximo release deles. Migrar para uma
+       build versionada exige auditoria visual completa e é escopo de REQ própria. -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- HTMX -->
-  <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js"></script>
   <!-- marked.js -->
-  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"
+    integrity="sha384-NNQgBjjuhtXzPmmy4gurS5X7P4uTt1DThyevz4Ua0IVK5+kazYQI1W27JHjbbxQz"
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"></script>
   <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"
+    integrity="sha384-NrKB+u6Ts6AtkIhwPixiKTzgSKNblyhlk0Sohlgar9UHUBzai/sgnNNWWd291xqt"
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"></script>
   <!-- D3.js -->
-  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"
+    integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i"
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"></script>
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
@@ -40,6 +52,18 @@
         class="tab-btn px-4 py-1.5 rounded text-sm font-medium transition-colors"
         aria-pressed="false"
       >Metrics</button>
+      <button
+        id="tab-adr"
+        onclick="switchView('adr')"
+        class="tab-btn px-4 py-1.5 rounded text-sm font-medium transition-colors"
+        aria-pressed="false"
+      >ADRs</button>
+      <button
+        id="tab-req"
+        onclick="switchView('req')"
+        class="tab-btn px-4 py-1.5 rounded text-sm font-medium transition-colors"
+        aria-pressed="false"
+      >REQs</button>
     </nav>
   </header>
 
@@ -175,6 +199,76 @@
       </div>
     </section>
 
+    <!-- View: ADRs -->
+    <section id="view-adr" class="view-section w-full hidden p-6 overflow-auto" aria-label="Lista de ADRs">
+      <div class="flex items-center gap-3 flex-wrap mb-4">
+        <input
+          type="search"
+          id="adr-search"
+          oninput="onListSearch('adr', this.value)"
+          placeholder="Buscar por título ou identificador..."
+          class="text-sm border border-gray-300 rounded px-3 py-1.5 bg-white flex-1 min-w-[220px]"
+          aria-label="Buscar ADRs por título ou identificador"
+        />
+        <label for="adr-status-filter" class="text-sm font-medium text-gray-600 sr-only">Filtrar por status</label>
+        <select
+          id="adr-status-filter"
+          onchange="onListStatusChange('adr', this.value)"
+          class="text-sm border border-gray-300 rounded px-2 py-1.5 bg-white"
+          aria-label="Filtrar ADRs por status"
+        >
+          <option value="">Todos</option>
+        </select>
+        <span id="adr-count" class="text-xs text-gray-500 ml-auto" aria-live="polite"></span>
+      </div>
+
+      <div id="adr-loading" class="flex items-center gap-2 text-gray-500 text-sm">
+        <svg class="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        Carregando ADRs...
+      </div>
+      <div id="adr-error" class="hidden text-red-600 text-sm mt-4" role="alert"></div>
+      <div id="adr-empty" class="hidden text-sm text-gray-400 text-center py-8"></div>
+      <div id="adr-list" class="list-view-container"></div>
+    </section>
+
+    <!-- View: REQs -->
+    <section id="view-req" class="view-section w-full hidden p-6 overflow-auto" aria-label="Lista de REQs">
+      <div class="flex items-center gap-3 flex-wrap mb-4">
+        <input
+          type="search"
+          id="req-search"
+          oninput="onListSearch('req', this.value)"
+          placeholder="Buscar por título ou identificador..."
+          class="text-sm border border-gray-300 rounded px-3 py-1.5 bg-white flex-1 min-w-[220px]"
+          aria-label="Buscar REQs por título ou identificador"
+        />
+        <label for="req-status-filter" class="text-sm font-medium text-gray-600 sr-only">Filtrar por status</label>
+        <select
+          id="req-status-filter"
+          onchange="onListStatusChange('req', this.value)"
+          class="text-sm border border-gray-300 rounded px-2 py-1.5 bg-white"
+          aria-label="Filtrar REQs por status"
+        >
+          <option value="">Todos</option>
+        </select>
+        <span id="req-count" class="text-xs text-gray-500 ml-auto" aria-live="polite"></span>
+      </div>
+
+      <div id="req-loading" class="flex items-center gap-2 text-gray-500 text-sm">
+        <svg class="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        Carregando REQs...
+      </div>
+      <div id="req-error" class="hidden text-red-600 text-sm mt-4" role="alert"></div>
+      <div id="req-empty" class="hidden text-sm text-gray-400 text-center py-8"></div>
+      <div id="req-list" class="list-view-container"></div>
+    </section>
+
   </main>
 
   <!-- Overlay do drawer -->
@@ -233,6 +327,12 @@
     </div>
   </aside>
 
+  <!-- DOMPurify (sanitização de HTML do drawer) -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/dompurify@3.4.12/dist/purify.min.js"
+    integrity="sha384-piCcpDdJ7qVeK4Tv8Z6Hpcr3ZBIgP16TxQTPVfsLFdZ5uDgwc3Y8Ho7oUnqf12qu"
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>

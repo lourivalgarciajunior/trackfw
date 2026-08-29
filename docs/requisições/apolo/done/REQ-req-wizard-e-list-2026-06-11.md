@@ -8,8 +8,8 @@ created: 2026-06-11
 author: apolo
 ---
 
-Roadmap: roadmap-req-wizard-e-list-2026-06-11.md
-ADR: ADR-2026-06-11-wizard-no-command-layer.md
+Roadmap: docs/roadmaps/claude/done/roadmap-req-wizard-e-list-2026-06-11.md
+ADR: docs/adr/ADR-2026-06-11-wizard-no-command-layer.md
 
 # REQ: REQ — Wizard Interativo nas Seções e req list
 

@@ -1,7 +1,7 @@
 {
   "name": "trackfw",
-  "version": "2.12.2",
-  "description": "Governance CLI for AI-native software delivery. Enforces traceability: ADR → REQ → ROADMAP → kanban. Native support for Codex, Claude Code, Gemini CLI, Cursor, Copilot, Windsurf, and Amazon Q.",
+  "version": "7.3.0",
+  "description": "Governance CLI for AI-native software delivery and AI coding agents. Enforces traceability: ADR → REQ → ROADMAP → kanban. Native support for Codex, Claude Code, Gemini CLI, Cursor, Copilot, Windsurf, Amazon Q, OpenCode, and Kiro.",
   "keywords": [
     "cli",
     "adr",
@@ -19,11 +19,22 @@
     "pre-commit",
     "developer-experience",
     "technical-debt",
+    "governance-cli",
+    "agents",
+    "agents-md",
+    "skills",
+    "subagents",
+    "hooks",
+    "ai-coding-assistant",
     "claude-code",
     "openai-codex",
+    "gemini-cli",
     "gemini",
+    "github-copilot",
     "cursor",
     "copilot",
+    "windsurf",
+    "amazon-q",
     "req",
     "trackfw"
   ],
@@ -39,7 +50,8 @@
   },
   "dependencies": {
     "commander": "^12.0.0",
-    "@inquirer/prompts": "^5.0.0"
+    "@inquirer/prompts": "^5.0.0",
+    "yaml": "^2.9.0"
   },
   "engines": { "node": ">=18" }
 }

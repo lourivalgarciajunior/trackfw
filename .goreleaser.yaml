@@ -1,0 +1,56 @@
+version: 2
+
+project_name: trackfw
+
+builds:
+  - main: ./cmd/trackfw
+    binary: trackfw
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w -X 'github.com/kgsaran/trackfw/internal/version.Version={{.Version}}'
+
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+release:
+  extra_files:
+    - glob: scripts/install.sh
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^Merge"
+
+brews:
+  - name: trackfw
+    homepage: "https://github.com/kgsaran/trackfw"
+    description: "Governed software delivery framework: ADR → REQ → ROADMAP → kanban"
+    license: "MIT"
+    repository:
+      owner: kgsaran
+      name: homebrew-trackfw
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formula
+    install: |
+      bin.install "trackfw"
+    test: |
+      assert_match "trackfw", shell_output("#{bin}/trackfw version")
+    skip_upload: auto

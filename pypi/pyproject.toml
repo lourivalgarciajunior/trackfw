@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "trackfw"
-version = "2.12.2"
-description = "Governance CLI for AI-native software delivery. Enforces traceability: ADR → REQ → ROADMAP → kanban. Native support for Codex, Claude Code, Gemini CLI, Cursor, Copilot, Windsurf, and Amazon Q."
+version = "7.3.0"
+description = "Governance CLI for AI-native software delivery and AI coding agents. Enforces traceability: ADR → REQ → ROADMAP → kanban. Native support for Codex, Claude Code, Gemini CLI, Cursor, Copilot, Windsurf, Amazon Q, OpenCode, and Kiro."
 readme = { file = "README.md", content-type = "text/markdown" }
 license = "MIT"
 requires-python = ">=3.10"
@@ -13,8 +13,13 @@ keywords = [
   "cli", "adr", "architecture-decision-records", "roadmap", "governance",
   "software-delivery", "devops", "ai-agents", "developer-tools", "kanban",
   "traceability", "software-governance", "ai-governance", "pre-commit",
-  "developer-experience", "technical-debt", "openai-codex", "claude-code", "gemini",
-  "cursor", "copilot", "trackfw"
+  "developer-experience", "technical-debt", "governance-cli", "agents",
+  "agents-md", "skills", "subagents", "hooks", "ai-coding-assistant",
+  "openai-codex", "claude-code", "gemini-cli", "gemini",
+  "github-copilot", "cursor", "copilot", "windsurf", "amazon-q", "trackfw"
+]
+dependencies = [
+  "PyYAML>=6.0",
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -30,14 +35,6 @@ classifiers = [
   "Topic :: Software Development :: Version Control",
   "Topic :: System :: Systems Administration",
 ]
-
-# O pacote em si não tem dependência externa — só stdlib.
-# Este grupo é exclusivamente de desenvolvimento: seis módulos de teste são
-# pytest-style (funções soltas com a fixture tmp_path) e o unittest não os
-# coleta. Sem pytest instalado eles viram ModuleNotFoundError e 37 testes
-# deixam de rodar. Ver REQ-2026-08-16-suite-pypi-verde.
-[project.optional-dependencies]
-dev = ["pytest>=7"]
 
 [project.urls]
 Homepage = "https://github.com/kgsaran/trackfw"
@@ -55,4 +52,7 @@ trackfw = [
     "serve/static/*.html",
     "serve/static/*.js",
     "serve/static/*.css",
+    "integrations/assets/catalog.json",
+    "integrations/assets/agents/*.md",
+    "integrations/assets/skills/*.md",
 ]

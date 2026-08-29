@@ -10,10 +10,22 @@
       "backendFramework": "Backend framework?",
       "gitHooks": "Git hooks?",
       "ci": "CI system?",
+      "forge": "Forge platform?",
       "aiTools": "Which AI assistants do you use?",
-      "require_req_in_commit": "Require REQ reference in commit messages for feat/fix branches?"
+      "require_req_in_commit": "Require REQ reference in commit messages for feat/fix branches?",
+      "identityPreset": "How would you like to name your agents?",
+      "identityCustomName": "Display name for the agent",
+      "identityNickname": "What should we call you? (optional)"
     },
     "success": "\n✓ trackfw initialized — run 'trackfw status' to see your governance state."
+  },
+  "identity": {
+    "inUse": "identity: {{count}} custom agent(s)",
+    "wizard": {
+      "confirmHeader": "── Confirmation ──────────────────────────────",
+      "confirmQuestion": "Confirm?",
+      "nicknameRowLabel": "What we'll call you:"
+    }
   },
   "adr": {
     "description": "Manage Architecture Decision Records",
@@ -41,21 +53,12 @@
   },
   "status": { "description": "Show project governance status" },
   "log": { "description": "Show roadmap state transition history", "empty": "No transitions recorded yet.", "tail": "Show last N transitions" },
-  "plugins": {
-    "description": "Manage trackfw plugins",
-    "list": { "description": "List installed plugins", "empty": "No plugins installed. Use `trackfw plugins add <user/repo>` to install one." },
-    "add": { "description": "Install a plugin from GitHub Releases", "installing": "Installing plugin from {{repo}}...", "success": "Plugin \"{{name}}\" installed successfully." },
-    "remove": { "description": "Remove an installed plugin", "success": "Plugin \"{{name}}\" removed." }
-  },
   "serve": {
     "description": "Start local governance visualization server"
   },
   "metrics": {
     "description": "Show delivery metrics",
     "no_data": "No transitions recorded yet."
-  },
-  "errors": {
-    "pluginNotFound": "plugin {{name}} not found"
   },
   "discover": {
     "description": "Scan the repository and auto-detect the governance structure"

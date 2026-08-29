@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/kgsaran/trackfw/internal/generators"
 )
 
 func TestMain(m *testing.M) {
@@ -157,6 +159,89 @@ func TestScan_HookAndCI(t *testing.T) {
 	}
 }
 
+// TestGenerateYAML_ForgePresent verifies that GenerateYAML emits "forge: github"
+// when the DiscoveryResult has Forge set to a valid value.
+func TestGenerateYAML_ForgePresent(t *testing.T) {
+	r := DiscoveryResult{
+		ADRDirs:            []string{"docs/adr"},
+		REQDir:             "docs/req",
+		RoadmapDir:         "docs/roadmaps",
+		RoadmapNamespacing: "flat",
+		HookFramework:      "none",
+		CISystem:           "none",
+		Forge:              "github",
+	}
+	yaml := GenerateYAML(r)
+	if !containsSubstr(yaml, "forge: github") {
+		t.Errorf("expected 'forge: github' in YAML, got:\n%s", yaml)
+	}
+	// forge must appear after ci:
+	ciIdx := findSubstr(yaml, "ci:")
+	forgeIdx := findSubstr(yaml, "forge:")
+	if ciIdx < 0 || forgeIdx < 0 || forgeIdx <= ciIdx {
+		t.Errorf("forge: must appear after ci: in YAML (ciIdx=%d, forgeIdx=%d)", ciIdx, forgeIdx)
+	}
+}
+
+// TestGenerateYAML_ForgeAbsent verifies that GenerateYAML omits the "forge:" key
+// entirely when Forge is empty (not detected).
+func TestGenerateYAML_ForgeAbsent(t *testing.T) {
+	r := DiscoveryResult{
+		ADRDirs:            []string{"docs/adr"},
+		REQDir:             "docs/req",
+		RoadmapDir:         "docs/roadmaps",
+		RoadmapNamespacing: "flat",
+		HookFramework:      "none",
+		CISystem:           "none",
+		Forge:              "", // not detected
+	}
+	yaml := GenerateYAML(r)
+	if containsSubstr(yaml, "forge:") {
+		t.Errorf("expected 'forge:' key to be absent in YAML when Forge is empty, got:\n%s", yaml)
+	}
+}
+
+// TestScan_ForgeFromCI verifies that Scan detects the forge via .gitlab-ci.yml when
+// there is no git remote (temp dir is not a git repo so remote returns empty).
+func TestScan_ForgeFromCI(t *testing.T) {
+	dir := t.TempDir()
+	// Write .gitlab-ci.yml but no .github/workflows — CI detection picks gitlab.
+	mustWriteFile(t, filepath.Join(dir, ".gitlab-ci.yml"), "stages:\n  - test\n")
+
+	r, err := Scan(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Forge != "gitlab" {
+		t.Errorf("expected Forge='gitlab' from .gitlab-ci.yml, got %q", r.Forge)
+	}
+	// The generated YAML must include the forge key.
+	yaml := GenerateYAML(r)
+	if !containsSubstr(yaml, "forge: gitlab") {
+		t.Errorf("expected 'forge: gitlab' in generated YAML, got:\n%s", yaml)
+	}
+}
+
+// TestScan_NoForge verifies that Scan leaves Forge empty when no CI files exist
+// and the directory is not a git repository (no remote URL available).
+func TestScan_NoForge(t *testing.T) {
+	dir := t.TempDir()
+	// Clean temp dir: no .gitlab-ci.yml, no .github/workflows, no git repo.
+
+	r, err := Scan(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Forge != "" {
+		t.Errorf("expected empty Forge for dir with no CI signals, got %q", r.Forge)
+	}
+	// The generated YAML must not include the forge key.
+	yaml := GenerateYAML(r)
+	if containsSubstr(yaml, "forge:") {
+		t.Errorf("expected 'forge:' key to be absent in YAML when forge not detected, got:\n%s", yaml)
+	}
+}
+
 func TestInstallGates_Lefthook_GithubActions(t *testing.T) {
 	dir := t.TempDir()
 	// cria lefthook.yml (sem entrada trackfw)
@@ -222,6 +307,141 @@ func TestInstallGates_Idempotente(t *testing.T) {
 	wfContent, _ := os.ReadFile(filepath.Join(dir, ".github/workflows/trackfw-validate.yml"))
 	if string(wfContent) != "# existing\n" {
 		t.Error("existing CI workflow should not be overwritten")
+	}
+}
+
+// TestInstallGates_GeraAttentionScripts confirma que `discover --init` (via InstallGates)
+// gera scripts/trackfw-attention-signal.sh e scripts/trackfw-attention-cleanup.sh no
+// rootDir, com o mesmo conteúdo produzido por `trackfw init` (generators.GenerateAttentionScripts),
+// executáveis (0755), e que a segunda execução é idempotente (conteúdo inalterado).
+func TestInstallGates_GeraAttentionScripts(t *testing.T) {
+	dir := t.TempDir()
+
+	r := DiscoveryResult{}
+	if err := InstallGates(r, dir, io.Discard); err != nil {
+		t.Fatalf("InstallGates error: %v", err)
+	}
+
+	signalPath := filepath.Join(dir, "scripts", "trackfw-attention-signal.sh")
+	cleanupPath := filepath.Join(dir, "scripts", "trackfw-attention-cleanup.sh")
+
+	signalInfo, err := os.Stat(signalPath)
+	if err != nil {
+		t.Fatalf("attention signal script not found: %v", err)
+	}
+	if signalInfo.Mode().Perm() != 0755 {
+		t.Errorf("attention signal script mode = %v, want 0755", signalInfo.Mode().Perm())
+	}
+
+	cleanupInfo, err := os.Stat(cleanupPath)
+	if err != nil {
+		t.Fatalf("attention cleanup script not found: %v", err)
+	}
+	if cleanupInfo.Mode().Perm() != 0755 {
+		t.Errorf("attention cleanup script mode = %v, want 0755", cleanupInfo.Mode().Perm())
+	}
+
+	signalGot, err := os.ReadFile(signalPath)
+	if err != nil {
+		t.Fatalf("reading signal script: %v", err)
+	}
+	cleanupGot, err := os.ReadFile(cleanupPath)
+	if err != nil {
+		t.Fatalf("reading cleanup script: %v", err)
+	}
+
+	// Compara byte-a-byte com o que `trackfw init` produziria via
+	// generators.GenerateAttentionScripts num diretório de referência independente.
+	refDir := t.TempDir()
+	if err := generators.GenerateAttentionScripts(refDir); err != nil {
+		t.Fatalf("GenerateAttentionScripts (reference) error: %v", err)
+	}
+	signalWant, err := os.ReadFile(filepath.Join(refDir, "scripts", "trackfw-attention-signal.sh"))
+	if err != nil {
+		t.Fatalf("reading reference signal script: %v", err)
+	}
+	cleanupWant, err := os.ReadFile(filepath.Join(refDir, "scripts", "trackfw-attention-cleanup.sh"))
+	if err != nil {
+		t.Fatalf("reading reference cleanup script: %v", err)
+	}
+
+	if string(signalGot) != string(signalWant) {
+		t.Error("discover --init attention signal script differs from trackfw init output")
+	}
+	if string(cleanupGot) != string(cleanupWant) {
+		t.Error("discover --init attention cleanup script differs from trackfw init output")
+	}
+
+	// Idempotência: rodar novamente não deve corromper nem alterar os arquivos.
+	if err := InstallGates(r, dir, io.Discard); err != nil {
+		t.Fatalf("InstallGates (2nd run) error: %v", err)
+	}
+	signalGot2, err := os.ReadFile(signalPath)
+	if err != nil {
+		t.Fatalf("reading signal script after 2nd run: %v", err)
+	}
+	if string(signalGot2) != string(signalGot) {
+		t.Error("attention signal script changed after re-running InstallGates (not idempotent)")
+	}
+	cleanupGot2, err := os.ReadFile(cleanupPath)
+	if err != nil {
+		t.Fatalf("reading cleanup script after 2nd run: %v", err)
+	}
+	if string(cleanupGot2) != string(cleanupGot) {
+		t.Error("attention cleanup script changed after re-running InstallGates (not idempotent)")
+	}
+}
+
+// TestInstallGates_GeraCredentialGuardScript confirma que `discover --init` (via
+// InstallGates) gera scripts/trackfw-credential-guard.sh no rootDir, com o mesmo
+// conteúdo produzido por `trackfw init` (generators.GenerateCredentialGuardScript),
+// executável (0755) — regressão do bug em que o gerador existia mas nunca era
+// chamado por nenhum fluxo real (só por testes que o chamavam diretamente).
+func TestInstallGates_GeraCredentialGuardScript(t *testing.T) {
+	dir := t.TempDir()
+
+	r := DiscoveryResult{}
+	if err := InstallGates(r, dir, io.Discard); err != nil {
+		t.Fatalf("InstallGates error: %v", err)
+	}
+
+	guardPath := filepath.Join(dir, "scripts", "trackfw-credential-guard.sh")
+
+	guardInfo, err := os.Stat(guardPath)
+	if err != nil {
+		t.Fatalf("credential guard script not found: %v", err)
+	}
+	if guardInfo.Mode().Perm() != 0755 {
+		t.Errorf("credential guard script mode = %v, want 0755", guardInfo.Mode().Perm())
+	}
+
+	guardGot, err := os.ReadFile(guardPath)
+	if err != nil {
+		t.Fatalf("reading credential guard script: %v", err)
+	}
+
+	refDir := t.TempDir()
+	if err := generators.GenerateCredentialGuardScript(refDir); err != nil {
+		t.Fatalf("GenerateCredentialGuardScript (reference) error: %v", err)
+	}
+	guardWant, err := os.ReadFile(filepath.Join(refDir, "scripts", "trackfw-credential-guard.sh"))
+	if err != nil {
+		t.Fatalf("reading reference credential guard script: %v", err)
+	}
+	if string(guardGot) != string(guardWant) {
+		t.Error("discover --init credential guard script differs from trackfw init output")
+	}
+
+	// Idempotência.
+	if err := InstallGates(r, dir, io.Discard); err != nil {
+		t.Fatalf("InstallGates (2nd run) error: %v", err)
+	}
+	guardGot2, err := os.ReadFile(guardPath)
+	if err != nil {
+		t.Fatalf("reading credential guard script after 2nd run: %v", err)
+	}
+	if string(guardGot2) != string(guardGot) {
+		t.Error("credential guard script changed after re-running InstallGates (not idempotent)")
 	}
 }
 
@@ -358,6 +578,169 @@ func TestInstallHuskyNPX_SemPackageJSON(t *testing.T) {
 	}
 }
 
+// TestScan_SuggestedTestFramework_Jest verifica que a presença de jest.config.js
+// sugere "jest".
+func TestScan_SuggestedTestFramework_Jest(t *testing.T) {
+	dir := t.TempDir()
+	mustWriteFile(t, filepath.Join(dir, "jest.config.js"), "module.exports = {}\n")
+
+	r, err := Scan(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.SuggestedTestFramework != "jest" {
+		t.Errorf("expected 'jest', got %q", r.SuggestedTestFramework)
+	}
+}
+
+// TestScan_SuggestedTestFramework_JestTS verifica jest.config.ts também sugere "jest".
+func TestScan_SuggestedTestFramework_JestTS(t *testing.T) {
+	dir := t.TempDir()
+	mustWriteFile(t, filepath.Join(dir, "jest.config.ts"), "export default {}\n")
+
+	r, err := Scan(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.SuggestedTestFramework != "jest" {
+		t.Errorf("expected 'jest', got %q", r.SuggestedTestFramework)
+	}
+}
+
+// TestScan_SuggestedTestFramework_Vitest verifica que a presença de vitest.config.js
+// sugere "vitest".
+func TestScan_SuggestedTestFramework_Vitest(t *testing.T) {
+	dir := t.TempDir()
+	mustWriteFile(t, filepath.Join(dir, "vitest.config.js"), "export default {}\n")
+
+	r, err := Scan(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.SuggestedTestFramework != "vitest" {
+		t.Errorf("expected 'vitest', got %q", r.SuggestedTestFramework)
+	}
+}
+
+// TestScan_SuggestedTestFramework_VitestTS verifica vitest.config.ts também sugere "vitest".
+func TestScan_SuggestedTestFramework_VitestTS(t *testing.T) {
+	dir := t.TempDir()
+	mustWriteFile(t, filepath.Join(dir, "vitest.config.ts"), "export default {}\n")
+
+	r, err := Scan(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.SuggestedTestFramework != "vitest" {
+		t.Errorf("expected 'vitest', got %q", r.SuggestedTestFramework)
+	}
+}
+
+// TestScan_SuggestedTestFramework_PytestIni verifica que pytest.ini sugere "pytest".
+func TestScan_SuggestedTestFramework_PytestIni(t *testing.T) {
+	dir := t.TempDir()
+	mustWriteFile(t, filepath.Join(dir, "pytest.ini"), "[pytest]\n")
+
+	r, err := Scan(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.SuggestedTestFramework != "pytest" {
+		t.Errorf("expected 'pytest', got %q", r.SuggestedTestFramework)
+	}
+}
+
+// TestScan_SuggestedTestFramework_PyprojectToml verifica que pyproject.toml com seção
+// [tool.pytest.ini_options] sugere "pytest".
+func TestScan_SuggestedTestFramework_PyprojectToml(t *testing.T) {
+	dir := t.TempDir()
+	mustWriteFile(t, filepath.Join(dir, "pyproject.toml"), "[tool.pytest.ini_options]\naddopts = \"-ra\"\n")
+
+	r, err := Scan(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.SuggestedTestFramework != "pytest" {
+		t.Errorf("expected 'pytest', got %q", r.SuggestedTestFramework)
+	}
+}
+
+// TestScan_SuggestedTestFramework_PyprojectTomlSemPytest verifica que um pyproject.toml
+// SEM seção [tool.pytest...] não sugere "pytest".
+func TestScan_SuggestedTestFramework_PyprojectTomlSemPytest(t *testing.T) {
+	dir := t.TempDir()
+	mustWriteFile(t, filepath.Join(dir, "pyproject.toml"), "[tool.black]\nline-length = 88\n")
+
+	r, err := Scan(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.SuggestedTestFramework != "" {
+		t.Errorf("expected '', got %q", r.SuggestedTestFramework)
+	}
+}
+
+// TestScan_SuggestedTestFramework_SetupCfg verifica que setup.cfg com [tool:pytest]
+// sugere "pytest".
+func TestScan_SuggestedTestFramework_SetupCfg(t *testing.T) {
+	dir := t.TempDir()
+	mustWriteFile(t, filepath.Join(dir, "setup.cfg"), "[tool:pytest]\ntestpaths = tests\n")
+
+	r, err := Scan(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.SuggestedTestFramework != "pytest" {
+		t.Errorf("expected 'pytest', got %q", r.SuggestedTestFramework)
+	}
+}
+
+// TestScan_SuggestedTestFramework_GoTest verifica que go.mod + *_test.go em qualquer
+// lugar do repositório sugere "go test".
+func TestScan_SuggestedTestFramework_GoTest(t *testing.T) {
+	dir := t.TempDir()
+	mustWriteFile(t, filepath.Join(dir, "go.mod"), "module example.com/foo\n\ngo 1.22\n")
+	mustMkdir(t, dir, "internal/foo")
+	mustWriteFile(t, filepath.Join(dir, "internal/foo/foo_test.go"), "package foo\n")
+
+	r, err := Scan(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.SuggestedTestFramework != "go test" {
+		t.Errorf("expected 'go test', got %q", r.SuggestedTestFramework)
+	}
+}
+
+// TestScan_SuggestedTestFramework_GoModSemTestFile verifica que go.mod SEM nenhum
+// *_test.go NÃO sugere "go test".
+func TestScan_SuggestedTestFramework_GoModSemTestFile(t *testing.T) {
+	dir := t.TempDir()
+	mustWriteFile(t, filepath.Join(dir, "go.mod"), "module example.com/foo\n\ngo 1.22\n")
+
+	r, err := Scan(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.SuggestedTestFramework != "" {
+		t.Errorf("expected '', got %q", r.SuggestedTestFramework)
+	}
+}
+
+// TestScan_SuggestedTestFramework_Nenhum verifica que a ausência de todos os
+// arquivos-gatilho resulta em SuggestedTestFramework vazio (nunca erro).
+func TestScan_SuggestedTestFramework_Nenhum(t *testing.T) {
+	dir := t.TempDir()
+
+	r, err := Scan(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.SuggestedTestFramework != "" {
+		t.Errorf("expected '', got %q", r.SuggestedTestFramework)
+	}
+}
+
 // helpers
 
 func mustMkdir(t *testing.T, base, rel string) {
@@ -385,4 +768,14 @@ func containsSubstr(s, sub string) bool {
 		}
 	}
 	return false
+}
+
+// findSubstr returns the index of the first occurrence of sub in s, or -1.
+func findSubstr(s, sub string) int {
+	for i := 0; i <= len(s)-len(sub); i++ {
+		if s[i:i+len(sub)] == sub {
+			return i
+		}
+	}
+	return -1
 }

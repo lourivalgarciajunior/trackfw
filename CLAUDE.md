@@ -1,127 +1,242 @@
-# CLAUDE.md
+# trackfw — Instruções de Projeto (Claude Code)
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+> Regras globais de workflow estão em `~/.claude/CLAUDE.md` e se aplicam aqui.
 
-## What this is
+## Visão geral
 
-**trackfw** is a governance CLI that enforces a traceable delivery chain — `ADR → REQ → ROADMAP → backlog/wip/blocked/done/abandoned` — using Markdown files and folder position as the only state. No database, no SaaS. See [README.md](README.md) and [docs/visao-projeto/VISION.md](docs/visao-projeto/VISION.md) for the full product rationale.
+**trackfw** é um CLI de governança de entrega de software open-source.
+Cadeia: `ADR → REQ → ROADMAP → backlog/wip/blocked/done/abandoned`
 
-## Tri-runtime architecture (most important concept)
+Leia `docs/visao-projeto/VISION.md` antes de qualquer tarefa.
+Leia `docs/agents-working-context.md` para o estado atual de trabalho.
 
-The same CLI is shipped as **three independent native reimplementations** that must behave identically:
+## Stack
 
-| Runtime | Location | Entry point | Language |
+- **Linguagem:** Go
+- **CLI framework:** cobra (`github.com/spf13/cobra`)
+- **Wizard:** huh (`github.com/charmbracelet/huh`)
+- **Module:** `github.com/kgsaran/trackfw`
+
+## Estrutura
+
+```
+cmd/trackfw/        → entry point
+internal/commands/  → comandos CLI
+internal/generators/→ geradores de artefatos por stack
+internal/validator/ → validate + status
+docs/               → visão, contexto de trabalho
+scripts/            → install.sh
+```
+
+## Comandos
+
+```bash
+make build          # compila o binário em bin/trackfw
+make test           # go test ./...
+make lint           # go vet ./...
+make quality        # Go + Node.js + Python + contratos de paridade
+make install        # instala em /usr/local/bin
+```
+
+## Regra Dura de Paridade — 3 CLIs (INVIOLÁVEL)
+
+Toda feature nova, correção de comportamento ou ajuste de lógica **DEVE ser implementada nos três CLIs**:
+
+| CLI | Localização | Stack |
+|-----|------------|-------|
+| Go | `internal/` | Go + cobra |
+| Node.js | `npm/src/` | Node.js puro (commander) |
+| Python | `pypi/trackfw/` | Python puro (argparse/click) |
+
+**Nenhum PR é aceito sem paridade nos 3 CLIs.** O contrato e as exceções
+intencionais estão documentados em `docs/cli-parity.md`. Mudanças doc-only,
+infra e templates de artefato são exceções explícitas.
+
+## Regras específicas
+
+- **Nunca commitar na `main` sem PR** (mesmo sendo projeto novo)
+- **Build obrigatório** após qualquer alteração: `go build ./...`
+- **Atualizar `docs/agents-working-context.md`** ao iniciar e encerrar cada ciclo
+
+## Instalação de skills de terceiro (`trackfw <skills|agents> third-party`)
+
+Instala skills externas (via URL) em duas fases obrigatórias, com um ponto de revisão humana entre
+elas — **nunca instale sem revisar o conteúdo em quarentena antes de aprovar**:
+
+1. `trackfw <skills|agents> third-party fetch <url>` — baixa o conteúdo e grava um registro de quarentena em
+   `.trackfw/thirdparty-quarantine/<checksum>.json`. Nada é instalado ainda.
+2. **Revisão humana obrigatória** do conteúdo em quarentena, seguida da aprovação (que grava
+   `.trackfw/thirdparty-provenance.json` — nenhum comando do CLI escreve essa aprovação sozinho).
+3. `trackfw <skills|agents> third-party install --checksum <sha256> --targets <...>` — só instala se houver
+   aprovação de provenance correspondente ao checksum.
+
+O checker de markers usado em `fetch` é uma tripwire para o caso óbvio, não uma defesa contra um
+adversário competente (não cobre paráfrase, indireção, fragmentação, homoglifos ou conteúdo
+auto-modificável depois de aprovado). Detalhes completos, os 3 schemas JSON e as garantias/limites
+da regra `trackfw validate` `thirdparty_artifact_has_provenance` estão em
+`docs/cli-parity.md` (seção `trackfw <skills|agents> third-party`).
+
+## Sinalização de Atenção para o Board (`trackfw serve`)
+
+Quando um agente precisar de confirmação ou ação do usuário durante uma implementação,
+**escreva o arquivo `.trackfw-attention.json`** na raiz do diretório de roadmaps
+(ex: `docs/roadmaps/.trackfw-attention.json`).
+
+O `trackfw serve` monitora esse arquivo a cada 8 s e exibe um banner de alerta no board.
+
+### Formato obrigatório
+
+```json
+{
+  "roadmap": "nome-exato-do-arquivo.md",
+  "ml": "ML-2A — Título do microlote",
+  "message": "Descreva objetivamente o que você precisa do usuário.",
+  "level": "action_required",
+  "timestamp": "2026-06-18T10:30:00Z"
+}
+```
+
+| Campo | Obrigatório | Valores | Descrição |
 |---|---|---|---|
-| **Go** (canonical) | `cmd/trackfw` + `internal/` | `cmd/trackfw/main.go` → `commands.Execute()` | Go (cobra), module `github.com/kgsaran/trackfw` |
-| **Node.js** | `npm/` | `npm/bin/trackfw` → `npm/src/commands/index.js` | Node ≥ 18 (commander, @inquirer/prompts) |
-| **Python** | `pypi/` | `pypi/trackfw/cli.py:main` | Python ≥ 3.10 (stdlib only) |
+| `message` | ✅ | string | Pergunta ou informação clara para o usuário |
+| `level` | ✅ | `"action_required"` \| `"info"` | `action_required` = banner âmbar; `info` = banner azul |
+| `timestamp` | ✅ | ISO 8601 UTC | Usado para deduplicar dismissals no browser |
+| `roadmap` | recomendado | basename do `.md` | Marca o card correspondente no board |
+| `ml` | opcional | string | Microlote em andamento |
 
-The three trees mirror each other deliberately: `internal/commands/*.go` ↔ `npm/src/commands/*.js` ↔ `pypi/trackfw/commands/*.py`, same for `config/`, `validator/`, `generators/`, `serve/`, `i18n/`. **Go is the reference implementation.** When you change shared behavior in one runtime, you almost always need to change all three or you break parity.
+### Quando usar
 
-Parity is contractually enforced by `scripts/`:
-- `scripts/check-cli-parity.sh` — every runtime must expose the same command set and `version`/`--version` output.
-- `scripts/check-validate-parity.sh` — `validate` must produce identical violations across runtimes against the same fixture project.
-- `scripts/check-static-assets.sh` — the `serve` dashboard's static assets must be **byte-identical** across runtimes. Canonical source is `internal/serve/static/{index.html,app.js,style.css}`; `npm/src/serve/static/` and `pypi/trackfw/serve/static/` are copies. Edit the canonical Go copy, then sync the other two.
+- Agente encontrou ambiguidade bloqueante que não pode resolver com o contexto disponível.
+- Agente precisa escolher entre duas abordagens e o impacto é significativo.
+- Agente gerou artefato que requer revisão antes de continuar.
 
-Intentional, allowed divergences (Go-binary-only commands like `agents`, `gemini`, `cursor`, `copilot`, `windsurf`, `amazonq`) are documented in `docs/cli-parity.md`. In the npm/pip packages those AI integrations run through `trackfw init` instead.
+### Quando NÃO usar
 
-## Build, test, lint
+- Dúvidas que podem ser resolvidas lendo o roadmap, CLAUDE.md ou o código existente.
+- Decisões de baixo risco (nomenclatura, formatação, ordem de campos).
 
-> Note: this working copy may be missing `go.mod` and `cmd/trackfw/main.go` (and `.github/workflows/`). The Go source under `internal/` is present. If `go build` fails with "no go.mod", you are in a partial snapshot — restore the module file before building.
+### Limpeza após resolução
 
-**Go (canonical):**
+**Apague o arquivo** assim que a atenção não for mais necessária — o banner desaparece automaticamente.
+
 ```bash
-go build -o bin/trackfw ./cmd/trackfw   # what check-cli-parity.sh runs
-go test ./...                            # all Go tests
-go test ./internal/validator/ -run TestName   # single test
-go vet ./...                             # lint
-```
-(`make build` / `make test` / `make lint` are the documented aliases when a Makefile is present.)
-
-**Node.js:**
-```bash
-cd npm && npm install
-node --test tests/*.test.js              # npm run test
-node bin/trackfw --help                  # npm run smoke
+rm docs/roadmaps/.trackfw-attention.json
 ```
 
-**Python:**
+---
+
+## Protocolo de Release (tag)
+
+Ao gerar uma nova tag, o fluxo obrigatório é:
+
+1. **Determinar a próxima versão** com base no SemVer e nos commits desde a última tag:
+   - `git tag --sort=-version:refname | head -1` — última tag
+   - `git log <última-tag>..HEAD --oneline --no-merges` — commits incluídos
+
+2. **Gerar o changelog** a partir dos commits desde a última tag, agrupando por tipo:
+   - `feat` → What's New / `### Added`
+   - `fix` → Fixes / `### Fixed`
+   - `refactor/perf` → `### Changed`
+   - `docs/chore/test/style/build/ci` → omitir ou agrupar em "Internal"
+   - Indicar Breaking Changes explicitamente (ou "Nenhum" se retrocompatível)
+
+3. **Atualizar `CHANGELOG.md`** (raiz do projeto, formato [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)):
+   inserir uma nova seção `## [x.y.z] - YYYY-MM-DD` **no topo** do arquivo,
+   com o mesmo agrupamento do passo 2. Este é o mesmo PR do bump de versão
+   (`chore(release): bump version files to x.y.z`) — nunca um commit separado.
+   `CHANGELOG.md` é arquivo único na raiz; não duplicar em `npm/` ou `pypi/`.
+
+4. **Criar a tag anotada** com o changelog no corpo da mensagem:
+   ```bash
+   git tag -a v<x.y.z> -m "<changelog>"
+   git push origin v<x.y.z>
+   ```
+
+5. **Nunca criar tag diretamente na main sem PRs merged** — a tag representa o estado pós-merge.
+
+> Critério de versão: feat breaking → major; feat não-breaking → minor; fix/patch → patch.
+
+<!-- trackfw:rules:start -->
+## trackfw — Governance Rules
+
+This project uses **trackfw** for AI-native delivery governance.
+Chain: `ADR → REQ → ROADMAP` · States: `backlog / analyzing / wip / blocked / done / abandoned`
+
+### Agent Protocol
+1. **Before any implementation (mandatory):** create governance artifacts FIRST, then branch:
+   `trackfw req new "title"` → `trackfw roadmap new "title"` → `trackfw roadmap move <name> wip` → `git checkout -b feat/<branch>`
+   ❌ Never create a branch before REQ + ROADMAP are in wip/
+   ❌ Never defer REQ/ROADMAP creation to a future task — they are prerequisites, not deliverables
+   ✓ `trackfw validate` enforces this via `branch_has_wip_roadmap` rule (v2.7.0+)
+2. **Before starting:** run `trackfw context` · read `docs/agents-working-context.md`
+3. **After finishing:** update `docs/agents-working-context.md` with what changed
+4. **Before PR:** `trackfw validate` must pass
+5. **ML lifecycle — mandatory:**
+   - Starting a ML: edit roadmap `**Status:** ⬜ Pendente` → `**Status:** 🔄 Em andamento` + commit.
+   - Completing a ML: edit roadmap → `**Status:** ✅ Concluído` + include in ML commit.
+   - Analyzing a roadmap: move from `backlog/` to `analyzing/`; to `wip/` only when coding starts.
+6. **Obrigatório: Inspecione e respeite todos os ADRs globais nos diretórios listados em adr_dirs (inclusive caminhos ~/...) antes de propor alterações de arquitetura.**
+
+### Attention Signal (when you need user input during a task)
+Write `docs/roadmaps/.trackfw-attention.json`:
+```json
+{"roadmap":"file.md","ml":"ML-1A","message":"what you need","level":"action_required","timestamp":"ISO8601Z"}
+```
+Delete the file when resolved. Visible as a live banner in `trackfw serve`.
+
+> **Windsurf users:** before asking the user a question or requesting approval, write
+> `<roadmap_dir>/.trackfw-attention.json` manually — there is no automatic hook for this.
+> Delete the file after the user responds.
+
+### Architecture Directives (mandatory)
+- **3-layer separation:** frontend / backend / database — never mix concerns
+- **No in-memory data:** always database + ORM (never arrays/globals for persistence)
+- **Auth from day 1:** never defer — refactoring auth later is very costly
+- **Docker + .env from day 1:** containerize early; all config via env vars
+- **2-layer validation:** frontend (UX) + backend (security) — never only one
+- **API-first:** define OpenAPI contract before coding frontend/backend integration
+- **Security wave:** include a red-team review wave in every feature roadmap
+- **Test coverage:** TDD for critical logic; min 60% (prototype) / 80% (production)
+- Use `/trackfw:architect` to define stack before the first REQ
+
+### Key Commands
+- `trackfw context` — current governance state (always run first)
+- `trackfw status` — all artifacts and states
+- `trackfw validate` — governance consistency check
+- `trackfw roadmap move <name> <state>` — transition roadmap state
+- `trackfw serve` — live Kanban board at http://localhost:4080
+<!-- trackfw:rules:end -->
+
+---
+
+## Este repositório é uma cópia consumidora, não o upstream
+
+O produto vem de `kgsaran/trackfw`, adicionado como remote `upstream`. Este repo **consome** o
+trackfw e o usa para governar a si mesmo; ele não é a linha principal do produto.
+
+**Atualizar:**
+
 ```bash
-cd pypi && pip install -e ".[dev]"       # dev extra = pytest; the package itself is stdlib-only
-python3 -m pytest tests/                 # tests live in pypi/tests/
-PYTHONPATH=. python3 -m trackfw --help   # run the CLI from source
+git fetch upstream
+git merge upstream/<tag>     # ex.: upstream/v7.4.0
 ```
 
-**pytest is required, not optional.** Six test modules are pytest-style — bare `test_*` functions
-using the `tmp_path` fixture — which `unittest` cannot collect: `test_context_req_by_agent`,
-`test_discover`, `test_req_by_agent`, `test_rules_req_configuraveis`, `test_serve_api`,
-`test_traceid`. Without pytest they fail as `ModuleNotFoundError` and 37 tests silently never run.
+Funciona porque `ADR-2026-08-29-adotar-upstream-como-base` estabeleceu a ancestralidade com um merge
+de históricos. Antes disso o repo era cópia por ZIP, sem ancestral comum, e `git merge` se recusava
+a rodar — o que deixou este repo cinco majors atrás sem ninguém perceber.
 
-`python3 -m unittest discover -s tests -t .` still works for the `TestCase`-style modules, but it
-skips those six. Note the `-t .`: `pypi/tests/__init__.py` forces UTF-8 output, and without
-`-t .` unittest imports the modules top-level and never runs it.
+Conflito ao atualizar é esperado e é o sinal de onde vocês divergem. A política é a da ADR: produto
+vem do upstream; `docs/`, `trackfw.yaml` e `.gitattributes` são locais.
 
-**Parity gates (run after any cross-runtime change):**
-```bash
-bash scripts/check-cli-parity.sh
-bash scripts/check-subcommand-parity.sh
-bash scripts/check-validate-parity.sh
-bash scripts/check-static-assets.sh
-```
+**Governança local** (o `trackfw.yaml` daqui sobrescreve dois defaults do produto):
 
-`check-cli-parity.sh` only compares **top-level** commands, and only checks presence. That is why
-`req move` was missing from all three runtimes and `req list` from Python without any gate noticing —
-`req` existed everywhere, so parity passed.
+- `req_dir: docs/requisições` — não `docs/req`. O nome em português é histórico.
+- `roadmap_namespacing: by_agent`, agentes `[apolo, artemis, claude]`, então os artefatos ficam em
+  `docs/requisições/<agente>/` e `docs/roadmaps/<agente>/{backlog,wip,done}/`.
 
-`check-subcommand-parity.sh` goes one level down and compares **sets** in both directions: missing
-*and* extra. Known divergences are declared inline in the script with a reason each; a new one fails
-the gate. It also warns when a declaration no longer matches reality, so the list does not rot.
+A governança do upstream **não** é importada: as 52 ADRs, 140 REQs e 142 roadmaps dele cairiam
+dentro de `docs/adr/` e `docs/roadmaps/`, que é onde vive a governança daqui.
 
-## The governance domain model
-
-Understanding these layers is required to work on `validate`, `context`, or any generator:
-
-- **ADR** (`docs/adr/`) — the *why*. A REQ is "blocked" until every ADR it links reaches `Status: Accepted`.
-- **REQ** (`docs/req/` by default) — the *what*, links to an ADR.
-- **ROADMAP** (`docs/roadmaps/{backlog,analyzing,wip,blocked,done,abandoned}/`) — the *when*. **Folder position IS the state** — moving a file is the state transition.
-- `validate` is the heart of the tool: a configurable gate (15+ rules, each `off`/`warning`/`error`, plus `governance_mode: strict|lenient`) meant to run as a pre-commit hook and CI gate.
-
-Two config features pervade the validator and must be handled in every code path that walks artifacts:
-- **`roadmap_namespacing: by_agent`** — artifacts nest under an agent name (`docs/roadmaps/claude/wip/`). All walking/validation must be by_agent-aware to avoid false positives.
-- **`trace_id_field`** — bidirectional REQ↔ROADMAP linking with 5 dedicated checks (see `internal/validator/validator_traceid.go`).
-
-Config is loaded from `trackfw.yaml`; the schema/loader lives in `internal/config/` (and the Node/Python mirrors).
-
-### This repo's own governance (dogfooding)
-
-trackfw governs itself, and its `trackfw.yaml` overrides two defaults — read it before assuming any path:
-
-- `req_dir: docs/requisições` (not `docs/req`) — the Portuguese name is historical.
-- `roadmap_namespacing: by_agent` with `agents: [apolo, artemis, claude]`, so artifacts live in
-  `docs/requisições/<agent>/` and `docs/roadmaps/<agent>/{backlog,wip,done}/`.
-
-Until 2026-08-16 there was no `trackfw.yaml` at all: the CLI ran on the flat defaults and saw 2 of
-the repo's 66 artifacts, which hid 3 roadmaps stuck in `wip/` and 20 validate violations. If you
-find artifacts outside the two paths above, that is drift — see
-`docs/requisições/claude/REQ-2026-08-16-consolidar-arvores-governanca.md`.
-
-## Key internal packages (Go)
-
-- `internal/commands/` — one file per CLI command; `root.go` registers them all on the cobra root.
-- `internal/config/` — `trackfw.yaml` parsing, path resolution, namespacing, config evolution.
-- `internal/validator/` — all governance rules + traceid checks. Heavily test-covered; mirror new rules into npm/pypi.
-- `internal/generators/` — stack- and AI-tool-specific file emitters used by `init`/`update`. Add a new stack here without touching core logic. Templates in `internal/generators/templates/{agents,amazonq,copilot,cursor,gemini,windsurf}/`. Each installer is idempotent — never overwrite user customizations.
-- `internal/serve/` + `internal/server/` — local governance dashboard HTTP API + the byte-identical static frontend.
-- `internal/discover/` — discovery/CMDB mode that infers governance state from an existing repo.
-- `internal/sync/` — Jira / Linear integrations.
-- `internal/metrics/`, `internal/plugins/`, `internal/i18n/` (locales: `en-US`, `es-ES`, `pt-BR`).
-
-## AI assistant integrations
-
-`init`/`update` install governance context for 6+ AI CLIs and auto-inject **attention hooks** (`PreToolUse`/`PostToolUse`) so the `serve` board shows a live banner when an agent needs user action. The 10 specialist roles installed for each tool are: **architect, backend, frontend, qa, infra, security, code-quality, dba, ux, data** — templates under `internal/generators/templates/`.
-
-## Conventions
-
-- Go code uses `github.com/spf13/cobra` for command wiring and `github.com/kgsaran/trackfw` as the module path.
-- Every command/feature change should add tests in all three runtimes (`*_test.go`, `npm/tests/*.test.js`, `pypi/tests/`).
-- Project planning artifacts live under `docs/requisições/<agent>/` and `docs/roadmaps/<agent>/`, organized by lifecycle (`backlog/wip/done`). This repo dogfoods trackfw on itself — see "This repo's own governance" above. `docs/req/` and `docs/roadmap/` (singular) were drift and no longer exist.
+**Divergência local deliberada:** `pypi/trackfw/cli.py` tem `_force_utf8_output`, que não existe no
+upstream. Sem ele, `--help`, `status` e `validate` morrem com `UnicodeEncodeError` em console
+Windows cp1252. Ver `REQ-2026-08-16-cli-python-utf8-windows`.

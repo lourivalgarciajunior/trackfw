@@ -29,6 +29,10 @@ func newRoadmapNewCmd() *cobra.Command {
 		Short: "Create a new roadmap from a REQ",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Suprimir o bloco de Usage em erros de validação de entrada (ex: título
+			// com newline). O uso correto do comando não muda após um erro de entrada.
+			cmd.SilenceUsage = true
+
 			// --from-req: gera roadmap pré-preenchido com MLs extraídos da REQ
 			if fromReq != "" {
 				return generators.NewRoadmapFromREQ(fromReq)
@@ -68,23 +72,18 @@ func newRoadmapNewCmd() *cobra.Command {
 					return fmt.Errorf("wizard: %w", err)
 				}
 			} else if len(args) > 0 {
-				selectedREQ = args[0]
+				if title == "" {
+					title = args[0]
+				}
+				// selectedREQ permanece vazio — argumento posicional é o título, não um caminho de REQ
 			} else if len(reqFiles) == 0 {
-				// Antes daqui saía uma mensagem e um `return nil` — exit 0 sem
-				// criar nada, reportando sucesso a quem confia no código de saída.
-				// Agora cria e avisa: um roadmap em backlog/ sem REQ é estado
-				// legítimo do modelo, e quem cobra o link é o validate, na hora
-				// em que ele importa. Ver REQ-2026-08-16-roadmap-new-paridade-contrato.
-				fmt.Fprintln(os.Stderr, "aviso: nenhuma REQ encontrada em "+config.Load().REQDir+" — o roadmap será criado sem link de REQ.")
-				fmt.Fprintln(os.Stderr, "       isso vira violação de wip_has_req ao mover para wip/. Use --req ou --from-req para linkar.")
+				fmt.Fprintln(os.Stderr, "Nenhuma REQ encontrada em docs/req/. Crie uma REQ primeiro com 'trackfw req new'.")
+				return nil
 			}
 
-			if title == "" && selectedREQ != "" {
+			if title == "" {
 				title = strings.TrimSuffix(filepath.Base(selectedREQ), ".md")
 				title = strings.TrimPrefix(title, "REQ-")
-			}
-			if title == "" {
-				return fmt.Errorf("informe o título com --title, ou uma REQ com --req/--from-req")
 			}
 
 			return generators.NewRoadmapFromContent(generators.RoadmapContent{
@@ -123,7 +122,7 @@ func newRoadmapShowCmd() *cobra.Command {
 func newRoadmapMoveCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "move <name> <state>",
-		Short: "Move a roadmap between states (backlog|wip|blocked|done|abandoned)",
+		Short: "Move a roadmap between states (backlog|analyzing|wip|blocked|done|abandoned)",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return generators.MoveRoadmap(args[0], args[1])

@@ -7,7 +7,7 @@ import sys
 
 
 def register(subparsers):
-    """Adiciona subcomando `req` com sub-subcomando `new` ao parser principal."""
+    """Adiciona subcomando `req` ao parser principal."""
     req_parser = subparsers.add_parser(
         "req",
         help="Manage Requirements",
@@ -26,20 +26,17 @@ def register(subparsers):
         help="REQ title (prompted if omitted)",
     )
 
-    # req move <name> <state>
-    #
-    # O roadmap tinha transicao de estado como comando desde sempre; a REQ nao,
-    # apesar de o validator ja varrer os cinco estados dela.
-    # Ver REQ-2026-08-17-req-move.
     move_parser = req_sub.add_parser(
         "move",
-        help="Move a REQ between states (backlog|wip|blocked|done|abandoned)",
+        help="Update a REQ status in place",
     )
-    move_parser.add_argument("name", help="REQ name (partial match)")
-    move_parser.add_argument("state", help="Target state")
+    move_parser.add_argument("name", help="REQ filename fragment")
+    move_parser.add_argument("status", help="New status")
 
-    # req list
-    req_sub.add_parser("list", help="List all REQs with status")
+    req_sub.add_parser(
+        "list",
+        help="List REQs",
+    )
 
     req_parser.set_defaults(func=_dispatch)
 
@@ -54,28 +51,8 @@ def _dispatch(args):
         _cmd_list(args)
     else:
         print("Usage: trackfw req <command>")
-        print("Commands: new, list, move")
+        print("Commands: new, move, list")
         sys.exit(0)
-
-
-def _cmd_list(args):
-    from trackfw.config import load as load_config
-    from trackfw.generators.req import list_reqs
-
-    list_reqs(load_config())
-
-
-def _cmd_move(args):
-    from trackfw.config import load as load_config
-    from trackfw.generators.req import move_req
-
-    try:
-        dst = move_req(args.name, args.state, load_config())
-    except (ValueError, FileNotFoundError) as e:
-        print(str(e), file=sys.stderr)
-        sys.exit(1)
-
-    print(f"✓ moved {args.name} → {dst}")
 
 
 def _cmd_new(args):
@@ -99,3 +76,24 @@ def _cmd_new(args):
 
     filepath = generate_req(title=title, req_dir=req_dir)
     print(f"created {filepath}")
+
+
+def _cmd_move(args):
+    from trackfw.config import load as load_config
+    from trackfw.generators.req import move_req
+
+    cfg = load_config()
+    try:
+        filepath = move_req(args.name, args.status, cfg=cfg)
+    except RuntimeError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+    print(f"updated {filepath} status -> {args.status}")
+
+
+def _cmd_list(args):
+    from trackfw.config import load as load_config
+    from trackfw.generators.req import list_reqs
+
+    cfg = load_config()
+    list_reqs(cfg)

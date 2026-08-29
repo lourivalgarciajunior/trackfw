@@ -8,7 +8,7 @@ created: 2026-06-11
 author: artemis
 ---
 
-Roadmap: ROADMAP-testes-unitarios-go-2026-06-11.md
+Roadmap: docs/roadmaps/artemis/done/ROADMAP-testes-unitarios-go-2026-06-11.md
 
 # REQ: Testes Unitários Go — validator e generators
 

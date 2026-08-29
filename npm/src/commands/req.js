@@ -1,4 +1,6 @@
 'use strict'
+const path = require('path')
+const os = require('os')
 const { Command } = require('commander')
 const { listREQs, moveREQ } = require('../generators/req')
 const { t } = require('../i18n')
@@ -26,6 +28,19 @@ cmd.command('new <title>')
       // Form 2 — critérios de aceite
       content.criteria = await input({ message: t('req.new.prompt.criteria'), default: '- [ ]\n- [ ]' })
 
+      // Escopo dos ADR drafts desta sessão (uma única pergunta, vale para todos)
+      const adrScope = await select({
+        message: t('req.new.prompt.adrScope'),
+        choices: [
+          { name: t('req.new.prompt.adrScopeLocal'), value: 'local' },
+          { name: t('req.new.prompt.adrScopeGlobal'), value: 'global' },
+        ],
+        default: 'local',
+      })
+      const adrDir = adrScope === 'global'
+        ? path.join(os.homedir(), '.trackfw', 'adr')
+        : require('../config').load().adrDirs[0]
+
       // Perguntas dinâmicas por probe
       const generatedADRs = []
       for (const probe of probes) {
@@ -40,7 +55,7 @@ cmd.command('new <title>')
           })
           if (answer) {
             try {
-              const basename = await adrGenerators.newADRDraft(answer)
+              const basename = await adrGenerators.newADRDraft(answer, adrDir)
               if (basename) generatedADRs.push(basename)
             } catch (e) {
               console.warn(t('req.new.adrWarning', { slug: answer, message: e.message }))
@@ -64,18 +79,18 @@ cmd.command('new <title>')
 cmd.command('list')
   .description(t('req.list.description'))
   .action(async () => {
-    listREQs()
+    listREQs(require('../config').load())
   })
 
-// `trackfw req move <nome> <estado>`.
-//
-// O roadmap tinha transicao de estado como comando desde sempre; a REQ nao,
-// apesar de o validator ja varrer os cinco estados dela.
-// Ver REQ-2026-08-17-req-move.
-cmd.command('move <name> <state>')
-  .description('Move a REQ between states (backlog|wip|blocked|done|abandoned)')
-  .action(async (name, state) => {
-    moveREQ(name, state)
+cmd.command('move <name> <status>')
+  .description('Update a REQ status in place')
+  .action(async (name, status) => {
+    try {
+      moveREQ(name, status)
+    } catch (err) {
+      console.error(`Error: ${err.message}`)
+      process.exitCode = 1
+    }
   })
 
 module.exports = cmd

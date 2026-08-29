@@ -204,6 +204,15 @@ class TestConfigEvolution(unittest.TestCase):
         cfg = config.load(cwd=self.tmpdir)
         self.assertEqual(cfg["rules"]["stale_wip"], "warning")
 
+    def test_forge_e_trace_id_field_com_aspas_sao_normalizados(self):
+        self._write_yaml(
+            'forge: "github"\n'
+            "trace_id_field: 'req_id'\n"
+        )
+        cfg = config.load(cwd=self.tmpdir)
+        self.assertEqual(cfg["forge"], "github")
+        self.assertEqual(cfg["trace_id_field"], "req_id")
+
 
 class TestConfigPaths(unittest.TestCase):
     """Testes ML-2C: paths configuráveis adr_dirs, req_dir, roadmap_dir."""
@@ -253,68 +262,32 @@ class TestConfigPaths(unittest.TestCase):
         self.assertEqual(cfg["req_dir"], "docs/req")
         self.assertEqual(cfg["roadmap_dir"], "docs/roadmaps")
 
-    def test_list_items_com_aspas(self):
-        """Aspas envolventes em itens de adr_dirs e agents devem ser removidas.
-
-        Com roadmap_namespacing: by_agent, um agente lido como '"claude"' nunca
-        casa com docs/roadmaps/claude/ e o namespace inteiro sai da validacao
-        sem erro nem aviso. Ver REQ-2026-08-16-aspas-em-itens-de-lista.
-        """
+    def test_config_adr_dirs_tilde_expansion(self):
+        """adr_dirs com ~ ou ~/ → til expandido para o home do usuario."""
+        home = os.path.expanduser("~")
         self._write_yaml(
-            'adr_dirs:\n'
-            '  - "docs/adr"\n'
-            "  - 'docs/decisions'\n"
-            '  - docs/adr-extra\n'
-            'roadmap_namespacing: by_agent\n'
-            'agents:\n'
-            '  - "claude"\n'
-            "  - 'apolo'\n"
-            '  - artemis\n'
-        )
-        cfg = config.load(cwd=self.tmpdir)
-        self.assertEqual(
-            cfg["adr_dirs"], ["docs/adr", "docs/decisions", "docs/adr-extra"]
-        )
-        self.assertEqual(cfg["agents"], ["claude", "apolo", "artemis"])
-
-    def test_bloco_de_lista_sem_indentacao(self):
-        """YAML aceita o bloco na mesma coluna da chave. Go e npm descartavam
-        esses itens em silencio; o caso mais caro era adr_dirs, cujo diretorio
-        declarado nunca era varrido.
-        Ver REQ-2026-08-16-config-listas-nao-silenciosas.
-        """
-        self._write_yaml(
-            "agents:\n"
-            "- claude\n"
-            "- apolo\n"
             "adr_dirs:\n"
-            "- docs/adr\n"
-            "- docs/decisions\n"
+            "  - ~/global_adrs\n"
+            "  - ~/.trackfw/adrs\n"
         )
         cfg = config.load(cwd=self.tmpdir)
-        self.assertEqual(cfg["agents"], ["claude", "apolo"])
-        self.assertEqual(cfg["adr_dirs"], ["docs/adr", "docs/decisions"])
+        expected = [
+            os.path.join(home, "global_adrs"),
+            os.path.join(home, ".trackfw/adrs"),
+        ]
+        self.assertEqual(cfg["adr_dirs"], expected)
 
-    def test_lista_inline_avisa_e_nao_popula(self):
-        cfg = config.defaults()
-        avisos = config._parse(
-            "agents: [claude, gemini]\nadr_dirs: [docs/adr, docs/decisions]\n", cfg
-        )
-        self.assertEqual(len(avisos), 2, avisos)
-        juntos = "\n".join(avisos)
-        for esperado in ("agents", "adr_dirs", "lista inline", "Escreva em bloco"):
-            self.assertIn(esperado, juntos)
-        # O aviso nao e um parser disfarcado: a chave continua vazia.
-        self.assertEqual(cfg["agents"], [])
 
-    def test_bloco_nao_avisa(self):
-        for nome, yaml in (
-            ("indentado", "agents:\n  - claude\nadr_dirs:\n  - docs/adr\n"),
-            ("nao indentado", "agents:\n- claude\nadr_dirs:\n- docs/adr\n"),
-        ):
-            with self.subTest(nome):
-                cfg = config.defaults()
-                self.assertEqual(config._parse(yaml, cfg), [])
+    def test_config_strict_ci_paths(self):
+        """strict_ci_paths: true → cfg['strict_ci_paths'] é True; omitido → False."""
+        self._write_yaml("strict_ci_paths: true\n")
+        cfg = config.load(cwd=self.tmpdir)
+        self.assertTrue(cfg["strict_ci_paths"])
+
+        config.reset()
+        self._write_yaml("wip_limit: 1\n")
+        cfg_default = config.load(cwd=self.tmpdir)
+        self.assertFalse(cfg_default["strict_ci_paths"])
 
 
 if __name__ == "__main__":

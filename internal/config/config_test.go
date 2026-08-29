@@ -3,9 +3,70 @@ package config
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
+
+// TestLoad_CredentialGuard_DefaultsToWarn covers ML-1A of ROADMAP-2026-08-05-hooks-de-guarda-
+// contra-materializacao-de-credenciais-reais-por-subagentes.md: absent credential_guard key
+// (and any project that ran `trackfw validate` before this ML existed) must default to "warn".
+func TestLoad_CredentialGuard_DefaultsToWarn(t *testing.T) {
+	Reset()
+	tmp := t.TempDir()
+	orig, _ := os.Getwd()
+	defer func() { _ = os.Chdir(orig) }()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := Load()
+	if cfg.CredentialGuard.Mode != "warn" {
+		t.Errorf("CredentialGuard.Mode: want warn (default), got %q", cfg.CredentialGuard.Mode)
+	}
+}
+
+// TestLoad_CredentialGuard_ModeBlock proves a trackfw.yaml with credential_guard: {mode: block}
+// is read correctly.
+func TestLoad_CredentialGuard_ModeBlock(t *testing.T) {
+	Reset()
+	tmp := t.TempDir()
+	orig, _ := os.Getwd()
+	defer func() { _ = os.Chdir(orig) }()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatal(err)
+	}
+
+	yaml := "credential_guard:\n  mode: block\n"
+	if err := os.WriteFile(filepath.Join(tmp, "trackfw.yaml"), []byte(yaml), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := Load()
+	if cfg.CredentialGuard.Mode != "block" {
+		t.Errorf("CredentialGuard.Mode: want block, got %q", cfg.CredentialGuard.Mode)
+	}
+}
+
+// TestLoad_CredentialGuard_InvalidModeFallsBackToWarn proves an unrecognized mode value is
+// treated the same as absent — falls back to the safe default instead of propagating garbage.
+func TestLoad_CredentialGuard_InvalidModeFallsBackToWarn(t *testing.T) {
+	Reset()
+	tmp := t.TempDir()
+	orig, _ := os.Getwd()
+	defer func() { _ = os.Chdir(orig) }()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatal(err)
+	}
+
+	yaml := "credential_guard:\n  mode: nonsense\n"
+	if err := os.WriteFile(filepath.Join(tmp, "trackfw.yaml"), []byte(yaml), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := Load()
+	if cfg.CredentialGuard.Mode != "warn" {
+		t.Errorf("CredentialGuard.Mode: want warn (fallback), got %q", cfg.CredentialGuard.Mode)
+	}
+}
 
 func TestLoad_NoFile(t *testing.T) {
 	Reset()
@@ -240,11 +301,7 @@ func TestReset(t *testing.T) {
 	}
 }
 
-// TestLoad_ListItemsWithQuotes cobre o bug em que itens de lista de adr_dirs e
-// agents mantinham as aspas envolventes. Com roadmap_namespacing: by_agent, um
-// agente lido como `"claude"` nunca casa com docs/roadmaps/claude/ e o namespace
-// inteiro some da validação em silêncio.
-func TestLoad_ListItemsWithQuotes(t *testing.T) {
+func TestLoad_StripsQuotesFromForgeAndTraceIDField(t *testing.T) {
 	Reset()
 	tmp := t.TempDir()
 	orig, _ := os.Getwd()
@@ -253,49 +310,58 @@ func TestLoad_ListItemsWithQuotes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	yaml := `adr_dirs:
-  - "docs/adr"
-  - 'docs/decisions'
-  - docs/adr-extra
-roadmap_namespacing: by_agent
-agents:
-  - "claude"
-  - 'apolo'
-  - artemis
-`
+	yaml := "forge: \"github\"\ntrace_id_field: 'req_id'\n"
 	if err := os.WriteFile(filepath.Join(tmp, "trackfw.yaml"), []byte(yaml), 0644); err != nil {
 		t.Fatal(err)
 	}
 
 	cfg := Load()
-
-	wantDirs := []string{"docs/adr", "docs/decisions", "docs/adr-extra"}
-	if len(cfg.ADRDirs) != len(wantDirs) {
-		t.Fatalf("ADRDirs: want %v, got %v", wantDirs, cfg.ADRDirs)
+	if cfg.Forge != "github" {
+		t.Fatalf("Forge: want github, got %q", cfg.Forge)
 	}
-	for i, want := range wantDirs {
-		if cfg.ADRDirs[i] != want {
-			t.Errorf("ADRDirs[%d]: want %q, got %q", i, want, cfg.ADRDirs[i])
-		}
-	}
-
-	wantAgents := []string{"claude", "apolo", "artemis"}
-	if len(cfg.Agents) != len(wantAgents) {
-		t.Fatalf("Agents: want %v, got %v", wantAgents, cfg.Agents)
-	}
-	for i, want := range wantAgents {
-		if cfg.Agents[i] != want {
-			t.Errorf("Agents[%d]: want %q, got %q", i, want, cfg.Agents[i])
-		}
+	if cfg.TraceIdField != "req_id" {
+		t.Fatalf("TraceIdField: want req_id, got %q", cfg.TraceIdField)
 	}
 }
 
-// TestLoad_BlocoDeListaSemIndentacao — YAML aceita o bloco na mesma coluna da
-// chave, e antes disto Go e npm descartavam esses itens em silêncio. O caso mais
-// caro era adr_dirs: o diretório declarado nunca era varrido e as ADRs nele
-// ficavam invisíveis ao validate.
-// Ver REQ-2026-08-16-config-listas-nao-silenciosas.
-func TestLoad_BlocoDeListaSemIndentacao(t *testing.T) {
+// TestLoad_Malformed_FailsLoud proves Load — unlike parse — turns a genuine YAML syntax error
+// into a fatal stderr message + non-zero exit, instead of the pre-ML-1B silent fallback to
+// defaults (which was a regression relative to the handcrafted parser: an invalid file used to
+// leave the rest of the config readable line-by-line; the library-based parser discards the
+// whole document, so silently keeping defaults meant a typo could make trackfw quietly run with
+// wip_limit=1 instead of the value actually configured).
+func TestLoad_Malformed_FailsLoud(t *testing.T) {
+	assertLoadFailsLoud(t, "agents: [zeus, apolo\nwip_limit: 3\n")
+}
+
+// TestLoad_MultipleDocuments_FailsLoud closes a divergence found in the ML-1B cross-CLI audit:
+// yaml.Unmarshal silently decodes only the first "---"-delimited document in a stream (no
+// error), while Node's `yaml` (MULTIPLE_DOCS) and PyYAML's yaml.compose() ("expected a single
+// document in the stream") both reject a multi-document trackfw.yaml outright. Without
+// hasMultipleDocuments, Go alone would exit 0 (silently reading only the first document) where
+// Node and Python exit 1 — see hasMultipleDocuments's doc comment.
+func TestLoad_MultipleDocuments_FailsLoud(t *testing.T) {
+	assertLoadFailsLoud(t, "wip_limit: 3\n---\nwip_limit: 5\n")
+}
+
+// TestLoad_UndefinedAliasReference_FailsLoud closes a second divergence found in the same
+// audit: a forward reference to an anchor not yet defined (b: *x / a: &x 3) is invalid per the
+// YAML spec — yaml.v3 errors with "unknown anchor 'x' referenced" and PyYAML raises a
+// ComposerError. This document has no "---" and no flow-sequence issue, so it exercises the
+// primary yaml.Unmarshal error path, not hasMultipleDocuments.
+func TestLoad_UndefinedAliasReference_FailsLoud(t *testing.T) {
+	assertLoadFailsLoud(t, "b: *x\na: &x 3\n")
+}
+
+// TestLoad_DuplicateKeys_NotMalformed proves duplicate top-level keys do NOT trigger the fatal
+// path in Go: yaml.Unmarshal into a generic *yaml.Node does not validate key uniqueness (only
+// Decode into a typed struct would), and PyYAML's yaml.compose() is equally permissive — both
+// silently resolve to "last key wins". Node's `yaml` package is the outlier here (it flags
+// DUPLICATE_KEY as a composer error), so Node's parse() explicitly whitelists that one error
+// code as non-fatal (see NON_FATAL_ERROR_CODES in npm/src/config/index.js) to keep the three
+// CLIs' fatal trigger identical. This test guards the Go side of that convergence: Go must
+// stay silent here, or the three would diverge again in the opposite direction.
+func TestLoad_DuplicateKeys_NotMalformed(t *testing.T) {
 	Reset()
 	tmp := t.TempDir()
 	orig, _ := os.Getwd()
@@ -304,79 +370,63 @@ func TestLoad_BlocoDeListaSemIndentacao(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	yaml := `roadmap_namespacing: by_agent
-agents:
-- claude
-- apolo
-adr_dirs:
-- docs/adr
-- docs/decisions
-`
-	if err := os.WriteFile(filepath.Join(tmp, "trackfw.yaml"), []byte(yaml), 0644); err != nil {
+	dup := "wip_limit: 3\nwip_limit: 4\n"
+	if err := os.WriteFile(filepath.Join(tmp, "trackfw.yaml"), []byte(dup), 0644); err != nil {
 		t.Fatal(err)
 	}
 
 	cfg := Load()
-
-	wantAgents := []string{"claude", "apolo"}
-	if len(cfg.Agents) != len(wantAgents) {
-		t.Fatalf("Agents: want %v, got %v", wantAgents, cfg.Agents)
-	}
-	for i, w := range wantAgents {
-		if cfg.Agents[i] != w {
-			t.Errorf("Agents[%d]: want %q, got %q", i, w, cfg.Agents[i])
-		}
-	}
-
-	wantDirs := []string{"docs/adr", "docs/decisions"}
-	if len(cfg.ADRDirs) != len(wantDirs) {
-		t.Fatalf("ADRDirs: want %v, got %v", wantDirs, cfg.ADRDirs)
-	}
-	for i, w := range wantDirs {
-		if cfg.ADRDirs[i] != w {
-			t.Errorf("ADRDirs[%d]: want %q, got %q", i, w, cfg.ADRDirs[i])
-		}
+	if cfg.WipLimit != 4 {
+		t.Errorf("WipLimit: got %d, want 4 (last key wins, no fatal exit)", cfg.WipLimit)
 	}
 }
 
-// TestParse_ListaInlineAvisa — a forma inline é YAML válido mas não é coberta
-// pelo parser. Antes ficava vazia sem nenhum sinal; era exatamente o que o
-// README documentava em `agents: [claude, gemini, copilot]`.
-func TestParse_ListaInlineAvisa(t *testing.T) {
-	cfg := defaults()
-	warnings := parse("agents: [claude, gemini]\nadr_dirs: [docs/adr, docs/decisions]\n", &cfg)
-
-	if len(warnings) != 2 {
-		t.Fatalf("esperado 2 avisos, obtido %d: %v", len(warnings), warnings)
+// assertLoadFailsLoud writes content as trackfw.yaml in a fresh temp cwd, calls Load(), and
+// asserts it hit the fatal path (osExit(1) + MalformedConfigMessage on stderr).
+func assertLoadFailsLoud(t *testing.T, content string) {
+	t.Helper()
+	Reset()
+	tmp := t.TempDir()
+	orig, _ := os.Getwd()
+	defer func() { _ = os.Chdir(orig) }()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatal(err)
 	}
 
-	joined := strings.Join(warnings, "\n")
-	for _, want := range []string{"agents", "adr_dirs", "lista inline", "Escreva em bloco"} {
-		if !strings.Contains(joined, want) {
-			t.Errorf("aviso não menciona %q:\n%s", want, joined)
-		}
+	if err := os.WriteFile(filepath.Join(tmp, "trackfw.yaml"), []byte(content), 0644); err != nil {
+		t.Fatal(err)
 	}
 
-	// O valor continua não sendo parseado — o aviso não é um parser disfarçado.
-	if len(cfg.Agents) != 0 {
-		t.Errorf("Agents deveria continuar vazio, got %v", cfg.Agents)
+	origExit := osExit
+	var gotCode int
+	exited := false
+	osExit = func(code int) {
+		exited = true
+		gotCode = code
 	}
-}
+	defer func() { osExit = origExit }()
 
-// TestParse_BlocoNaoAvisa — config bem formada não pode gerar ruído.
-func TestParse_BlocoNaoAvisa(t *testing.T) {
-	for _, tc := range []struct {
-		nome string
-		yaml string
-	}{
-		{"indentado", "agents:\n  - claude\nadr_dirs:\n  - docs/adr\n"},
-		{"nao indentado", "agents:\n- claude\nadr_dirs:\n- docs/adr\n"},
-	} {
-		t.Run(tc.nome, func(t *testing.T) {
-			cfg := defaults()
-			if w := parse(tc.yaml, &cfg); len(w) != 0 {
-				t.Errorf("esperado nenhum aviso, obtido %v", w)
-			}
-		})
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	origStderr := os.Stderr
+	os.Stderr = w
+	Load()
+	_ = w.Close()
+	os.Stderr = origStderr
+
+	buf := make([]byte, 4096)
+	n, _ := r.Read(buf)
+	stderr := string(buf[:n])
+
+	if !exited {
+		t.Fatal("Load did not call osExit on malformed YAML")
+	}
+	if gotCode != 1 {
+		t.Errorf("exit code: got %d, want 1", gotCode)
+	}
+	if stderr != MalformedConfigMessage+"\n" {
+		t.Errorf("stderr: got %q, want %q", stderr, MalformedConfigMessage+"\n")
 	}
 }

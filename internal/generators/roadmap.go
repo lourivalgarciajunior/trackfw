@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -18,13 +19,67 @@ type RoadmapContent struct {
 	Body    string
 }
 
+// wave0GateFence is the fixed, literal, non-interpolated gate command emitted inside every
+// generated "## Wave 0 — Threat Model" block (AC13, docs/cli-parity.md § "trackfw barrier").
+//
+// It intentionally FAILS CLOSED: `exit 1` always blocks the "gates" check until the ML-0A
+// author replaces this placeholder with a real, project-specific evidence check. This is the
+// only mechanical lever `barrier` has against a vacuous Wave 0 — `gates` reports "passed" when a
+// wave declares zero gates (parseGates returns an empty, non-nil slice), so an empty Wave 0,
+// copied verbatim, or written by the implementer instead of a reviewer, would otherwise pass
+// clean every time (docs/seguranca/2026-08-22-modelo-de-ameaca-da-wave-0-no-harness.md, §2.1).
+//
+// Not interpolated: no REQ title, slug, date or any user-controlled string is substituted into
+// this command. runGateCommand (internal/commands/barrier.go) executes gate commands via
+// `sh -c` with no sanitization — interpolating a REQ title containing backticks or `$(...)`
+// would turn this into arbitrary shell execution inside the harness. The command below is a
+// constant string, byte-identical across every project that runs `trackfw update`.
+const wave0GateFence = "```bash\n" +
+	"# Wave 0 gate — replace this placeholder with a project-specific check before\n" +
+	"# marking ML-0A done. Do not remove the gate; replace its command (AC13).\n" +
+	"exit 1  # placeholder gate fails closed until ML-0A replaces it — see docs/cli-parity.md\n" +
+	"```\n"
+
+// wave0Block is the "## Wave 0 — Threat Model" section prepended to every generated roadmap,
+// before the first implementation wave (AC1, AC12). It is a plain (non-raw) Go string — not a
+// backtick raw string literal — because it embeds a fenced ```bash block itself: a raw string
+// cannot contain a literal backtick without terminating early. Byte-identical across the "new"
+// and "--from-req" generation paths, and across the 3 CLIs (gate: scripts/check-artifact-parity.sh).
+//
+// The ML is always labeled ML-0A, never ML-1A — NewRoadmapFromREQ labels MLs derived from REQ
+// acceptance criteria "ML-1A", "ML-1B", ... starting at the first criterion, so "ML-0A" is the
+// only label available to Wave 0 without colliding with a derived ML
+// (docs/seguranca/2026-08-22-modelo-de-ameaca-da-wave-0-no-harness.md, §1.2).
+const wave0Block = "## Wave 0 — Threat Model\n" +
+	"> Dependencies: none. Blocks all implementation.\n" +
+	"\n" +
+	"### ML-0A — Threat model for this roadmap\n" +
+	"**Status:** pending\n" +
+	"**Files affected:**\n" +
+	"**Actions:**\n" +
+	"1. Enumeration completeness — is the list of surfaces in this roadmap complete? Name what is missing, or show the list is closed. Do not limit the search to the files already named by the REQ — before declaring the list closed, search the repository for other places that emit the same artifact or the same pattern (for example, grep for the literal the final artifact contains).\n" +
+	"2. Threat model — who empties this Wave 0 without breaking any written rule, and how?\n" +
+	"3. Falsification targets in both directions — for each surface, what breaks when the behavior regresses, and what breaks when it regresses the opposite way?\n" +
+	"4. Declared residual — what this design accepts not covering.\n" +
+	"**Acceptance criteria:**\n" +
+	"- [ ] The four sections above answered with evidence, not a one-line assertion\n" +
+	"- [ ] No implementation line written for this ML\n" +
+	"\n" +
+	"**Gates da wave:**\n" +
+	wave0GateFence +
+	"\n"
+
+var roadmapStateOrder = []string{"analyzing", "wip", "backlog", "blocked", "done", "abandoned"}
+var roadmapValidStateNames = map[string]bool{
+	"backlog": true, "analyzing": true, "wip": true, "blocked": true, "done": true, "abandoned": true,
+}
+
+const roadmapValidStatesMessage = "backlog, analyzing, wip, blocked, done, abandoned"
+
 // stateDir retorna o caminho do diretório para um estado válido no modo flat, ou "", false se inválido.
 func stateDir(state string) (string, bool) {
 	cfg := config.Load()
-	validStateNames := map[string]bool{
-		"backlog": true, "wip": true, "blocked": true, "done": true, "abandoned": true,
-	}
-	if !validStateNames[state] {
+	if !roadmapValidStateNames[state] {
 		return "", false
 	}
 	return cfg.RoadmapDir + "/" + state, true
@@ -34,10 +89,7 @@ func stateDir(state string) (string, bool) {
 // agent="" usa o primeiro agente configurado (ou "default" se lista vazia).
 func agentStateDir(agent, state string) (string, bool) {
 	cfg := config.Load()
-	validStateNames := map[string]bool{
-		"backlog": true, "wip": true, "blocked": true, "done": true, "abandoned": true,
-	}
-	if !validStateNames[state] {
+	if !roadmapValidStateNames[state] {
 		return "", false
 	}
 	if agent == "" {
@@ -63,6 +115,12 @@ func NewRoadmap(title string) error {
 // NewRoadmapFromContent cria um roadmap a partir de um RoadmapContent.
 // Se Body for preenchido, usa diretamente; caso contrário, gera template padrão.
 func NewRoadmapFromContent(content RoadmapContent) error {
+	// AC1/AC2: o título é dado de uma linha — newline e CR são entrada malformada.
+	// A mensagem é contrato de paridade: byte-idêntica nos 3 CLIs (docs/cli-parity.md).
+	if strings.ContainsAny(content.Title, "\n\r") {
+		return fmt.Errorf("roadmap title must be a single line: newline and carriage return are not allowed")
+	}
+
 	cfg := config.Load()
 
 	var backlogDir string
@@ -91,7 +149,7 @@ func NewRoadmapFromContent(content RoadmapContent) error {
 		body = fmt.Sprintf(`---
 status: backlog
 date: %s
-req: ""
+req: "%s"
 squad: ""
 ---
 
@@ -102,12 +160,16 @@ squad: ""
 ## Context
 <!-- What problem does this roadmap solve? Link the REQ. -->
 REQ: %s
-squad:
 
-## Wave 1 — <name> (parallel MLs)
+## Acceptance Criteria
+<!-- Consolidated criteria for this roadmap. Detail per ML in the waves below. -->
+- [ ]
+- [ ]
+
+`, date, content.REQPath, content.Title, date, content.REQPath) + wave0Block + fmt.Sprintf(`## Wave 1 — <name> (parallel MLs)
 > Dependencies: none
 
-### ML-1A — <title>
+### ML-1A — %s
 **Status:** pending
 **Files affected:**
 **Actions:**
@@ -115,7 +177,7 @@ squad:
 - [ ] build passes
 - [ ] tests green
 - [ ] validate passes
-`, date, content.Title, date, content.REQPath)
+`, content.Title)
 	}
 
 	if err := os.WriteFile(filename, []byte(body), 0644); err != nil {
@@ -140,10 +202,18 @@ func NewRoadmapFromREQ(reqPath string) error {
 		title = strings.TrimPrefix(title, "REQ-")
 	}
 
+	// AC1: o título lido da REQ também pode conter newline forjado — rejeitar cedo,
+	// antes de interpolar em fmt.Sprintf abaixo. NewRoadmapFromContent repete a guarda
+	// mas a mensagem de erro sai daqui para o caminho --from-req.
+	if strings.ContainsAny(title, "\n\r") {
+		return fmt.Errorf("roadmap title must be a single line: newline and carriage return are not allowed")
+	}
+
 	date := time.Now().Format("2006-01-02")
 
 	// Gerar seção de MLs a partir dos critérios de aceite
 	var mlSection strings.Builder
+	mlSection.WriteString(wave0Block)
 	mlSection.WriteString("## Wave 1 — Implementation (derived from REQ criteria)\n")
 	mlSection.WriteString("> Dependencies: none\n")
 	for i, criterion := range criteria {
@@ -178,7 +248,12 @@ squad: ""
 <!-- Derived from REQ: %s -->
 REQ: %s%s
 
-%s`, date, filepath.Base(reqPath), title, date, filepath.Base(reqPath), reqPath, adrRef, mlSection.String())
+## Acceptance Criteria
+<!-- Consolidated criteria for this roadmap. Detail per ML in the waves below. -->
+- [ ]
+- [ ]
+
+%s`, date, reqPath, title, date, filepath.Base(reqPath), reqPath, adrRef, mlSection.String())
 
 	return NewRoadmapFromContent(RoadmapContent{
 		Title: title,
@@ -237,15 +312,98 @@ func parseREQForRoadmap(content string) (title string, criteria []string, linked
 	return title, criteria, linkedADR
 }
 
+// rewriteRoadmapStatus rewrites the "status:" field in the frontmatter block and
+// the "| Status: <value>" portion of the first matching header line in the body.
+//
+// Mirrors the semantics of rewriteFrontmatterFields (internal/integrations/render.go):
+//   - Scoped strictly to the frontmatter block (between opening "---\n" and closing "\n---").
+//   - Every other line is preserved byte-for-byte (order, spacing, quote style).
+//   - The key is NOT invented if absent; source is returned unchanged.
+//   - If source has no recognizable frontmatter, source is returned unchanged without error.
+//
+// The body "| Status: " sync is also scoped: only the first occurrence before the
+// first "## " heading is updated; any occurrence inside sections or code blocks is left intact.
+//
+// Returns the (possibly modified) content and a bool indicating whether anything changed.
+func rewriteRoadmapStatus(source []byte, state string) ([]byte, bool) {
+	s := string(source)
+	if !strings.HasPrefix(s, "---\n") {
+		return source, false
+	}
+	end := strings.Index(s[4:], "\n---")
+	if end < 0 {
+		return source, false
+	}
+	frontmatter := s[4 : 4+end]
+	rest := s[4+end:] // starts with "\n---", followed by the body
+
+	changed := false
+	lines := strings.Split(frontmatter, "\n")
+	for i, line := range lines {
+		key, value, ok := strings.Cut(line, ":")
+		if !ok {
+			continue
+		}
+		if strings.TrimSpace(key) != "status" {
+			continue
+		}
+		trimmedValue := strings.TrimSpace(value)
+		quoted := len(trimmedValue) >= 2 && strings.HasPrefix(trimmedValue, `"`) && strings.HasSuffix(trimmedValue, `"`)
+		var newLine string
+		if quoted {
+			newLine = key + ": \"" + state + "\""
+		} else {
+			newLine = key + ": " + state
+		}
+		if lines[i] != newLine {
+			lines[i] = newLine
+			changed = true
+		}
+		break // only the first status: in frontmatter
+	}
+
+	// Sync "| Status: <value>" in the header line of the body (after the closing ---).
+	// Only the first occurrence before the first "## " heading is updated.
+	if len(rest) > 4 {
+		body := rest[4:] // skip "\n---"
+		bodyLines := strings.Split(body, "\n")
+		const marker = "| Status: "
+		for i, bline := range bodyLines {
+			if strings.HasPrefix(strings.TrimSpace(bline), "## ") {
+				break
+			}
+			idx := strings.Index(bline, marker)
+			if idx < 0 {
+				continue
+			}
+			prefix := bline[:idx+len(marker)]
+			after := bline[idx+len(marker):]
+			var suffix string
+			if pipeIdx := strings.Index(after, " |"); pipeIdx >= 0 {
+				suffix = after[pipeIdx:]
+			}
+			newLine := prefix + state + suffix
+			if bodyLines[i] != newLine {
+				bodyLines[i] = newLine
+				changed = true
+				rest = "\n---" + strings.Join(bodyLines, "\n")
+			}
+			break // only the first | Status: before ##
+		}
+	}
+
+	if !changed {
+		return source, false
+	}
+	return []byte("---\n" + strings.Join(lines, "\n") + rest), true
+}
+
 func MoveRoadmap(name, state string) error {
 	cfg := config.Load()
 
 	// Validar estado antes de buscar o roadmap (melhor UX)
-	validStateNames := map[string]bool{
-		"backlog": true, "wip": true, "blocked": true, "done": true, "abandoned": true,
-	}
-	if !validStateNames[state] {
-		return fmt.Errorf("invalid state %q — valid states: backlog, wip, blocked, done, abandoned", state)
+	if !roadmapValidStateNames[state] {
+		return fmt.Errorf("invalid state %q — valid states: %s", state, roadmapValidStatesMessage)
 	}
 
 	src, err := findRoadmap(name)
@@ -264,14 +422,14 @@ func MoveRoadmap(name, state string) error {
 		var ok bool
 		targetDir, ok = agentStateDir(agent, state)
 		if !ok {
-			return fmt.Errorf("invalid state %q — valid states: backlog, wip, blocked, done, abandoned", state)
+			return fmt.Errorf("invalid state %q — valid states: %s", state, roadmapValidStatesMessage)
 		}
 	} else {
 		fromState = filepath.Base(filepath.Dir(src))
 		var ok bool
 		targetDir, ok = stateDir(state)
 		if !ok {
-			return fmt.Errorf("invalid state %q — valid states: backlog, wip, blocked, done, abandoned", state)
+			return fmt.Errorf("invalid state %q — valid states: %s", state, roadmapValidStatesMessage)
 		}
 	}
 
@@ -284,13 +442,10 @@ func MoveRoadmap(name, state string) error {
 		return fmt.Errorf("moving roadmap: %w", err)
 	}
 
-	// A pasta é o estado, mas a regra folder_status do validator lê o status: do
-	// frontmatter. Sem esta sincronização o próprio move produz a incoerência que
-	// o validate reclama. Ver REQ-2026-08-16-roadmap-move-sincroniza-status.
-	if content, err := os.ReadFile(dst); err == nil {
-		updated := setHeaderStatus(setFrontmatterStatus(string(content), state), state)
-		if updated != string(content) {
-			_ = os.WriteFile(dst, []byte(updated), 0644)
+	// Synchronize status: in the frontmatter (and header line in body) to match the new state.
+	if rawContent, readErr := os.ReadFile(dst); readErr == nil {
+		if updated, changed := rewriteRoadmapStatus(rawContent, state); changed {
+			_ = os.WriteFile(dst, updated, 0644)
 		}
 	}
 
@@ -302,12 +457,18 @@ func MoveRoadmap(name, state string) error {
 	appendTransitionLog(logBasename, fromState, state)
 
 	fmt.Printf("✓ moved %s → %s\n", filepath.Base(src), targetDir)
+
+	// Synchronize roadmap: reference in every paired REQ that points at the moved roadmap.
+	// Runs after ✓ moved is printed so ✓ synced always follows it in stdout.
+	// A sync failure does NOT roll back the move; the error causes non-zero exit.
+	if syncErr := syncREQReferences(filepath.Base(src), dst); syncErr != nil {
+		return syncErr
+	}
 	return nil
 }
 
 func findRoadmap(name string) (string, error) {
 	cfg := config.Load()
-	states := []string{"backlog", "wip", "blocked", "done", "abandoned"}
 
 	if cfg.RoadmapNamespacing == config.NamespacingByAgent {
 		agents := cfg.Agents
@@ -322,7 +483,7 @@ func findRoadmap(name string) (string, error) {
 			}
 		}
 		for _, agent := range agents {
-			for _, state := range states {
+			for _, state := range roadmapStateOrder {
 				dir := cfg.RoadmapDir + "/" + agent + "/" + state
 				entries, err := os.ReadDir(dir)
 				if err != nil {
@@ -336,7 +497,7 @@ func findRoadmap(name string) (string, error) {
 			}
 		}
 	} else {
-		for _, state := range states {
+		for _, state := range roadmapStateOrder {
 			dir := cfg.RoadmapDir + "/" + state
 			entries, err := os.ReadDir(dir)
 			if err != nil {
@@ -413,7 +574,6 @@ func ShowRoadmap(name string) error {
 // ListRoadmaps imprime todos os roadmaps agrupados por estado (e por agente em modo by_agent).
 func ListRoadmaps() error {
 	cfg := config.Load()
-	stateOrder := []string{"wip", "backlog", "blocked", "done", "abandoned"}
 	found := false
 
 	if cfg.RoadmapNamespacing == config.NamespacingByAgent {
@@ -430,7 +590,7 @@ func ListRoadmaps() error {
 			}
 		}
 		for _, agent := range agents {
-			for _, state := range stateOrder {
+			for _, state := range roadmapStateOrder {
 				dir := cfg.RoadmapDir + "/" + agent + "/" + state
 				entries, err := os.ReadDir(dir)
 				if err != nil {
@@ -453,7 +613,7 @@ func ListRoadmaps() error {
 			}
 		}
 	} else {
-		for _, state := range stateOrder {
+		for _, state := range roadmapStateOrder {
 			dir := cfg.RoadmapDir + "/" + state
 			entries, err := os.ReadDir(dir)
 			if err != nil {
@@ -482,88 +642,228 @@ func ListRoadmaps() error {
 	return nil
 }
 
-// setFrontmatterStatus devolve content com o campo status: do frontmatter valendo
-// state. Só mexe dentro do bloco delimitado pelos "---" do topo do arquivo, e só
-// se a chave status já existir ali.
-//
-// Devolve content intocado quando não há frontmatter ou quando o bloco não declara
-// status — mesmo contrato do validator, que ignora quem não declara. Isso protege
-// roadmaps sem frontmatter, cujo corpo pode conter uma linha começando com "status:".
-func setFrontmatterStatus(content, state string) string {
-	// O frontmatter precisa abrir na primeira linha do arquivo.
-	if !strings.HasPrefix(content, "---\n") && !strings.HasPrefix(content, "---\r\n") {
-		return content
-	}
+// ─── REQ synchronization helpers ─────────────────────────────────────────────
 
-	lines := strings.Split(content, "\n")
-	if len(lines) < 2 {
-		return content
+// scanREQFiles retorna os caminhos de todos os .md no req_dir,
+// espelhando exatamente o comportamento de resolveREQFiles do validador:
+//   - flat (padrão)   → req_dir/*.md
+//   - by_agent        → req_dir/<agente>/<estado>/*.md
+func scanREQFiles(cfg config.ProjectConfig) []string {
+	reqDir := cfg.REQDir
+	if reqDir == "" {
+		return nil
 	}
-
-	// Procura o "---" de fechamento; fora dele nada é reescrito.
-	end := -1
-	for i := 1; i < len(lines); i++ {
-		if strings.TrimRight(lines[i], "\r") == "---" {
-			end = i
-			break
+	if cfg.RoadmapNamespacing == config.NamespacingByAgent {
+		stateDirs := []string{"backlog", "analyzing", "wip", "blocked", "done", "abandoned"}
+		agents := cfg.Agents
+		if len(agents) == 0 {
+			entries, err := os.ReadDir(reqDir)
+			if err == nil {
+				for _, e := range entries {
+					if e.IsDir() {
+						agents = append(agents, e.Name())
+					}
+				}
+			}
 		}
+		var files []string
+		for _, agent := range agents {
+			for _, state := range stateDirs {
+				pattern := filepath.Join(reqDir, agent, state, "*.md")
+				matches, _ := filepath.Glob(pattern)
+				files = append(files, matches...)
+			}
+		}
+		return files
 	}
-	if end < 0 {
-		return content
-	}
-
-	for i := 1; i < end; i++ {
-		line := lines[i]
-		trimmed := strings.TrimRight(line, "\r")
-		idx := strings.Index(trimmed, ":")
-		if idx < 0 {
-			continue
-		}
-		if strings.TrimSpace(trimmed[:idx]) != "status" {
-			continue
-		}
-		replacement := "status: " + state
-		if strings.HasSuffix(line, "\r") {
-			replacement += "\r"
-		}
-		lines[i] = replacement
-		return strings.Join(lines, "\n")
-	}
-
-	return content
+	matches, _ := filepath.Glob(filepath.Join(reqDir, "*.md"))
+	return matches
 }
 
-// headerStatusMarker separa o rótulo do estado na linha humana logo abaixo do
-// título, no formato "> Created: 2026-08-16 | Status: backlog".
-const headerStatusMarker = "| Status: "
-
-// setHeaderStatus devolve content com o estado da linha humana valendo state.
-//
-// Age na primeira linha que comece com "> " e contenha o marcador; tudo depois
-// dele é substituído. Conteúdo intocado quando nenhuma linha casa — a linha nunca
-// é criada, mesmo contrato de setFrontmatterStatus.
-//
-// Tolera o formato herdado com emoji ("| Status: 🔄 WIP"), porque substitui o
-// trecho inteiro em vez de tentar casar o valor anterior.
-//
-// Ver REQ-2026-08-16-consistencias-template-saida-e-eol.
-func setHeaderStatus(content, state string) string {
+// extractFrontmatterRoadmap extrai o valor do campo roadmap: do bloco frontmatter YAML.
+// Retorna string vazia se o campo estiver ausente, vazio ou fora do frontmatter.
+// Trima aspas simples e duplas mas NÃO backticks — espelha o comportamento de
+// extractRefPath do validador, onde a forma com backtick não termina em ".md"
+// e é ignorada pelo validador.
+func extractFrontmatterRoadmap(content string) string {
 	lines := strings.Split(content, "\n")
-	for i, line := range lines {
-		trimmed := strings.TrimRight(line, "\r")
-		if !strings.HasPrefix(trimmed, "> ") {
-			continue
+	inFM := false
+	fmCount := 0
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "---" {
+			fmCount++
+			if fmCount == 1 {
+				inFM = true
+				continue
+			}
+			break // fechou o bloco frontmatter
 		}
-		idx := strings.Index(trimmed, headerStatusMarker)
-		if idx < 0 {
-			continue
+		if !inFM {
+			break // sem frontmatter
 		}
-		replacement := trimmed[:idx+len(headerStatusMarker)] + state
-		if strings.HasSuffix(line, "\r") {
-			replacement += "\r"
+		k, v, ok := strings.Cut(line, ":")
+		if ok && strings.EqualFold(strings.TrimSpace(k), "roadmap") {
+			val := strings.TrimSpace(v)
+			return strings.Trim(val, `"'`)
 		}
-		lines[i] = replacement
-		return strings.Join(lines, "\n")
 	}
-	return content
+	return ""
+}
+
+// rewriteREQRoadmapRef reescreve o campo roadmap: no frontmatter e a linha Roadmap: no
+// corpo da REQ quando o basename do valor atual coincide com roadmapBasename.
+// Preserva o estilo de formatação existente (aspas e backticks no corpo).
+// Retorna (conteúdo atualizado, true) se houve mudança; (original, false) caso contrário.
+//
+// Nota: um REQ sem bloco frontmatter (sem par "---") não tem fmClosed=true,
+// portanto o corpo não é varrido — situação não esperada pelos templates do projeto.
+func rewriteREQRoadmapRef(content []byte, roadmapBasename, newRoadmapPath string) ([]byte, bool) {
+	text := string(content)
+	lines := strings.Split(text, "\n")
+
+	changed := false
+	inFM := false
+	fmClosed := false
+	fmCount := 0
+
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		if !fmClosed {
+			if trimmed == "---" {
+				fmCount++
+				if fmCount == 1 {
+					inFM = true
+					continue
+				}
+				fmClosed = true
+				inFM = false
+				continue
+			}
+			if inFM {
+				k, v, ok := strings.Cut(line, ":")
+				if ok && strings.EqualFold(strings.TrimSpace(k), "roadmap") {
+					rawVal := strings.TrimSpace(v)
+					plainVal := strings.Trim(rawVal, `"'`)
+					if filepath.Base(plainVal) == roadmapBasename {
+						// Preservar estilo de aspas do valor original
+						var newLine string
+						switch {
+						case strings.HasPrefix(rawVal, `"`) || strings.HasSuffix(rawVal, `"`):
+							newLine = fmt.Sprintf("%s: \"%s\"", strings.TrimSpace(k), newRoadmapPath)
+						case strings.HasPrefix(rawVal, `'`) || strings.HasSuffix(rawVal, `'`):
+							newLine = fmt.Sprintf("%s: '%s'", strings.TrimSpace(k), newRoadmapPath)
+						default:
+							newLine = fmt.Sprintf("%s: %s", strings.TrimSpace(k), newRoadmapPath)
+						}
+						if lines[i] != newLine {
+							lines[i] = newLine
+							changed = true
+						}
+					}
+				}
+				continue
+			}
+		}
+
+		// Corpo (pós-frontmatter): reescrever linha "Roadmap: <valor>" preservando formato.
+		if fmClosed {
+			k, v, ok := strings.Cut(line, ":")
+			if ok && strings.EqualFold(strings.TrimSpace(k), "Roadmap") {
+				rawVal := strings.TrimSpace(v)
+				plainVal := strings.Trim(rawVal, "`\"'")
+				if filepath.Base(plainVal) == roadmapBasename {
+					// Preservar backticks ou aspas do valor original
+					var newVal string
+					switch {
+					case strings.HasPrefix(rawVal, "`") && strings.HasSuffix(rawVal, "`"):
+						newVal = "`" + newRoadmapPath + "`"
+					case strings.HasPrefix(rawVal, `"`) && strings.HasSuffix(rawVal, `"`):
+						newVal = `"` + newRoadmapPath + `"`
+					case strings.HasPrefix(rawVal, `'`) && strings.HasSuffix(rawVal, `'`):
+						newVal = `'` + newRoadmapPath + `'`
+					default:
+						newVal = newRoadmapPath
+					}
+					newLine := fmt.Sprintf("%s: %s", strings.TrimSpace(k), newVal)
+					if lines[i] != newLine {
+						lines[i] = newLine
+						changed = true
+					}
+				}
+			}
+		}
+	}
+
+	if !changed {
+		return content, false
+	}
+	return []byte(strings.Join(lines, "\n")), true
+}
+
+// syncREQReferences atualiza o campo roadmap: no frontmatter (e a linha Roadmap: no corpo)
+// de todas as REQs em req_dir cujo frontmatter roadmap: aponta para roadmapBasename.
+//
+// Cardinalidades (contrato pinado em docs/cli-parity.md):
+//   - zero REQs apontando → no-op, sem output, exit 0
+//   - uma ou mais       → reescreve todas, uma linha em stdout por REQ atualizada
+//   - aponta para outro → não toca
+//   - já correta        → nenhuma escrita (idempotente byte-a-byte)
+//   - falha de escrita  → imprime diagnóstico em stderr, continua nas demais, retorna erro
+func syncREQReferences(roadmapBasename, newRoadmapPath string) error {
+	cfg := config.Load()
+	reqFiles := scanREQFiles(cfg)
+
+	// Ordenação lexicográfica por basename — contrato pinado em docs/cli-parity.md
+	// ("Order is pinned, not delegated to the filesystem").
+	// Desempate por caminho completo para dois agentes com REQ de mesmo basename.
+	sort.Slice(reqFiles, func(i, j int) bool {
+		bi, bj := filepath.Base(reqFiles[i]), filepath.Base(reqFiles[j])
+		if bi != bj {
+			return bi < bj
+		}
+		return reqFiles[i] < reqFiles[j]
+	})
+
+	var firstErr error
+	for _, reqPath := range reqFiles {
+		reqBase := filepath.Base(reqPath)
+		content, err := os.ReadFile(reqPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "trackfw roadmap move: failed to sync %s: %v\n", reqBase, err)
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+
+		// Descoberta: frontmatter roadmap: aponta para este roadmap?
+		fmVal := extractFrontmatterRoadmap(string(content))
+		if fmVal == "" || filepath.Base(fmVal) != roadmapBasename {
+			continue // sem referência ou aponta para outro roadmap
+		}
+
+		// Idempotência: referência já está correta → nenhuma escrita
+		if fmVal == newRoadmapPath {
+			continue
+		}
+
+		updated, changed := rewriteREQRoadmapRef(content, roadmapBasename, newRoadmapPath)
+		if !changed {
+			continue
+		}
+
+		if err := os.WriteFile(reqPath, updated, 0644); err != nil {
+			fmt.Fprintf(os.Stderr, "trackfw roadmap move: failed to sync %s: %v\n", reqBase, err)
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+
+		fmt.Printf("✓ synced %s → %s\n", reqBase, newRoadmapPath)
+	}
+
+	return firstErr
 }

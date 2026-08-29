@@ -6,7 +6,7 @@
 
 ## Why AI agents need structured governance
 
-AI agents like Claude Code, OpenAI Codex, Gemini CLI, Cursor, GitHub Copilot, Windsurf, and Amazon Q operate in independent sessions. Without a persistent record of decisions and context, each session starts from scratch — the agent doesn't know:
+AI agents like Claude Code, OpenAI Codex, Gemini CLI, Antigravity, Cursor, GitHub Copilot, Windsurf, Amazon Q, and Kiro operate in independent sessions. Without a persistent record of decisions and context, each session starts from scratch — the agent doesn't know:
 
 - Which architectural decisions have already been made (and why)
 - Which requirements are in progress
@@ -65,7 +65,9 @@ squad: backend
 ...
 ```
 
-Frontmatter is validated against JSON Schemas in `docs/schema/` — ADRs, REQs, and Roadmaps with missing required fields generate violations in `trackfw validate`.
+`trackfw validate` runs the CLI's internal governance rules. The JSON Schemas in
+`docs/schema/` are helpers for external agent and automation checks; they are not
+consumed automatically by `trackfw validate`.
 
 ---
 
@@ -194,7 +196,7 @@ trackfw validate
 
 ## JSON Schema in `docs/schema/`
 
-`trackfw init` generates JSON schemas for artifact validation in `docs/schema/`:
+`trackfw init` generates auxiliary JSON schemas in `docs/schema/`:
 
 ```
 docs/schema/
@@ -203,14 +205,17 @@ docs/schema/
 └── roadmap.schema.json
 ```
 
-External agents can validate artifacts against these schemas before committing:
+External agents can extract frontmatter to JSON and validate it against these schemas before
+committing. This validation is external to `trackfw validate`:
 
 ```bash
+# Example: extract frontmatter to /tmp/adr-frontmatter.json first.
+
 # With ajv-cli
-npx ajv validate -s docs/schema/adr.schema.json -d docs/adr/ADR-2026-06-13-use-postgresql.md
+npx ajv validate -s docs/schema/adr.schema.json -d /tmp/adr-frontmatter.json
 
 # With jsonschema (Python)
-python3 -m jsonschema -i docs/adr/ADR-2026-06-13-use-postgresql.md docs/schema/adr.schema.json
+python3 -m jsonschema -i /tmp/adr-frontmatter.json docs/schema/adr.schema.json
 ```
 
 ### ADR Schema (`docs/schema/adr.schema.json`)
@@ -288,6 +293,51 @@ The agent automatically reads `trackfw context --format=json` and includes the r
 
 ---
 
+## Multi-CLI installation and lifecycle
+
+Agents and skills use the same contract in the Go/Homebrew, npm, and PyPI packages:
+
+```bash
+trackfw agents list
+trackfw agents install --targets claude,codex --items architect,backend --scope project
+trackfw agents update --targets claude,codex
+trackfw agents uninstall --targets claude,codex
+
+trackfw skills list --json
+trackfw skills install --targets gemini,antigravity --items governance,implement
+trackfw skills update --targets gemini,antigravity
+trackfw skills uninstall --targets gemini,antigravity
+```
+
+The targets are Claude Code, Codex, Gemini CLI, Antigravity, Cursor, GitHub
+Copilot, Windsurf, Amazon Q, and Kiro. Shared flags are:
+
+| Flag | Usage |
+|---|---|
+| `--targets <csv>` | Target CLIs; required for mutations without a TTY |
+| `--items <csv>` | Specific agents or skills; defaults to all |
+| `--scope project\|global` | Repository or user-directory installation |
+| `--surface target=surface` | Selects a surface, for example `kiro=cli` |
+| `--json` | Returns catalog, deployments, support, representation, and state |
+| `--force` | Allows replacing/removing only modified managed content |
+
+In an interactive terminal, mutations without `--targets` show a selector, and
+targets with more than one current surface ask which surface to use. `list` also
+inspects legacy surfaces. To select old compatibility explicitly:
+
+```bash
+trackfw agents list --targets antigravity --surface antigravity=legacy-cli
+```
+
+Each deployment is `not-installed`, `current`, `outdated`, or `modified`. The
+`.trackfw/integrations-manifest.json` manifest records ownership, version,
+SHA-256, and shared claims per scope. `update` and `uninstall` preserve
+customizations without `--force`; uninstall never removes an unmanaged file.
+Known historical templates can be adopted without overwrite and migrated with
+`update`. Unknown content is never adopted by update, even with `--force`.
+
+---
+
 ## Gemini CLI
 
 ```bash
@@ -299,15 +349,15 @@ trackfw context --format=json | gemini --model gemini-2.0-flash "Analyze the gov
 
 ## OpenAI Codex
 
-Select **OpenAI Codex** in `trackfw init`, or run:
+Select **OpenAI Codex** in `trackfw init`, or use the lifecycle:
 
 ```bash
-trackfw init --ai-tools codex
+trackfw agents install --targets codex --scope project
+trackfw skills install --targets codex --scope project
 ```
 
-The integration generates `AGENTS.md`, five skills under `.agents/skills/`, six
-specialist agents under `.codex/agents/`, concurrency limits in
-`.codex/config.toml`, and attention hooks in `.codex/hooks.json`.
+The adapter generates ten specialist TOML agents under `.codex/agents/` and five
+Agent Skills under `.agents/skills/`, with safe ownership and conservative updates.
 
 ---
 
