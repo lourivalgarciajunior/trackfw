@@ -4,6 +4,89 @@
 
 ---
 
+## Sessão 2026-08-29 — claude (FIM: segundo merge do upstream — o gate novo se pagou)
+
+`main` em `09cbae7`. `git merge-base HEAD upstream/main` = `d4e286e`: **em dia com o upstream.**
+Sete gates verdes, 15 violações, todas de bit de execução. `wip` vazio.
+
+### O commit trazido
+
+`d4e286e` — `fix(barrier)`: dialeto canônico do roadmap, status por token, consciência de cerca.
+Sem tag. 173 arquivos, quase todos `docs/`, `vault/` e testdata do upstream.
+
+**Governança enxuta de propósito.** O primeiro merge levou threat model completo porque o processo
+era inédito e derrubou quatro fixes locais sem conflito. Com os gates prontos, a cerimônia
+acompanha o risco e não o hábito. Inspecionei antes o único arquivo de código em colisão
+(`pypi/trackfw/generators/roadmap.py`): o upstream mexe no `WAVE0_BLOCK` do template, o fix local
+está no `log_basename` da função de move. Não colidem.
+
+### O `check-upstream-content.sh` viu o que eu não vi
+
+Resolvi tudo o que o git apontou — `vault/notes/index.md` em conflito, duas REQs e um roadmap — e
+**dei por encerrado**. O gate acusou **sete arquivos**, todos entrados sem conflito:
+
+```
+docs/adr/ADR-2026-08-29-dialeto-canonico-...      ADR do upstream
+vault/notes/  (seis notas)
+```
+
+Nas três vezes anteriores o vazamento foi notado por acaso, por releitura, ou por efeito colateral
+no `validate`. **Nesta, o gate viu antes de mim** — que é exatamente o que ele existe para fazer.
+
+### Regressão: zero
+
+```
+antes (pós 1º merge)  100 failed / 1445 passed
+depois                105 failed / 1451 passed
+```
+
+As 5 novas são **testes que o próprio commit trouxe** (`git show e0f8543:pypi/tests/test_barrier.py`
+não tem nenhum). Falham pela parede de encoding: o commit introduziu `⬜` no vocabulário de status.
+Contra a `upstream/main` **pura**, nos mesmos arquivos: **17 falhas lá, 7 aqui.**
+
+### Três correções em medições minhas
+
+1. **Baseline errado** — comparei contra as 95 de antes do *primeiro* merge, misturando dois.
+2. **Bytecode obsoleto contaminou tudo.** Havia **13 `__pycache__`** apontando para
+   `C:\Indieexpert\GitHub\` — o caminho de antes de os repositórios mudarem para `C:\dev\ferramentas\`.
+   Um teste falhava só por isso, e o traceback foi quem denunciou. O primeiro número que reportei
+   (106) **não valia**; o que vale é 105, com bytecode limpo.
+   **Regra prática:** depois de mover um repositório Python, limpe `__pycache__` antes de medir
+   qualquer coisa.
+3. **Uma regressão que é minha.**
+   `test_wave_argumento_invalido_mensagem_pinada_literalmente` falha **só aqui**, porque o
+   `_force_utf8_output` faz o CLI emitir UTF-8 e o harness lê com o padrão da plataforma. Antes o
+   `--help` morria com `UnicodeEncodeError`; agora funciona e um teste vê mojibake. **Troca de uma
+   classe de falha por outra menor**, e está escrito em vez de silenciado. Correção certa: o harness
+   decodificar UTF-8 explicitamente. Vai para kgsaran/trackfw#216.
+
+### Registrado sem investigar
+
+O **`check-artifact-parity` oscila**: reprovou na primeira medição e passou nas duas seguintes, com
+a mesma árvore. Gate que oscila é gate em que não se confia. Não investiguei a causa.
+
+### Ordem permanente do usuário
+
+**Não forçar o bit de execução** para silenciar `credential_guard_hook_resolvable`. Nada de
+`git update-index --chmod=+x`, `chmod +x` como se resolvesse, patch local na regra, ou baseline. As
+15 ficam vermelhas e visíveis; a correção vem do upstream. O `trackfw update harness`, que a própria
+mensagem de erro sugere, **não resolve** — medido com `--dry-run`: `updated=0 skipped=33`.
+
+O patch do bit de execução está levantado mas **segurado por decisão do usuário**: são 6 sites, dois
+por runtime (`validator_credential_guard.go:377`, `validator_git_branch_guard.go:193`,
+`index.js:1438` e `:2544`, `validator.py:1816` e `:3017`), e o precedente a espelhar é
+`internal/generators/scaffold_doctor.go:23` — `var CurrentGOOS = runtime.GOOS`, com a supressão do
+mode check em Windows já decidida por eles (AC5).
+
+### Pendências
+
+- As 15 violações de bit de execução, aguardando o upstream.
+- Verificação por efeito do symlink — precisa de Developer Mode.
+- `check-artifact-parity` oscilando, causa não investigada.
+- O upstream tem branch aberta (`fix/lista-de-agentes-...`): vem mais.
+
+---
+
 ## Sessão 2026-08-29 — claude (FIM: upstream em dia, sétimo gate, skill publicada)
 
 `main` em `d5aa5e4`. Sete gates verdes, `wip` vazio, sem PR aberta. `git merge-base HEAD
