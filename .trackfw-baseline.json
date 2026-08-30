@@ -1,0 +1,24 @@
+{
+  "created": "2026-08-29T03:54:25Z",
+  "violations": [
+    "~/.claude/settings.json (Claude Code, global scope) references trackfw-credential-guard.sh resolved to \"C:\\\\Users\\\\louri\\\\.trackfw\\\\scripts\\\\trackfw-credential-guard.sh\", but the script is not executable — run `trackfw update harness` to regenerate it",
+    "~/.codex/hooks.json (Codex CLI, global scope) references trackfw-credential-guard.sh resolved to \"C:\\\\Users\\\\louri\\\\.trackfw\\\\scripts\\\\trackfw-credential-guard.sh\", but the script is not executable — run `trackfw update harness` to regenerate it",
+    "~/.gemini/settings.json (Gemini CLI, global scope) references trackfw-credential-guard.sh resolved to \"C:\\\\Users\\\\louri\\\\.trackfw\\\\scripts\\\\trackfw-credential-guard.sh\", but the script is not executable — run `trackfw update harness` to regenerate it",
+    "~/.cursor/hooks.json (Cursor, global scope) references trackfw-credential-guard.sh resolved to \"C:\\\\Users\\\\louri\\\\.trackfw\\\\scripts\\\\trackfw-credential-guard.sh\", but the script is not executable — run `trackfw update harness` to regenerate it",
+    "~/.copilot/settings.json (GitHub Copilot CLI, global scope) references trackfw-credential-guard.sh resolved to \"C:\\\\Users\\\\louri\\\\.trackfw\\\\scripts\\\\trackfw-credential-guard.sh\", but the script is not executable — run `trackfw update harness` to regenerate it",
+    "~/.kiro/hooks/trackfw-credential-guard.json (Kiro, global scope) references trackfw-credential-guard.sh resolved to \"C:\\\\Users\\\\louri\\\\.trackfw\\\\scripts\\\\trackfw-credential-guard.sh\", but the script is not executable — run `trackfw update harness` to regenerate it",
+    ".claude/settings.json (Claude Code) references trackfw-git-branch-guard.sh resolved to \"C:\\\\Indieexpert\\\\GitHub\\\\trackfw-main\\\\scripts\\\\trackfw-git-branch-guard.sh\", but the script is not executable — run `trackfw update` to regenerate it",
+    ".codex/hooks.json (Codex CLI) references trackfw-git-branch-guard.sh resolved to \"C:\\\\Indieexpert\\\\GitHub\\\\trackfw-main\\\\scripts\\\\trackfw-git-branch-guard.sh\", but the script is not executable — run `trackfw update` to regenerate it",
+    ".gemini/settings.json (Gemini CLI) references trackfw-git-branch-guard.sh resolved to \"C:\\\\Indieexpert\\\\GitHub\\\\trackfw-main\\\\scripts\\\\trackfw-git-branch-guard.sh\", but the script is not executable — run `trackfw update` to regenerate it",
+    "~/.claude/settings.json (Claude Code, global scope) references trackfw-git-branch-guard.sh resolved to \"C:\\\\Users\\\\louri\\\\.trackfw\\\\scripts\\\\trackfw-git-branch-guard.sh\", but the script is not executable — run `trackfw update harness` to regenerate it",
+    "~/.codex/hooks.json (Codex CLI, global scope) references trackfw-git-branch-guard.sh resolved to \"C:\\\\Users\\\\louri\\\\.trackfw\\\\scripts\\\\trackfw-git-branch-guard.sh\", but the script is not executable — run `trackfw update harness` to regenerate it",
+    "~/.gemini/settings.json (Gemini CLI, global scope) references trackfw-git-branch-guard.sh resolved to \"C:\\\\Users\\\\louri\\\\.trackfw\\\\scripts\\\\trackfw-git-branch-guard.sh\", but the script is not executable — run `trackfw update harness` to regenerate it",
+    "~/.cursor/hooks.json (Cursor, global scope) references trackfw-git-branch-guard.sh resolved to \"C:\\\\Users\\\\louri\\\\.trackfw\\\\scripts\\\\trackfw-git-branch-guard.sh\", but the script is not executable — run `trackfw update harness` to regenerate it",
+    "~/.copilot/settings.json (GitHub Copilot CLI, global scope) references trackfw-git-branch-guard.sh resolved to \"C:\\\\Users\\\\louri\\\\.trackfw\\\\scripts\\\\trackfw-git-branch-guard.sh\", but the script is not executable — run `trackfw update harness` to regenerate it",
+    "~/.kiro/hooks/trackfw-git-branch-guard.json (Kiro, global scope) references trackfw-git-branch-guard.sh resolved to \"C:\\\\Users\\\\louri\\\\.trackfw\\\\scripts\\\\trackfw-git-branch-guard.sh\", but the script is not executable — run `trackfw update harness` to regenerate it"
+  ],
+  "warnings": [
+    "adr \"ADR-2026-08-17-req-move-resolve-as-tres-formas.md\" is not referenced by any REQ",
+    "adr \"ADR-2026-08-29-adotar-upstream-como-base.md\" is not referenced by any REQ"
+  ]
+}

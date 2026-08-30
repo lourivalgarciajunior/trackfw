@@ -4,6 +4,7 @@ const fs = require('fs')
 const path = require('path')
 const os = require('os')
 const { readAgentConventions } = require('../config/index.js')
+const { homedir } = require('../homedir');
 
 // PACKAGE_VERSION — the version of the trackfw binary generating the CI
 // workflow templates. Read once from package.json (never a literal), so
@@ -352,9 +353,12 @@ function generateCommitMsgHook(cfg) {
 // ---------------------------------------------------------------------------
 
 function generatePomXml(cfg) {
-  const slug = cfg.projectName
-    ? cfg.projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
-    : 'my-app'
+  // Usa o toSlug compartilhado em vez de uma variante inline: a versao anterior nao
+  // fazia NFKD e PERDIA a letra acentuada — "Cafe App" (com acento) virava "caf-app"
+  // aqui e "cafe-app" no Go, que usa o toSlug dele. Ver a secao
+  // "Artifact slug contract" em docs/cli-parity.md.
+  const { toSlug } = require('./adr')
+  const slug = cfg.projectName ? toSlug(cfg.projectName) : 'my-app'
   const name = cfg.projectName || 'My App'
   const content = `<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -1330,7 +1334,7 @@ async function installAmazonQ(cwd = process.cwd()) {
 async function installIntegrationTarget(target, cwd = process.cwd(), scope = 'project', { onSkip } = {}) {
   const { execute, buildPlans } = require('../integrations')
   const { resolveAgentModels } = require('../config')
-  const { models: agentModels, warning: agentModelsWarning } = resolveAgentModels(scope, os.homedir(), cwd)
+  const { models: agentModels, warning: agentModelsWarning } = resolveAgentModels(scope, homedir(), cwd)
   if (agentModelsWarning) process.stderr.write(agentModelsWarning + '\n')
   const roots = { projectRoot: cwd }
   const options = { targets: [target], scope, onSkip, agentModels }
@@ -1366,7 +1370,7 @@ function generateClaudeCommandsForce(rootDir) {
  * installSkillsForce — sobrescreve ~/.claude/skills/trackfw/SKILL.md sempre.
  */
 function installSkillsForce() {
-  const skillDir = path.join(os.homedir(), '.claude', 'skills', 'trackfw')
+  const skillDir = path.join(homedir(), '.claude', 'skills', 'trackfw')
   fs.mkdirSync(skillDir, { recursive: true })
 
   const content = `---

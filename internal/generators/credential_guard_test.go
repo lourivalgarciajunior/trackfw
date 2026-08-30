@@ -193,7 +193,7 @@ func getGoGlobalCredentialGuardScript(t *testing.T) string {
 	return string(content)
 }
 
-// getNodeSourceBlock extrai um bloco `const <name> = \`...\`` literal (template literal simples,
+// getNodeSourceBlock extrai um bloco `const <name> = \`...\“ literal (template literal simples,
 // sem concatenação) de um arquivo-fonte JS, e reverte a duplicação de backslash + o escape de
 // ${...} feitos para o parser de template literal (mesma normalização de
 // getNodeCredentialGuardScript).
@@ -205,7 +205,7 @@ func getNodeSourceBlock(t *testing.T, path, constName string) string {
 	}
 
 	s := string(content)
-	match := regexp.MustCompile(`const `+constName+` = \x60([\s\S]*?)\x60`).FindStringSubmatch(s)
+	match := regexp.MustCompile(`const ` + constName + ` = \x60([\s\S]*?)\x60`).FindStringSubmatch(s)
 	if len(match) < 2 {
 		t.Fatalf("%s não encontrado em %s", constName, path)
 	}

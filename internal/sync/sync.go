@@ -12,7 +12,7 @@ import (
 type SyncResult struct {
 	REQPath string
 	IssueID string
-	Skipped bool  // true se já tinha issue vinculado ou status != Open
+	Skipped bool // true se já tinha issue vinculado ou status != Open
 	Error   error
 }
 

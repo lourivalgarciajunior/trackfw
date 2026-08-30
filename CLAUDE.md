@@ -206,3 +206,37 @@ Delete the file when resolved. Visible as a live banner in `trackfw serve`.
 - `trackfw roadmap move <name> <state>` — transition roadmap state
 - `trackfw serve` — live Kanban board at http://localhost:4080
 <!-- trackfw:rules:end -->
+
+---
+
+## Este repositório é uma cópia consumidora, não o upstream
+
+O produto vem de `kgsaran/trackfw`, adicionado como remote `upstream`. Este repo **consome** o
+trackfw e o usa para governar a si mesmo; ele não é a linha principal do produto.
+
+**Atualizar:**
+
+```bash
+git fetch upstream
+git merge upstream/<tag>     # ex.: upstream/v7.4.0
+```
+
+Funciona porque `ADR-2026-08-29-adotar-upstream-como-base` estabeleceu a ancestralidade com um merge
+de históricos. Antes disso o repo era cópia por ZIP, sem ancestral comum, e `git merge` se recusava
+a rodar — o que deixou este repo cinco majors atrás sem ninguém perceber.
+
+Conflito ao atualizar é esperado e é o sinal de onde vocês divergem. A política é a da ADR: produto
+vem do upstream; `docs/`, `trackfw.yaml` e `.gitattributes` são locais.
+
+**Governança local** (o `trackfw.yaml` daqui sobrescreve dois defaults do produto):
+
+- `req_dir: docs/requisições` — não `docs/req`. O nome em português é histórico.
+- `roadmap_namespacing: by_agent`, agentes `[apolo, artemis, claude]`, então os artefatos ficam em
+  `docs/requisições/<agente>/` e `docs/roadmaps/<agente>/{backlog,wip,done}/`.
+
+A governança do upstream **não** é importada: as 52 ADRs, 140 REQs e 142 roadmaps dele cairiam
+dentro de `docs/adr/` e `docs/roadmaps/`, que é onde vive a governança daqui.
+
+**Divergência local deliberada:** `pypi/trackfw/cli.py` tem `_force_utf8_output`, que não existe no
+upstream. Sem ele, `--help`, `status` e `validate` morrem com `UnicodeEncodeError` em console
+Windows cp1252. Ver `REQ-2026-08-16-cli-python-utf8-windows`.

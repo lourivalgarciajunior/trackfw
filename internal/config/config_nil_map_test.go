@@ -11,13 +11,19 @@ import (
 // an agent_models: block.
 //
 // Without the initConfigMaps fix, ParseRulesFromContent constructs
-//   ProjectConfig{Rules: make(map[string]string)}
+//
+//	ProjectConfig{Rules: make(map[string]string)}
+//
 // leaving AgentModels as nil (Go zero value). parse() then executes
-//   cfg.AgentModels[k] = s
+//
+//	cfg.AgentModels[k] = s
+//
 // which panics with "assignment to entry in nil map".
 //
 // Proof of panic before fix: run this test against unfixed code:
-//   go test ./internal/config/ -run TestParseRulesFromContentWithAgentModels_NoPanic -v
+//
+//	go test ./internal/config/ -run TestParseRulesFromContentWithAgentModels_NoPanic -v
+//
 // Result (without fix): panic: assignment to entry in nil map
 // Result (with fix):    PASS
 func TestParseRulesFromContentWithAgentModels_NoPanic(t *testing.T) {

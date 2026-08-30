@@ -61,7 +61,7 @@ type HookTuple struct {
 	Event      string `json:"event"`
 	Matcher    string `json:"matcher"`
 	RawCommand string `json:"raw_command"`
-	ScriptPath string `json:"script_path"`  // normalized repo-relative, or "" if inline
+	ScriptPath string `json:"script_path"`   // normalized repo-relative, or "" if inline
 	Digest     string `json:"script_digest"` // "sha256:hex", "not-found", or "unresolvable"
 }
 
@@ -76,7 +76,7 @@ type RuntimeResult struct {
 // InstructionFile is a file that instructs the agent (not a shell script).
 type InstructionFile struct {
 	Path    string `json:"path"`
-	Kind    string `json:"kind"`    // "agent-config" or "slash-command"
+	Kind    string `json:"kind"` // "agent-config" or "slash-command"
 	Present bool   `json:"present"`
 }
 

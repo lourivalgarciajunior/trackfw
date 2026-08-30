@@ -14,22 +14,22 @@ func TestLooksLikeSuspectModelValue(t *testing.T) {
 		value   string
 		suspect bool
 	}{
-		{"4.6-beta", true},               // escape hatch + not claude- → warn
-		{"4.6", false},                   // bare version string → no warn
-		{"5", false},                     // bare version string (major-only) → no warn
+		{"4.6-beta", true},                    // escape hatch + not claude- → warn
+		{"4.6", false},                        // bare version string → no warn
+		{"5", false},                          // bare version string (major-only) → no warn
 		{"claude-sonnet-4-5-20250929", false}, // starts with claude- → no warn
-		{"claude-opus-5", false},          // starts with claude- → no warn
-		{"gpt-5", true},                   // not version, not claude- → warn
-		{"latest", true},                  // not version, not claude- → warn
-		{"", true},                        // empty → isVersionString=false, no prefix → warn
+		{"claude-opus-5", false},              // starts with claude- → no warn
+		{"gpt-5", true},                       // not version, not claude- → warn
+		{"latest", true},                      // not version, not claude- → warn
+		{"", true},                            // empty → isVersionString=false, no prefix → warn
 		// ML-5A: control chars are always suspect — rewriteFrontmatterModelLine
 		// rejects them outright, so the command must agree with the write path.
-		{"claude-sonnet-4-6\ntools: Bash", true},         // \n → frontmatter injection
-		{"claude-sonnet-4-6\n---\nINJECTED", true},       // \n---\n → body injection (most severe)
+		{"claude-sonnet-4-6\ntools: Bash", true},   // \n → frontmatter injection
+		{"claude-sonnet-4-6\n---\nINJECTED", true}, // \n---\n → body injection (most severe)
 		// ML-5C: Unicode line/paragraph separators — same argument as control
 		// chars; model IDs never need line separators.
-		{"claude-sonnet-4-6\u2028tools: Bash", true},    // U+2028 LINE SEPARATOR
-		{"claude-sonnet-4-6\u2029tools: Bash", true},    // U+2029 PARAGRAPH SEPARATOR
+		{"claude-sonnet-4-6\u2028tools: Bash", true}, // U+2028 LINE SEPARATOR
+		{"claude-sonnet-4-6\u2029tools: Bash", true}, // U+2029 PARAGRAPH SEPARATOR
 		// ML-5C: accented value starts with claude-, NOT a version string, NOT a
 		// line separator → LooksLikeSuspectModelValue = false (no warn).
 		{"claude-sonnet-4-6-caf\u00e9", false},

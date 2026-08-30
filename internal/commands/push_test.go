@@ -15,10 +15,10 @@ import (
 
 // mockPushGit captures every call to execGit for push tests.
 type mockPushGit struct {
-	branch     string // returned for symbolic-ref --short HEAD
-	remoteURL  string // returned for remote get-url origin
-	hasUpstream bool  // true → @{u} resolves (push without -u); false → push -u
-	calls      [][]string
+	branch      string // returned for symbolic-ref --short HEAD
+	remoteURL   string // returned for remote get-url origin
+	hasUpstream bool   // true → @{u} resolves (push without -u); false → push -u
+	calls       [][]string
 }
 
 func (m *mockPushGit) exec(args ...string) (string, error) {

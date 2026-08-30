@@ -1,19 +1,27 @@
-# trackfw configuration — gerado por trackfw discover
-# governance_mode: lenient permite validação não-bloqueante durante onboarding
-
-governance_mode: lenient
+# trackfw — configuração de governança deste repositório
+#
+# Este repo faz dogfooding do próprio trackfw. Os artefatos ficam namespaced por
+# agente (by_agent) e o diretório de requisitos usa o nome em português, herdado
+# do histórico do projeto. Ver REQ-2026-08-16-consolidar-arvores-governanca.
 
 adr_dirs:
   - docs/adr
-req_dir: docs/req
-roadmap_dir: docs/roadmaps
-roadmap_namespacing: flat
-hooks: none
-ci: github-actions
-forge: github
 
-# Versão do modelo por tier (ADR-2026-08-21). Guarda a VERSÃO, não o ID —
-# cada alvo compõe a própria forma. Motivo da escolha: COTA, não custo —
-# o Sonnet 4.6 usa o tokenizador pré-4.7 e consome ~30% menos tokens para
-# o mesmo texto, embora custe mais por token ($3/$15 contra $2/$10).
-# Conferir a resolução efetiva: trackfw agents models
+req_dir: docs/requisições
+roadmap_dir: docs/roadmaps
+
+roadmap_namespacing: by_agent
+agents:
+  - apolo
+  - artemis
+  - claude
+
+governance_mode: strict
+wip_limit: 1
+
+# Nenhuma regra rebaixada — todas no default.
+#
+# `req_has_adr` ficou em `warning` entre 2026-08-16 e 2026-08-17, enquanto as 5
+# REQs legadas não tinham ADR nenhuma. Não era discordância da regra, era falta
+# de saída. Com as ADRs retroativas escritas em REQ-2026-08-16-adrs-retroativas,
+# voltou ao default `error`.

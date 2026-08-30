@@ -207,4 +207,3 @@ func TestConfigStrictCIPaths(t *testing.T) {
 		}
 	})
 }
-

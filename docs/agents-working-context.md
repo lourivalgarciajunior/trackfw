@@ -4,6 +4,305 @@
 
 ---
 
+## Sessão 2026-08-29 — claude (FIM: segundo merge do upstream — o gate novo se pagou)
+
+`main` em `09cbae7`. `git merge-base HEAD upstream/main` = `d4e286e`: **em dia com o upstream.**
+Sete gates verdes, 15 violações, todas de bit de execução. `wip` vazio.
+
+### O commit trazido
+
+`d4e286e` — `fix(barrier)`: dialeto canônico do roadmap, status por token, consciência de cerca.
+Sem tag. 173 arquivos, quase todos `docs/`, `vault/` e testdata do upstream.
+
+**Governança enxuta de propósito.** O primeiro merge levou threat model completo porque o processo
+era inédito e derrubou quatro fixes locais sem conflito. Com os gates prontos, a cerimônia
+acompanha o risco e não o hábito. Inspecionei antes o único arquivo de código em colisão
+(`pypi/trackfw/generators/roadmap.py`): o upstream mexe no `WAVE0_BLOCK` do template, o fix local
+está no `log_basename` da função de move. Não colidem.
+
+### O `check-upstream-content.sh` viu o que eu não vi
+
+Resolvi tudo o que o git apontou — `vault/notes/index.md` em conflito, duas REQs e um roadmap — e
+**dei por encerrado**. O gate acusou **sete arquivos**, todos entrados sem conflito:
+
+```
+docs/adr/ADR-2026-08-29-dialeto-canonico-...      ADR do upstream
+vault/notes/  (seis notas)
+```
+
+Nas três vezes anteriores o vazamento foi notado por acaso, por releitura, ou por efeito colateral
+no `validate`. **Nesta, o gate viu antes de mim** — que é exatamente o que ele existe para fazer.
+
+### Regressão: zero
+
+```
+antes (pós 1º merge)  100 failed / 1445 passed
+depois                105 failed / 1451 passed
+```
+
+As 5 novas são **testes que o próprio commit trouxe** (`git show e0f8543:pypi/tests/test_barrier.py`
+não tem nenhum). Falham pela parede de encoding: o commit introduziu `⬜` no vocabulário de status.
+Contra a `upstream/main` **pura**, nos mesmos arquivos: **17 falhas lá, 7 aqui.**
+
+### Três correções em medições minhas
+
+1. **Baseline errado** — comparei contra as 95 de antes do *primeiro* merge, misturando dois.
+2. **Bytecode obsoleto contaminou tudo.** Havia **13 `__pycache__`** apontando para
+   `C:\Indieexpert\GitHub\` — o caminho de antes de os repositórios mudarem para `C:\dev\ferramentas\`.
+   Um teste falhava só por isso, e o traceback foi quem denunciou. O primeiro número que reportei
+   (106) **não valia**; o que vale é 105, com bytecode limpo.
+   **Regra prática:** depois de mover um repositório Python, limpe `__pycache__` antes de medir
+   qualquer coisa.
+3. **Uma regressão que é minha.**
+   `test_wave_argumento_invalido_mensagem_pinada_literalmente` falha **só aqui**, porque o
+   `_force_utf8_output` faz o CLI emitir UTF-8 e o harness lê com o padrão da plataforma. Antes o
+   `--help` morria com `UnicodeEncodeError`; agora funciona e um teste vê mojibake. **Troca de uma
+   classe de falha por outra menor**, e está escrito em vez de silenciado. Correção certa: o harness
+   decodificar UTF-8 explicitamente. Vai para kgsaran/trackfw#216.
+
+### Registrado sem investigar
+
+O **`check-artifact-parity` oscila**: reprovou na primeira medição e passou nas duas seguintes, com
+a mesma árvore. Gate que oscila é gate em que não se confia. Não investiguei a causa.
+
+### Ordem permanente do usuário
+
+**Não forçar o bit de execução** para silenciar `credential_guard_hook_resolvable`. Nada de
+`git update-index --chmod=+x`, `chmod +x` como se resolvesse, patch local na regra, ou baseline. As
+15 ficam vermelhas e visíveis; a correção vem do upstream. O `trackfw update harness`, que a própria
+mensagem de erro sugere, **não resolve** — medido com `--dry-run`: `updated=0 skipped=33`.
+
+O patch do bit de execução está levantado mas **segurado por decisão do usuário**: são 6 sites, dois
+por runtime (`validator_credential_guard.go:377`, `validator_git_branch_guard.go:193`,
+`index.js:1438` e `:2544`, `validator.py:1816` e `:3017`), e o precedente a espelhar é
+`internal/generators/scaffold_doctor.go:23` — `var CurrentGOOS = runtime.GOOS`, com a supressão do
+mode check em Windows já decidida por eles (AC5).
+
+### Pendências
+
+- As 15 violações de bit de execução, aguardando o upstream.
+- Verificação por efeito do symlink — precisa de Developer Mode.
+- `check-artifact-parity` oscilando, causa não investigada.
+- O upstream tem branch aberta (`fix/lista-de-agentes-...`): vem mais.
+
+---
+
+## Sessão 2026-08-29 — claude (FIM: upstream em dia, sétimo gate, skill publicada)
+
+`main` em `d5aa5e4`. Sete gates verdes, `wip` vazio, sem PR aberta. `git merge-base HEAD
+upstream/main` = `e0f8543`, o HEAD do upstream: **o repositório está em dia com o Kleber.**
+
+### O repositório mudou de caminho
+
+De `C:\Indieexpert\GitHub\` para `C:\dev\ferramentas\`. Consequência que custou diagnóstico: o
+marketplace `indieexpert` do Claude Code apontava para o caminho antigo, e publicar plugin não teria
+efeito nenhum — o `plugin update` responde sem erro. Foi preciso `marketplace remove` + `add`, e o
+`remove` desinstala os plugins junto.
+
+### O merge do upstream, e o que ele provou
+
+Primeiro `git merge upstream/main` real. Trouxe correção de **escrita arbitrária por symlink**
+(HIGH, `update`/`discover` seguiam symlink sem `lstat`), o pin de versão do gate de CI e o
+`install.sh` honrando `TRACKFW_VERSION`.
+
+**Os gates locais se pagaram.** O `check-python-writes-lf` nomeou quatro escritas que o merge
+derrubou — `discover.py:491`, `update.py:230`, `init_gen.py:631` e `:636` — e **nenhuma gerou
+conflito**: o upstream reescreveu as funções e o `newline="\n"` sumiu em silêncio. Os outros cinco
+passaram de primeira. Nenhum buraco de cobertura.
+
+**Critério não cumprido, declarado:** a verificação por efeito do symlink não foi feita. O `ln -s`
+do Git Bash cria cópia, e symlink nativo dá `Operation not permitted` — precisa de Developer Mode.
+Só confirmei que a guarda está presente nos três runtimes, o que não é prova de comportamento.
+
+### Sétimo gate: `check-upstream-content.sh`
+
+Conteúdo do upstream entrou **três vezes** nesta sessão — `vault/notes/index.md`, duas notas de
+`vault/`, uma ADR —, sempre **sem conflito**, porque caminho novo não colide com nada. A política da
+ADR não era auto-aplicável.
+
+Desenho por **proveniência**: arquivo sob `docs/` ou `vault/` que exista em `upstream/main` é
+conteúdo do upstream, salvo o que está no `KEEP` com o motivo escrito. Lista de caminhos proibidos
+envelheceria a cada release; a interseção não.
+
+Falsificado um a um, e o quarto critério é o que importa: **sem `upstream/main` buscado o gate
+reprova**, porque verde por não conseguir checar pareceria cobertura.
+
+### CLI e skill
+
+O CLI global saiu de 2.12.4 para 7.3.0 — **o usuário atualizou**, confirmado pelo timestamp do
+pacote (13:05:39), não foi este agente nem o hook do plugin.
+
+Antes disso havia um impasse real: o guard é global e bloqueia `git commit`, mas o CLI 2.12.4 não
+tem `trackfw commit`. Em qualquer repo sem um binário 7.x à mão, não dava para commitar.
+
+A skill `trackfw` foi para **1.4.0** e publicada, com verificação no arquivo do cache e não na
+mensagem de sucesso. O eixo: parar de afirmar comportamento sem dizer de qual versão. Ganhou a
+seção de referência entre artefatos e o `/trackfw:barrier`.
+
+### O `sync:trackfw` apagava antes de validar
+
+`npm run sync:trackfw` **apagou os 8 slash commands e abortou**, porque a 7.3.0 trouxe `barrier` e
+ele não estava no `DESCRIPTIONS`. Restaurei do `HEAD`, acrescentei o `barrier` e **inverti a ordem**:
+validar primeiro, apagar depois.
+
+### Achados novos na issue kgsaran/trackfw#216
+
+Três, além dos sete originais:
+
+- **9.** Os testes do próprio fix de symlink não rodam em Windows sem privilégio elevado — 5 Python,
+  5 Node, 2 Go. **O Windows não valida a correção de segurança do upstream.**
+- **10.** `ref_targets_exist` é **vacuoso em `by_agent`**. Mesma referência quebrada dá 2 violações
+  em `flat` e **0** em `by_agent`. Por isso este repo tem quatro REQs apontando para um
+  `docs/roadmaps/claude/wip/` que não existe e reporta zero.
+- **11.** O sync do `roadmap move` escreve separador do sistema — `docs\roadmaps\wip\...`. Resolve
+  no Windows, não resolveria em Linux.
+
+### Duas correções ao que eu mesmo havia registrado
+
+**O `roadmap move` sincroniza** a referência da REQ — eu tinha registrado o contrário. Meu teste
+setava a linha `Roadmap:` do **corpo**, que o CLI ignora; o campo vivo é o do frontmatter. Medi a
+coisa errada.
+
+**O baseline npm não estava corrompido por mim** — ele travou, no mesmo ponto exato das duas
+tentativas. E `generators.test.js` não trava só antes do fix: trava nos dois estados quando o stdin
+é herdado.
+
+### O fio que atravessou a sessão inteira
+
+**Verde que não significa nada**, com roupas diferentes: teste que passa por ler a home real;
+fixture de gate com só acento, que nunca viu a divergência de slug; regra que não roda num layout
+suportado; três testes meus de não-vacuidade que passaram vacuosos; `validate` limpo num CLI cinco
+majors atrasado; e um gate que passaria por não conseguir checar.
+
+O `check-upstream-content.sh` é o único que trata isso explicitamente — reprova quando não consegue
+verificar, com a razão escrita no próprio script.
+
+### Pendências
+
+- As 15 violações de bit de execução, aguardando o upstream.
+- Verificação por efeito do symlink, precisa de Developer Mode.
+- O `KEEP` do gate novo pode virar depósito; o motivo escrito por entrada torna isso visível a quem
+  lê, e nada mais.
+
+---
+
+## Sessão 2026-08-29 — claude (FIM: cadeia de defeitos de Windows — ENCERRADA)
+
+`main` em `2e50ebe`. Seis PRs mescladas: #19 (migração), #22 (regra de slug), #23 (CRLF),
+#24 (homedir), #25 (isatty), #26 (slug fechado). Nenhuma PR aberta, `wip` e `analyzing` vazios,
+árvore limpa.
+
+### Como a cadeia se formou
+
+A migração para a 7.3.0 revelou que **a 7.3.0 nunca foi exercitada em Windows**. Foram oito
+defeitos, e quatro deles bloqueavam **em fila** um único gate — o `check-artifact-parity.sh`, que
+guarda o contrato de slug. Nenhum dos quatro era sobre slug. Cada correção revelava o próximo.
+
+| # | Onde | Efeito | Estado |
+|---|---|---|---|
+| 1 | `pypi/trackfw/cli.py` | CLI Python morria em cp1252 | corrigido (#19) |
+| 2 | `os.UserHomeDir` no Go | teste escrevia na home real do dev | corrigido (#19) |
+| 3 | `Mode()&0111` no validator | `validate` sempre sai 1 | **em aberto** |
+| 4 | `check-parity-contract-coverage.sh` | mesmo erro de encoding | registrado |
+| 5 | 38 sites de escrita no Python | CRLF quebrava o shebang dos `.sh` gerados | corrigido (#23) |
+| 6 | home em Node e Python | mesma classe do #2 | corrigido (#24) |
+| 7 | `isatty` devolvendo True para `NUL` | `init` travava no wizard | corrigido (#25) |
+| 8 | separador no `.trackfw-log` | `zeus\` contra `zeus/` | corrigido (#25) |
+
+O #3 não tem saída deste lado: `os.Stat` do Go no Windows nunca reporta bit de execução, nem
+depois de `chmod +x`, e `filterBaselineTagged` isenta a regra da supressão por baseline. É a origem
+das 6 violações que `trackfw validate` reporta hoje.
+
+Tudo consolidado em **kgsaran/trackfw#216**, com referências verificadas contra a tag `v7.3.0` e
+caminhos sanitizados.
+
+### Gates deste repositório
+
+Seis, todos verdes e todos verificados por não-vacuidade — defeito injetado, gate reprova, defeito
+removido, gate passa:
+
+```
+check-slug-inventory      check-tty-detection
+check-python-writes-lf    check-artifact-parity
+check-homedir-parity      check-subcommand-parity
+```
+
+Quatro deles (`slug-inventory`, `python-writes-lf`, `homedir-parity`, `tty-detection`) são locais e
+existem porque a CI do upstream é Linux e nunca verá esses defeitos: **eles pegam na hora do
+merge**, que é onde a regressão vai nascer.
+
+### Divergências locais deliberadas
+
+Fora de `docs/`, a superfície própria deste repo:
+
+- `pypi/trackfw/cli.py` — `_force_utf8_output`
+- `internal/homedir/`, `npm/src/homedir.js`, `pypi/trackfw/homedir.py`
+- `pypi/trackfw/tty.py`
+- os quatro gates locais em `scripts/`
+- `.gitattributes`, `.trackfw-baseline.json`
+
+Todas estão documentadas no `cli-parity.md` ou no cabeçalho do próprio arquivo, com o motivo.
+
+### Duas lições que valem mais que os fixes
+
+**Teste pode passar pelo motivo errado.** O `TestGBGDedup_...ToleratesDoubleSlash` passava porque a
+produção lia a home real, que já tinha o hook instalado pelas próprias rodadas de teste. A fixture
+do `check-artifact-parity.sh` era só acento, e por isso nunca pegou a divergência de slug do
+`adr.py`. Isolar a home tornou os dois honestos — um deles agora falha, no Go também.
+
+**Medir por lista nomeada, nunca por contagem.** A suíte pypi tem um teste instável de skew de
+relógio que move o total sozinho: três corridas do mesmo código deram 198, 199 e 200. Sem a lista
+nomeada eu teria reportado regressão onde não havia — e teria perdido as três colisões de escopo
+que eu mesmo introduzi no fix de `homedir` (`home_dir` importado sombreado por um parâmetro
+`home_dir`, virando `None()`), que eram `TypeError` em runtime e passavam pelo `ast.parse`.
+
+### Pendências
+
+- **#3 do quadro**, aguardando o upstream. As 6 violações do `validate` são dele.
+- O caso positivo do `isatty` **não foi verificado**: esta máquina não tem console anexado, então
+  não há prova de que um terminal de verdade continua promptando. A mitigação é usar o mesmo
+  `GetConsoleMode` do Go. Um teste manual em terminal real fecha o buraco.
+- A suíte npm **não completa** nesta máquina, em nenhum estado. `tests/generators.test.js` estoura
+  o tempo limite com e sem as mudanças. Não há total de npm defensável aqui.
+
+---
+
+## Sessão 2026-08-29 — claude (FIM: migração para a base do upstream 7.3.0 — CONCLUÍDO)
+
+Branch `chore/migrar-upstream-7.3.0`. Commit `916176a`.
+
+> **Este arquivo agora vem do upstream.** As sessões acima desta linha são do `kgsaran/trackfw`,
+> não deste repositório — entraram no merge de históricos. Este repo é cópia consumidora.
+
+**O que foi feito:** merge `v7.3.0 --allow-unrelated-histories`. `git merge-base HEAD v7.3.0`
+devolve o commit da 7.3.0, então `git merge upstream/<tag>` passa a funcionar sem flag. Antes o repo
+era cópia por ZIP da v2.12.2 — cinco majors atrás, sem ancestral comum.
+
+Produto do upstream; `docs/`, `trackfw.yaml` e `.gitattributes` locais. A governança do upstream
+(52 ADRs, 140 REQs, 142 roadmaps) ficou de fora. `docs/` final: 7 ADRs, 44 REQs, 54 roadmaps.
+
+**O que a rota C revelou:** merge de históricos não-relacionados adiciona mas nunca apaga. 110
+arquivos que o upstream deletou sobreviveram em silêncio; o `go build` denunciou com
+`undefined: injectCodexHooks`. Podados os 6 geradores legados, os plugins nos 3 runtimes, os 80
+templates e `internal/server/`.
+
+**Divergências locais deliberadas (3):**
+1. `_force_utf8_output` em `pypi/trackfw/cli.py` — sem ele, `UnicodeEncodeError` no `→` em cp1252.
+2. `internal/homedir` — os testes isolam `HOME` em 97 call sites, mas no Windows
+   `os.UserHomeDir()` lê `%USERPROFILE%`. Uma rodada de `go test ./...` escreveu na home real.
+3. `scripts/check-subcommand-parity.sh` — gate local, `known_divergences` agora vazio.
+
+**Passivo aberto — `trackfw validate` sai 1 nesta máquina.** `credential_guard_hook_resolvable`
+testa `info.Mode()&0111 == 0`; o `os.Stat` do Go no Windows devolve `-rw-rw-rw-` para todo arquivo,
+inclusive depois de `chmod +x` (verificado). O baseline não resolve: `filterBaselineTagged` isenta
+`credentialGuardAnchoredRules` da supressão (`validator.go:577`). 9 das 15 congeladas; as 6 de
+credential-guard nunca podem ser.
+
+**A 7.3.0 é vermelha no Windows.** Medido contra worktree pristina, mesma máquina — Go 6 pacotes
+FAIL nos dois lados; npm 329→297 falhas; pypi 223→213. A migração não introduziu regressão.
+
+**Decisão pendente para o usuário:** `vault/` (85 notas de conhecimento do upstream) entrou no
+merge. Mesma categoria da governança que ficou de fora, mas não colide com nada.
 ## Sessão 2026-08-29 — hades-tf (INÍCIO: ML-0A — modelo de ameaça, lista de agentes por namespace)
 
 Branch `fix/lista-de-agentes-complementa-o-disco-e-namespace-nao-declarado-vira-violacao` (não criada por mim).

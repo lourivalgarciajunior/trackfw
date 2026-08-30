@@ -15,8 +15,8 @@ import (
 
 const (
 	releaseTestVersion = "9.9.9"
-	releaseTestTag      = "v9.9.9"
-	releaseTestSHA      = "abc123def456"
+	releaseTestTag     = "v9.9.9"
+	releaseTestSHA     = "abc123def456"
 )
 
 func validReleaseVersionFiles(version string) map[string]string {
@@ -42,17 +42,17 @@ type mockReleaseGit struct {
 func newMockReleaseGit() *mockReleaseGit {
 	return &mockReleaseGit{
 		responses: map[string]string{
-			"status --porcelain":                           "",
-			"fetch origin --prune":                         "",
-			"symbolic-ref refs/remotes/origin/HEAD":         "refs/remotes/origin/main",
-			"rev-parse origin/main":                         releaseTestSHA,
-			"remote get-url origin":                         "https://github.com/kgsaran/trackfw.git",
-			"config user.name":                              "Test User",
-			"config user.email":                             "test@example.com",
+			"status --porcelain":                                  "",
+			"fetch origin --prune":                                "",
+			"symbolic-ref refs/remotes/origin/HEAD":               "refs/remotes/origin/main",
+			"rev-parse origin/main":                               releaseTestSHA,
+			"remote get-url origin":                               "https://github.com/kgsaran/trackfw.git",
+			"config user.name":                                    "Test User",
+			"config user.email":                                   "test@example.com",
 			"ls-remote --tags origin refs/tags/" + releaseTestTag: "",
 		},
 		errors: map[string]error{
-			"rev-parse -q --verify refs/heads/main":         errors.New("no such branch"),
+			"rev-parse -q --verify refs/heads/main":             errors.New("no such branch"),
 			"rev-parse -q --verify refs/tags/" + releaseTestTag: errors.New("no such tag"),
 		},
 	}

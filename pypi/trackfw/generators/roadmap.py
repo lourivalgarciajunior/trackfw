@@ -211,7 +211,7 @@ def _append_transition_log(basename: str, from_state: str, to_state: str, cfg: d
     log_path = os.path.join(cfg["roadmap_dir"], ".trackfw-log")
     try:
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
-        with open(log_path, "a", encoding="utf-8") as f:
+        with open(log_path, "a", encoding="utf-8", newline="\n") as f:
             f.write(line)
     except OSError:
         pass
@@ -334,7 +334,7 @@ def generate_roadmap(title: str, cfg: dict, agent: str = None, req_path: str = "
     filepath = os.path.join(backlog_dir, filename)
 
     body = _roadmap_template(title, slug, today, req_path=req_path)
-    with open(filepath, "w", encoding="utf-8") as f:
+    with open(filepath, "w", encoding="utf-8", newline="\n") as f:
         f.write(body)
 
     return filepath
@@ -405,7 +405,7 @@ REQ: {req_path}{adr_ref}
 {ml_section}
 """
 
-    with open(filepath, "w", encoding="utf-8") as f:
+    with open(filepath, "w", encoding="utf-8", newline="\n") as f:
         f.write(body)
 
     return filepath
@@ -561,7 +561,7 @@ def sync_paired_req_references(
 
         req_basename = os.path.basename(req_path)
         try:
-            with open(req_path, "w", encoding="utf-8") as f:
+            with open(req_path, "w", encoding="utf-8", newline="\n") as f:
                 f.write(new_content)
             synced.append(req_basename)
         except OSError as e:
@@ -608,7 +608,10 @@ def move_roadmap(filename: str, to_state: str, cfg: dict) -> str:
         agent_dir = os.path.dirname(os.path.dirname(src))
         agent = os.path.basename(agent_dir)
         target_dir = _agent_state_dir(agent, to_state, cfg)
-        log_basename = os.path.join(agent, basename)
+        # O nome no .trackfw-log e artefato portavel, nao caminho de sistema:
+        # Go e Node gravam "agente/ARQUIVO.md" com barra em qualquer plataforma.
+        # os.path.join gravaria "agente\ARQUIVO.md" no Windows e divergiria.
+        log_basename = agent + "/" + basename
     else:
         target_dir = _state_dir(to_state, cfg)
         log_basename = basename
@@ -622,7 +625,7 @@ def move_roadmap(filename: str, to_state: str, cfg: dict) -> str:
 
     updated, _ = _rewrite_roadmap_status(content, to_state)
 
-    with open(dst, "w", encoding="utf-8") as f:
+    with open(dst, "w", encoding="utf-8", newline="\n") as f:
         f.write(updated)
 
     os.remove(src)

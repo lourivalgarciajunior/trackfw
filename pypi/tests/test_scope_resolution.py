@@ -81,7 +81,11 @@ def test_resolve_scope_no_tty_and_no_flag_defaults_to_global(monkeypatch):
 
 
 def test_resolve_scope_tty_and_no_flag_invokes_the_prompt_runner(monkeypatch):
-    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    # O seam mudou: a producao consulta trackfw.tty.stdin_is_interactive(),
+    # que no Windows estreita o isatty() com GetConsoleMode — fingir isatty
+    # sobre um fd que nao e console nao basta mais. Ver
+    # REQ-2026-08-29-isatty-do-python-devolve-true-para-nul-no-windows.
+    monkeypatch.setattr(integrations_command, "stdin_is_interactive", lambda: True)
     monkeypatch.setattr(integrations_command, "scope_prompt_runner", lambda: "project")
     assert integrations_command.resolve_scope(None) == "project"
 
@@ -111,7 +115,12 @@ def test_resolve_scope_tty_uninstall_and_no_flag_invokes_the_prompt_runner(monke
     # In TTY, uninstall prompts exactly like install/update (ADR D8's
     # non-interactive guard does not apply once the user can see the
     # choice before anything destructive happens).
-    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    #
+    # O seam mudou: a producao consulta trackfw.tty.stdin_is_interactive(),
+    # que no Windows estreita o isatty() com GetConsoleMode — fingir isatty
+    # sobre um fd que nao e console nao basta mais. Ver
+    # REQ-2026-08-29-isatty-do-python-devolve-true-para-nul-no-windows.
+    monkeypatch.setattr(integrations_command, "stdin_is_interactive", lambda: True)
     monkeypatch.setattr(integrations_command, "scope_prompt_runner", lambda: "project")
     assert integrations_command.resolve_scope(None, operation="uninstall") == "project"
 

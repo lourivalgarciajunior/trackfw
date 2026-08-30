@@ -967,101 +967,101 @@ func TestShip_ForgeMatrix(t *testing.T) {
 	cases := []forgeMatrixCase{
 		// ── GitHub ──────────────────────────────────────────────────────────
 		{
-			name: "github/known-host/cli-absent",
+			name:        "github/known-host/cli-absent",
 			configForge: "", remoteURL: "https://github.com/org/repo.git", cliAvail: false,
 			wantForge: "github", wantSource: "remote", wantNoun: "Pull Request",
 			wantNotMR: true, wantURL: true, wantCLI: false,
 		},
 		{
-			name: "github/known-host/cli-present",
+			name:        "github/known-host/cli-present",
 			configForge: "", remoteURL: "https://github.com/org/repo.git", cliAvail: true,
 			wantForge: "github", wantSource: "remote", wantNoun: "Pull Request",
 			wantNotMR: true, wantURL: false, wantCLI: true,
 		},
 		{
-			name: "github/self-hosted/cli-absent",
+			name:        "github/self-hosted/cli-absent",
 			configForge: "github", remoteURL: "https://git.company.com/org/repo.git", cliAvail: false,
 			wantForge: "github", wantSource: "config", wantNoun: "Pull Request",
 			wantNotMR: true, wantURL: true, wantCLI: false,
 		},
 		{
-			name: "github/self-hosted/cli-present",
+			name:        "github/self-hosted/cli-present",
 			configForge: "github", remoteURL: "https://git.company.com/org/repo.git", cliAvail: true,
 			wantForge: "github", wantSource: "config", wantNoun: "Pull Request",
 			wantNotMR: true, wantURL: false, wantCLI: true,
 		},
 		// ── GitLab ──────────────────────────────────────────────────────────
 		{
-			name: "gitlab/known-host/cli-absent",
+			name:        "gitlab/known-host/cli-absent",
 			configForge: "", remoteURL: "https://gitlab.com/org/repo.git", cliAvail: false,
 			wantForge: "gitlab", wantSource: "remote", wantNoun: "Merge Request",
 			wantMROnly: true, wantURL: true, wantCLI: false,
 		},
 		{
-			name: "gitlab/known-host/cli-present",
+			name:        "gitlab/known-host/cli-present",
 			configForge: "", remoteURL: "https://gitlab.com/org/repo.git", cliAvail: true,
 			wantForge: "gitlab", wantSource: "remote", wantNoun: "Merge Request",
 			wantMROnly: true, wantURL: false, wantCLI: true,
 		},
 		{
-			name: "gitlab/self-hosted/cli-absent",
+			name:        "gitlab/self-hosted/cli-absent",
 			configForge: "gitlab", remoteURL: "https://gitlab.company.com/org/repo.git", cliAvail: false,
 			wantForge: "gitlab", wantSource: "config", wantNoun: "Merge Request",
 			wantMROnly: true, wantURL: true, wantCLI: false,
 		},
 		{
-			name: "gitlab/self-hosted/cli-present",
+			name:        "gitlab/self-hosted/cli-present",
 			configForge: "gitlab", remoteURL: "https://gitlab.company.com/org/repo.git", cliAvail: true,
 			wantForge: "gitlab", wantSource: "config", wantNoun: "Merge Request",
 			wantMROnly: true, wantURL: false, wantCLI: true,
 		},
 		// ── Bitbucket — no official CLI; always falls back to URL ────────────
 		{
-			name: "bitbucket/known-host/cli-absent",
+			name:        "bitbucket/known-host/cli-absent",
 			configForge: "", remoteURL: "https://bitbucket.org/org/repo.git", cliAvail: false,
 			wantForge: "bitbucket", wantSource: "remote", wantNoun: "Pull Request",
 			wantNotMR: true, wantURL: true, wantCLI: false,
 		},
 		{
 			// bitbucket adapter never calls availFn — Available is always false.
-			name: "bitbucket/known-host/cli-present",
+			name:        "bitbucket/known-host/cli-present",
 			configForge: "", remoteURL: "https://bitbucket.org/org/repo.git", cliAvail: true,
 			wantForge: "bitbucket", wantSource: "remote", wantNoun: "Pull Request",
 			wantNotMR: true, wantURL: true, wantCLI: false,
 		},
 		{
-			name: "bitbucket/self-hosted/cli-absent",
+			name:        "bitbucket/self-hosted/cli-absent",
 			configForge: "bitbucket", remoteURL: "https://bitbucket.company.com/org/repo.git", cliAvail: false,
 			wantForge: "bitbucket", wantSource: "config", wantNoun: "Pull Request",
 			wantNotMR: true, wantURL: true, wantCLI: false,
 		},
 		{
-			name: "bitbucket/self-hosted/cli-present",
+			name:        "bitbucket/self-hosted/cli-present",
 			configForge: "bitbucket", remoteURL: "https://bitbucket.company.com/org/repo.git", cliAvail: true,
 			wantForge: "bitbucket", wantSource: "config", wantNoun: "Pull Request",
 			wantNotMR: true, wantURL: true, wantCLI: false,
 		},
 		// ── Azure ────────────────────────────────────────────────────────────
 		{
-			name: "azure/known-host/cli-absent",
+			name:        "azure/known-host/cli-absent",
 			configForge: "", remoteURL: "https://dev.azure.com/org/project/_git/repo", cliAvail: false,
 			wantForge: "azure", wantSource: "remote", wantNoun: "Pull Request",
 			wantNotMR: true, wantURL: true, wantCLI: false,
 		},
 		{
-			name: "azure/known-host/cli-present",
+			name:        "azure/known-host/cli-present",
 			configForge: "", remoteURL: "https://dev.azure.com/org/project/_git/repo", cliAvail: true,
 			wantForge: "azure", wantSource: "remote", wantNoun: "Pull Request",
 			wantNotMR: true, wantURL: false, wantCLI: true,
 		},
 		{
-			name: "azure/self-hosted/cli-absent",
+			name:        "azure/self-hosted/cli-absent",
 			configForge: "azure", remoteURL: "https://azdo.company.com/org/project/_git/repo", cliAvail: false,
 			wantForge: "azure", wantSource: "config", wantNoun: "Pull Request",
 			wantNotMR: true, wantURL: true, wantCLI: false,
 		},
 		{
-			name: "azure/self-hosted/cli-present",
+			name:        "azure/self-hosted/cli-present",
 			configForge: "azure", remoteURL: "https://azdo.company.com/org/project/_git/repo", cliAvail: true,
 			wantForge: "azure", wantSource: "config", wantNoun: "Pull Request",
 			wantNotMR: true, wantURL: false, wantCLI: true,

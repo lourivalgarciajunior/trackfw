@@ -21,11 +21,11 @@ type burndownPoint struct {
 
 // metricsResponse is the JSON shape returned by GET /api/metrics.
 type metricsResponse struct {
-	LeadTimeAvgDays  float64            `json:"lead_time_avg_days"`
-	CycleTimeAvgDays float64            `json:"cycle_time_avg_days"`
-	AbandonmentRate  float64            `json:"abandonment_rate"`
-	StateDistrib     map[string]int     `json:"state_distribution"`
-	Burndown         []burndownPoint    `json:"burndown"`
+	LeadTimeAvgDays  float64         `json:"lead_time_avg_days"`
+	CycleTimeAvgDays float64         `json:"cycle_time_avg_days"`
+	AbandonmentRate  float64         `json:"abandonment_rate"`
+	StateDistrib     map[string]int  `json:"state_distribution"`
+	Burndown         []burndownPoint `json:"burndown"`
 }
 
 var openStates = map[string]bool{

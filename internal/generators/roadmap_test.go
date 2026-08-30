@@ -1129,9 +1129,10 @@ func TestSyncREQ_ByAgent(t *testing.T) {
 // cujos basenames são invertidos em relação à ordem de caminho completo.
 //
 // Fixture:
-//   docs/req/apolo/done/REQ-zzz.md   → aponta para o roadmap
-//   docs/req/zeus/backlog/REQ-aaa.md  → aponta para o roadmap
-//   agents: [zeus, apolo]             → ordem de varredura natural: zeus/…aaa, apolo/…zzz
+//
+//	docs/req/apolo/done/REQ-zzz.md   → aponta para o roadmap
+//	docs/req/zeus/backlog/REQ-aaa.md  → aponta para o roadmap
+//	agents: [zeus, apolo]             → ordem de varredura natural: zeus/…aaa, apolo/…zzz
 //
 // Por caminho completo: apolo/…zzz < zeus/…aaa → zzz, aaa (errado).
 // Por basename:          aaa < zzz                → aaa, zzz (correto — contrato pinado).

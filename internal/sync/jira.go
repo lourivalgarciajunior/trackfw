@@ -23,7 +23,7 @@ type JiraClient struct {
 // NewJiraClient cria um cliente Jira a partir de trackfw.yaml ou variáveis de ambiente.
 // Ordem de busca: 1) trackfw.yaml (jira_base_url, jira_email, jira_token, jira_project)
 //
-//	2) env vars JIRA_BASE_URL, JIRA_EMAIL, JIRA_TOKEN, JIRA_PROJECT
+//  2. env vars JIRA_BASE_URL, JIRA_EMAIL, JIRA_TOKEN, JIRA_PROJECT
 func NewJiraClient() (*JiraClient, error) {
 	sc := config.Load().Sync
 	baseURL := sc.JiraBaseURL
@@ -138,4 +138,3 @@ func (c *JiraClient) CreateIssue(title, description string) (string, error) {
 
 	return result.Key, nil
 }
-
