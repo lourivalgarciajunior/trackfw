@@ -511,9 +511,9 @@ func TestStripOuterQuotesForClassify(t *testing.T) {
 		{`"$(git rev-parse --show-toplevel)/scripts/guard.sh"`, `$(git rev-parse --show-toplevel)/scripts/guard.sh`},
 		{`$CLAUDE_PROJECT_DIR/scripts/guard.sh`, `$CLAUDE_PROJECT_DIR/scripts/guard.sh`},
 		{`scripts/guard.sh`, `scripts/guard.sh`},
-		{`"`, `"`},       // string de 1 char
-		{`""`, ``},       // string vazia entre aspas
-		{`"abc`, `"abc`}, // aspas de abertura sem fechamento
+		{`"`, `"`},           // string de 1 char
+		{`""`, ``},           // string vazia entre aspas
+		{`"abc`, `"abc`},     // aspas de abertura sem fechamento
 	}
 	for _, c := range cases {
 		got := stripOuterQuotesForClassify(c.raw)
@@ -722,8 +722,8 @@ func TestHookValueWasQuoted(t *testing.T) {
 		{`"~/scripts/guard.sh"`, true},
 		{`~/scripts/guard.sh`, false},
 		{`$PWD/scripts/guard.sh`, false},
-		{`"`, false}, // 1 char
-		{`""`, true}, // string vazia aspeada
+		{`"`, false},  // 1 char
+		{`""`, true},  // string vazia aspeada
 		{`"abc`, false},
 	}
 	for _, c := range cases {

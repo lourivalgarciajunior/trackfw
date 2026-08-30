@@ -40,9 +40,9 @@ const gitBranchGuardScriptMarker = "trackfw-git-branch-guard.sh"
 // true para Claude/Codex/Gemini; false para Cursor/Copilot/Kiro, cujo caminho relativo puro
 // é a forma CORRETA — acusá-los seria falso-positivo (o risco dominante desta REQ).
 type credentialGuardHookFile struct {
-	path                     string // relativo à raiz do projeto (CWD)
-	cli                      string
-	requiresCommandType      bool
+	path                    string // relativo à raiz do projeto (CWD)
+	cli                     string
+	requiresCommandType     bool
 	requiresVarOrShellPrefix bool
 }
 

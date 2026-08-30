@@ -20,7 +20,7 @@ type LinearClient struct {
 // NewLinearClient cria um cliente Linear a partir de trackfw.yaml ou variáveis de ambiente.
 // Ordem de busca: 1) trackfw.yaml (linear_api_key, linear_team_id)
 //
-//  2. env vars LINEAR_API_KEY, LINEAR_TEAM_ID
+//	2) env vars LINEAR_API_KEY, LINEAR_TEAM_ID
 func NewLinearClient() (*LinearClient, error) {
 	sc := config.Load().Sync
 	apiKey := sc.LinearAPIKey
