@@ -1113,19 +1113,19 @@ func TestIsVersionString(t *testing.T) {
 
 // TestComposeClaudeModelID verifica as três regras de composição
 // (ADR-2026-08-21 §2):
-//   - Regra 1: ponto vira traço ("4.6" → "claude-sonnet-4-6")
-//   - Regra 2: versão maior omite minor ("5" → "claude-sonnet-5")
-//   - (Regra 3 é tratada via escape hatch — non-version vai literal, não chega aqui)
+//  - Regra 1: ponto vira traço ("4.6" → "claude-sonnet-4-6")
+//  - Regra 2: versão maior omite minor ("5" → "claude-sonnet-5")
+//  - (Regra 3 é tratada via escape hatch — non-version vai literal, não chega aqui)
 func TestComposeClaudeModelID(t *testing.T) {
 	cases := []struct {
 		tier    string
 		version string
 		want    string
 	}{
-		{"sonnet", "4.6", "claude-sonnet-4-6"}, // regra 1
-		{"sonnet", "5", "claude-sonnet-5"},     // regra 2
-		{"opus", "5", "claude-opus-5"},         // regra 2, tier opus
-		{"opus", "4.1", "claude-opus-4-1"},     // regra 1, tier opus
+		{"sonnet", "4.6", "claude-sonnet-4-6"},  // regra 1
+		{"sonnet", "5", "claude-sonnet-5"},        // regra 2
+		{"opus", "5", "claude-opus-5"},            // regra 2, tier opus
+		{"opus", "4.1", "claude-opus-4-1"},        // regra 1, tier opus
 	}
 	for _, tc := range cases {
 		got := composeClaudeModelID(tc.tier, tc.version)
@@ -1255,9 +1255,9 @@ func TestRenderAgentModelsNoLeakage(t *testing.T) {
 	agentModels := map[string]string{"sonnet": "4.6", "opus": "5"} // ambos configurados
 
 	cases := []struct {
-		name       string
-		capability Capability
-		targetID   string
+		name           string
+		capability     Capability
+		targetID       string
 	}{
 		{"codex", Capability{Representation: "custom-agent-toml"}, "codex"},
 		{"cursor", Capability{Representation: "subagent"}, "cursor"},
