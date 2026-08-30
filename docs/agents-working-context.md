@@ -4,6 +4,104 @@
 
 ---
 
+## Sessão 2026-08-30 — claude (FIM: repo virou fork de verdade, auditoria de divergência)
+
+`main` em `6e968d6`. Sete gates verdes, 15 violações — todas de bit de execução. `wip` vazio.
+
+### O repositório é fork de verdade agora
+
+```
+isFork: true
+parent: kgsaran/trackfw
+```
+
+**O GitHub não converte repositório em fork.** O caminho foi apagar e re-forkar, com o custo
+declarado antes e decidido pelo usuário: os 36 PRs e a discussão deles.
+
+**Os 35 corpos foram arquivados no git antes da exclusão** —
+`docs/historico/prs-antes-do-fork-2026-08-30.md`, 2038 linhas. O raciocínio de cada mudança
+sobrevive; o que se perdeu foram os números, os links entre eles e as datas de merge na interface.
+
+Ganho concreto: **abrir PR para o upstream passou a ser possível** — era o obstáculo que travava
+essa via.
+
+### Duas armadilhas do processo, ambas silenciosas
+
+**1. O `MERGE_HEAD` some na troca de branch.** O guard bloqueia commit na `main`, a skill manda usar
+branch — e quem segue as duas no meio de um merge grava commit com **um pai só**. A ancestralidade
+com o upstream quebra sem aviso e o próximo merge reaplica tudo. `git status` diz
+`All conflicts fixed` e o commit passa. Restaurei o `MERGE_HEAD` antes de commitar e conferi:
+`d6dfb43 pais: 7eb984d 76c694a`. **Já está documentado na skill 1.5.0.**
+
+**2. `gh pr list` sem `--repo`, num fork, mira o repositório PAI.** Reportei "2 PRs abertas" que
+eram do Kleber.
+
+### Auditoria de divergência: 80 → 61 arquivos
+
+| Categoria | Arquivos |
+|---|---|
+| deliberadas (`homedir`, `newline`, `tty`, slug, UTF-8, gates) | 61 |
+| **ruído de `gofmt` — removido** | **19** |
+
+O ruído veio de eu ter rodado `gofmt -w internal/` na migração com **Go 1.26.1** contra um upstream
+que declara **1.25.2**. Medido: nossa árvore está limpa no nosso gofmt, e esse mesmo gofmt
+reformataria **206 arquivos** na árvore dele. Os 19 eram só os que calhei de tocar.
+
+**REGRA: `gofmt -w` amplo é proibido neste fork** enquanto o upstream estiver noutro Go. Tocar
+arquivo Go para um PR ao upstream exige formatar com o gofmt **dele**.
+
+Foram 19 e não 20: o `internal/generators/roadmap_move_test.go` **não existe no upstream** — é
+arquivo nosso. A restauração falhou e denunciou minha classificação errada.
+
+### Mais uma medição minha que estava errada
+
+A prova de que a limpeza não perdeu nada foi contagem de marcador antes/depois. A **primeira
+contagem deu `newline= 0`**, o que não batia com os sites que eu sabia existir — artefato do meu
+`grep -F` com aspas na busca.
+
+**Aceitar aquele zero teria "provado" integridade com um marcador que não media nada** — a mesma
+armadilha da sessão inteira, desta vez fabricada por mim dentro do próprio instrumento de
+verificação.
+
+### O upstream está respondendo à issue #216
+
+Dois PRs abertos no repositório dele:
+
+```
+#220  docs(governance): REQ para os achados 9, 10 e 11 do issue #216
+#221  ci(windows): instrumento de medicao em duas camadas (RASCUNHO)
+```
+
+O `#221` é explícito: **"Não corrige nenhum defeito. Entrega o instrumento que permite medi-los."**
+Ele está construindo a medição antes da correção, mapeada 1:1 à issue.
+
+E mediu algo que eu não tinha: **das 11 falhas, as suítes expõem só 2** — as outras não acendem por
+mock no caminho, falta de asserção de conteúdo, ou o caminho que falha não ser o exercitado.
+
+### Quando abrir o PR do bit de execução
+
+**Não agora.** Esperar o `#221` entrar: aí o fix vira mensurável pelo instrumento dele, o que vale
+muito mais que um diff avulso.
+
+Quando for, faltam quatro coisas:
+
+1. Formatar com o **gofmt dele** (Go 1.25.2), não o nosso
+2. Paridade nos **6 sites**: `validator_credential_guard.go:377`, `validator_git_branch_guard.go:193`,
+   `index.js:1438` e `:2544`, `validator.py:1816` e `:3017`
+3. O precedente a espelhar: `internal/generators/scaffold_doctor.go:23` — `var CurrentGOOS =
+   runtime.GOOS`, com a supressão do mode check em Windows já decidida por ele (AC5)
+4. A governança dele — e ele **já abriu o #220** para esses achados, então pode querer ser dono dela
+
+### Pendências
+
+- As 15 violações de bit de execução, aguardando o upstream.
+- Verificação por efeito do symlink — precisa de Developer Mode.
+- `check-artifact-parity` oscilando, causa não investigada.
+- Branch local `fix/slug-unificado` mantida pelo `branch prune`: tem 17 arquivos que nunca entraram,
+  incluindo um `internal/slug/` inteiro. Superada, mas preservada.
+
+---
+
 ## Sessão 2026-08-29 — claude (FIM: segundo merge do upstream — o gate novo se pagou)
 
 `main` em `09cbae7`. `git merge-base HEAD upstream/main` = `d4e286e`: **em dia com o upstream.**
