@@ -4,6 +4,108 @@
 
 ---
 
+## Sessão 2026-08-31 — claude (FIM: CI verde pela 1ª vez, achados 14/15/16, 3 erros de medição meus)
+
+`main` em `ed5bb6e`. Árvore limpa, 0 PRs abertas no fork, `wip` vazio, 6 gates locais verdes,
+`validate` com as 15 violações de sempre (bit de execução em `~/.trackfw/scripts/`).
+
+### A CI da `main` ficou verde nos jobs que importam — primeira vez desde o refork
+
+```
+go              success   ← era failure
+node            success   ← era failure
+python (3.10)   success   ← era failure
+python (3.12)   success   ← era failure
+parity          failure   ← achado 16, não se aplica a um fork
+windows-*       failure   ← nascem vermelhos por desenho (#221)
+```
+
+Três causas distintas caíram no mesmo dia:
+
+| era | resolveu |
+|---|---|
+| testes lendo REQs reais de `docs/req/` que não importamos | fixtures — PR #8 |
+| `homedir` preferindo `$HOME` em toda plataforma | guarda `win32` — PR #9 |
+| `roadmap:` dos fixtures apontando para roadmap inexistente | `roadmap: ""` — PR #11 |
+
+### As 4 PRs no upstream
+
+[#222](https://github.com/kgsaran/trackfw/pull/222) homedir + bit de execução ·
+[#223](https://github.com/kgsaran/trackfw/pull/223) UTF-8 ·
+[#224](https://github.com/kgsaran/trackfw/pull/224) tty (empilhada sobre a #223) ·
+[#225](https://github.com/kgsaran/trackfw/pull/225) CRLF.
+
+A #222 levou um terceiro commit (`20d5e4e`) corrigindo a regressão de Linux, com comentário
+explicando antes que ele revise. Nenhuma delas dispara checks no repo dele — `no checks reported`
+nas quatro. Ofereci habilitar workflows para PR de fork.
+
+### Achados 14, 15 e 16 — todos da mesma família
+
+**14 — teste acoplado ao conteúdo do repositório.** `TestExtractRefPath_TresREQsReaisDoRepositorio`
+sobe até a raiz e lê 3 REQs por caminho fixo. Quer verificar `extractRefPath`, exercita *parsing
+daqueles arquivos naquele estado*.
+
+**15 — contrato quebrado + isolamento que não isola.** `validate_branch_has_wip_roadmap` devolve
+`list[str]` onde as ~40 outras regras devolvem `list[dict]`; `_enrich_items` deixa passar, e os
+testes fazem `item["message"]` → `TypeError`. E o `git_cwd` derivado de `roadmap_dir` **relativo**
+resolve contra o cwd do processo, então a regra lê a branch real durante teste unitário.
+Efeito: **abrir uma branch `fix/` e rodar pytest reprova 8 testes**, com mensagem que não menciona
+branch nem regra.
+
+```
+sem TRACKFW_BRANCH             7 passed
+TRACKFW_BRANCH=fix/qualquer    7 failed
+```
+
+**16 — gate acoplado à governança do consumidor.** `check-roadmap-barrier-contract.sh` congela um
+corpus de 144 roadmaps e afirma contagens e hash sobre `docs/roadmaps/**` em runtime. Medido:
+0 basenames ausentes no upstream, **108 aqui**. A regra não distingue "corpus adulterado" de
+"este não é o repositório de origem".
+
+### Três erros de medição meus, todos da mesma forma
+
+**1. Lista nomeada colhida só no Windows.** A correção original do `homedir` quebrou 3 testes no
+Linux, e minha comparação mostrou `0 regressões` porque no Windows esses 3 já estavam vermelhos
+**pelo próprio defeito que ela conserta**. Lista nomeada não acusa regressão em teste já vermelho.
+→ **Lista nomeada só protege dentro da plataforma onde foi colhida.** Os `0 regressões` das quatro
+PRs valem para Windows; escrevi isso no comentário da #222.
+
+**2. Sonda de uma variável que mudava duas.** Para separar "guarda" de "arquivos de governança",
+criei uma branch com só a guarda — e, sem perceber, troquei também o nome da branch de `fix/` para
+`chore/`. Li 0 falhas e culpei a governança. A causa era o nome da branch (achado 15).
+→ **Uma sonda que muda duas variáveis não é sonda.**
+
+**3. Garantia verificada contra o instrumento errado.** Afirmei na #8 que os fixtures eram inertes
+depois de conferir `trackfw validate` e `trackfw status` — e são, para o CLI. Mas
+`check-referential-integrity.sh:10` varre `docs/req/*.md` por caminho fixo, sem ler `req_dir`.
+→ **"Inerte para o CLI" não é "inerte para os gates".**
+
+Nos três, o que resolveu foi parar de deduzir e instrumentar o ponto que estourava. O achado 15 só
+fechou quando pus a impressão do item ofensor dentro do helper que dava `TypeError` — as duas
+tentativas anteriores, por dedução, apontaram causas erradas.
+
+### Achado colateral: o cwd vaza entre testes
+
+Um diagnóstico rodou com
+`cwd = /tmp/pytest-of-runner/pytest-0/test_rerun_without_flag_preser0/project` — um teste faz
+`os.chdir` e não restaura. Irmão da isolação vácua de `$HOME`, variável diferente. Não reportado.
+
+### Defeitos do CLI vistos de passagem, não reportados
+
+- `trackfw context` morre com `Cannot read properties of undefined (reading 'length')`
+- `req new` grava flat em `docs/requisições/`, e `roadmap new` manda para `apolo/` em vez de
+  `claude/` — a causa raiz que o Kleber nomeou nas REQs dele
+
+### O que continua esperando
+
+- Resposta do Kleber nas 4 PRs e nos achados 12 a 16.
+- Publicar `roadmap_move_test.go`, `check-subcommand-parity.sh` e o `package-lock.json` em `6.1.0`.
+- 6 gates nossos em `100644` onde os 40 irmãos são `100755`.
+- `parity` fica vermelho aqui por desenho até o achado 16 entrar — **não regenerar o snapshot**:
+  calaria o gate ao custo de conflito em todo merge futuro, para esconder um fato verdadeiro.
+
+---
+
 ## Sessão 2026-08-31 — claude (FIM: 4 PRs no upstream, bit de execução resolvido, slug descartada)
 
 `main` em `fb355db`. PR local [#6](https://github.com/lourivalgarciajunior/trackfw/pull/6) aberta.
