@@ -4,6 +4,131 @@
 
 ---
 
+## Sessão 2026-08-30 — claude (FIM: primeira PR para o upstream, kgsaran/trackfw#222)
+
+`main` em `96e3a1a`. PR local [#5](https://github.com/lourivalgarciajunior/trackfw/pull/5) aberta (traz o `3878b69`).
+PR **para o upstream**: [kgsaran/trackfw#222](https://github.com/kgsaran/trackfw/pull/222) — a primeira desde que o repo virou fork de verdade.
+
+### O que foi para o upstream
+
+Branch `upstream-pr/windows-home-e-bit-de-execucao`, ramificada de `upstream/main` — **não** da nossa
+`main`. Isso é o que impede o `.gitattributes`, a governança local e os 4 arquivos que perderam o bit
+de execução aqui de entrarem de carona.
+
+Dois commits:
+
+1. **`$HOME` nos 3 runtimes** — os helpers `internal/homedir.Dir()`, `npm/src/homedir.js`,
+   `trackfw.homedir`, mais o gate `check-homedir-parity.sh`. Comentários reescritos em inglês e sem
+   referência às nossas REQs, que não fazem sentido lá.
+2. **Bit de execução** — guarda por plataforma nos 6 sítios (2 por runtime), seguindo o precedente do
+   `scaffold_doctor` (AC5) que o próprio upstream já tinha em todos os três.
+
+### A medição que virou o argumento
+
+O achado 3 deixou de ser "a regra está errada no Windows" e virou **quebra da regra de paridade**.
+Medido na base do upstream, mesma árvore, mesma máquina:
+
+```
+go      15 violações "the script is not executable"
+node    15
+python   0
+```
+
+Mesmo repositório, três runtimes, duas saídas de `validate`. Causa: em NTFS Go e Node veem
+`mode&0111 == 0` para **todo** arquivo (mesmo após `chmod 0755`), e `os.access(X_OK)` do Python
+responde `True` para **todo** arquivo (mesmo após `chmod 0644`). Mentem em direções opostas.
+
+**Erro de medição pelo caminho:** a primeira leitura deu `node 0` e quase virou "só o Go acusa". O
+worktree de comparação não tinha `node_modules` — o CLI morria em `Cannot find module 'commander'`
+e o `grep -c` contava 0 com ar de resultado. Só apareceu porque fui olhar o output cru. Marcador que
+mede nada, de novo.
+
+### Resultado, por lista nomeada
+
+| suíte | antes | depois | regressões |
+|---|---|---|---|
+| Go — `internal/config` + `internal/validator` | 29 | 13 | 0 |
+| Node — `validator` + `git_branch_guard_hook_integrity` | 17 | 6 | 0 |
+| Python — `test_validator` + `test_git_branch_guard_validator` | 13 | 3 | 0 |
+
+### Forma dos testes: diferente por runtime, de propósito
+
+- **Go e Node** — os testes que afirmam "dispara quando falta o bit" **fixam a plataforma em `linux`**
+  em vez de pular. O bit realmente falta no Windows, então a garantia continua exercitada.
+- **Python** — `os.access` mente na direção oposta, então o teste **pula pela condição**:
+  `_exec_bit_representavel()` mede, não infere de `sys.platform`. Mesma disciplina do `symlinkOrSkip`
+  do #221.
+
+Não-vacuidade por injeção em Go e Node. **Em Python a guarda não é verificável por efeito no
+Windows** — está dito assim no commit e na PR, em vez de alegar verificação que não existe.
+
+### Armadilhas do processo
+
+**1. `git add` de um arquivo tocado por dois commits leva o estado ATUAL.** Ao refazer os dois
+commits para tirar ruído de `gofmt`, três arquivos que o homedir e o bit de execução tocam em comum
+(`validator_git_branch_guard.go`, `npm/src/validator/index.js`, `pypi/trackfw/validator.py`) levaram
+a guarda de plataforma para dentro do commit do homedir. `git status` limpo, build verde, mensagem
+mentindo. Conserto: `git reset --hard upstream/main`, reescrever cada arquivo com
+`git show <commit-original>:<path>`, commitar, depois trazer o estado final. Conferido por igualdade
+de árvore (`ba8b8bd` antes e depois).
+
+**2. `gofmt -w` do Go 1.26.1 realinha struct que o 1.25.2 do CI alinhou diferente.** 11 linhas de
+ruído entraram sem eu pedir. Detecção: comparar `git diff` com `git diff -w` por arquivo — as linhas
+que só existem no primeiro são espaço em branco puro.
+
+**3. Literal com contrabarra dentro de heredoc quebra.** `'#!/bin/sh\nexit 0\n'` escrito num
+heredoc Python virou quebra de linha de verdade no arquivo JS. Solução que funciona sempre: montar
+o bloco novo a partir de **fatias do próprio arquivo** (`lines[i+1:i+10]`), nunca redigitar a linha.
+
+**4. `git checkout main --` troca de branch.** Rodei achando que restauraria arquivo.
+
+**5. `grep -c $'\r'` dentro de aspas duplas mede nada.** Deu `26723` para um arquivo sem nenhum CR.
+Fora das aspas dá `0`. Terceira vez nesta sessão que um marcador mediu outra coisa.
+
+### Auditoria dos commits antes do fork
+
+103 commits nossos, 67 arquivos de divergência de código, classificados por efeito:
+
+| categoria | arquivos | destino |
+|---|---|---|
+| homedir | 37 | **na #222** |
+| CRLF → LF (`newline="\n"`) | 14 | publicar |
+| tty (`isatty` mente para `NUL`) | 4 | publicar |
+| slug | 2 | o Kleber já abriu REQ — sai dele |
+| UTF-8 do CLI Python | 1 | publicar |
+| `.gitattributes` | 1 | local, por ADR |
+| `check-upstream-content.sh` | 1 | local — é a política do fork |
+| `roadmap_move_test.go`, `check-subcommand-parity.sh` | 2 | nossos, publicáveis |
+| `npm/package-lock.json` | 1 | defeito do upstream |
+| sem o bit de execução | 4 | decisão pendente do usuário |
+
+**A corrigir:**
+
+- **4 arquivos perderam o bit** na cópia por ZIP: `npm/bin/trackfw` (o entrypoint do pacote npm),
+  `check-cli-parity.sh`, `check-static-assets.sh`, `check-validate-parity.sh` — `100755` no upstream,
+  `100644` aqui. Encosta na ordem de [[nao-forcar-bit-de-execucao]], mas **é caso diferente**: ali era
+  não falsificar a condição que o gate verifica; aqui nada fica verde, é restaurar valor perdido no
+  transporte. Não toquei. Decisão do usuário.
+- **6 gates nossos nasceram `644`** onde os 40 irmãos são `755`. Mesma decisão.
+- `npm/package-lock.json` do upstream travado em `6.1.0`. Registrado na #222.
+
+**A descartar:** a branch `fix/slug-unificado` — 3 commits, 380 linhas, um módulo de slug
+compartilhado nos 3 runtimes que não existe nem aqui nem no upstream. Construída sobre base
+pré-7.3.0 (diff de 1004 arquivos contra a `main`), não rebasa sozinha, e o defeito que ela resolvia
+já foi resolvido de forma mais estreita. O raciocínio está no
+`docs/historico/prs-antes-do-fork-2026-08-30.md`.
+
+Mais 4 branches locais com o remote já apagado.
+
+### O que continua esperando
+
+- Resposta do Kleber na [#222](https://github.com/kgsaran/trackfw/pull/222).
+- Publicar CRLF, tty e UTF-8 — as próximas três PRs para o upstream, mesma forma.
+- Reportar o achado 12 (asserção vácua por escape de JSON) no #216.
+- `check-artifact-parity` oscilou uma vez sem causa apurada.
+
+---
+
 ## Sessão 2026-08-30 — claude (FIM: chegou o instrumento de Windows do upstream, #221)
 
 `main` na PR `chore/traz-instrumento-de-windows-do-upstream`. Merge de `upstream/main` `3878b69`.
