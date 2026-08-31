@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-08-30
 req: "docs/requisições/claude/REQ-2026-08-30-homedir-so-prefere-home-no-windows.md"
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: homedir so prefere HOME no Windows
 
-> Created: 2026-08-30 | Status: wip
+> Created: 2026-08-30 | Status: done
 
 ## Context
 
@@ -22,8 +22,8 @@ upstream.
 
 - [x] A preferência por `$HOME` fica atrás de `sys.platform == "win32"`
 - [x] `check-homedir-parity.sh` verde nos 3 runtimes
-- [ ] Os 3 testes nomeados na REQ passam na CI Linux
-- [ ] Correção levada para `kgsaran/trackfw#222`
+- [x] Os 3 testes nomeados na REQ passam na CI Linux
+- [x] Correção levada para `kgsaran/trackfw#222` (commit `20d5e4e`)
 
 ## Wave 0 — Threat Model
 > Dependencies: none. Blocks all implementation.
@@ -75,7 +75,7 @@ test "$(grep -rl 'setattr("os.path.expanduser"' pypi/tests/ internal/ npm/ 2>/de
 > Dependencies: ML-0A
 
 ### ML-1A — Guarda por plataforma em home_dir()
-**Status:** 🔄 Em andamento
+**Status:** ✅ Concluído
 **Files affected:** `pypi/trackfw/homedir.py`
 
 **Actions:**
@@ -87,5 +87,31 @@ test "$(grep -rl 'setattr("os.path.expanduser"' pypi/tests/ internal/ npm/ 2>/de
 **Acceptance criteria:**
 - [x] build passes (`python -c "import trackfw"`)
 - [x] `check-homedir-parity.sh` verde
-- [ ] Os 3 testes da REQ verdes na CI Linux
-- [ ] `trackfw validate` sem violação nova
+- [x] Os 3 testes da REQ verdes na CI Linux — sonda run 33351916177: `python (3.10)` e `(3.12)` SUCCESS
+- [x] `trackfw validate` sem violação nova — 15 antes e depois
+
+## Resultado — e o erro de atribuição no caminho
+
+A guarda foi verificada por sonda de uma variável: branch com **só** a correção, sem
+os arquivos de governança. `python (3.10)` e `(3.12)` **SUCCESS** — as 3 falhas do
+Linux viraram 0.
+
+A PR original mostrava **8 falhas diferentes**, e eu li a sonda como prova de que
+vinham dos arquivos de governança. Errado: **a sonda mudou duas variáveis** — tirou
+os arquivos *e* trocou o nome da branch de `fix/` para `chore/`.
+
+A causa era o nome da branch. `validate_branch_has_wip_roadmap` dispara em branch
+`feat/fix/refactor` e devolve `list[str]` onde toda outra regra devolve `list[dict]`;
+`_enrich_items` deixa passar, e o helper dos testes faz `item["message"]`.
+Reproduzido localmente, sem CI:
+
+```
+sem TRACKFW_BRANCH             7 passed
+TRACKFW_BRANCH=fix/qualquer    7 failed
+```
+
+Registrado como achado 15 em kgsaran/trackfw#216.
+
+**Uma sonda de uma variável que muda duas não é sonda.** Foi o segundo erro do mesmo
+tipo no mesmo dia — o primeiro foi medir a correção original só no Windows, onde os
+testes que ela quebrava já estavam vermelhos.
