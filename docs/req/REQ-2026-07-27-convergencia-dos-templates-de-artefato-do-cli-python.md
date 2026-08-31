@@ -3,7 +3,7 @@ status: Done
 date: 2026-07-27
 author: ""
 adr: ""
-roadmap: "docs/roadmaps/done/ROADMAP-2026-07-27-convergencia-dos-templates-de-artefato-do-cli-python.md"
+roadmap: ""
 ---
 
 # REQ: convergencia dos templates de artefato do CLI Python

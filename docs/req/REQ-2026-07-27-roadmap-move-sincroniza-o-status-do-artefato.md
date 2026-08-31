@@ -3,7 +3,7 @@ status: Done
 date: 2026-07-27
 author: ""
 adr: ""
-roadmap: "docs/roadmaps/done/ROADMAP-2026-07-27-roadmap-move-sincroniza-o-status-do-artefato.md"
+roadmap: ""
 ---
 
 # REQ: roadmap move sincroniza o status do artefato

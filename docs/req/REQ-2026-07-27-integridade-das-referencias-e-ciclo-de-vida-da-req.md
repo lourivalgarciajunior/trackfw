@@ -3,7 +3,7 @@ status: Done
 date: 2026-07-27
 author: ""
 adr: ""
-roadmap: "docs/roadmaps/done/ROADMAP-2026-07-27-integridade-das-referencias-e-ciclo-de-vida-da-req.md"
+roadmap: ""
 ---
 
 # REQ: integridade das referencias e ciclo de vida da REQ
