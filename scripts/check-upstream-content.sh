@@ -43,6 +43,23 @@ docs/schema/req.schema.json                             # schema de produto
 docs/schema/roadmap.schema.json                         # schema de produto
 docs/seguranca/2026-08-15-skills-de-terceiro-via-url.md # lido por internal/thirdparty (teste quebra sem ele)
 docs/roadmaps/.trackfw-log                              # nosso log; coincide so no caminho
+
+# As 3 abaixo sao FIXTURE, nao governanca. internal/validator/validator_test.go
+# (TestExtractRefPath_TresREQsReaisDoRepositorio) e pypi/tests/test_validator.py
+# (test_extract_ref_path_resolve_reqs_reais_com_backtick) leem estes arquivos do
+# repositorio por caminho fixo, a partir da raiz. Sem eles as suites Go e Python
+# reprovam na CI deste fork — e o motivo e a propria ADR: a governanca do upstream
+# nao e importada, entao docs/req/ nao existe aqui.
+#
+# Sao inertes para a governanca daqui: req_dir e docs/requisicoes, entao o validate
+# e o status nao varrem docs/req/. Ficam so como fixture.
+#
+# A causa raiz e teste acoplado ao conteudo do proprio repositorio, e a correcao e
+# de la (usar fixture em tempdir). Reportada no kgsaran/trackfw#216. Quando entrar,
+# estas 3 linhas saem.
+docs/req/REQ-2026-07-27-roadmap-move-sincroniza-o-status-do-artefato.md          # fixture de TestExtractRefPath
+docs/req/REQ-2026-07-27-integridade-das-referencias-e-ciclo-de-vida-da-req.md    # fixture de TestExtractRefPath
+docs/req/REQ-2026-07-27-convergencia-dos-templates-de-artefato-do-cli-python.md  # fixture de TestExtractRefPath
 LIST
 )
 
