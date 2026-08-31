@@ -4,6 +4,113 @@
 
 ---
 
+## Sessão 2026-08-31 — claude (FIM: 4 PRs no upstream, bit de execução resolvido, slug descartada)
+
+`main` em `fb355db`. PR local [#6](https://github.com/lourivalgarciajunior/trackfw/pull/6) aberta.
+
+### As 4 PRs para o kgsaran/trackfw
+
+| PR | o quê | base |
+|---|---|---|
+| [#222](https://github.com/kgsaran/trackfw/pull/222) | `$HOME` nos 3 runtimes + bit de execução | `upstream/main` |
+| [#223](https://github.com/kgsaran/trackfw/pull/223) | UTF-8 do CLI Python | `upstream/main` |
+| [#224](https://github.com/kgsaran/trackfw/pull/224) | `isatty` mente para `NUL` | **empilhada sobre a #223** |
+| [#225](https://github.com/kgsaran/trackfw/pull/225) | geradores escrevem CRLF | `upstream/main` |
+
+Todas ramificadas de `upstream/main`, **nunca da nossa `main`** — é o que impede o `.gitattributes`,
+a governança local e os arquivos de modo divergente de entrarem de carona.
+
+| PR | medição (lista nomeada, Windows) |
+|---|---|
+| #222 Go | 29 → 13, 0 regressões |
+| #222 Node | 17 → 6, 0 regressões |
+| #222 Python | 13 → 3, 0 regressões |
+| #223 | 233 → 198, 36 corrigidas, 0 regressões |
+| #224 | 198 → 189, 8 da família `test_non_tty_*`, 0 regressões |
+| #225 | 233 → 235, **0 corrigidas** |
+
+### Os defeitos estão em camadas — e isso mudou o desenho das PRs
+
+UTF-8 bloqueia o tty, que bloqueia o `os.fchmod`. O `init` morre no `UnicodeEncodeError` antes de
+chegar no wizard, então a #224 **não seria verificável** sobre `upstream/main` puro. Por isso ela vai
+empilhada sobre a #223, e o corpo diz isso na primeira linha.
+
+Generaliza: quando um defeito esconde outro, PR independente é uma escolha de apresentação que custa
+a verificabilidade. Empilhar e declarar é mais honesto que fingir independência.
+
+### Achado 13: `os.fchmod` não existe no Windows
+
+`identity/__init__.py:97`, `integrations/manager.py:118`, `thirdparty/quarantine.py:42` — as três
+escritas atômicas. Mata `init --ai-tools`, `agents install` e o install de terceiro. Medido:
+`hasattr(os, "fchmod")` é `False` em `win32`. Só aparece **depois** da correção do tty. Ainda não
+reportado no #216.
+
+### Três erros de medição meus nesta sessão
+
+**1. Verificação por efeito contaminada por estado compartilhado.** Apresentei o tty como verificado
+por efeito: base morria com `EOF when reading a line`, corrigido passava. Errado — as duas rodadas
+usaram a **mesma `HOME`**. A primeira gravou a identidade; a segunda pulou o wizard por isso, não
+pela correção. Refeito isolado, o que se sustenta é a medição do discriminante
+(`isatty()=True` vs `stdin_is_interactive()=False` sob `NUL`).
+
+**2. Gate vácuo na metade de efeito.** O `check-tty-detection.sh` original rodava
+`trackfw init </dev/null` exigindo exit 0 nos três. Passava **com e sem** a correção: `init` sem
+`--ai-tools` não alcança o wizard, e com `--ai-tools` esbarra antes no `os.fchmod`. Reescrito para
+perguntar direto ao predicado, e as duas metades verificadas por injeção.
+
+**3. Medição de Node inválida por dependência ausente.** A primeira leitura do bit de execução deu
+`node 0` e quase virou "só o Go acusa". O worktree de comparação não tinha `node_modules` — o CLI
+morria em `Cannot find module 'commander'` e o `grep -c` contava 0 com cara de resultado. O
+argumento inteiro da #222 dependia desse número.
+
+Os três são a mesma família: **um marcador que mede outra coisa**. O que pegou os três foi olhar o
+output cru em vez de aceitar o número.
+
+### Bit de execução: resolvido, e por que não é falsificação
+
+Os 4 arquivos que a cópia por ZIP perdeu voltaram a `100755` — `npm/bin/trackfw`,
+`check-cli-parity.sh`, `check-static-assets.sh`, `check-validate-parity.sh`. Medido antes e depois:
+
+```
+trackfw validate    15 violações "not executable"  →  15
+os.Stat().Mode()    -rw-rw-rw-, &0111=0            →  -rw-rw-rw-, &0111=0
+```
+
+Nada ficou verde. A ordem de [[nao-forcar-bit-de-execucao]] segue valendo para o que ela cobria: os
+scripts de `~/.trackfw/scripts/` que a regra `credential_guard_hook_resolvable` checa.
+
+Restam 6 gates nossos em `scripts/` criados como `100644` onde os 40 irmãos são `100755`.
+
+### Descartado
+
+`fix/slug-unificado` — `764bc88`, 3 commits, 380 linhas. Construída sobre base pré-7.3.0 (diff de
+1004 arquivos contra a `main`), não rebasa sozinha, e o defeito que ela resolvia já foi resolvido de
+forma mais estreita. Recuperável pelo reflog por ~90 dias; o raciocínio está no
+`docs/historico/prs-antes-do-fork-2026-08-30.md`. Podei também as 4 branches já mescladas.
+
+### CI do fork falha na `main`, e a causa é a ADR
+
+`go`, `node` e `python` reprovam no workflow `Quality` desde a PR #3 — **pré-existente**, não é dos
+merges. A causa: testes do upstream leem arquivos **reais** de `docs/req/`:
+
+```
+TestExtractRefPath_TresREQsReaisDoRepositorio          (Go)
+test_extract_ref_path_resolve_reqs_reais_com_backtick  (Python)
+```
+
+Como a ADR-2026-08-29 diz que a governança do upstream não é importada, esses arquivos não existem
+aqui e a suíte quebra. É a mesma classe do achado 12: teste acoplado a conteúdo que não deveria
+governar. Vale reportar.
+
+### O que continua esperando
+
+- Resposta do Kleber nas 4 PRs.
+- Reportar no #216: achado 12 (escape de JSON) e achado 13 (`os.fchmod`).
+- Publicar o `roadmap_move_test.go`, o `check-subcommand-parity.sh` e o `package-lock.json` em `6.1.0`.
+- Os 6 gates nossos em `100644`.
+
+---
+
 ## Sessão 2026-08-30 — claude (FIM: primeira PR para o upstream, kgsaran/trackfw#222)
 
 `main` em `96e3a1a`. PR local [#5](https://github.com/lourivalgarciajunior/trackfw/pull/5) aberta (traz o `3878b69`).
