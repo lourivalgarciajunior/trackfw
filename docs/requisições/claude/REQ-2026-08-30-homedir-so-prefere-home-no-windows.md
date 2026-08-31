@@ -1,14 +1,14 @@
 ---
-status: Open
+status: Done
 date: 2026-08-30
 author: ""
 adr: "docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md"
-roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-08-30-homedir-so-prefere-home-no-windows.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-08-30-homedir-so-prefere-home-no-windows.md"
 ---
 
 # REQ: homedir so prefere HOME no Windows
 
-> Date: 2026-08-30 | Status: Open
+> Date: 2026-08-30 | Status: Done
 
 ## Motivation
 
@@ -54,8 +54,8 @@ Generaliza: **lista nomeada só protege dentro da plataforma onde foi colhida.**
 - [x] `home_dir()` só prefere `$HOME` quando `sys.platform == "win32"`
 - [x] Em Linux e macOS o comportamento é byte a byte igual ao do upstream
 - [x] `scripts/check-homedir-parity.sh` continua verde nos 3 runtimes
-- [ ] Os 3 testes acima passam na CI Linux deste fork
-- [ ] A mesma correção é levada para `kgsaran/trackfw#222`
+- [x] Os 3 testes acima passam na CI Linux deste fork (sonda run 33351916177)
+- [x] A mesma correção é levada para `kgsaran/trackfw#222` (commit `20d5e4e`)
 
 ## Linked ADR
 
@@ -66,7 +66,7 @@ ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
 
 ## Linked Roadmap
 
-docs/roadmaps/claude/wip/ROADMAP-2026-08-30-homedir-so-prefere-home-no-windows.md
+docs/roadmaps/claude/done/ROADMAP-2026-08-30-homedir-so-prefere-home-no-windows.md
 
 ## Escopo declarado como fora
 
