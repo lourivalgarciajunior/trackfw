@@ -43,6 +43,24 @@ def _commit_trackfw_yaml(cwd, content):
 
 
 def _messages(items):
+    # DIAGNOSTICO TEMPORARIO — remover. Quando um item nao e dict, o
+    # `TypeError: string indices must be integers` esconde QUAL regra devolveu
+    # string e sob que estado. Aqui isso vira uma mensagem legivel.
+    ruins = [x for x in items if not isinstance(x, dict)]
+    if ruins:
+        import os as _os
+        from trackfw import config as _cfg
+        c = _cfg.load(_os.getcwd())
+        raise AssertionError(
+            "ITEM NAO-DICT em violations/warnings:" + chr(10)
+            + "  itens ruins : " + repr(ruins[:5]) + chr(10)
+            + "  cwd         : " + _os.getcwd() + chr(10)
+            + "  HOME        : " + repr(_os.environ.get("HOME")) + chr(10)
+            + "  namespacing : " + repr(c.get("roadmap_namespacing")) + chr(10)
+            + "  agents      : " + repr(c.get("agents")) + chr(10)
+            + "  roadmap_dir : " + repr(c.get("roadmap_dir")) + chr(10)
+            + "  req_dir     : " + repr(c.get("req_dir"))
+        )
     return [item["message"] for item in items]
 
 
