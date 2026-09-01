@@ -19,6 +19,21 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from trackfw import config as _config
 from trackfw import validator as v
+from trackfw.homedir import home_dir
+
+def _exec_bit_representavel():
+    """Este sistema de arquivos consegue dizer que um arquivo NAO e executavel?
+
+    Em NTFS nao consegue: os.access(path, os.X_OK) responde True para todo arquivo
+    existente, inclusive um 0o644 recem-criado. Medido, nao inferido de sys.platform.
+    """
+    fd, p = tempfile.mkstemp(suffix='.sh')
+    os.close(fd)
+    try:
+        os.chmod(p, 0o644)
+        return not os.access(p, os.X_OK)
+    finally:
+        os.remove(p)
 
 
 def _write(path: str, content: str = ""):
@@ -675,6 +690,119 @@ class TestValidatorImprovements(unittest.TestCase):
             f"esperava warning citando basename '{req_basename}'; warnings={warnings}",
         )
 
+    # ── ML-1B — separador portável (item 10 do issue #216) ──────────────────
+
+    def test_reference_exists_tolerates_dirty_backslash_reference(self):
+        """
+        Reproduz o PoC A do parecer de ameaça
+        (docs/seguranca/2026-09-01-modelo-de-ameaca-do-separador-em-artefato.md): uma REQ cujo
+        frontmatter roadmap: foi gravado com separador nativo do Windows ("\\") não deve ser
+        reprovada por ref_targets_exist — o arquivo referenciado existe de verdade.
+        """
+        from trackfw.validator import validate_ref_targets_exist
+
+        req_dir = os.path.join(self.tmp, "docs", "req")
+        roadmap_wip = os.path.join(self.tmp, "docs", "roadmaps", "wip")
+        os.makedirs(req_dir)
+        os.makedirs(roadmap_wip)
+
+        with open(os.path.join(roadmap_wip, "ROADMAP-dirty.md"), "w") as f:
+            f.write("---\nstatus: wip\n---\n# Roadmap dirty\n## Acceptance Criteria\n- [ ] x\n")
+
+        # Caminho absoluto real (como os outros testes desta classe fazem — validate_ref_targets_exist
+        # não faz chdir), montado à mão com "\" simulando o que um `roadmap move` no Windows teria
+        # gravado antes do fix de escrita.
+        clean_ref = os.path.join(roadmap_wip, "ROADMAP-dirty.md")
+        dirty_ref = clean_ref.replace("/", "\\")
+        with open(os.path.join(req_dir, "REQ-dirty.md"), "w") as f:
+            f.write(
+                "---\nstatus: Open\nroadmap: \"" + dirty_ref + "\"\n---\n\n"
+                "# REQ: Dirty\n\n> Date: 2026-09-01 | Status: Open\n"
+            )
+
+        cfg = {
+            "adr_dirs": [os.path.join(self.tmp, "docs", "adr")],
+            "req_dir": req_dir,
+            "roadmap_dir": os.path.join(self.tmp, "docs", "roadmaps"),
+            "roadmap_namespacing": "flat",
+            "agents": [],
+        }
+        warnings = validate_ref_targets_exist(cfg)
+        self.assertFalse(
+            any("which does not exist" in w["message"] for w in warnings),
+            f"referência suja com separador nativo deveria resolver; warnings={warnings}",
+        )
+
+    def test_reference_exists_control_broken_reference_still_fails(self):
+        """Controle: uma referência genuinamente quebrada continua reprovando, com ou sem \"\\\"."""
+        from trackfw.validator import validate_ref_targets_exist
+
+        req_dir = os.path.join(self.tmp, "docs", "req")
+        os.makedirs(req_dir)
+
+        with open(os.path.join(req_dir, "REQ-broken.md"), "w") as f:
+            f.write(
+                "---\nstatus: Open\nroadmap: \"docs\\\\roadmaps\\\\wip\\\\ROADMAP-nonexistent.md\"\n---\n\n"
+                "# REQ: Broken\n\n> Date: 2026-09-01 | Status: Open\n"
+            )
+
+        cfg = {
+            "adr_dirs": [os.path.join(self.tmp, "docs", "adr")],
+            "req_dir": req_dir,
+            "roadmap_dir": os.path.join(self.tmp, "docs", "roadmaps"),
+            "roadmap_namespacing": "flat",
+            "agents": [],
+        }
+        warnings = validate_ref_targets_exist(cfg)
+        self.assertTrue(
+            any("which does not exist" in w["message"] for w in warnings),
+            f"referência para arquivo inexistente deveria continuar reprovando; warnings={warnings}",
+        )
+
+    def test_validate_req_roadmap_lifecycle_tolerates_dirty_backslash_reference(self):
+        """
+        Manifestação #2 do parecer de ameaça: validate_req_roadmap_lifecycle falha fechado
+        silenciosamente quando a referência está suja (os.path.isfile erra silenciosamente por
+        não achar o caminho, o código faz continue). Uma REQ Open cujo roadmap (referenciado
+        com "\\") já está em done/ deve continuar sendo sinalizada.
+        """
+        from trackfw.validator import validate_req_roadmap_lifecycle
+
+        req_dir = os.path.join(self.tmp, "docs", "req")
+        roadmap_done = os.path.join(self.tmp, "docs", "roadmaps", "done")
+        os.makedirs(req_dir)
+        os.makedirs(roadmap_done)
+
+        with open(os.path.join(roadmap_done, "DONE-ROADMAP-dirty.md"), "w") as f:
+            f.write("---\nstatus: Done\ndate: 2026-07-01\n---\n# Roadmap concluído\n## Acceptance Criteria\n- [x] done\n")
+
+        clean_ref = os.path.join(roadmap_done, "DONE-ROADMAP-dirty.md")
+        dirty_ref = clean_ref.replace("/", "\\")
+        with open(os.path.join(req_dir, "REQ-dirty-lifecycle.md"), "w") as f:
+            f.write(
+                "---\nstatus: Open\ndate: 2026-07-01\nroadmap: \"" + dirty_ref + "\"\n---\n\n"
+                "# REQ: Dirty lifecycle\n\n> Date: 2026-07-01 | Status: Open\n"
+            )
+
+        cfg = {
+            "adr_dirs": [os.path.join(self.tmp, "docs", "adr")],
+            "req_dir": req_dir,
+            "roadmap_dir": os.path.join(self.tmp, "docs", "roadmaps"),
+            "roadmap_namespacing": "flat",
+            "agents": [],
+        }
+        warnings = validate_req_roadmap_lifecycle(cfg)
+        self.assertTrue(
+            any("is Open but linked Roadmap" in w["message"] for w in warnings),
+            f"REQ Open com roadmap sujo em done/ deveria ser sinalizada; warnings={warnings}",
+        )
+
+    def test_normalize_ref_separator_control_does_not_alter_clean_value(self):
+        from trackfw.validator import _normalize_ref_separator
+
+        clean = "docs/roadmaps/wip/ROADMAP-x.md"
+        self.assertEqual(_normalize_ref_separator(clean), clean)
+
     def test_validate_folder_status_coherence_warning(self):
         """Arquivo em wip/ com status: Done gera warning."""
         from trackfw import config as cfg_mod
@@ -928,7 +1056,10 @@ class TestExpandTildeAdrDirs(unittest.TestCase):
 
     def test_find_adr_file_com_tilde(self):
         """_find_adr_file localiza arquivo ADR em adr_dir especificado com ~/."""
-        home = os.path.expanduser("~")
+        # home_dir(), nao expanduser: a producao expande `~` pelo mesmo helper e o
+        # conftest isola HOME num tempdir. Com expanduser no Windows o teste escreveria
+        # na home REAL enquanto a producao leria a isolada.
+        home = home_dir()
         test_dir_name = f".tmp_trackfw_test_{int(time.time())}"
         test_dir = os.path.join(home, test_dir_name)
         os.makedirs(test_dir, exist_ok=True)
@@ -942,7 +1073,10 @@ class TestExpandTildeAdrDirs(unittest.TestCase):
 
     def test_validate_adrs_are_referenced_com_tilde(self):
         """validate_adrs_are_referenced expande ~/ em adr_dirs ao verificar referências."""
-        home = os.path.expanduser("~")
+        # home_dir(), nao expanduser: a producao expande `~` pelo mesmo helper e o
+        # conftest isola HOME num tempdir. Com expanduser no Windows o teste escreveria
+        # na home REAL enquanto a producao leria a isolada.
+        home = home_dir()
         test_dir_name = f".tmp_trackfw_test_ref_{int(time.time())}"
         test_dir = os.path.join(home, test_dir_name)
         os.makedirs(test_dir, exist_ok=True)
@@ -1031,6 +1165,16 @@ class TestCredentialGuardHookResolvable(unittest.TestCase):
         )
 
     def test_dispara_quando_script_nao_executavel(self):
+        # Deteccao pela CONDICAO, nao por sys.platform: onde o SO nao consegue
+        # representar a ausencia do bit de execucao (NTFS), os.access(X_OK) responde
+        # True para todo arquivo existente e esta garantia nao e exercitavel. Num
+        # Linux/macOS — e num Windows que um dia represente o bit — o teste roda
+        # normalmente. Nomeia a garantia que deixou de ser verificada em vez de
+        # passar em silencio.
+        if not _exec_bit_representavel():
+            self.skipTest(
+                'regra "script nao executavel" nao exercitada: neste sistema de arquivos os.access(X_OK) responde True mesmo para um arquivo 0o644'
+            )
         _write(
             os.path.join(self.tmp, ".claude/settings.json"),
             _guard_entry_claude_settings("$CLAUDE_PROJECT_DIR/scripts/trackfw-credential-guard.sh"),
@@ -1045,6 +1189,38 @@ class TestCredentialGuardHookResolvable(unittest.TestCase):
             any("not executable" in m["message"] for m in msgs),
             f"esperado violation de script não executável, obteve: {msgs}",
         )
+
+    def test_windows_nao_dispara_pelo_bit_de_execucao(self):
+        # No Windows o bit de execucao nao e representavel em NTFS: a mensagem "the
+        # script is not executable" seria SEMPRE verdadeira la, e nenhuma acao do
+        # usuario a tornaria falsa — `trackfw update`, o remedio que ela prescreve,
+        # regenera o script com o mesmo modo irrepresentavel. Mesmo precedente de
+        # _current_platform em trackfw/integrations/scaffold_doctor.py (AC5).
+        restore = v._set_platform_for_test('win32')
+        try:
+            _write(
+                os.path.join(self.tmp, ".claude/settings.json"),
+                _guard_entry_claude_settings("$CLAUDE_PROJECT_DIR/scripts/trackfw-credential-guard.sh"),
+            )
+            script_path = os.path.join(self.tmp, "scripts", "trackfw-credential-guard.sh")
+            _write(script_path, "#!/bin/sh\nexit 0\n")
+            os.chmod(script_path, 0o644)  # sem bit +x
+
+            cfg = _config.defaults()
+            msgs = v.validate_credential_guard_hook_resolvable(cfg, cwd=self.tmp)
+            cfg = _config.defaults()
+            msgs = v.validate_credential_guard_hook_resolvable(cfg, cwd=self.tmp)
+            self.assertFalse(
+                any('not executable' in m['message'] for m in msgs),
+                f'no Windows o bit nao e representavel — nao deveria disparar: {msgs}',
+            )
+            # O script EXISTE: a checagem de existencia continua valendo no Windows.
+            self.assertFalse(
+                any('does not exist' in m['message'] for m in msgs),
+                f'script existe; ausencia nao deveria aparecer: {msgs}',
+            )
+        finally:
+            restore()
 
     def test_nao_dispara_sem_entrada_de_guard(self):
         _write(

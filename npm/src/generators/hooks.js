@@ -3,7 +3,7 @@
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
-const { homedir } = require('../homedir');
+const { homedir } = require('../homedir')
 
 // ---------------------------------------------------------------------------
 // Helpers

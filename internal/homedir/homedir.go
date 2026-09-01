@@ -1,30 +1,33 @@
-// Package homedir resolve o diretório home do usuário de forma consistente
-// entre plataformas.
+// Package homedir resolves the user's home directory consistently across
+// platforms. Canonical source of truth for npm/src/homedir.js (Node.js) and
+// pypi/trackfw/homedir.py (Python).
 //
-// DIVERGÊNCIA LOCAL — não existe no upstream. Ver
-// REQ-2026-08-29-migrar-para-upstream-7.3.0.
+// Why it exists: os.UserHomeDir() reads $HOME on Linux and macOS, but
+// %USERPROFILE% on Windows. The trackfw test suites isolate the home directory
+// with t.Setenv("HOME", t.TempDir()) — and the Node.js and Python suites do the
+// equivalent — which on Windows isolates nothing: production keeps reading and
+// writing the developer's real home. A single `go test ./...` run on a Windows
+// machine created ADR files, an integrations manifest and two guard scripts
+// inside the real ~/.trackfw.
 //
-// Por que existe: os.UserHomeDir() lê $HOME no Linux e no macOS, mas
-// %USERPROFILE% no Windows. Os testes do trackfw isolam a home com
-// t.Setenv("HOME", t.TempDir()) — 97 call sites — o que no Windows não isola
-// nada. O resultado é teste escrevendo em ~/.trackfw do desenvolvedor: uma
-// execução de `go test ./...` nesta máquina criou ADR, integrations-manifest
-// e dois scripts de guard dentro da home real.
+// On a CI runner the same gap is a race, not just a mess: `go test` parallelizes
+// packages by default, so several packages write to the one real home at once,
+// and the failure surfaces as "flaky Windows test" rather than as the isolation
+// defect it is.
 //
-// Dir() faz o Windows se comportar como as outras plataformas: $HOME primeiro,
-// os.UserHomeDir() como fallback. Em produção no Windows a diferença é nula
-// quando $HOME não está definido, e quando está (Git Bash o define) ele aponta
-// para o mesmo lugar que %USERPROFILE%.
+// Dir() makes Windows behave like the other platforms: $HOME first,
+// os.UserHomeDir() as the fallback. Where $HOME is unset nothing changes, and
+// where it is set (Git Bash sets it) it points at the same place as
+// %USERPROFILE%.
 //
-// A alternativa era editar os 97 call sites de teste, o que geraria conflito
-// em todo merge futuro com o upstream. 21 call sites de produção é o custo
-// menor.
+// The empty string does NOT count as set: HOME="" would resolve to "" and every
+// derived path would silently become relative.
 package homedir
 
 import "os"
 
-// Dir retorna o diretório home do usuário, preferindo $HOME quando definido.
-// Substitui os.UserHomeDir() em todo o código de produção do trackfw.
+// Dir returns the user's home directory, preferring $HOME when it is set and
+// non-empty. It replaces os.UserHomeDir() throughout trackfw's production code.
 func Dir() (string, error) {
 	if h := os.Getenv("HOME"); h != "" {
 		return h, nil

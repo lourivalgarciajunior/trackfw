@@ -69,7 +69,7 @@ from trackfw.commands.update_harness import (
     STATE_UPDATED,
 )
 from trackfw.generators.adr import global_adr_dir
-from trackfw.homedir import home_dir, expand_path
+from trackfw.homedir import home_dir
 
 AGENT_RULES_RELATIVE_PATHS = [
     "CLAUDE.md",

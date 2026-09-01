@@ -8,7 +8,7 @@ const projectConfig = require('../config')
 const { catalog, buildPlans, IntegrationManager, globalGroupPath } = require('../integrations')
 const { tildeify, validateTargets, buildDocument, humanReport, silenceConsole } = require('../lib/update-engine')
 const { mergeClaudeHookArray, mergeSimpleCommandArray, mergeCopilotHookArray, generateGlobalCredentialGuardScript, generateGlobalGitBranchGuardScript } = require('../generators/hooks')
-const { homedir } = require('../homedir');
+const { homedir } = require('../homedir')
 
 // `trackfw update harness` is the global counterpart to `trackfw update` —
 // see docs/cli-parity.md, "`trackfw update` vs `trackfw update harness`".

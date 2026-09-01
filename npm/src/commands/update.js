@@ -7,7 +7,7 @@ const path = require('path');
 const identityStore = require('../identity');
 const projectConfig = require('../config');
 const { runFileTarget, validateTargets, buildDocument, humanReport, silenceConsole } = require('../lib/update-engine');
-const { homedir } = require('../homedir');
+const { homedir } = require('../homedir')
 
 // `trackfw update` is project-scoped only — see docs/cli-parity.md,
 // "`trackfw update` vs `trackfw update harness`". It must NEVER touch global

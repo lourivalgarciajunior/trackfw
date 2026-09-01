@@ -9,10 +9,26 @@
 # Estatico de proposito: a CI do upstream e Linux e nunca ve o defeito, entao todo
 # arquivo novo que vier de la chega sem newline. Este gate pega no merge.
 #
-# Ver REQ-2026-08-29-geradores-python-escrevem-crlf-no-windows.
+# Ver docs/cli-parity.md.
 set -euo pipefail
 
-OFFENDERS=$(python - <<'PY'
+# P2 vacuity guard: derive, with `find`, the file list visited by the same
+# criteria as the os.walk() below (pypi/trackfw/**/*.py, skipping
+# __pycache__), against the SAME relative path and cwd the walk below uses
+# (no ROOT_DIR/cd here on purpose — using an absolute anchor would let this
+# guard pass from a cwd where the walk itself sees nothing, defeating the
+# guard). If pypi/trackfw/ were moved, renamed, or a filter broke, the walk
+# below would silently visit zero files and OFFENDERS would stay empty — the
+# gate would pass, but say nothing about whether any file was actually
+# checked. Mirrors the pattern in scripts/check-static-assets.sh ("P2
+# vacuity guard").
+SCANNED=$(find pypi/trackfw -name __pycache__ -prune -o -name '*.py' -print)
+if [[ -z "$SCANNED" ]]; then
+  echo "check-python-writes-lf: scan visited zero .py files under pypi/trackfw/ — refusing to pass silently" >&2
+  exit 1
+fi
+
+OFFENDERS=$(python3 - <<'PY'
 import io, os, re
 NAMES = ('open(', '.write_text(')
 def calls(s, name):
@@ -55,7 +71,7 @@ if [ -n "$OFFENDERS" ]; then
   echo "escrita de texto sem newline explicito em pypi/trackfw/:"
   echo "$OFFENDERS" | sed 's/^/  /'
   echo
-  echo 'Use newline="\n". Ver docs/cli-parity.md e a REQ do CRLF.'
+  echo 'Use newline="\n". Ver docs/cli-parity.md.'
   exit 1
 fi
 echo "Escrita em LF: nenhuma chamada sem newline explicito."

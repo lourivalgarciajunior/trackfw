@@ -7,7 +7,7 @@ const path = require('node:path')
 
 const { frontmatterName } = require('./render')
 const { tildeify } = require('../lib/update-engine')
-const { homedir } = require('../homedir');
+const { homedir } = require('../homedir')
 
 const SCHEMA_VERSION = 1
 const sha256 = content => crypto.createHash('sha256').update(content).digest('hex')

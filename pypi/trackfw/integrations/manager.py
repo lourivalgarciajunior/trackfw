@@ -10,8 +10,8 @@ import sys
 import tempfile
 from pathlib import Path
 from typing import Any
-# alias: o parametro `home_dir` do __init__ sombreia o nome importado
-from trackfw.homedir import home_dir as _user_home_dir, expand_path
+# alias: o parametro `home_dir` sombreia o nome importado
+from trackfw.homedir import home_dir as _user_home_dir
 
 
 class IntegrationError(RuntimeError):

@@ -47,23 +47,24 @@ class TrackfwArgumentParser(argparse.ArgumentParser):
 def _force_utf8_output():
     """Reconfigura stdout e stderr para UTF-8 antes de qualquer escrita.
 
-    Console Windows entrega cp1252, que nao representa nada do vocabulario
-    visual da ferramenta — setas, marcas, caixas, acentos. Sem isto, `--help`,
-    `status` e `validate` morrem com UnicodeEncodeError num Windows padrao.
+    Console Windows entrega cp1252, que nao representa nada do vocabulario visual
+    da ferramenta — setas, marcas, caixas, acentos. Sem isto, `trackfw --help`,
+    `status` e `validate` morrem com UnicodeEncodeError num Windows padrao, antes
+    de imprimir a primeira linha. A `description=` do parser raiz sozinha ja
+    basta: ela contem →.
 
     UTF-8 e nao a codificacao do console porque e o que os outros dois runtimes
-    fazem: Go e Node.js escrevem bytes UTF-8 direto, sem consultar codepage.
+    fazem — Go e Node.js escrevem bytes UTF-8 direto, sem consultar codepage. Sem
+    isto o Python e o unico dos tres que depende de `PYTHONUTF8=1` na frente para
+    rodar, o que nao e paridade.
 
-    O newline explicito desliga a traducao de quebra de linha — sem isso o
-    Python emite CRLF no Windows enquanto os outros dois emitem LF, e as tres
-    saidas ficam diferentes byte a byte.
+    O `newline` explicito desliga a traducao de quebra de linha: sem ele o Python
+    emite CRLF no Windows enquanto os outros dois emitem LF, e as tres saidas
+    ficam diferentes byte a byte para o mesmo comando.
 
     `errors="replace"` degrada em vez de abortar. Silencioso quando o stream nao
-    suporta: testes e pipelines substituem sys.stdout por objetos sem
-    `reconfigure`.
-
-    DIVERGENCIA LOCAL — nao existe no upstream. Ver
-    REQ-2026-08-16-cli-python-utf8-windows e REQ-2026-08-17-req-list-python.
+    suporta `reconfigure`: testes e pipelines substituem sys.stdout por objetos
+    que nao tem o metodo.
     """
     for stream in (sys.stdout, sys.stderr):
         reconfigure = getattr(stream, "reconfigure", None)

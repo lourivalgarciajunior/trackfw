@@ -22,6 +22,9 @@ parity: build
 	scripts/check-parity-contract-coverage.sh
 	scripts/check-static-assets.sh
 	scripts/check-integration-assets.sh
+	scripts/check-python-writes-lf.sh
+	scripts/check-homedir-parity.sh
+	scripts/check-tty-detection.sh
 	GO_BIN=$(BUILD_DIR)/$(BINARY) scripts/check-identity-parity.sh
 	GO_BIN=$(BUILD_DIR)/$(BINARY) scripts/check-artifact-parity.sh
 	GO_BIN=$(BUILD_DIR)/$(BINARY) scripts/check-barrier.sh
@@ -51,6 +54,7 @@ parity: build
 	scripts/check-install-version-pin.sh
 	scripts/check-ci-workflow-pin-parity.sh
 	GO_BIN=$(BUILD_DIR)/$(BINARY) scripts/check-roadmap-barrier-contract.sh
+	scripts/check-ref-separator-portability.sh
 
 sync-integration-assets:
 	scripts/sync-integration-assets.sh

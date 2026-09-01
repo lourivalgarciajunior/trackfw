@@ -6,7 +6,7 @@ const { Command } = require('commander')
 const { input } = require('@inquirer/prompts')
 const generators = require('../generators/adr')
 const { t } = require('../i18n')
-const { homedir } = require('../homedir');
+const { homedir } = require('../homedir')
 
 const cmd = new Command('adr')
 cmd.description(t('adr.description'))

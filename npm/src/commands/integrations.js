@@ -10,7 +10,7 @@ const identityWizard = require('./identity-wizard')
 const { t } = require('../i18n')
 const { createThirdPartyCommand } = require('./thirdparty')
 const configModule = require('../config')
-const { homedir } = require('../homedir');
+const { homedir } = require('../homedir')
 
 const csv = value => String(value).split(',').map(entry => entry.trim()).filter(Boolean)
 const collect = (value, previous) => previous.concat(value)

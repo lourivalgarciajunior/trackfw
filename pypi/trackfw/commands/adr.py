@@ -5,7 +5,7 @@ Registra o grupo de subcomandos ADR no argparse principal.
 
 import os
 import sys
-from trackfw.homedir import home_dir, expand_path
+from trackfw.homedir import home_dir
 
 
 def register(subparsers):

@@ -15,8 +15,8 @@ from trackfw import config as trackfw_config
 from .catalog import plan_deployments
 from .manager import IntegrationError, IntegrationManager
 from trackfw.generators.init_gen import inject_rules_for_tool
-from trackfw.homedir import home_dir, expand_path
-from trackfw.tty import stdin_is_interactive, stdout_is_interactive
+from trackfw.homedir import home_dir
+from trackfw.tty import stdin_is_interactive
 
 # trackfw.commands.identity_wizard is imported lazily inside run(), as a
 # defensive measure: this module lives in trackfw.integrations, and

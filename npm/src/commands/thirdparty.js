@@ -19,7 +19,7 @@ const { checkMarkers, checksum: sha256hex } = require('../thirdparty/markers')
 const { quarantinePath, newQuarantineEntry, writeQuarantine, readQuarantine, decodeContent } = require('../thirdparty/quarantine')
 const { loadProvenance, verifyApproval, upsertProvenanceEntry } = require('../thirdparty/provenance')
 const { upsertThirdPartyReference, normalizeThirdPartyContent, resolveThirdPartySkillDestination } = require('../thirdparty/references')
-const { homedir } = require('../homedir');
+const { homedir } = require('../homedir')
 
 // api is the module.exports object itself, referenced internally via
 // `api.thirdPartyFetch(...)` so tests can substitute the network fetch by

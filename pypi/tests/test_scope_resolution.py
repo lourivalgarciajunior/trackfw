@@ -58,7 +58,10 @@ def test_resolve_scope_explicit_project_is_returned_as_is(monkeypatch):
     # An explicit --scope must win even if stdin happens to be a TTY — the
     # detection is by flag-set (`scope is not None`), never by comparing
     # against a sentinel value.
-    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    # O seam mudou: a producao consulta trackfw.tty.stdin_is_interactive(), que
+    # no Windows estreita o isatty() com GetConsoleMode — fingir isatty sobre um
+    # fd que nao e console nao basta mais. Ver o doc de pypi/trackfw/tty.py.
+    monkeypatch.setattr(integrations_command, "stdin_is_interactive", lambda: True)
     called = {"prompted": False}
 
     def _spy() -> str:
@@ -71,7 +74,10 @@ def test_resolve_scope_explicit_project_is_returned_as_is(monkeypatch):
 
 
 def test_resolve_scope_explicit_global_is_returned_as_is(monkeypatch):
-    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    # O seam mudou: a producao consulta trackfw.tty.stdin_is_interactive(), que
+    # no Windows estreita o isatty() com GetConsoleMode — fingir isatty sobre um
+    # fd que nao e console nao basta mais. Ver o doc de pypi/trackfw/tty.py.
+    monkeypatch.setattr(integrations_command, "stdin_is_interactive", lambda: True)
     assert integrations_command.resolve_scope("global") == "global"
 
 
@@ -81,10 +87,9 @@ def test_resolve_scope_no_tty_and_no_flag_defaults_to_global(monkeypatch):
 
 
 def test_resolve_scope_tty_and_no_flag_invokes_the_prompt_runner(monkeypatch):
-    # O seam mudou: a producao consulta trackfw.tty.stdin_is_interactive(),
-    # que no Windows estreita o isatty() com GetConsoleMode — fingir isatty
-    # sobre um fd que nao e console nao basta mais. Ver
-    # REQ-2026-08-29-isatty-do-python-devolve-true-para-nul-no-windows.
+    # O seam mudou: a producao consulta trackfw.tty.stdin_is_interactive(), que
+    # no Windows estreita o isatty() com GetConsoleMode — fingir isatty sobre um
+    # fd que nao e console nao basta mais. Ver o doc de pypi/trackfw/tty.py.
     monkeypatch.setattr(integrations_command, "stdin_is_interactive", lambda: True)
     monkeypatch.setattr(integrations_command, "scope_prompt_runner", lambda: "project")
     assert integrations_command.resolve_scope(None) == "project"
@@ -115,11 +120,9 @@ def test_resolve_scope_tty_uninstall_and_no_flag_invokes_the_prompt_runner(monke
     # In TTY, uninstall prompts exactly like install/update (ADR D8's
     # non-interactive guard does not apply once the user can see the
     # choice before anything destructive happens).
-    #
-    # O seam mudou: a producao consulta trackfw.tty.stdin_is_interactive(),
-    # que no Windows estreita o isatty() com GetConsoleMode — fingir isatty
-    # sobre um fd que nao e console nao basta mais. Ver
-    # REQ-2026-08-29-isatty-do-python-devolve-true-para-nul-no-windows.
+    # O seam mudou: a producao consulta trackfw.tty.stdin_is_interactive(), que
+    # no Windows estreita o isatty() com GetConsoleMode — fingir isatty sobre um
+    # fd que nao e console nao basta mais. Ver o doc de pypi/trackfw/tty.py.
     monkeypatch.setattr(integrations_command, "stdin_is_interactive", lambda: True)
     monkeypatch.setattr(integrations_command, "scope_prompt_runner", lambda: "project")
     assert integrations_command.resolve_scope(None, operation="uninstall") == "project"
@@ -217,7 +220,10 @@ def test_targets_flag_with_tty_and_no_scope_still_triggers_scope_resolver(tmp_pa
 
     monkeypatch.setattr(integrations_command, "scope_prompt_runner", _spy)
     monkeypatch.setattr("os.path.expanduser", lambda p: str(home) if p == "~" else os.path.expanduser(p))
-    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    # O seam mudou: a producao consulta trackfw.tty.stdin_is_interactive(), que
+    # no Windows estreita o isatty() com GetConsoleMode — fingir isatty sobre um
+    # fd que nao e console nao basta mais. Ver o doc de pypi/trackfw/tty.py.
+    monkeypatch.setattr(integrations_command, "stdin_is_interactive", lambda: True)
     monkeypatch.chdir(project)
 
     args = _make_args()

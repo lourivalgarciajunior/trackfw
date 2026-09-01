@@ -11,7 +11,7 @@ import sys
 from .. import validator as _validator
 from .. import config as _config
 from trackfw.i18n import t as i18n_t
-from trackfw.tty import stdin_is_interactive, stdout_is_interactive
+from trackfw.tty import stdout_is_interactive
 
 # Códigos ANSI
 _RED = "\033[31m"

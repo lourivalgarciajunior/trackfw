@@ -5,7 +5,7 @@ const identityStore = require('../identity')
 const identityWizard = require('./identity-wizard')
 const { resolveIdentityPreset, identityFileExists } = identityWizard
 const { resolveScope } = require('./integrations')
-const { homedir } = require('../homedir');
+const { homedir } = require('../homedir')
 
 const cmd = new Command('init')
 cmd.description(t('init.description'))

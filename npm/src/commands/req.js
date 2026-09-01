@@ -4,7 +4,7 @@ const os = require('os')
 const { Command } = require('commander')
 const { listREQs, moveREQ } = require('../generators/req')
 const { t } = require('../i18n')
-const { homedir } = require('../homedir');
+const { homedir } = require('../homedir')
 
 const cmd = new Command('req')
 cmd.description(t('req.description'))
