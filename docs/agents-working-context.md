@@ -4,6 +4,117 @@
 
 ---
 
+## Sessão 2026-09-01 — claude (FIM: o Kleber respondeu, sonda dele não rodava, achados 17/18/19)
+
+`main` em `892dc53`, em dia com o upstream, árvore limpa, 6 gates verdes,
+`validate` com as 15 violações de sempre.
+
+### O Kleber respondeu — e o veredito é bom
+
+Ele **fechou as 4 PRs** (#222–#225) às 12:21–12:22 de 2026-08-31, em 47 segundos, sem comentário.
+Depois escreveu um parecer formal de 494 linhas (`hefesto-tf`) em
+`docs/analises/2026-08-31-aproveitamento-dos-prs-222-225.md` — legível por
+`git show upstream/main:docs/analises/2026-08-31-aproveitamento-dos-prs-222-225.md`, porque a
+política manda não importar a governança dele.
+
+Duas frases resolvem:
+
+> KG fechou os quatro PRs dele **por conflito de governança** (ciclo próprio já em curso, mesmos
+> arquivos), **não por mérito**, e avisou o autor.
+
+> **Nenhum dos quatro PRs merece "nada".**
+
+Veredito: aproveitar **os cinco conjuntos inteiros, incluindo testes**. Esforço baixo nos cinco.
+Com os quatro portados, a linha de base dele sai de 8/8 REPRODUCED para 3 remanescentes.
+
+Ele validou o método explicitamente: *"o mesmo nível de rigor metodológico que este projeto já
+pratica internamente (medir o discriminante, não o comando; declarar residual em vez de fingir
+cobertura)"*.
+
+**O que travou não foram as PRs.** A barreira da REQ em `wip` exigia "o job de Windows reprovando
+pelos motivos esperados", e cada correção vira um `REPRODUCED` em `ABSENT`. É literalmente o título
+do PR #228 dele: *"o critério de barreira bloqueava as próprias correções"*.
+
+**Duas coisas que ele viu e eu não:**
+- Residual do #223 que declarei pela metade: `pypi/tests/__init__.py` força UTF-8 na importação,
+  então **a suíte inteira fica permanentemente cega a falhas de encoding in-process**.
+- `docs/cli-parity.md` não documenta os contratos que #223 e #225 passam a impor. E a ironia: o
+  item 4 **é** o `check-parity-contract-coverage.sh` morrendo em cp1252 ao ler esse mesmo arquivo.
+
+### Erro meu, corrigido publicamente
+
+Eu disse a ele na #222 que as PRs daqui não disparavam checks no repositório dele. **Errado** — os
+runs foram criados (4, um por push) e ficaram ~10h aguardando aprovação de fork, com
+`total_jobs = 0`, sendo marcados `failure` no segundo em que ele fechou as PRs. Li ausência de
+*check* como ausência de *disparo*. Corrigido em
+[#222 comment](https://github.com/kgsaran/trackfw/pull/222#issuecomment-5484396339), com a
+consequência útil: **se apareceu X vermelho ali, não havia nada atrás dele.**
+
+### Achados 17, 18 e 19 — a sonda dele não roda no Windows
+
+`scripts/windows-repro/run.ps1` não executa no **shell padrão do Windows** (PowerShell 5.1). Três
+defeitos, mesma forma: o script só funciona onde foi escrito (`shell: pwsh` nos 10 steps).
+
+| | |
+|---|---|
+| **17** sem BOM | `e2 80 94` lido como cp1252 vira `U+00E2 U+20AC U+201D` — a última é aspa tipográfica e fecha a string. Parse morre antes da 1ª linha |
+| **18** `RUNNER_TEMP` | só existe no GitHub Actions. `Join-Path $null "x"` → **string vazia sem erro** → item 2 emite **REPRODUCED incondicional**, inclusive em árvore corrigida |
+| **19** `ArgumentList` | não existe no .NET Framework; `$psi.ArgumentList.Add()` estoura e **todo processo roda sem argumento** |
+
+O 18 é o grave: falso positivo por construção num instrumento de medição.
+
+**O argumento que separa bug de decisão:** o item 1, no mesmo script, faz certo — reporta
+`INCONCLUSIVE` nomeando o motivo quando o processo morre antes do código medido. O script sabe
+dizer "não medi"; num lugar deixou de dizer.
+
+[issue #232](https://github.com/kgsaran/trackfw/issues/232) ·
+[PR #233](https://github.com/kgsaran/trackfw/pull/233) — um arquivo só.
+
+### O que ainda permanece, medido com a sonda consertada
+
+Ela devolve **8 REPRODUCED / 0 inconclusivo** na árvore do upstream — os mesmos 8/8 da camada 1 em
+`windows-latest`. A concordância com o número dele é o que prova que o conserto não mexeu no que ela
+mede.
+
+Na **nossa** `main`, com as nossas correções:
+
+| item | verdito | |
+|---|---|---|
+| 1 cp1252 no CLI | **ABSENT** | nossa correção de UTF-8 |
+| 5 CRLF nos geradores | **ABSENT** | nossa correção de CRLF |
+| 6 `isatty` mente para NUL | **ABSENT** | nossa correção de tty |
+| 2 `$HOME` ignorado | REPRODUCED | mede a primitiva — ver abaixo |
+| 3 bit de execução | REPRODUCED | não aplicado aqui, por ordem do usuário |
+| 4 gate de cobertura em cp1252 | REPRODUCED | nenhuma PR cobre |
+| 7 `sh -c` vs `cmd.exe` | REPRODUCED | nenhuma PR cobre |
+| 10 separador de SO no frontmatter | REPRODUCED | nenhuma PR cobre |
+
+**8 → 5.** O instrumento dele, consertado, confirma as nossas três correções numa máquina Windows
+real.
+
+**Achado lateral (na issue, fora da PR):** o item 2 mede `os.UserHomeDir()` **cru** — plataforma,
+não produto. Nunca vai a `ABSENT`, nem depois de portada a correção, embora o
+`check-homedir-parity.sh` prove que os 3 runtimes honram `$HOME` aqui. O critério do roadmap dele
+conta itens saindo de REPRODUCED, e este não sai nunca.
+
+### Decisões do usuário nesta sessão
+
+- **As 4 branches `upstream-pr/*` ficam.** O parecer dele manda ler `gh pr diff <n>`, que só resolve
+  enquanto as branches existirem. Podar só depois do porte.
+- **Daqui pra frente: cada mudança nova vai em PR própria com issue própria**, em vez de acumular
+  comentário no #216.
+- Os achados 12–16 seguem como comentários no #216 — não promovidos a issues.
+
+### O que continua esperando
+
+- Resposta dele na issue #232 e na PR #233.
+- O porte dos cinco conjuntos, do lado dele.
+- Publicar `roadmap_move_test.go`, `check-subcommand-parity.sh` e o `package-lock.json` em `6.1.0`.
+- 6 gates nossos em `100644` onde os 40 irmãos são `100755`.
+- **Não regenerar o snapshot do barrier** para calar o `parity` — achado 16.
+
+---
+
 ## Sessão 2026-08-31 — claude (FIM: CI verde pela 1ª vez, achados 14/15/16, 3 erros de medição meus)
 
 `main` em `ed5bb6e`. Árvore limpa, 0 PRs abertas no fork, `wip` vazio, 6 gates locais verdes,
