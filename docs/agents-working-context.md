@@ -4,6 +4,68 @@
 
 ---
 
+## Sessão 2026-09-01 (fecho) — claude (poda de branches, e uma armadilha na própria verificação)
+
+`main` em `ea4efbe`. Árvore limpa, em dia com o upstream, 12 arquivos de divergência, 7 gates
+verdes, `validate` com as 15 violações de sempre.
+
+### Três branches podadas, todas verificadas por conteúdo
+
+| branch | SHA | por que foi segura |
+|---|---|---|
+| `upstream-pr/sonda-nao-roda-fora-do-github-actions` | `9ea9447` | PR [#233](https://github.com/kgsaran/trackfw/pull/233) MERGED; acrescenta **um** arquivo sobre a própria base, e ele está **idêntico** no `upstream/main` |
+| `docs/req-dos-achados-9-10-11-do-issue-216` | `e39eb3f` | cópia pré-merge do fluxo dele — PR [#220](https://github.com/kgsaran/trackfw/pull/220) MERGED, e `b2bacdb` está na nossa `main` |
+| `fix/job-de-windows-largo-que-nasce-vermelho-e-sonda-sob-demanda` | `af14d13` | idem — PR [#221](https://github.com/kgsaran/trackfw/pull/221) MERGED, e `3878b69` está na nossa `main` |
+
+As duas últimas não eram nossas: foram empurradas para o nosso remote quando este repo ainda era
+cópia por ZIP, antes do refork.
+
+**O critério NÃO foi ancestralidade.** O Kleber mescla com squash, então `9ea9447` **não é**
+ancestral de `upstream/main` mesmo tendo sido aceito. Testar `merge-base --is-ancestor` teria dito
+"não absorvido" para uma branch integralmente absorvida. O critério certo é **igualdade de
+conteúdo** do que a branch acrescenta sobre a própria base.
+
+Local e remote agora batem: `main` + as 4 `upstream-pr/*` das PRs fechadas, que ficam por decisão do
+usuário (o parecer dele manda ler `gh pr diff <n>`, que deixa de resolver se apagarmos).
+
+### Armadilha: o MSYS quebrou a minha própria verificação
+
+O primeiro laço de conferência reportou `.github/workflows/quality.yml` e `.gitignore` como
+**AUSENTES no upstream** — falso óbvio. A causa:
+
+```
+fatal: Not a valid object name upstream\main;.github\workflows\quality.yml
+```
+
+O MSYS converteu `upstream/main:.github/...` em caminho Windows — `/` virou `\`, `:` virou `;`. O
+`git cat-file -e` falhou por sintaxe, e o meu `||` leu a falha como "o arquivo não existe".
+
+Se eu tivesse aceitado, teria concluído que o upstream perdeu os workflows. O que salvou foi o
+resultado ser absurdo o bastante para conferir.
+
+**Generaliza:** `git cat-file -e "<ref>:<caminho>"` sob Git Bash no Windows é frágil — o `:` e as
+barras são reescritos. Prefira `git ls-tree -r --name-only <ref> -- <caminho>` ou compare por
+`git diff --quiet <ref-a> <ref-b> -- <caminho>`, que não passam o `:` pela conversão.
+
+É a mesma família de tudo o que esta sessão catalogou, agora dentro da ferramenta de verificação:
+**um comando que falha por outro motivo, e cuja falha estava sendo lida como resposta.**
+
+### Estado do fork
+
+```
+main          ea4efbe
+divergência   12 arquivos de código
+gates         7/7 verdes
+validate      15 violações — bit de execução, visíveis por decisão
+branches      main + 4 upstream-pr/*
+```
+
+Dos 12: 6 gates nossos não publicados, 1 é a política de fork, e **5 correções que ele ainda não
+portou** — slug no `init.js` e no `adr.py`, `discover.py`, `roadmap_move_test.go`, `package-lock` em
+`6.1.0`. Próxima rodada: issue própria + PR própria, que foi como a #233 entrou.
+
+---
+
 ## Sessão 2026-09-01 (noite) — claude (FIM: ele mesclou a nossa PR, divergência 72 → 12, onboarding funciona no Windows)
 
 `main` em `a780e4f`, em dia com o upstream, árvore limpa, **7 gates verdes**, `validate` com as 15
