@@ -52,7 +52,7 @@ from trackfw.generators.init_gen import (
     generate_global_credential_guard_script,
     generate_global_git_branch_guard_script,
 )
-from trackfw.homedir import home_dir, expand_path
+from trackfw.homedir import home_dir
 
 STATE_UPDATED = "updated"
 STATE_SKIPPED = "skipped"

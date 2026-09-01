@@ -9,7 +9,7 @@ const { legacyHashes } = require('./legacy')
 const identityStore = require('../identity')
 const { injectRulesForTool } = require('../generators/init')
 const { applyThirdPartyReferences } = require('../thirdparty/references')
-const { homedir } = require('../homedir');
+const { homedir } = require('../homedir')
 
 function parseSurfaces(values = []) {
   const result = {}

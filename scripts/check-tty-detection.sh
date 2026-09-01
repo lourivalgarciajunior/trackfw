@@ -1,39 +1,61 @@
 #!/usr/bin/env bash
 # Gate: deteccao de terminal interativo confiavel nos tres runtimes.
 #
-# sys.stdin.isatty() devolve True para NUL no Windows (character device conta como
-# TTY), entao o `init` do Python entrava no wizard de identidade em contexto nao
-# interativo e morria com EOF. Go usa GetConsoleMode e Node usa o tipo de handle do
-# libuv; so o Python precisava do ajuste.
+# sys.stdin.isatty() devolve True para NUL no Windows — NUL e um character device,
+# e o Windows classifica character device como TTY. O resultado e o `init` do
+# Python entrando no wizard de identidade em contexto nao interativo e morrendo
+# com "EOF when reading a line". Go usa GetConsoleMode e Node usa o tipo de handle
+# do libuv; so o Python precisava do ajuste.
 #
-# Ver REQ-2026-08-29-isatty-do-python-devolve-true-para-nul-no-windows.
+# MEDE O DISCRIMINANTE, NAO O COMANDO. A primeira versao deste gate rodava
+# `trackfw init </dev/null` e exigia exit 0 nos tres — e passava com e sem a
+# correcao, porque o `init` sem --ai-tools nao chega a alcancar o wizard e com
+# --ai-tools esbarra antes num os.fchmod que nao existe no Windows. Verde que nao
+# significava nada. Agora pergunta direto ao predicado que a producao consulta.
+#
+# Ver o doc de pypi/trackfw/tty.py para o raciocinio completo.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-WORK="$(mktemp -d)"
-trap 'rm -rf "$WORK"' EXIT
-
 fail=0
 
-# ── Por efeito: `init` com stdin nao interativo conclui nos tres ──
-# A home tambem e isolada: com identidade ja configurada o wizard nem seria
-# alcancado, e o teste passaria sem exercitar nada.
-for rt in go node python; do
-  d="$WORK/$rt"; mkdir -p "$d" "$WORK/home-$rt"
-  rc=0
-  case "$rt" in
-    go)     (cd "$d" && HOME="$WORK/home-$rt" "$ROOT/bin/trackfw" init </dev/null >/dev/null 2>&1) || rc=$? ;;
-    node)   (cd "$d" && HOME="$WORK/home-$rt" node "$ROOT/npm/bin/trackfw" init </dev/null >/dev/null 2>&1) || rc=$? ;;
-    python) (cd "$d" && HOME="$WORK/home-$rt" PYTHONPATH="$ROOT/pypi" python -m trackfw init </dev/null >/dev/null 2>&1) || rc=$? ;;
-  esac
-  if [ "$rc" -ne 0 ]; then
-    echo "tty detection: \`$rt init\` saiu $rc com stdin nao interativo (esperado 0)"
-    fail=1
-  elif [ ! -f "$d/trackfw.yaml" ]; then
-    echo "tty detection: \`$rt init\` saiu 0 mas nao escreveu trackfw.yaml"
+# ── Efeito: sob stdin nao interativo, nenhum runtime pode dizer "interativo" ──
+#
+# </dev/null e o NUL do Windows quando rodado sob Git Bash — exatamente o caso que
+# mente para o isatty() do Python.
+py_raw=$(PYTHONPATH="$ROOT/pypi" python3 -c 'import sys;print(sys.stdin.isatty())' </dev/null)
+py_fix=$(PYTHONPATH="$ROOT/pypi" python3 -c 'from trackfw.tty import stdin_is_interactive;print(stdin_is_interactive())' </dev/null)
+node_raw=$(node -e 'process.stdout.write(String(Boolean(process.stdin.isTTY)))' </dev/null)
+
+if [ "$py_raw" != "True" ]; then
+  # Nada a estreitar aqui: o isatty() ja responde a verdade. Nomeia a garantia que
+  # deixou de ser exercitada em vez de passar em silencio. Deteccao pela CONDICAO,
+  # nao por uname — num Windows que um dia conserte o isatty o gate volta sozinho.
+  echo "tty detection: efeito NAO exercitado — neste sistema sys.stdin.isatty() ja"
+  echo "  devolve $py_raw sob stdin nao interativo, entao nao ha mentira para estreitar."
+else
+  if [ "$py_fix" != "False" ]; then
+    echo "tty detection: isatty() mente (True) e stdin_is_interactive() repetiu a mentira ($py_fix)"
     fail=1
   fi
-done
+fi
+
+if [ "$node_raw" != "false" ]; then
+  echo "tty detection: node considerou stdin interativo ($node_raw) sob </dev/null"
+  fail=1
+fi
+
+# ── P2 vacuity guard: mesmo diretorio e filtro do scan estatico abaixo ──
+#
+# Se pypi/trackfw/ for movido/renomeado ou o filtro quebrar, o grep abaixo
+# visitaria silenciosamente zero arquivos e nao encontraria nada para
+# reportar — o gate passaria sem dizer se algo foi de fato verificado.
+# Mirrors o padrao de scripts/check-python-writes-lf.sh ("P2 vacuity guard").
+scanned=$(find "$ROOT/pypi/trackfw" -name '*.py' -print 2>/dev/null || true)
+if [ -z "$scanned" ]; then
+  echo "tty detection: scan visited zero .py files under pypi/trackfw/ — refusing to pass silently"
+  fail=1
+fi
 
 # ── Estatico: nenhum isatty() cru fora do helper ──
 raw=$(grep -rn 'isatty()' "$ROOT/pypi/trackfw" --include='*.py' \
@@ -50,4 +72,4 @@ if [ "$fail" -ne 0 ]; then
   echo 'Use trackfw.tty.stdin_is_interactive() / stdout_is_interactive().'
   exit 1
 fi
-echo "Deteccao de TTY: os 3 runtimes concluem \`init\` sem stdin, e nenhum isatty() cru no Python."
+echo "Deteccao de TTY: o isatty() mente e o helper corrige; nenhum isatty() cru no Python."

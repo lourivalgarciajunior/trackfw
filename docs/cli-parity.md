@@ -4530,6 +4530,61 @@ checklist de aceite para gates novos.
 A implementação de P4 é `scripts/check-gates-falsify.sh` — todo gate novo de paridade registra
 ali sua prova negativa.
 
+### Gate ligado é o que revela os outros defeitos — evidência desta REQ (REQ-2026-08-31, ML-1C/ML-2B/ML-3C)
+
+<!-- trackfw-contract: gate=scripts/check-python-writes-lf.sh,scripts/check-homedir-parity.sh,scripts/check-tty-detection.sh partial=os três gates existem, estão listados no alvo parity do Makefile e têm guarda de vacuidade no corpo do próprio script — mas nenhum gate cross-CLI verifica essas duas propriedades por fora: grep confirma zero ocorrência de "python-writes-lf"/"homedir-parity"/"tty-detection" em scripts/check-gates-falsify.sh, então a falsificação da guarda de vacuidade (propriedades 2 e 3 da lista abaixo) foi feita manualmente em fixtures de scratchpad durante ML-1C/ML-2B/ML-3C, não como cenário registrado; e nenhum gate varre scripts/check-*.sh por invocação nua do interpretador Python sem o sufixo 3 (propriedade 4) nem scripts/check-*.sh por ausência no alvo parity do Makefile (propriedade 1) — as quatro propriedades são checklist de revisão humana, não asserção automatizada -->
+
+Um gate, para **contar** como gate, precisa (a) estar listado no alvo `parity:` do `Makefile` — ou
+equivalente — e (b) **reprovar** quando a varredura que ele faz visita zero itens, com mensagem
+dizendo por quê (instância nomeada de P2, "Falha explícita, nunca degradação silenciosa", em
+`gate-design-principles.md`). Um gate que nunca roda, ou que roda e não consegue reprovar, não é
+controle: é um arquivo. `make quality` verde sobre um gate assim não é evidência sobre ele.
+
+Três gates portados nesta REQ (`docs/analises/2026-08-31-aproveitamento-dos-prs-222-225.md`) tornam
+o argumento concreto, não abstrato:
+
+| gate | veio de | ligado ao `Makefile` ao chegar? | guarda de vacuidade ao chegar? | custo de corrigir |
+|---|---|---|---|---|
+| `check-python-writes-lf.sh` | PR #225 | não | não | 1 ML corretivo (ML-1C) |
+| `check-homedir-parity.sh` | PR #222 | não | não (e invocava `python`, inexistente nesta máquina) | 2 MLs corretivos (ML-2B, ML-3C) |
+| `check-tty-detection.sh` | PR #224 | sim, desde a origem | sim, desde a origem (pré-autorizado depois dos dois anteriores) | nenhum |
+
+Os dois primeiros custaram correção porque o gate chegou desligado e mudo; o terceiro nasceu
+correto porque o contrato foi comunicado explicitamente ao especialista antes de ele escrever o
+código — não porque alguém percebeu tarde. A conclusão não é sobre quem contribuiu: é que um
+contrato que existe só na cabeça de quem mantém o repositório não é contrato. Quem contribui de
+fora não tem como adivinhá-lo — e o próprio time o esqueceu aqui: o gate do #225 passou pela
+análise de aproveitamento, pela auditoria do arquiteto e por uma revisão de qualidade antes de
+alguém notar que ele nunca era invocado.
+
+Quatro propriedades exigidas de todo gate novo de paridade, cada uma com o porquê:
+
+1. **Ligado ao `Makefile`.** `make -n parity` deve expandir o script — não presença no
+   repositório, presença no alvo executado. É o único jeito de `make quality` dizer algo sobre o
+   gate.
+2. **Reprova sob vacuidade.** Se a varredura real visita zero itens (diretório renomeado, movido,
+   filtro quebrado), o gate reprova com mensagem nomeando o corpus esperado — nunca passa em
+   silêncio por não ter achado nada para checar.
+3. **🔴 A guarda de vacuidade usa o mesmo cwd e os mesmos caminhos que a varredura real.** Mordeu
+   **duas vezes** nesta REQ, por caminhos diferentes: em `check-python-writes-lf.sh`, a primeira
+   versão da guarda ancorava em `ROOT_DIR` via `cd`, ancoradouro que a varredura real (`os.walk`,
+   relativa ao cwd do chamador) não tem — a guarda passaria de qualquer diretório enquanto a
+   varredura via zero arquivos, o silêncio exato que ela existe para impedir. Em
+   `check-homedir-parity.sh`, a primeira falsificação cobria diretório **vazio**, não diretório
+   **ausente**: sob `set -euo pipefail`, `find <dir-inexistente>` dentro de `$(...)` mata o script
+   antes da guarda rodar — **sem** emitir a mensagem da guarda, o mesmo caso que ela deveria pegar.
+   **Uma guarda de vacuidade vácua** é a falha recursiva desta propriedade, e é fácil de escrever
+   sem perceber.
+4. **`python3`, nunca `python`.** `check-homedir-parity.sh` chegou invocando `python`.
+   `actions/setup-python` cria o alias `python` no CI — então um gate que dependa dele **passa no
+   CI e reprova na máquina do desenvolvedor**, a inversão exata da suposição habitual ("o ambiente
+   do CI é mais pobre que o do dev"). Corrigido para `python3` em todos os braços, como todo
+   `check-*.sh` deste repositório já fazia.
+
+Ver `docs/gate-design-principles.md` (P1–P4) para os princípios gerais e o checklist de aceite; a
+tabela e as quatro propriedades acima são a instância desta REQ, registrada para não se perder — a
+mesma classe de achado (D1–D4) que motivou o documento original.
+
 ## Release rule
 
 <!-- trackfw-contract: gate=scripts/check-static-assets.sh partial=a regra geral ("mudanças exigem testes equivalentes nos runtimes afetados") é princípio de processo, não uma alegação isolada de comportamento de CLI; só a paridade byte-a-byte dos assets estáticos do dashboard (internal/serve/static vs cópias em npm/pypi) é diretamente verificada por gate -->
@@ -6312,3 +6367,112 @@ Cada direção usa uma prova de não-vacuidade própria: o binário/árvore **li
 contra o mesmo fixture (o namespace declarado nunca é acusado; a violação do namespace só-disco está
 sempre presente antes de qualquer corrupção — sem isso, a ausência do namespace declarado no diagnóstico
 não distinguiria "a regra funciona" de "a regra não rodou").
+
+## Escrita de artefatos em LF nos 3 runtimes — Python precisa de `newline="\n"` explícito (item 5, issue #216, REQ-2026-08-31)
+
+<!-- trackfw-contract: gate=scripts/check-python-writes-lf.sh -->
+
+Os 3 runtimes escrevem artefato de texto (REQ, ADR, roadmap, nota, script gerado, config) em **LF**,
+sempre — independente do SO onde o processo roda. Go e Node.js escrevem bytes crus e nunca traduzem
+`\n`. Python precisa da mesma garantia **explícita**: `open(path, "w"/"a", ...)` e
+`Path.write_text(...)` sem `newline=` usam `newline=None`, que traduz `\n` para `os.linesep` — CRLF
+no Windows. Sem `newline="\n"` em toda chamada de escrita de texto em `pypi/trackfw/`, os três
+runtimes produzem artefato diferente byte a byte para a mesma entrada — quebrando o contrato de
+"Contrato de artefatos gerados" acima — e os `scripts/*.sh` gerados (hooks, guards) saem com `\r` no
+shebang, que falha em POSIX com `bad interpreter: ...^M: no such file or directory`.
+
+**Gate:** `scripts/check-python-writes-lf.sh` — varredura estática, não dinâmica, de propósito: a CI
+do upstream roda em Linux, que nunca observa CRLF na saída (o SO não traduz), então qualquer teste
+dinâmico rodando só em Linux nunca pegaria a regressão. O gate varre todo `open(`/`.write_text(` em
+modo texto de escrita sob `pypi/trackfw/**/*.py` (excluindo modos binários `rb`/`wb`/`ab`) e reprova
+nomeando arquivo e linha de qualquer chamada sem `newline=` explícito — pega no merge, em qualquer
+SO, sem precisar do job caro de runner Windows.
+
+Origem: porte fiel de `lourivalgarciajunior`, PR #225 (fechado por conflito de governança,
+aproveitado integralmente — `docs/analises/2026-08-31-aproveitamento-dos-prs-222-225.md`).
+
+## UTF-8 na saída do CLI, independente da codepage do console (item 1, issue #216, REQ-2026-08-31)
+
+<!-- trackfw-contract: gap reason=coberto por teste unitário Python-only (pypi/tests/test_cli_encoding.py::TestCliEmConsoleCp1252, roda em qualquer SO via PYTHONIOENCODING=cp1252 forçado), não por gate scripts/check-*.sh cross-CLI — Go e Node.js já escrevem UTF-8 sem consultar codepage e não têm código equivalente a comparar, então não há paridade de 3 runtimes a verificar aqui, só a correção do único runtime que precisava dela -->
+
+Os 3 runtimes escrevem UTF-8 na saída padrão/erro, sem consultar a codepage do console e sem
+depender de nenhuma variável de ambiente. Go e Node.js já faziam isso (nenhum dos dois consulta
+`chcp`/codepage do console em nenhum ponto do código). O Python passou a fazer via
+`_force_utf8_output()` (`pypi/trackfw/cli.py`), chamada logo no início de `main()`: reconfigura
+`sys.stdout`/`sys.stderr` com `stream.reconfigure(encoding="utf-8", errors="replace",
+newline="\n")`, **dentro do processo**, incondicionalmente — não depende de
+`PYTHONUTF8`/`PYTHONIOENCODING` estarem setadas por quem invoca.
+
+**🔴 Fronteira do contrato — CLI sim, scripts de shell auxiliares não (item 4 da issue #216, ainda
+aberto).** Este contrato vale para o que passa por `main()`. Scripts de shell auxiliares que
+imprimem direto continuam fora dele e continuam quebrando sob codepage cp1252 —
+`scripts/check-parity-contract-coverage.sh` é o próprio exemplo vivo: lê este documento (dezenas de
+ocorrências do caractere `→`, U+2192) e imprime via um `python3` heredoc que **não** passa por
+`cli.py`/`main()`, então não herda `_force_utf8_output()`. `scripts/windows-repro/python/checks.py:
+cmd_cp1252_print` reproduz esse mecanismo em isolamento, deliberadamente sem invocar o wrapper
+`.sh` (para não confundir o item 4 com o item 7, incerto, do mapeamento da issue). O item 4
+permanece `REPRODUCED`/aberto — não é resolvido por #223, e não deve ser confundido com ele.
+
+Origem: porte fiel de `lourivalgarciajunior`, PR #223 (fechado por conflito de governança,
+aproveitado integralmente — `docs/analises/2026-08-31-aproveitamento-dos-prs-222-225.md`).
+
+## Caminho dentro de artefato versionado usa sempre "/" (item 10, issue #216, REQ-2026-08-30)
+
+<!-- trackfw-contract: gate=scripts/check-ref-separator-portability.sh partial=cobertura estrutural (assinaturas de código, não execução real do defeito) validada por falsificação manual em cópias de /tmp durante o ML que introduziu o gate; não está registrada como cenário formal em scripts/check-gates-falsify.sh -->
+
+Caminho dentro de artefato versionado (frontmatter `roadmap:`/`req:`/`adr:`, linha do
+`.trackfw-log`, chave de `.trackfw/thirdparty-provenance.json`) é **dado portável**, não caminho de
+sistema de arquivos — e usa sempre `/`, independente do SO em que o comando roda.
+`filepath.Join`/`path.join`/`os.path.join` continuam corretos e intocados para acessar o
+filesystem local; o escopo é só o valor que acaba **escrito como texto** dentro de conteúdo
+versionado.
+
+**Escrita (AC1):** `roadmap move` normaliza o `dst` nativo com
+`normalizeRefSeparator`/`_normalize_ref_separator` (substituição incondicional de `\` por `/`, não
+`filepath.ToSlash` — este último é no-op em Linux/macOS, o que não normalizaria um valor sujo
+herdado de um commit feito no Windows, exatamente o defeito a curar) antes de gravá-lo no
+frontmatter da REQ pareada, nos 3 runtimes. O `.trackfw-log` (modo `by_agent`) usa concatenação
+explícita `agent + "/" + basename` nos 3 runtimes — Go e Node já seguiam o padrão; Python foi
+corrigido para igualar.
+
+**Leitura tolerante (AC3):** todo ponto que resolve uma referência de conteúdo versionado no
+filesystem, ou compara chave de string contra conteúdo sempre gravado com `/`, normaliza o valor
+**já extraído do campo** antes de comparar — nunca o buffer inteiro do arquivo, que corromperia `\`
+literal legítimo em exemplo/regex/prosa de ADR, REQ e roadmap (inclusive os que descrevem este
+próprio defeito). Cobre: `trackfw validate` (`referenceExists`,
+`validateREQRoadmapLifecycle`, `thirdparty_artifact_has_provenance`), o grafo do `serve`
+(`/api/chain`, tanto o node ID quanto `edge.To`), e a cura de REQ já suja — `syncREQReferences`/
+`syncReqReferences`/`sync_paired_req_references` normalizam o `roadmap:` já gravado antes de casar
+por basename, senão uma REQ suja por um `roadmap move` anterior no Windows nunca é curada por um
+`roadmap move` subsequente.
+
+**Fora de escopo, nomeado explicitamente** (não tocado por esta REQ):
+`content_base64` da quarentena de terceiros (âncora de checksum/TOCTOU); corpo de prosa/código de
+ADR/REQ/roadmap (normalização é por campo extraído, nunca por arquivo inteiro); a chave absoluta de
+`integrations-manifest.json` (não-portável por design, domínio de chave já pinado nesta mesma
+página).
+
+**Gate:** `scripts/check-ref-separator-portability.sh` — estático, de propósito: em Linux/macOS
+`filepath.Join`/`path.join`/`os.path.join` sempre produzem `/`, então rodar o comando de verdade
+neste SO nunca reproduz o defeito (só aparece com separador nativo do Windows) — falsificar em
+runtime exigiria runner Windows no CI. O gate mira **substrings de chamada de função específicas em
+arquivos específicos** (18 checagens de escrita/leitura, cobrindo cada site conhecido nos 3
+runtimes — uma delas, `assert_count`, exige exatamente 2 ocorrências porque `referenceExists` e
+`validateREQRoadmapLifecycle` produzem coincidentemente a mesma linha de normalização em
+`validator.go`, e um `grep -qF` simples passaria com apenas um dos dois normalizando) — nunca grepa
+`\` solto em `docs/**`, que reprovaria sobre a própria documentação deste defeito. As assinaturas
+miram o substring da propriedade normalizada, não a linha condicional inteira, para não quebrar por
+reformatação inofensiva (achado do vault:
+`falsify-cenario-pina-linha-de-fonte-por-sed-guard-de-plataforma-quebra-2026-08-31`). Duas guardas
+de vacuidade distintas: contagem de checagens (pega alguém removendo uma chamada `assert_has`/
+`assert_count` do corpo do script) e existência de arquivo por assinatura (pega diretório/arquivo
+movido ou ausente, reprovando nomeadamente em vez de "0 encontrados, gate passa"). Falsificado em
+cópias de `/tmp` (nunca na árvore real) em quatro cenários: revertendo o `portableDst` do Go
+(regressão de escrita); revertendo a normalização só de `validateREQRoadmapLifecycle` mantendo
+`referenceExists` intacto (regressão de leitura que um `assert_has` simples não pegaria — é
+exatamente o motivo do `assert_count`); revertendo a normalização de
+`validate_req_roadmap_lifecycle` no Python; e removendo uma chamada `assert_has` do próprio script
+(vacuidade de contagem). Em todos os quatro, o gate reprova nomeando a assinatura ou contagem exata
+que sumiu; sobre a árvore correta, passa com `checked=18`.
+
+Origem: `lourivalgarciajunior`, issue #216, item 10.

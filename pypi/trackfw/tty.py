@@ -1,8 +1,5 @@
 """Detecção de terminal interativo, confiável no Windows.
 
-DIVERGÊNCIA LOCAL — não existe no upstream. Ver
-REQ-2026-08-29-isatty-do-python-devolve-true-para-nul-no-windows.
-
 Por que existe: `sys.stdin.isatty()` devolve True para `NUL` no Windows, porque
 `NUL` é um character device e o Windows classifica character device como TTY. O
 resultado é `trackfw init` entrando no wizard de identidade em contexto não

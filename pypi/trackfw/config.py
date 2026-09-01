@@ -358,7 +358,7 @@ def _cwd_agent_models_source(cwd: str | None) -> str:
 def load_global_agent_models(home_dir: str, cwd: str | None = None) -> tuple[dict, str]:
     """Reads agent_models from ~/.trackfw/trackfw.yaml, bypassing the load() singleton.
 
-    home_dir is the user's home directory (e.g. trackfw.homedir.home_dir()); cwd is the
+    home_dir is the user's home directory (e.g. home_dir()); cwd is the
     working directory used only for the AC14 diagnostic (detect 'configured in project,
     not global'). Never calls sys.exit. Pattern mirrors read_agent_conventions above.
 

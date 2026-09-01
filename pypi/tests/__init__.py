@@ -8,8 +8,8 @@ Os testes chamam funções de biblioteca direto (`scaffold`, `generate_claude_co
 acentuado, num console cp1252 elas estouram `UnicodeEncodeError` e derrubam 16 testes
 que nada têm a ver com codificação.
 
-Sem isto a suíte só roda com `PYTHONUTF8=1` na frente — exatamente o atrito que a
-REQ-2026-08-16-cli-python-utf8-windows existe para eliminar.
+Sem isto a suíte só roda com `PYTHONUTF8=1` na frente, que é justamente o atrito
+que `_force_utf8_output` existe para eliminar.
 """
 
 from trackfw.cli import _force_utf8_output

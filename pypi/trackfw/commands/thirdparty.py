@@ -22,8 +22,8 @@ from trackfw import identity, thirdparty
 from trackfw import config as trackfw_config
 from trackfw.integrations.catalog import load_catalog, plan_deployments
 from trackfw.integrations.manager import IntegrationError, IntegrationManager
-from trackfw.homedir import home_dir, expand_path
-from trackfw.tty import stdin_is_interactive, stdout_is_interactive
+from trackfw.homedir import home_dir
+from trackfw.tty import stdin_is_interactive
 
 # thirdPartyProvenanceRule (Go) equivalent — the name of the trackfw
 # validate rule that is the real (git-anchored) enforcement behind the

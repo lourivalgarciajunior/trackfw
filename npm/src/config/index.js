@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { parseDocument, isScalar, isAlias, isSeq, isMap } = require('yaml');
-const { homedir } = require('../homedir');
+const { homedir } = require('../homedir')
 
 function expandPath(filePath) {
   if (!filePath || typeof filePath !== 'string') return filePath;

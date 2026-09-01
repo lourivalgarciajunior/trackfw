@@ -8,8 +8,8 @@ from trackfw import config as trackfw_config
 from trackfw.commands import identity_wizard
 from trackfw.generators.init_gen import scaffold
 from trackfw.i18n import t as i18n_t
-from trackfw.homedir import home_dir, expand_path
-from trackfw.tty import stdin_is_interactive, stdout_is_interactive
+from trackfw.homedir import home_dir
+from trackfw.tty import stdin_is_interactive
 
 
 def _parse_agents(raw: str) -> list[str]:

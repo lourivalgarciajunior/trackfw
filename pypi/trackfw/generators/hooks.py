@@ -8,7 +8,7 @@ para sinalizar o board do `trackfw serve` automaticamente.
 import json
 import os
 from pathlib import Path
-from trackfw.homedir import home_dir, expand_path
+from trackfw.homedir import home_dir
 
 
 # ---------------------------------------------------------------------------

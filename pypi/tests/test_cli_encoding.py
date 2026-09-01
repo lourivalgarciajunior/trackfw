@@ -2,7 +2,6 @@
 Testes do forçamento de UTF-8 na saída do CLI.
 Usa unittest (stdlib) — sem dependências externas.
 
-Ver REQ-2026-08-16-cli-python-utf8-windows.
 """
 
 import io
@@ -59,9 +58,9 @@ class TestForceUtf8Output(unittest.TestCase):
 
         _force_utf8_output()
 
-        # newline="\n" entrou em REQ-2026-08-17-req-list-python: sem ele o
-        # Python emite CRLF no Windows enquanto Go e Node.js emitem LF, e as
-        # três saídas divergem byte a byte.
+        # newline: sem ele o Python emite CRLF no Windows enquanto Go e
+        # Node.js emitem LF, e as três saídas divergem byte a byte para o
+        # mesmo comando.
         esperado = {"encoding": "utf-8", "errors": "replace", "newline": "\n"}
         self.assertEqual(out.chamadas, [esperado])
         self.assertEqual(err.chamadas, [esperado])

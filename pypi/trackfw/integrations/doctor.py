@@ -18,8 +18,8 @@ from trackfw.identity import load as load_identity
 
 from .catalog import plan_deployments
 from .manager import IntegrationManager
-# alias: o parametro `home_dir` de run_doctor sombreia o nome importado
-from trackfw.homedir import home_dir as _user_home_dir, expand_path
+# alias: o parametro `home_dir` sombreia o nome importado
+from trackfw.homedir import home_dir as _user_home_dir
 
 # The three disk/manifest mismatches doctor reports. They require different
 # remedies and must never be merged — see

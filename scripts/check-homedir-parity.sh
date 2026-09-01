@@ -30,12 +30,31 @@ for rt in go node python; do
   case "$rt" in
     go)     out=$(cd "$FAKE" && HOME="$expected" "$ROOT/bin/trackfw" adr list --scope global 2>&1 || true) ;;
     node)   out=$(cd "$FAKE" && HOME="$expected" node "$ROOT/npm/bin/trackfw" adr list --scope global 2>&1 || true) ;;
-    python) out=$(cd "$FAKE" && HOME="$expected" PYTHONPATH="$ROOT/pypi" python -m trackfw adr list --scope global 2>&1 || true) ;;
+    python) out=$(cd "$FAKE" && HOME="$expected" PYTHONPATH="$ROOT/pypi" python3 -m trackfw adr list --scope global 2>&1 || true) ;;
   esac
   if ! printf '%s' "$out" | grep -qF "$token"; then
     echo "homedir parity: $rt nao resolveu para \$HOME"
     echo "  esperado conter o tempdir: $token"
     echo "  saida:                     $out"
+    fail=1
+  fi
+done
+
+# ── P2 vacuity guard: mesmos diretorios e filtros do scan estatico abaixo ──
+#
+# Se npm/src, pypi/trackfw ou internal+cmd forem movidos/renomeados, ou um
+# filtro quebrar, o grep abaixo visitaria silenciosamente zero arquivos e nao
+# encontraria nada para reportar — o gate passaria sem dizer se algo foi de
+# fato verificado. Ancorado em $ROOT, o mesmo prefixo usado pelo grep logo
+# abaixo. Mirrors o padrao de scripts/check-python-writes-lf.sh ("P2 vacuity
+# guard").
+scanned_node=$(find "$ROOT/npm/src" -name '*.js' -print 2>/dev/null || true)
+scanned_py=$(find "$ROOT/pypi/trackfw" -name '*.py' -print 2>/dev/null || true)
+scanned_go=$(find "$ROOT/internal" "$ROOT/cmd" -name '*.go' -print 2>/dev/null || true)
+for pair in "npm/src:$scanned_node" "pypi/trackfw:$scanned_py" "internal+cmd:$scanned_go"; do
+  dir="${pair%%:*}"; files="${pair#*:}"
+  if [ -z "$files" ]; then
+    echo "homedir parity: scan visited zero files under $dir — refusing to pass silently"
     fail=1
   fi
 done
