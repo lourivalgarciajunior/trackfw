@@ -4,6 +4,130 @@
 
 ---
 
+## Sessão 2026-09-01 (noite) — claude (FIM: ele mesclou a nossa PR, divergência 72 → 12, onboarding funciona no Windows)
+
+`main` em `a780e4f`, em dia com o upstream, árvore limpa, **7 gates verdes**, `validate` com as 15
+violações de sempre.
+
+### O canal com o upstream funcionou
+
+**A PR [#233](https://github.com/kgsaran/trackfw/pull/233) foi mesclada por ele** — `c857bb3`, a
+primeira nossa dentro do upstream. Issue #232 fechada pelo `Fixes`.
+
+E ele **portou os cinco conjuntos** das PRs fechadas, com REQ própria para cada:
+
+```
+c857bb3  #233  a nossa correção da sonda
+a232f9a  #231  gate de separador portável (item 10)
+5a53d8c  #230  fecha o port do #216, abre 3 REQs de acompanhamento
+c88b81e  #229  os 3 contratos no cli-parity.md — o gap que ele mesmo apontou
+324201f  #234  achado 13: os.fchmod, com gate anti-divergência
+```
+
+Conferido arquivo por arquivo: `homedir.go`, `homedir.js`, `homedir.py`, `tty.py`, `goos.go`, os 3
+gates, `test_cli_encoding.py`, `_force_utf8_output` e o `newline=` nos geradores — **tudo no
+`upstream/main`**. A guarda `sys.platform == "win32"` foi junto: a regressão de Linux não voltou.
+
+Medição dele: camada 2 `8 REPRODUCED → 5`; camada 1 `293 failed → 145 failed`.
+
+### Divergência de código: 72 → 12 arquivos
+
+O produto dele agora **contém** as nossas correções em vez de divergir delas. Na resolução, produto
+ficou com a versão dele — é a ADR-2026-08-29 e é o que zera a divergência.
+
+Dos 12 que restam: 6 gates nossos não publicados, 1 é a política de fork
+(`check-upstream-content.sh`), e **5 são correções que ele ainda não portou** — slug no `init.js` e
+no `adr.py`, `discover.py`, `roadmap_move_test.go`, `package-lock` em `6.1.0`. Próxima rodada
+natural.
+
+### Onboarding funciona no Windows
+
+O achado 13 derrubava `init --ai-tools`, `agents install`, `skills install` e install de terceiro.
+Verificado aqui depois do merge:
+
+```
+trackfw init --project-name p --ai-tools claude
+rc=0 · 12 agentes escritos · 0 traceback · 0 menção a fchmod
+```
+
+Antes: `AttributeError: module 'os' has no attribute 'fchmod'`.
+
+### Ele rejeitou a minha correção do achado 13, e estava certo
+
+Eu sugeri trocar `os.fchmod(descriptor)` por `os.chmod(path)` nos três sítios, "alinhando com o que
+os outros dois runtimes já fazem". O argumento dele:
+
+> `os.fchmod(fd)` opera no descritor já aberto, **sem janela** entre o `mkstemp` e a permissão;
+> `os.chmod(path)` **reintroduz TOCTOU**. Os arquivos protegidos são registro de quarentena,
+> manifesto de integrações e identidade.
+>
+> Consertar o Windows quebrando o POSIX trocaria um **crash barulhento** por **falha silenciosa**.
+
+**Dois fatos que eu tinha errado:**
+
+- O Go **não** usa a forma por caminho. Usa `temporary.Chmod(mode)` — descritor, que é a forma
+  segura *e* portável. Li ao contrário uma tabela que eu mesmo montei, e recomendei degradar o POSIX
+  com base nisso.
+- A triplicação tem **decisão registrada contra a extração** (`quarantine.py:34-37`). O remédio é
+  gate anti-divergência, não extrair — *"corrigir dois de três é o modo de falha mais provável"*.
+
+Eu quase introduzi, tentando eliminá-la, exatamente a classe de defeito que persegui a sessão
+inteira.
+
+### Defeito de merge que só um gate por efeito pegou
+
+`npm/src/generators/init.js` mesclou **sem conflito** e saiu quebrado:
+
+```
+SyntaxError: Identifier 'homedir' has already been declared
+```
+
+Cada lado tinha um `const { homedir } = require(...)` em linha diferente (7 e 18), e o git manteve
+os dois. Merge limpo, `git status` limpo, código inválido.
+
+Quem pegou foi o `check-homedir-parity.sh`, **porque ele roda o CLI e lê a saída**. Nenhuma revisão
+de diff acusaria: as duas linhas são individualmente corretas e nenhuma aparece como conflito.
+Resolvido mantendo o import dele e **preservando a nossa correção de slug**, que ele ainda não
+portou.
+
+### A triagem dele dos achados 12–16
+
+Veio no merge (`docs/analises/2026-09-01-triagem-dos-novos-achados-do-issue-216.md`, 477 linhas,
+legível por `git show upstream/main:<caminho>`). Veredito: **todos os cinco novos, nenhum duplica
+REQ existente**.
+
+| achado | severidade | classe "verde/inerte"? |
+|---|---|---|
+| 13 `os.fchmod` | **Alta** — "o mais grave dos cinco" | não — crash imediato |
+| 15 `branch_has_wip_roadmap` | **Alta** | não — `TypeError` barulhento |
+| 14 testes acoplados a REQs reais | Média | adjacente |
+| 16 snapshot do barrier | Média | **sim, na forma inversa** — `parity` ficou `skipped` meses |
+| 12 asserção vácua por escape de JSON | Baixa-média | **sim** |
+
+Sobre o 16 ele escreveu o mesmo que eu tinha argumentado: *"verde era ausência de sinal"*.
+
+### Frase dele que vale guardar
+
+Ao fechar a REQ do port, sobre uma previsão própria que errou (previu 3 itens saindo de REPRODUCED,
+o CI deu 5):
+
+> **FICA FALSIFICADA, NÃO REESCRITA.** Trocar o alvo para casar com o resultado seria mover a trave.
+
+E no requisito de uma das REQs de acompanhamento:
+
+> retargetados, eles vão a ABSENT no instante em que forem escritos, porque a correção já está
+> aplicada — **um check que passa ao nascer não prova nada.** Só valem se falsificados revertendo
+> temporariamente a correção.
+
+### O que continua esperando
+
+- Os 5 conjuntos não portados — próxima rodada, issue própria + PR própria (foi assim que a #233 entrou).
+- As 4 branches `upstream-pr/*` das PRs fechadas ficam, por decisão do usuário.
+- 6 gates nossos em `100644` onde os 40 irmãos são `100755`.
+- **Não regenerar o snapshot do barrier** para calar o `parity` — achado 16.
+
+---
+
 ## Sessão 2026-09-01 — claude (FIM: o Kleber respondeu, sonda dele não rodava, achados 17/18/19)
 
 `main` em `892dc53`, em dia com o upstream, árvore limpa, 6 gates verdes,
