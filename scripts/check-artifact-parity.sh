@@ -10,6 +10,18 @@
 # de slug portável nos 3 runtimes (REQ-2026-07-27-convergencia-templates-python).
 set -euo pipefail
 
+# Codificacao de saida (ML-1B, ROADMAP-2026-09-02-saida-nao-ascii-declara-
+# codificacao-em-script-gerado-e-em-gate): forca UTF-8 no stdio de todo
+# python3 deste gate. Sob console cp1252 (Windows) o Python herda a codepage
+# e um print() de caractere fora do cp1252 estoura UnicodeEncodeError -- o
+# gate reprova por um motivo alheio ao que ele mede. Declarado aqui, e nao no
+# Makefile, para valer tambem na invocacao direta pelo workflow de CI, na
+# invocacao manual de um gate isolado e na invocacao de um gate por outro.
+# Trade-off assumido: num console genuinamente cp1252 a saida vira mojibake
+# em vez de crashar -- acento ilegivel com exit code correto vale mais que
+# uma reprovacao falsa.
+export PYTHONIOENCODING=utf-8
+
 export NO_COLOR=1
 export TERM=dumb
 
@@ -159,8 +171,14 @@ EXPECTED_ROADMAP_FROM_REQ="docs/roadmaps/backlog/ROADMAP-${DATE}-fluxo-de-pagame
 EXPECTED_SLASH_ROADMAP=".claude/commands/trackfw/roadmap.md"
 EXPECTED_NOTE="vault/notes/${SLUG}-${DATE}.md"
 EXPECTED_INDEX="vault/notes/index.md"
+# .gitattributes: emitido por `init` nos 3 runtimes (ML-1A,
+# ROADMAP-2026-09-02-gitattributes-com-merge-union-para-o-trackfw-log-nos-3-clis).
+# Entra no mesmo diff byte-a-byte dos demais artefatos — o caminho de CRIAÇÃO é o
+# que este gate cobre; o de APPEND (projeto que já tem .gitattributes) é coberto
+# pelos testes de cada runtime, não aqui.
+EXPECTED_GITATTRIBUTES=".gitattributes"
 
-KINDS=("req" "adr" "roadmap" "roadmap_flags" "roadmap_from_req" "slash_roadmap" "note" "note_index")
+KINDS=("req" "adr" "roadmap" "roadmap_flags" "roadmap_from_req" "slash_roadmap" "note" "note_index" "gitattributes")
 
 expected_path() {
   case "$1" in
@@ -172,6 +190,7 @@ expected_path() {
     slash_roadmap) echo "$EXPECTED_SLASH_ROADMAP" ;;
     note)       echo "$EXPECTED_NOTE"    ;;
     note_index) echo "$EXPECTED_INDEX"   ;;
+    gitattributes) echo "$EXPECTED_GITATTRIBUTES" ;;
   esac
 }
 
@@ -564,4 +583,6 @@ if [[ "$FAIL" -ne 0 ]]; then
 fi
 
 echo "OK   [artifact-parity/claude-md-architect-responses-byte-identical]"
-echo "Artifact parity checks passed (8 artifact types × 3 runtimes; roadmap flags, quoted status, analyzing cycle flat/by_agent; CLAUDE.md ## Architect responses section)"
+# Contagem derivada de KINDS: literal fixo já ficou defasado ao entrar o 9º tipo
+# (.gitattributes) — número derivado não pode mentir sobre o que foi comparado.
+echo "Artifact parity checks passed (${#KINDS[@]} artifact types × 3 runtimes; roadmap flags, quoted status, analyzing cycle flat/by_agent; CLAUDE.md ## Architect responses section)"

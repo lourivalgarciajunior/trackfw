@@ -163,6 +163,69 @@ Regra de validação `note_orphan` — notas em `vault/notes/` não referenciada
 | `index.md` | não conta como nota órfã |
 | Detecção de link | aceita `[texto](arquivo.md)` e `[[nome-da-nota]]` |
 
+## `.gitattributes` — `merge=union` para o `.trackfw-log`
+
+<!-- trackfw-contract: gate=scripts/check-artifact-parity.sh partial=o gate compara byte a byte só o caminho de CRIAÇÃO (projeto novo, sem .gitattributes); o caminho de APPEND (projeto que já tem o arquivo), o predicado de idempotência e o arquivo sem newline final são cobertos por teste em cada runtime (internal/generators/gitattributes_test.go, npm/tests/gitattributes.test.js, pypi/tests/test_gitattributes.py), não cross-runtime -->
+
+> REQ-2026-09-02-reconciliacao-pos-merge-dos-prs-238-e-240-e-o-trackfw-log-que-conflita-em-toda-branch-paralela.md (AC6/AC7)
+
+`trackfw init` emite `.gitattributes` na raiz do projeto nos três CLIs, **byte-idêntico**, com o
+mesmo bloco que este repositório versiona na própria raiz:
+
+```
+# trackfw: .trackfw-log is append-only — every write lands on the last line, so
+# two parallel branches conflict on every merge. merge=union keeps the lines
+# from both sides (chronological order is not guaranteed). The pattern has no
+# slash, so it matches the file in any directory — roadmap_dir and req_dir both
+# carry one, and both are configurable per project.
+.trackfw-log merge=union
+```
+
+**Por que basename e não caminho.** `roadmap_dir` e `req_dir` são configuráveis por projeto
+(`trackfw.yaml`) e **os dois** carregam um `.trackfw-log`: o de roadmap (`internal/generators/roadmap.go`
+e equivalentes) e o de REQ (`internal/generators/req.go` `appendREQTransitionLog` e equivalentes).
+Um padrão com caminho fixo (`docs/roadmaps/.trackfw-log`) nasceria quebrado em quem configurou
+diretório diferente e deixaria o log do `req_dir` descoberto. Padrão sem barra casa em **qualquer
+diretório** — medido com `git check-attr merge` sobre `docs/roadmaps/`, `docs/req/` e um
+`custom/rm/` arbitrário: `merge: union` nos três.
+
+**O que `merge=union` garante e o que não garante.**
+
+| Aspecto | Comportamento medido |
+|---|---|
+| Conflito | Nunca — o driver resolve, `git merge` sai 0 |
+| Perda de linha | Não ocorre: as linhas dos dois lados sobrevivem (igualdade de conjunto) |
+| Duplicação | Não ocorre quando os dois lados acrescentam a **mesma** linha (o xdiff a trata como mudança comum) nem em sobreposição parcial |
+| **Ordem** | **Não é cronológica** — o bloco de `ours` vem inteiro antes do bloco de `theirs`; a ordem *dentro* de cada bloco é preservada |
+
+A ordem é o único efeito colateral, e ele é aceito conscientemente. Dos leitores do log,
+`trackfw log --tail` é apresentação; a regra `stale_wip` do validador e o throughput de `metrics`
+comparam **timestamps** (`.After`, min/max), não posição. A única dependência posicional é o cálculo
+de cycle time / WIP age em `internal/metrics/metrics.go` (`Calculate`), que toma a primeira entrada
+`backlog`/`wip` e a última `done`/`wip` **na ordem do arquivo**. Ela só é atingida por um roadmap com
+transições registradas nos **dois** lados do merge — e a alternativa (resolução manual) é
+demonstravelmente pior: o `.trackfw-log` deste repositório carrega uma linha **duplicada**
+(`2026-09-02 10:46 … gate-do-barrier`) produzida por uma resolução manual de conflito. `merge=union`
+não teria duplicado.
+
+**Idempotência — três ramos, idênticos nos três runtimes.**
+
+| Estado do projeto | Comportamento |
+|---|---|
+| Sem `.gitattributes` | Cria com o bloco acima |
+| Com `.gitattributes` **sem** a regra | **Append** do bloco — o arquivo do projeto nunca é sobrescrito. Se o arquivo existente não termina em `\n`, um `\n` é inserido antes do bloco (senão a primeira linha do bloco grudaria na última linha do projeto) |
+| Com `.gitattributes` **com** a regra | No-op |
+
+O predicado de "a regra já existe" é pinado: **alguma linha não-comentário cujo primeiro campo
+delimitado por espaço seja exatamente `.trackfw-log`** — não a string literal da linha inteira.
+Assim `.trackfw-log  merge=union` (dois espaços) ou uma regra manual com outro atributo contam como
+"existe" e não são sobrescritas, e uma linha comentada (`# .trackfw-log merge=union`) **não** conta.
+
+**Fora do contrato (não coberto):** `trackfw update` **não** emite este arquivo — só projetos
+inicializados depois desta versão recebem a regra; projeto já existente precisa acrescentá-la à mão
+(ou rodar `init` de novo, que faz o append idempotente). E a falsificação foi feita sobre `git merge`
+local; se o merge do lado do servidor da forge honra o atributo é questão separada, não medida aqui.
+
 ## i18n locale keys — no orphan keys (ML-2A)
 
 <!-- trackfw-contract: gap reason=a seção fixa fato falsificável (errors.notFound ausente e sem consumidor nos 3 CLIs) mas nenhum gate compara chaves de locale entre runtimes; ver REQ-2026-08-16-conformidade-estrutural-e-comportamental-de-i18n-entre-os-tres-clis -->
@@ -6594,6 +6657,13 @@ cmd_cp1252_print` reproduz esse mecanismo em isolamento, deliberadamente sem inv
 `.sh` (para não confundir o item 4 com o item 7, incerto, do mapeamento da issue). O item 4
 permanece `REPRODUCED`/aberto — não é resolvido por #223, e não deve ser confundido com ele.
 
+**Atualização 2026-09-02 (Wave 1 da REQ-2026-09-02):** os gates deixaram de "continuar
+quebrando" — 37 dos 38 `scripts/check-*.sh` que invocam `python3` passaram a declarar
+`export PYTHONIOENCODING=utf-8` no próprio arquivo, e o gerado
+`attentionSignalScript` ganhou o prefixo por invocação. A única exceção nomeada é
+`scripts/check-roadmap-barrier-contract.sh` (PR #238 aberto sobre o mesmo sítio). Ver a
+seção "Codificação de saída declarada" no fim deste documento.
+
 Origem: porte fiel de `lourivalgarciajunior`, PR #223 (fechado por conflito de governança,
 aproveitado integralmente — `docs/analises/2026-08-31-aproveitamento-dos-prs-222-225.md`).
 
@@ -6626,6 +6696,27 @@ próprio defeito). Cobre: `trackfw validate` (`referenceExists`,
 `syncReqReferences`/`sync_paired_req_references` normalizam o `roadmap:` já gravado antes de casar
 por basename, senão uma REQ suja por um `roadmap move` anterior no Windows nunca é curada por um
 `roadmap move` subsequente.
+
+> 🔴 **CORREÇÃO 2026-09-02 — a cobertura acima vale para Go e Python, NÃO para o Node.** Medido com
+> `grep -a` (o `npm/src/validator/index.js` é classificado como binário pelo `file`, e um `grep` sem
+> `-a` o pula **em silêncio** — ver `vault/notes/serve-validator-index-detectado-como-binario-grep-silencioso-2026-08-29.md`):
+>
+> ```
+> normalizeRefSeparator / toSlash   Go: 1   Python: 4   Node: 0
+> npm/src/validator/index.js:3110   const provenanceKey = path.relative(root, destination)   <- separador nativo
+> npm/src/serve/api_chain.js        0 normalizacoes, e indexa por basename (linha 145)
+> ```
+>
+> Consequência no Node: em Windows a chave de proveniência **nunca casa**, então todo artefato de
+> terceiro é reportado como sem entrada — falso positivo em massa, não falsa garantia. E o
+> `/api/chain` do Node monta 14 arestas onde o Go monta 350 sobre o mesmo corpus.
+>
+> **Este parágrafo documentava um estado que não existe.** Um contrato de paridade que afirma
+> cobertura maior que a real é pior que a ausência dele: é a fonte de verdade que o próximo leitor
+> usa para decidir que não precisa olhar. Rastreado em
+> `REQ-2026-09-01-regra-thirdparty-artifact-has-provenance-existe-em-go-e-python-mas-nao-no-validator-do-node.md`,
+> cuja premissa também está errada — a regra **existe** no Node desde o PR #175 (7 ocorrências,
+> ligada em `applyRule`); o que falta é a normalização, não a regra.
 
 **Fora de escopo, nomeado explicitamente** (não tocado por esta REQ):
 `content_base64` da quarentena de terceiros (âncora de checksum/TOCTOU); corpo de prosa/código de
@@ -6715,3 +6806,42 @@ menos de três. Ligado a `parity:` no `Makefile`, `python3` (nunca `python`) par
 Origem: achado do `hades-tf` na Wave 0 de `docs/roadmaps/wip/ROADMAP-2026-09-01-escrita-atomica-do-
 cli-python-funciona-no-windows.md`; `docs/req/REQ-2026-09-01-os-fchmod-e-unix-only-e-derruba-as-
 tres-escritas-atomicas-do-cli-python-no-windows.md`.
+
+## Codificação de saída declarada — gate e script gerado (item 4, issue #216, REQ-2026-09-02)
+
+<!-- trackfw-contract: gate=scripts/check-output-encoding-declared.sh partial=a asserção é ESTÁTICA sobre o texto-fonte. Ela prova que a declaração existe, é exportada, tem valor alias de utf_8 e precede a primeira invocação de python3 no arquivo; NÃO prova por observação de runtime que aquele python3 enxergou utf-8. Provar comportamentalmente exigiria executar os 38 gates com um python3 instrumentado, e dois deles inviabilizam isso no caminho de make parity (check-gates-falsify ~3m05s; check-barrier executa git). O mecanismo foi provado por execução UMA vez, com stub de python3 e PYTHONIOENCODING=cp1252 no ambiente: sem a declaração o filho vê cp1252, com ela vê utf-8. Formas recusadas por decisão e não por descuido: assignment sem export, e a forma de prefixo por invocação no alvo 1 (semanticamente válida, mas asseverá-la exigiria parsear pipeline de bash; zero falso positivo hoje, os 37 usam export). Tambem sao recusados handler de erro diferente de :strict (medido: com utf-8:surrogatepass um surrogate solto preservado por json.load sai como os bytes ED A0 80, UTF-8 invalido; e o handler vale tambem para o decode do stdin, onde :replace reintroduz a corrupcao silenciosa que o ML-0A reprovou) e o nome da variavel em outra caixa (pythonioencoding= e outra variavel em shell POSIX; o (?i:...) cobre so o grupo de aliases do valor). CORRECAO DO ML-2B: a afirmacao anterior desta anotacao — de que o rastreador de heredoc era heuristico mas 'comprovadamente inerte' — foi FALSIFICADA (achado B1 do parecer de qualidade de 2026-09-02): um comentario INLINE citando << armava HEREDOC_RE e derrubava o arquivo inteiro da populacao, e com isso um gate sem a declaracao passava com exit 0. O gate agora usa dois predicados: populacao (loose, sem estado de heredoc, usado para first_py3 e para a assercao (c) da allowlist) e declaracao (strict, com exclusao de heredoc). Residual declarado, agora na direcao FECHADA: do lado da declaracao o mesmo comentario inline com << ainda esconde a declaracao seguinte e o gate reprova com 'NAO declara' um arquivo que declara — ruidoso, nunca permissivo; o remedio para quem topar com isso e mover o << para comentario de linha inteira, nao reverter a separacao. Ver vault/notes/gate-literal-regex-syntax-equivalent-bypass-2026-09-01.md e vault/notes/comentario-inline-com-heredoc-derruba-arquivo-da-populacao-do-gate-2026-09-02.md -->
+
+**Infra de gate — exceção explícita da regra dura de paridade dos 3 CLIs**, pelo mesmo critério já
+aplicado no ML-1B (37 gates): `scripts/check-*.sh` é ferramenta do repositório, não superfície de
+CLI; não há nada a implementar em `internal/`, `npm/src/` ou `pypi/trackfw/`. O **alvo 2** deste
+gate, porém, incide sobre os 3 runtimes — ele exige que o literal `attentionSignalScript` mantenha o
+prefixo `PYTHONIOENCODING=utf-8` **nos três**, byte-idêntico.
+
+**Alvo 1 — ferramenta.** Todo `scripts/check-*.sh` que invoca `python3` em linha de código declara
+`export PYTHONIOENCODING=utf-8` antes da primeira invocação. Formas equivalentes são aceitas
+(aspas, espaços extras, caixa, aliases `utf-8`/`utf8`/`utf_8`/`u8`, sufixo `:errorhandler`); menção
+morta em comentário ou em corpo de heredoc **não** conta, e valor não-utf8 (`cp1252`) reprova — os
+dois casos falsificados por execução. Exceção única e nomeada:
+`scripts/check-roadmap-barrier-contract.sh`, porque o PR #238 está aberto sobre exatamente o sítio
+do `CORPUS_HASH` e forçar a codificação lá mataria o crash **sem** tornar o hash independente do
+SO. A allowlist é verificada em três frentes — o caminho existe, o arquivo **continua** sem a
+declaração (se ganhar uma, o gate reprova com "exceção obsoleta" em vez de aceitar os dois estados)
+e ele continua invocando `python3`.
+
+**Alvo 2 — produto, e é o que a paridade não cobre.** `scripts/check-attention-scripts-parity.sh`
+compara os 3 CLIs **entre si**: removendo o prefixo dos três, ele devolve **exit 0** — medido, com
+`GO_BIN` recompilado da árvore mutada — enquanto `check-output-encoding-declared.sh` devolve
+**exit 1** nomeando os três arquivos. Paridade mede se as implementações concordam, não se o
+contrato está correto (mesmo cego de
+`vault/notes/barrier-so-casa-cabecalho-de-aceite-em-portugues-2026-08-28.md`).
+
+**Guarda de vacuidade nos dois alvos, falsificada por execução.** Glob `scripts/check-*.sh` vazio,
+população de invocadores vazia, ou âncora do literal que deixou de casar (menos de 2 invocações
+`python3 -c ... json.load(sys.stdin)` por runtime) **reprovam**, em vez de passar em silêncio. O
+gate também assevera a própria auto-inclusão na população: removendo o `export` dele mesmo, ele se
+nomeia como infrator.
+
+Ligado a `parity:` no `Makefile` — e, por isso, ao `make quality` e ao job `parity` de
+`.github/workflows/quality.yml`, que roda `make parity`. **Não** foi acrescentado ao subconjunto
+reduzido de `release.yml` (3 gates), por decisão já registrada na
+`REQ-2026-08-04-job-parity-do-ci-so-roda-4-de-14-scripts-do-make-parity...`.

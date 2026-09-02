@@ -31,6 +31,18 @@
 # guard proving the restricted "no gh on PATH" scenario genuinely has none.
 set -euo pipefail
 
+# Codificacao de saida (ML-1B, ROADMAP-2026-09-02-saida-nao-ascii-declara-
+# codificacao-em-script-gerado-e-em-gate): forca UTF-8 no stdio de todo
+# python3 deste gate. Sob console cp1252 (Windows) o Python herda a codepage
+# e um print() de caractere fora do cp1252 estoura UnicodeEncodeError -- o
+# gate reprova por um motivo alheio ao que ele mede. Declarado aqui, e nao no
+# Makefile, para valer tambem na invocacao direta pelo workflow de CI, na
+# invocacao manual de um gate isolado e na invocacao de um gate por outro.
+# Trade-off assumido: num console genuinamente cp1252 a saida vira mojibake
+# em vez de crashar -- acento ilegivel com exit code correto vale mais que
+# uma reprovacao falsa.
+export PYTHONIOENCODING=utf-8
+
 export NO_COLOR=1
 export TERM=dumb
 
@@ -80,9 +92,28 @@ fi
 # on this machine can never leak into a scenario that must see none.
 RUNTIME_BIN="$WORK/runtimebin"
 mkdir -p "$RUNTIME_BIN"
-ln -s "$REAL_NODE" "$RUNTIME_BIN/node"
-ln -s "$REAL_PYTHON3" "$RUNTIME_BIN/python3"
-ln -s "$REAL_GIT" "$RUNTIME_BIN/git"
+# Wrapper em vez de symlink. `ln -s` falha num Windows comum quando o alvo e um App
+# Execution Alias da Microsoft Store — o default de quem instala Python pela Store:
+#
+#   command -v python3  ->  .../WindowsApps/python3  (109 bytes -> C:/Program Files/WindowsApps/)
+#   ln -s para /bin/ls          ->  criou
+#   ln -s para esse python3     ->  Permission denied
+#
+# O MSYS enxerga o alias como symlink e, sem winsymlinks:nativestrict, COPIA o alvo;
+# copiar um reparse point de WindowsApps e negado. Nao e Developer Mode: o ln -s
+# funciona na mesma maquina para um alvo comum.
+#
+# O symlink era o meio, nao o requisito. A garantia deste diretorio e que SO node,
+# python3 e git resolvam a partir dele — o wrapper entrega a mesma coisa sem exigir
+# privilegio. Shebang ABSOLUTO pelo mesmo motivo ja registrado abaixo para o stub do
+# gh: nao depender de PATH para resolver o proprio interpretador.
+mk_runtime_shim() {
+  printf '#!/bin/bash\nexec "%s" "$@"\n' "$2" > "$RUNTIME_BIN/$1"
+  chmod +x "$RUNTIME_BIN/$1"
+}
+mk_runtime_shim node "$REAL_NODE"
+mk_runtime_shim python3 "$REAL_PYTHON3"
+mk_runtime_shim git "$REAL_GIT"
 
 unset TRACKFW_DISABLE_EXTERNAL_COMMANDS || true
 
