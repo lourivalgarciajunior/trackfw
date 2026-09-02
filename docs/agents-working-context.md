@@ -12710,6 +12710,13 @@ Resultado: `bash scripts/check-update-parity.sh` → **todos os cenários novos:
 `make quality` → **exit 0**, 19 cenários de falsificação, `git status` limpo.
 `bin/trackfw validate --json` → **0 violações**.
 
+### Paridade dos 3 CLIs
+
+Mudança de **infraestrutura de gate** (`scripts/*.sh`), exceção explícita do contrato de paridade
+documentado em `docs/cli-parity.md`. Nenhum código de `internal/`, `npm/src/` ou `pypi/trackfw/` foi
+tocado, nenhuma seção de `docs/cli-parity.md` foi criada ou alterada, e
+`scripts/check-parity-contract-coverage.sh` está verde (0 seções sem anotação, 0 inválidas).
+
 ### Evidência D1/D4
 
 `git diff origin/main..HEAD -- internal/commands/init.go npm/src/commands/init.js pypi/trackfw/commands/init.py`
