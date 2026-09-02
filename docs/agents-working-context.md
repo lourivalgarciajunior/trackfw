@@ -27677,3 +27677,72 @@ de dizer isso.
 
 Upstream aberto: #246/#247 (slug), #248 (testes do move), #249 (package-lock), mais #238, #240, #245
 e o achado 244 defeito 2 de antes.
+
+---
+
+## 2026-09-02 (noite) — `claude` — o Kleber mesclou 5 das 6, e corrigiu meu enquadramento duas vezes
+
+### O que voltou
+
+Sete commits do upstream, três deles PRs minhas: #245 (wrapper no lugar do `ln -s`), #248 (testes de
+sincronia do move) e #249 (package-lock em 6.1.0). Com as #238 e #240 de mais cedo, são **cinco
+mescladas neste dia**; só a #247 (slug) segue aberta.
+
+### O que ele viu e eu não
+
+**O `.gitattributes` (#251).** Eu resolvi o conflito do `.trackfw-log` na mão e mandei como resolução
+de conflito. Ele olhou o mesmo evento e viu que não era conflito: é **propriedade do formato** —
+log append-only, toda escrita cai na última linha, duas branches paralelas conflitam **sempre**. E foi
+dois níveis acima do sintoma: o `trackfw init` **nunca gerou `.gitattributes` em nenhum dos 3 CLIs**,
+então todo projeto que adota trackfw herdava um arquivo que conflita quando duas pessoas trabalham em
+paralelo. Casou por basename, não por caminho, porque `roadmap_dir` e `req_dir` são configuráveis e
+os dois carregam um log.
+
+**A duplicata que eu preservei era o defeito.** Ele mediu que adição idêntica dos dois lados dá **1
+linha** sob `union`, enquanto a resolução manual da #240 produziu **2** — e removeu. Eu tinha
+preservado aquela linha com a justificativa "é dele, não é minha para deduplicar". A justificativa
+estava certa e a conclusão errada: eu não devia deduplicar na mão, mas devia ter percebido que
+duplicata exata em log append-only não é dado, é cicatriz de merge.
+
+**O `grep` que pula em silêncio.** Ele anotou que `docs/cli-parity.md` é classificado como binário e
+que **`grep` sem `-a` o ignora sem dizer nada**. Editei esse arquivo na #247 com busca comum. Conferi:
+no estado atual não há byte NUL e `grep` e `grep -a` concordam, então não me pegou. Foi sorte, não
+método — passa a ser `-a`.
+
+### O merge para cá, e a armadilha dele
+
+Onze arquivos em conflito, resolvidos pela ADR-2026-08-29. **O `.trackfw-log` quase me enganou:**
+não era conflito de append, são **dois logs distintos** — o nosso namespaced em `claude/`, o dele
+flat. Mesclar linha a linha teria produzido um log que não descreve nenhum dos dois. Mantido o nosso
+inteiro.
+
+O `agents-working-context.md` trazia **2.605 linhas com 79 sessões** dos agentes dele; fora. Quatro
+roadmaps dele aterrissaram no nosso namespace `claude/` por detecção de rename; fora, mesmo
+precedente do `0ca8079`. Seis notas de vault vieram junto e deixaram 2 warnings órfãos, porque o
+`index.md` é dele e ficou de fora pela mesma regra — removidas em commit separado.
+
+Ficaram os dois lados só onde eram complementares: `.gitattributes` (nosso bloco de EOL + o
+`merge=union` dele) e `docs/cli-parity.md` (nossa seção do contrato de slug + a dele do
+`.gitattributes`). `git check-attr` confirma `union` ativo — o próximo merge desse log não conflita.
+
+### O que eu ia errar, e não errei porque medi
+
+Ia abrir achado dos **85 testes Go vermelhos no Windows**. Fui medir contra a `main` dele e o run
+diz `conclusion: success` com `windows-full-suites` e `windows-defect-reproduction` em `failure`.
+Os dois **nascem vermelhos de propósito** — instrumento de medição governado por ADR, com
+`continue-on-error: true` declarado temporário. O comentário no `quality.yml` diz por quê:
+
+> um job de Windows que nasce verde não prova nada (foi assim que chegamos aqui)
+
+Eu ia reportar como descoberta o que ele instrumentou em 30/08. Mesmo erro das "15 violações" que já
+eram zero. **Não abri.**
+
+Pelo mesmo motivo, avisei na #245 antes que ele mesclasse: no `upstream/main` o gate morre na
+primeira linha (`ln: Permission denied`) e mede **0 cenários**; com a PR ele roda e dá **26 OK / 7
+FAIL**, todos por `forge resolved to "manual"` — o defeito 2 do #244, que é decisão de desenho dele.
+A PR não deixa o gate verde: troca "morre sem medir" por "mede e reprova nomeando o motivo".
+
+### Estado
+
+`main` em `3895303`. `validate`: **0 violações, 0 warnings**. Divergência de produto reduzida a três
+arquivos, todos com dono: `init.js` e `adr.py` são a #247 (aberta); `discover.py` é a PR local #24.
