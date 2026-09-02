@@ -27536,6 +27536,93 @@ Direções B3 e B4 (que já existiam no gate, sem entrada na tabela) e a nova Di
 **Fronteiras mantidas:** não commitei, não fiz push, não toquei no roadmap nem em nenhum arquivo fora
 da lista permitida.
 
+## 2026-09-02 — `claude` — os 5 conjuntos que faltavam portar: FIM
+
+Fecha a lista de divergências locais que ainda não tinham ido ao upstream. Os cinco foram medidos
+antes de classificados, e **dois deles mudaram de classificação por causa da medição**.
+
+### 1 e 2 — slug (juntos): issue #246, PR #247
+
+Achei procurando "Python deleta em vez de colapsar" e encontrei coisa pior. `slugify` está
+**duplicado por gerador**: Go tem uma cópia, Node tem quatro e as quatro concordam, Python tem quatro
+e a do `adr` derivou. O efeito não é entre runtimes — é **dentro do Python**:
+
+```
+$ python -m trackfw req new "C/C++ interop"   → REQ-2026-09-02-c-c-interop.md
+$ python -m trackfw adr new "C/C++ interop"   → ADR-2026-09-02-cc-interop.md
+```
+
+**O que vale guardar é por que nenhum gate viu.** Medi os **três** exemplos da tabela do contrato em
+`docs/cli-parity.md`: os três dão 3/3 iguais **com o defeito presente**, porque neles todo trecho
+não-alfanumérico é adjacente a espaço ou a borda, e ali deletar e colapsar coincidem. A anotação do
+contrato já dizia `partial=só o título acentuado é exercitado` — e a medição mostra algo pior que
+parcial: um gate com os **três** continuaria verde. **Não faltava cobertura, faltava um caso
+discriminante.** O gate passa a usar `"Autenticação C/C++ v1.2"`, e o porquê ficou em comentário no
+próprio script, porque quem for mexer no título precisa saber que ele não é decorativo.
+
+`identity/slugify` também deleta e **ali está correto** — o docstring declara o passo, espelhando
+`internal/identity/slug.go`. Duas regras diferentes de propósito; a confusão entre elas é a
+explicação mais provável do defeito, e por isso está escrita na REQ em vez de deduzida por quem vier.
+
+### 3 — `discover.py`: não era port, era dano nosso
+
+Nossa `main` tinha tirado duas linhas em branco antes de `def _write_ci_workflow`. Ia como
+"correção"; medindo, é o contrário — o upstream está certo. Revertido localmente.
+
+Medi também se `ruff` pegaria: **não pega**, 15 erros dos dois lados, porque E302 exige `preview`.
+O argumento que sustenta o revert é outro e é melhor: são duas linhas de divergência **sem
+propósito**, que conflitariam em toda atualização futura do upstream, para sempre.
+
+### 4 — testes do `roadmap move`: PR #248
+
+161 linhas cobrindo as sete decisões de escopo de `rewriteRoadmapStatus`, que não tinham nenhuma
+prova. Nenhuma linha de produção tocada.
+
+Falsifiquei desligando a sincronia: **5 dos 7 acendem**. Os 2 que ficam verdes são os que afirmam
+*nada muda* — e isso está certo, são as guardas da direção negativa, que acendem contra uma
+substituição global e não contra a remoção da sincronia. **Declarei isso na PR** em vez de deixar
+"7/7 passam" sugerindo que os sete provam a mesma coisa.
+
+### 5 — `package-lock.json` em 6.1.0: PR #249
+
+Aqui eu quase mandei uma consequência falsa. Ia reportar que `npm ci` quebrava. **Medi antes, e não
+quebra** — `npm` só reclama quando as dependências divergem, e as três são idênticas. Procurei quem
+lê a versão do lock: nenhum gate, nenhum workflow, nenhum código.
+
+Então mandei com o enquadramento que a medição sustenta: não há quebra hoje; o que há é que essa é a
+única declaração de versão do projeto que nenhum gate confere, e por isso derivou cinco majors sem
+ninguém notar. Higiene, dito como higiene.
+
+### Achado novo, encontrado no caminho e ainda não reportado
+
+`go test ./...` está **85-vermelho no `upstream/main` limpo, no Windows**. Medi em worktree limpo,
+sem nenhum arquivo meu, justamente para não atribuir a mim o que já estava lá.
+
+Classifiquei antes de chamar de achado, para não inflar contando de novo o que já reportei:
+**16 são a família `PATHEXT`** — `exec: "…\trackfw"` sem extensão — que é o achado 244 defeito 2,
+já aberto e esperando decisão do Kleber. O resto se divide em idiomas de plataforma: classificação de
+symlink, semântica de "diretório ilegível" (que o Windows não produz do mesmo jeito), walk/ENOTDIR, e
+comparação de caminho com barra literal — que é a causa dos 2 de `TestMoveRoadmap_Analyzing*`
+(`findRoadmap` concatena com `"/"` e devolve com `filepath.Join`).
+
+**O que ainda não medi, e por isso não afirmo:** se algum desses vaza `\` para dentro de artefato.
+Procurei em `.md` gerado por `roadmap move` e não achei. O enquadramento que me parece o certo — e
+que preciso confirmar com o Kleber antes de escrever como achado — não é "85 testes quebrados", é que
+**um contribuidor no Windows vê 85 vermelhos e não consegue distinguir a mudança dele do baseline.**
+Vermelho permanente treina gente a ignorar vermelho.
+
+### Estado
+
+`go build ./...`, `go vet ./...`, `check-cli-parity.sh` e `check-artifact-parity.sh` verdes.
+`pytest -k "slug or adr"` tem 6 falhas — **idênticas com e sem minhas mudanças**, pré-existentes no
+`upstream/main`, todas de expansão de `~` no Windows. Medi o baseline com as correções em stash antes
+de dizer isso.
+
+Upstream aberto: #246/#247 (slug), #248 (testes do move), #249 (package-lock), mais #238, #240, #245
+e o achado 244 defeito 2 de antes.
+
+---
+
 ---
 
 ## 2026-08-30 — `trackfw_architect` (Zeus) — REQ da cegueira de namespace: FIM

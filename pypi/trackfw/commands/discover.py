@@ -487,6 +487,8 @@ def build_discover_github_actions_workflow_content() -> str:
         f"      - run: go install github.com/kgsaran/trackfw/cmd/trackfw@v{__version__}\n"
         "      - run: trackfw validate\n"
     )
+
+
 def _write_ci_workflow(root_dir: str) -> None:
     workflows_dir = os.path.join(root_dir, ".github", "workflows")
     os.makedirs(workflows_dir, exist_ok=True)
