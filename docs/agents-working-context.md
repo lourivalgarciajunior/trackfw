@@ -4,6 +4,114 @@
 
 ---
 
+## Sessão 2026-09-01 (madrugada) — claude (issues #237–#240, e eu reportando 15 violações que eram zero)
+
+`main` em `04bff0f`, em dia com o upstream, árvore limpa, 7 gates verdes.
+
+### CORREÇÃO IMPORTANTE: `validate` está em 0 violações, não 15
+
+Todo relatório de estado desta sessão dizia **"15 violações — bit de execução"**. Errado. O
+repositório está em **zero nos três runtimes** desde o merge de `c857bb3`, que trouxe a guarda
+`CurrentGOOS != "windows"` do upstream — a correção do achado 3 que o Kleber portou.
+
+```
+go      ✓ No violations found.
+node    ✓ Nenhuma violação encontrada.
+python  ✓ No violations found.
+```
+
+Eu media com o `trackfw` **global**, uma instalação npm separada congelada em 29/08, que não tinha o
+`goos.go`.
+
+**O mesmo erro apareceu antes nesta sessão e foi pego:** o `check-homedir-parity.sh` reprovou porque
+o `bin/trackfw` era de um build anterior. Ficou **vermelho**, e vermelho a gente confere. O
+`validate` ficou **plausível** — era o número que eu esperava — e plausível a gente aceita.
+
+Registrado na memória como [[medir-com-binario-da-arvore]]. Para medir, use a árvore:
+
+```bash
+./bin/trackfw <cmd>                   # rebuildar após merge ou troca de branch
+node npm/bin/trackfw <cmd>
+PYTHONPATH=pypi python -m trackfw <cmd>
+```
+
+E a ordem de não forçar o bit **terminou**, pelo motivo certo: o fato de plataforma segue inalterado
+(`os.Stat` ainda devolve `&0111=0`), o que mudou foi a regra parar de perguntar o que o NTFS não
+sabe responder. Manter o vermelho por três dias foi o que sustentou o achado 3 na issue e na PR.
+
+### Dois achados novos no gate do barrier
+
+Encontrados ao rodar `check-roadmap-barrier-contract.sh` depois do merge do `sh -c`. Um estava atrás
+do outro.
+
+**#237 / PR #238 — o gate morre em cp1252 no 11º check.** Um `python3 -` na linha 516 imprime
+`evidence`/`failures` do barrier (que contêm `✅`, `⬜`) sem passar pelo `main()`, logo sem
+`_force_utf8_output`.
+
+O crash mascarava um segundo defeito: o bloco grava em `CORPUS_LINES_FILE`, que a **linha 542
+hasheia**. A codificação e a quebra de linha entrariam no hash — o mesmo corpus daria hash diferente
+por SO. Por isso o `newline="\n"` vai junto com o encoding.
+
+**#239 / PR #240 — `write_fixture_crlf` corrompe não-ASCII.** `sys.stdin.read()` lê com a
+codificação do locale (cp1252) e grava `.encode('utf-8')`. Dupla codificação:
+
+```
+entraram : e2 ac 9c            (U+2B1C ⬜)
+saíram   : c3 a2 c2 ac c5 93
+lidos    : â (0xe2) · ¬ (0xac) · œ (0x153)
+```
+
+O CLI é **inocente**, verificado por eliminação: roadmap CRLF escrito corretamente dá `⬜` certo nos
+três runtimes, e argv e stdin preservam `U+2B1C` sob Git Bash. Sobra o gerador de fixture.
+
+O check mais enganoso não é o que mostra mojibake:
+
+```
+FAIL [crlf/full-roadmap-passes-cross-runtime]
+     go(blocked) node(blocked) py(blocked)
+```
+
+Os três **concordam** — paridade perfeita sobre insumo corrompido.
+
+**Progressão medida, gate inteiro, Windows real:**
+
+```
+sem correções        10 checks OK   morria no 11º
+com #238             45 checks OK   2 FAIL
+com #238 + #240      53 checks OK   0 FAIL   rc=0
+```
+
+A #240 vai **empilhada** sobre a #238 — mesmo arquivo, e os dois checks só ficam alcançáveis depois
+da primeira.
+
+### CLI global atualizado
+
+`npm install -g ./npm` a partir deste repo. Antes: instalação de 29/08 sem `src/homedir.js`. Depois,
+verificado **por efeito**, não por presença de arquivo — `--help`, `status`, `validate`, honra
+`$HOME`, e `--help` em cp1252, tudo OK. O `npm install` reporta "removed 42 packages", então
+conferir por execução importa.
+
+O binário Go foi para `~/bin/trackfw-go.exe`, **separado de propósito**: `~/bin` está em 1º no PATH e
+o npm em 34º, então um `trackfw.exe` ali sombrearia o global recém-instalado — seria troca, não
+"também". E copiei em vez de `make install`, que faz `mv` e tiraria o `bin/trackfw` que os gates
+executam.
+
+### Estado no upstream
+
+Ele está parado desde o merge do `#235` às 22:12. As quatro nossas (#237–#240) subiram depois e ele
+ainda não viu. Precedente: da última vez mesclou a nossa PR ~5h depois de aparecer, sem pedir
+mudança.
+
+### O que continua esperando
+
+- Resposta nas #237–#240.
+- Os 5 conjuntos não portados — slug no `init.js` e no `adr.py`, `discover.py`,
+  `roadmap_move_test.go`, `package-lock` em `6.1.0`.
+- As 4 branches `upstream-pr/*` das PRs fechadas ficam, por decisão do usuário.
+- **Não regenerar o snapshot do barrier** — achado 16.
+
+---
+
 ## Sessão 2026-09-01 (fecho) — claude (poda de branches, e uma armadilha na própria verificação)
 
 `main` em `ea4efbe`. Árvore limpa, em dia com o upstream, 12 arquivos de divergência, 7 gates
