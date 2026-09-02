@@ -4,6 +4,131 @@
 
 ---
 
+## Sessão 2026-09-02 — claude (o mantenedor pediu a cadeia de governança; achado 244; 3 PRs mescláveis)
+
+`main` em `fd76b63`, em dia com o upstream, árvore limpa, `validate` limpo, **9 dos 10 gates** —
+só o `check-doctor-remote-parity`, que é o achado 244.
+
+### O mantenedor respondeu, e o pedido é justo
+
+Nas #238 e #240, em 2026-09-02 00:29. Reproduziu os dois achados localmente antes de escrever, e os
+bytes bateram com a nossa medição. Sobre o #238 confirmou a **segunda** razão, a que eu quase não
+escrevi:
+
+> um crash é barulhento; um hash divergente parece *"o corpus mudou"* e manda alguém caçar uma
+> alteração que não houve.
+
+**As PRs ficam bloqueadas até passarem pela cadeia `REQ → ROADMAP → wip`.** Não é sobre qualidade —
+ele diz isso explicitamente. É coerência: um framework de governança que aceita mudança fora da
+própria cadeia perde o argumento.
+
+E assumiu a parte dele:
+
+> Não existe `CONTRIBUTING.md`, nem template de PR, e em lugar nenhum está escrito que "um PR para o
+> trackfw precisa de REQ e roadmap". **Você não tinha como saber.**
+
+Ligando ao precedente dos nossos gates: *"quem contribui de fora não adivinha um contrato que não
+existe. O terceiro gate seu nasceu correto porque a regra passou a ser comunicada."*
+
+### A cadeia foi criada nas três PRs, na estrutura DELE
+
+`flat`, `docs/req` e `docs/roadmaps` — **não** a do nosso fork (`by_agent`, `docs/requisições`).
+
+| PR | REQ + ROADMAP |
+|---|---|
+| [#238](https://github.com/kgsaran/trackfw/pull/238) | gate morre em cp1252 |
+| [#240](https://github.com/kgsaran/trackfw/pull/240) | fixture corrompe não-ASCII |
+| [#245](https://github.com/kgsaran/trackfw/pull/245) | gate do doctor não roda — **cadeia antes do código**, na ordem pedida |
+
+**A AC que ele nomeou e eu só tinha metade:** para o #240, o controle — *a fixture CRLF continua
+correta para entrada ASCII*. Medido agora:
+
+```
+ASCII      sem fix: IDÊNTICO à origem   |  com fix: IDÊNTICO à origem   ← controle
+não-ASCII  sem fix: DIFERE (38 vs 35 b) |  com fix: IDÊNTICO à origem   ← o defeito
+```
+
+Sem o controle, "passou a funcionar para acentuado" não distingue conserto de troca de um defeito
+por outro.
+
+**Nota registrada nas PRs:** os artefatos levam o `validate` dele de 18 para 19 violações — a única
+acrescentada é o limite de wip, consequência direta da instrução de mover para `wip`. As outras 18
+são pré-existentes.
+
+### Achado 244 — o gate do doctor remoto, dois defeitos, um escondendo o outro
+
+**1. `ln -s` falha quando o alvo é App Execution Alias da Store.**
+
+```
+command -v python3       →  .../WindowsApps/python3  (109 bytes → C:/Program Files/WindowsApps/)
+ln -s para /bin/ls       →  criou
+ln -s para esse python3  →  Permission denied
+```
+
+Não é Developer Mode — o `ln -s` funciona na mesma máquina para alvo comum. O MSYS **copia** o alvo
+sem `winsymlinks:nativestrict`, e copiar reparse point de `WindowsApps` é negado.
+
+Corrigido com wrapper de duas linhas e shebang absoluto. O symlink era o meio; a garantia é o PATH
+isolado, verificada nas duas direções:
+
+```
+PATH=<runtimebin>  python3 --version  →  Python 3.12.4       resolve
+PATH=<runtimebin>  node --version     →  command not found   não vaza
+PATH=<runtimebin>  gh --version       →  command not found   não vaza
+```
+
+**2. O stub de `gh` é invisível para o Go no Windows** — só apareceu depois de contornar o 1º.
+
+```
+LookPath("gh")      = ...\bin\gh.cmd   ← só depois de eu criar o .cmd
+LookPath("gh.cmd")  = ...\bin\gh.cmd
+```
+
+O gate cria `gh` **sem extensão**; o bash executa pelo shebang, o `exec.LookPath` do Go só resolve
+com extensão do `PATHEXT`. Por isso 7 cenários dão `branch-protection: not-evaluated`.
+
+**Verificado independente do defeito 1**, rodando o binário Go sozinho sem wrapper no caminho.
+
+**Não corrigi o 2, e disse por quê:** o remédio seria um `.cmd` chamando o stub bash por caminho
+absoluto — mas cria uma segunda forma do mesmo stub, e o `check-atomic-write-anti-divergence` que
+ele acabou de escrever existe justamente porque duas cópias divergem. É decisão dele.
+
+**O argumento comum:** nos dois casos o gate **reprova** onde a resposta certa é "não deu para medir
+neste ambiente" — a distinção que o `#241`, **do mesmo lote que introduziu o gate**, acabou de
+estabelecer na AC4 do `barrier`.
+
+### As 3 PRs estavam em conflito e não estavam mais
+
+Ao conferir o que fazer com elas, achei:
+
+```
+antes   #238 CONFLICTING · #240 CONFLICTING · #245 MERGEABLE
+depois  as três MERGEABLE
+```
+
+O conflito era só o `docs/roadmaps/.trackfw-log` — log append-only que ele e eu anexamos em
+paralelo. Resolvido mantendo **as duas metades**, sem duplicata, em ordem cronológica. As #238/#240
+rebaseadas sobre `upstream/main` atual; a #240 segue empilhada sobre a #238 via
+`rebase --onto`.
+
+**Ordem de merge, se ele perguntar:** #238 antes da #240 (empilhada). A #245 é independente.
+
+### Merge do upstream
+
+`fd76b63` traz 4 commits: `doctor` remoto nos 3 CLIs (#243), o fecho do item 7 com a **AC7
+falsificada, não reescrita** (#241), a Wave 0 da colisão de nome (#242) e o gate de shell do SO
+(#236). Mais 3 gates novos.
+
+### O que continua esperando
+
+- Resposta nas #237–#240, #244 e #245.
+- Os 5 conjuntos não portados — slug no `init.js` e no `adr.py`, `discover.py`,
+  `roadmap_move_test.go`, `package-lock` em `6.1.0`.
+- As 4 branches `upstream-pr/*` das PRs fechadas ficam, por decisão do usuário.
+- **Não regenerar o snapshot do barrier** — achado 16.
+
+---
+
 ## Sessão 2026-09-01 (madrugada) — claude (issues #237–#240, e eu reportando 15 violações que eram zero)
 
 `main` em `04bff0f`, em dia com o upstream, árvore limpa, 7 gates verdes.
