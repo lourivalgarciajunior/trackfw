@@ -2001,6 +2001,84 @@ These are literal parsing rules. All three runtimes must implement them identica
    be delimited, or an unterminated fence is a usage error (exit 2) with an explicit message
    naming the offending line number — never a silent pass.
 
+### Wave gates are a portable POSIX-shell contract, not an OS script (ADR-2026-09-01)
+
+<!-- trackfw-contract: gate=scripts/check-shell-posix-portability.sh partial=o gate detecta a reversao ESCRITA NA GRAFIA LITERAL, nao a reversao semantica. Duas evasoes reproduzidas por execucao na barreira de 2026-09-01 (hades-tf): (a) a metade positiva assert_count NAO exclui comentarios, entao a assinatura viva comentada satisfaz o grep; (b) a metade negativa assert_no_code_match usa regex literal, evadida por grafia equivalente e funcional — {["shell"]: true} em JS e **{"shell": True} em Python, ambas verificadas como sintaxe valida e comportamento real de shell do SO. Endurecer para checagem COMPORTAMENTAL (observar o interpretador em runtime, nao o texto) e REQ propria; ate la esta e defesa contra reversao acidental, NAO contra reversao deliberada. Ver vault/notes/gate-literal-regex-syntax-equivalent-bypass-2026-09-01.md -->
+
+The `**Gates da wave:**` block (rule 5 above) is a **contract written in POSIX shell**, not a
+script interpreted by whatever shell the host OS defaults to. All three CLIs execute it with
+`sh -c`, resolved through `$PATH`, on every operating system — the Go CLI has always done this
+(`exec.Command("sh", "-c", command)`); Node and Python previously used `spawnSync(cmd, { shell:
+true })` / `subprocess.run(cmd, shell=True)`, which run through the host shell — `cmd.exe` on
+Windows.
+
+**The evidence that decided this, not a preference.** A scan of every `**Gates da wave:**` block
+across the project's roadmaps found **83 commands**: 35 `grep`/`sed`/`awk`, 14 `test`/`[`, 8
+negations with `!`, 3 `&&`/`||`, 3 `$( )` substitutions, 2 pipes. **None of these idioms exist in
+`cmd.exe`.** `test -f x` is not a `cmd.exe` command; `! grep -q` is not its syntax; `$(...)` is
+not its substitution form. So on Windows, Node and Python did not evaluate the gate
+*differently* from Go — they **failed to evaluate it at all**. Go was the only CLI executing what
+the roadmaps actually contain; see
+[`ADR-2026-09-01-gate-de-wave-e-contrato-portavel-em-shell-posix-nao-script-do-sistema-operacional.md`](adr/ADR-2026-09-01-gate-de-wave-e-contrato-portavel-em-shell-posix-nao-script-do-sistema-operacional.md).
+
+**Consequence: `sh` becomes a prerequisite on Windows.** It already was, de facto, for anyone
+using the Go CLI; this decision makes explicit what the project already depended on. When `sh`
+cannot be spawned at all — the process never starts, e.g. `ENOENT`/`LookPath` failure, **not** a
+command that ran and exited non-zero — the `gates` check reports `status: "not_evaluated"`,
+**distinct from `passed` and `blocked`** (same third state already used by
+`roadmapTrustForGates`, see "Pinned failure strings for `not_evaluated`" above), and the wave
+still reports `status: "blocked"` overall — **"could not measure" is fail-closed, never silently
+treated as "passed."** All three runtimes emit, byte-for-byte:
+
+```
+gates not evaluated: sh not found in PATH — install a POSIX shell (e.g. Git Bash, WSL) to evaluate gates
+```
+
+**Do not confuse this with exit 127.** `sh -c 'nosuchtool'` returns exit 127 — the shell started
+and ran, then reported that *its* child command doesn't exist. That is a normal gate failure
+(`status: "blocked"`, the command's own failure line in `failures`), never the `not_evaluated`
+signal. The `not_evaluated` signal is a **spawn-level** failure of `sh` itself (Go: a non-
+`*exec.ExitError` from `cmd.Run()`; Node: `result.error` set, i.e. the child process never
+started; Python: `OSError` raised by `subprocess.run`) — measured, not assumed, because
+conflating "the tool inside `sh` is missing" with "`sh` itself is missing" would make AC4
+(distinguishing "gate failed" from "gate could not be measured") silently wrong for the one case
+it exists to catch.
+
+**Existing gates need no edits.** They were already POSIX — that is the point of the measurement
+above. A gate that depends on `cmd.exe` syntax stops working; none exists today (measured).
+Restricting gate syntax to the intersection of `sh` and `cmd.exe`, or detecting the OS and
+translating syntax, were both rejected: the intersection is close to empty (excludes `test`,
+`grep`, negation, and substitution — it would invalidate 83 of 83 existing commands), and OS
+detection would make the `barrier` reinterpret artifact content instead of treating it as a fixed
+contract.
+
+**Consequence not to describe as a no-op, even in POSIX (declared residual, ML-0A).** Moving
+Node/Python from `spawnSync(cmd, { shell: true })` / `subprocess.run(cmd, shell=True)` to an
+explicit `spawnSync('sh', ['-c', command])` / `subprocess.run(["sh", "-c", cmd])` is not
+functionally inert on macOS/Linux, even though the *syntax accepted* does not change there.
+Measured with a fake `sh` prepended to `$PATH`: Node's `shell: true` and Python's `shell=True`
+are **pinned to the fixed path `/bin/sh`**; the explicit `sh` invocation is **resolved through
+`$PATH`** — the same resolution Go's `exec.LookPath` has always done. This resolution is
+**required** for Windows (Git for Windows' `sh.exe` is never at `/bin/sh`, only reachable via
+`$PATH`), so it cannot be avoided while still meeting the ADR's goal — but it is a real,
+structural amplification of surface in POSIX too: **whoever controls the `$PATH` ordering of the
+process running `trackfw barrier` now controls which binary interprets gate content, in Node and
+Python — a property that previously only existed for Go.** Declared, not treated as a non-event;
+composes with the already-open REQ for `roadmapTrustForGates` fail-open cases (see "Fail-open
+cases" above) — an environment where both fail-open trust *and* a `$PATH`-adulterated `sh` align
+has no accidental syntax mitigation left in the middle. Full measurement and argument:
+`docs/seguranca/2026-09-01-modelo-de-ameaca-do-shell-de-gate.md`.
+
+**Regression gate.** `scripts/check-shell-posix-portability.sh` pins the `sh -c` call signature,
+the `not_evaluated` status on both branches (untrusted roadmap and missing `sh`), and the pinned
+failure message in `npm/src/commands/barrier.js` and `pypi/trackfw/commands/barrier.py`, and
+reproves if either file's gate-execution point reverts to the **literal spelling** `shell: true` / `shell=True` (see the `partial=` annotation: equivalent spellings evade it) (host-shell
+execution) — checked outside comment lines, since both files' own comments document the old
+pattern in prose as the thing *not* to do again. It reproves independently per file: a regression
+in only one of the two CLIs fails, naming which. It does not touch `serve.js`/`serve.py`, which
+retain a legitimate, unrelated `shell: true` / `shell=True` for opening a browser, tracked by its
+own REQ (ML-0A, finding 4.2).
+
 ### Contrato gerador↔`barrier`: dialeto e vocabulário (ADR-2026-08-29)
 
 <!-- trackfw-contract: gate=scripts/check-roadmap-barrier-contract.sh -->
@@ -5805,6 +5883,53 @@ em
 `REQ-2026-08-28-cli-python-nao-oferece-superficie-de-ci-e-git-hooks-no-init-e-nao-declara-git-hooks-como-alvo-do-update.md`,
 que declara dependência desta REQ.
 
+### Job ids únicos entre `trackfw-gate.yml` e `trackfw-validate.yml` (ML-1A, ROADMAP-2026-09-01)
+
+<!-- trackfw-contract: gate=scripts/check-ci-workflow-job-id-collision.sh -->
+
+Os dois workflows de CI que o produto gera (tabela da seção anterior) declaravam o **mesmo job id**
+`governance` nos 3 CLIs. `trackfw-validate.yml` dispara em `push` **e** `pull_request`; um projeto
+que rodou `init`/`update` (que instala `trackfw-gate.yml`) e também `discover --init` (que instala
+`trackfw-validate.yml`) produzia **três check-runs homônimos** por PR — confirmado ao vivo no PR
+#241 deste repositório (`"governance=SUCCESS"` × 3 no mesmo push). O GitHub casa check exigido por
+**nome**, então `required_status_checks: [governance]` seria satisfeito por qualquer um dos três,
+imprevisivelmente — um portão que parece fechado sem estar. Paridade perfeita no erro: os 3 CLIs
+concordavam entre si e os 3 estavam errados; nenhum gate de paridade byte-a-byte (inclusive
+`check-ci-workflow-pin-parity.sh` acima) pegaria isso, porque paridade mede concordância entre os
+runtimes, não correção do valor em si.
+
+**Os dois workflows verificam a mesma propriedade** (`trackfw validate` passa) por dois mecanismos
+de instalação diferentes — ver "O que cada template pina" acima. Os novos ids nomeiam o
+**mecanismo**, não o arquivo de origem, porque é isso que quem lê `required_status_checks` precisa
+saber sem abrir o YAML:
+
+| workflow | job id (antigo → novo) | mecanismo de instalação |
+|---|---|---|
+| `trackfw-gate.yml` (`buildGitHubActionsWorkflowContent`) | `governance` → `governance-install-script` | `curl \| sh` (`install.sh`) |
+| `trackfw-validate.yml` (`BuildDiscoverGitHubActionsWorkflowContent`) | `governance` → `governance-go-install` | `go install .../trackfw@v<versão>` |
+
+Decisão registrada (sem usuários downstream conhecidos hoje, e este próprio repositório não tinha
+`required_status_checks` configurado — é a lacuna que motivou a REQ): mudar o job id muda o nome do
+check; quem já tivesse `required_status_checks` pinado no nome antigo veria o portão quebrar. Corrigir
+na origem foi julgado melhor que carregar o defeito adiante. `required_status_checks` propriamente
+dito (qual dos dois — ou os dois — exigir) é decisão da Wave 2 deste roadmap, não deste ML: como os
+dois cobrem a mesma propriedade por caminhos de instalação redundantes, o argumento natural é exigir
+apenas um.
+
+**Gate falsificável:** `scripts/check-ci-workflow-job-id-collision.sh` — 6 pontos (2 workflows × 3
+CLIs) via `assert_count` (não `assert_has`: a assinatura de um workflow podendo aparecer mais de uma
+vez por engano exige contagem exata, não presença), mais anti-regressão do id antigo colidente
+(`  governance:`, ancorado com indentação + dois-pontos) nos mesmos 6 arquivos, mais a checagem de
+que os dois ids nunca podem coincidir entre si. Falsifica nas duas direções: uma fixture com o job id
+antigo reintroduzido é detectada pela mesma assinatura usada na validação real, e o arquivo de
+produção corrigido conta zero ocorrências do id antigo. Guarda de vacuidade ancorada no `$ROOT`
+default (`.`, o cwd em que `make parity` roda) — a mesma raiz usada na varredura.
+
+**Fora de escopo deste ML (Wave 2/3 do roadmap):** configurar `required_status_checks` de fato na
+`main` deste repositório, e o `trackfw doctor` acusar a colisão em projetos de terceiro que já a
+tenham (o doctor hoje só compara conteúdo/bit de execução contra o template atual — não tem checagem
+de unicidade de job id entre os dois templates).
+
 ### Estado `scaffold-wrong-mode` — bit de execução ausente (REQ-2026-08-28)
 
 <!-- trackfw-contract: gate=scripts/check-doctor-parity.sh,scripts/check-gates-falsify.sh -->
@@ -5855,6 +5980,109 @@ reescrito mas o inode mode não é tocado. Cada runtime adiciona uma chamada exp
 | 179 (direção A) | `execBit &&` → `false  &&` em `scaffold_doctor.go:324` — a condição de modo nunca dispara | `check-doctor-parity.sh` reprova: cenário (p) `scaffold-wrong-mode-detected` não encontra `[scaffold-wrong-mode]` no Go |
 | 180 (direção B) | `execBit &&` → `true   &&` — discriminante AC11 silenciado: todos os artefatos têm o bit verificado, incluindo os 0644 | doctor Go invocado diretamente em fixture com slash commands (`--targets validate-script,agent-hooks,claude-commands`): 9 `scaffold-wrong-mode` falsos positivos em `.claude/commands/trackfw/*.md` |
 | 181 (direção C) | `os.Chmod` removido de `generateValidateScript` — `update` reescreve o conteúdo mas não restaura o bit | `cmp -s` confirma que `apply()` rodou (conteúdo restaurado); `test ! -x` confirma que o bit permanece ausente após o update |
+
+---
+
+## `trackfw doctor --remote` — modalidade remota opcional (ADR-2026-09-02, ML-3A)
+
+<!-- trackfw-contract: gate=scripts/check-doctor-remote-parity.sh -->
+
+Gate: **`scripts/check-doctor-remote-parity.sh`** (alvo `parity`) + testes unitários por CLI
+(`internal/commands/doctor_remote_test.go`, `npm/tests/doctor_remote.test.js`,
+`pypi/tests/test_doctor_remote.py`).
+
+`trackfw doctor` ganhou uma segunda modalidade de verificação — rede + credencial — que ele nunca
+teve: `required_status_checks` e `enforce_admins` da branch protection do GitHub, mais, localmente
+(sem rede), `core.hooksPath` neutralizado (`/dev/null`/`NUL`). **Opt-in via `--remote`**; sem a
+flag, `doctor` continua idêntico ao comportamento anterior — offline, sem credencial.
+
+**A decisão central do ADR:** uma verificação que depende de rede/credencial tem três resultados,
+não dois — `ok`, `finding`, e **`not-evaluated`** ("não deu para verificar": offline, sem token,
+sem permissão, forja diferente de GitHub). O terceiro nunca pode colapsar no primeiro (mentira
+mais cara: "protegido" quando ninguém olhou) nem no segundo (alarme que sempre dispara e se
+aprende a ignorar). O vocabulário é reusado do `not_evaluated` que `barrier` já validou
+(`internal/commands/barrier.go`'s `gatesCheck`), não reinventado.
+
+### Mecanismo de transporte: `gh api`, não HTTP+token direto
+
+<!-- trackfw-contract: gate=scripts/check-doctor-remote-parity.sh -->
+
+Como `trackfw release tag` (`internal/commands/release.go`'s `execForgeAPI`), a modalidade remota
+do `doctor` shell-a para `gh api` em vez de implementar um cliente HTTP com parsing de
+owner/repo e token — o `gh` CLI já resolve ambos a partir do remote git e da sessão autenticada
+(`GITHUB_TOKEN`/`GH_TOKEN` ou `gh auth login`). Evita reinventar esse cliente 3× e mantém a mesma
+convenção de dependência injetável (`execGit`/`execForgeAPI`/`availFn`) já estabelecida em
+`release.go`, `npm/src/release/runner.js`, `pypi/trackfw/release/runner.py`.
+
+| runtime | orquestração da modalidade remota | executor padrão de `gh` |
+|---|---|---|
+| Go | `runDoctorRemote` (`internal/commands/doctor_remote.go`) | `defaultExecForgeAPI` (compartilhado com `release.go`) |
+| Node.js | `runDoctorRemote` (`npm/src/integrations/doctor_remote.js`) | `defaultExecForgeAPI` local ao módulo, mesma forma `{stdout, error}` de `release/runner.js` |
+| Python | `run_doctor_remote` (`pypi/trackfw/commands/doctor_remote.py`) | `default_exec_forge_api` local ao módulo, mesma forma `(stdout, error)` de `release/runner.py` |
+
+### Distinção que a mensagem precisa fazer: credencial AUSENTE × credencial sem ESCOPO
+
+<!-- trackfw-contract: gate=scripts/check-doctor-remote-parity.sh -->
+
+Ambas resultam em `not-evaluated`, mas com remédios distintos — um se resolve autenticando, o
+outro sendo promovido a admin do repositório:
+
+1. **Ausência de credencial**: `gh auth status` falha → remédio nomeia `gh auth login` (ou
+   `GITHUB_TOKEN`/`GH_TOKEN`). A chamada de branch protection nunca acontece.
+2. **Credencial presente, sem permissão de admin**: `gh api repos/{owner}/{repo}` responde, mas
+   `permissions.admin` é `false` — ler branch protection exige admin no repositório. Remédio
+   nomeia "solicitar acesso de admin", nunca reaproveita o texto do remédio (1). Este
+   discriminante vem do campo estruturado `permissions.admin` da própria resposta da API, **não**
+   de parsing de texto de stderr do `gh` — mensagens de erro HTTP mudam entre versões do `gh`;
+   um campo JSON documentado não.
+
+### O caso 404: **não** é sempre "sem proteção" — só depois de confirmado o admin
+
+<!-- trackfw-contract: gate=scripts/check-doctor-remote-parity.sh -->
+
+`GET /repos/{owner}/{repo}/branches/{branch}/protection` responde 404 tanto quando a branch
+genuinamente não tem proteção quanto quando a credencial não tem acesso de admin ao repositório.
+Mapear 404 direto para "finding" sem checar `permissions.admin` primeiro produziria exatamente o
+defeito simétrico que o ADR nomeia: um token sem escopo geraria uma `finding` afirmando que o
+portão está ausente quando na verdade a checagem nunca rodou. Por isso a ordem é fixa nos 3 CLIs:
+`auth status` → `repos/{owner}/{repo}` (resolve `default_branch` **e** `permissions.admin`) →
+somente com `admin=true`, a chamada de `branches/<branch>/protection` decide entre finding e
+control.
+
+### `contexts` × `checks` — o controle não pode false-fail na forma mais nova da API
+
+<!-- trackfw-contract: gate=scripts/check-doctor-remote-parity.sh -->
+
+A resposta de branch protection carrega tanto o campo legado `required_status_checks.contexts`
+quanto o mais novo `required_status_checks.checks` (com `app_id` por check). Os 3 CLIs tratam
+"configurado" como `len(contexts) > 0 || len(checks) > 0` — ler só `contexts` faria o cenário de
+controle (repositório com o portão configurado através da API nova) reprovar por engano, o que
+tenderia a "consertar" enfraquecendo a checagem em vez de corrigir a leitura.
+
+### `core.hooksPath` neutralizado — escopo estreito de propósito
+
+<!-- trackfw-contract: gate=scripts/check-doctor-remote-parity.sh -->
+
+Só `/dev/null` (POSIX) e `NUL` (Windows) disparam `hooks-path-neutralized`; qualquer outro valor
+(incluindo um diretório husky/lefthook legítimo como `.husky/_`) e o valor **ausente** (default do
+git, `.git/hooks`) nunca disparam. Um heurístico mais amplo ("parece neutralizado?") produziria
+falso positivo exatamente no fluxo legítimo que a Wave 0 deste roadmap listou como "não pode
+quebrar". Esta checagem não precisa de rede, mas só roda atrás de `--remote` como as outras duas —
+sem a flag, `doctor` não ganha nenhum caminho de código novo (critério de aceite "zero regressão").
+
+### Mecanismo do gate cross-CLI: stub de `gh`, não rede real
+
+<!-- trackfw-contract: gate=scripts/check-doctor-remote-parity.sh -->
+
+`scripts/check-doctor-remote-parity.sh` segue a convenção de `check-release-tag-parity.sh`: um
+executável `gh` STUB é colocado no início do `PATH` de cada cenário, respondendo
+deterministicamente `auth status` / `api repos/{owner}/{repo}` / `api .../branches/<b>/protection`
+— nunca uma chamada de rede real. Cobre as 3 direções de falsificação exigidas pelo roadmap
+(sem portão → finding; com portão → controle limpo; sem credencial → `not-evaluated` nunca `ok`)
+mais a distinção escopo×ausência e os dois controles de `core.hooksPath` (unset, husky). O
+caminho que só existe com uma rede real e um token genuíno — se o `gh` real de fato responde como
+os fixtures presumem — **não é coberto por nenhum CI offline**; isso é uma limitação reconhecida
+do próprio ADR, não uma lacuna deste gate.
 
 ---
 
