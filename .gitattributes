@@ -1,3 +1,44 @@
+# Normalização de fim de linha.
+#
+# O repositório é desenvolvido em Windows com core.autocrlf=true, o que fazia o
+# checkout gravar CRLF nos fontes. O blob commitado sempre foi LF — por isso a CI
+# nunca reclamou — mas `gofmt -l` acusava 22 dos 106 arquivos .go localmente,
+# poluindo qualquer verificação de formatação e mascarando desvio de verdade.
+#
+# Ver REQ-2026-08-16-consistencias-template-saida-e-eol.
+
+# Detecção automática de texto por padrão.
+* text=auto
+
+# Fontes e configuração: LF no working copy, em qualquer sistema.
+*.go      text eol=lf
+*.js      text eol=lf
+*.mjs     text eol=lf
+*.cjs     text eol=lf
+*.ts      text eol=lf
+*.py      text eol=lf
+*.sh      text eol=lf
+*.md      text eol=lf
+*.yaml    text eol=lf
+*.yml     text eol=lf
+*.json    text eol=lf
+*.toml    text eol=lf
+*.html    text eol=lf
+*.css     text eol=lf
+
+# Sem extensão, mas são scripts.
+Makefile  text eol=lf
+
+# Binários: nunca converter.
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.ico     binary
+*.pdf     binary
+*.exe     binary
+*.pb      binary
+
 # trackfw: .trackfw-log is append-only — every write lands on the last line, so
 # two parallel branches conflict on every merge. merge=union keeps the lines
 # from both sides (chronological order is not guaranteed). The pattern has no

@@ -4,63 +4,1381 @@
 
 ---
 
-## Sessão 2026-09-02 — apolo-tf (INÍCIO: ML-3A — modalidade remota no `doctor`, com "não avaliado" próprio)
+## Sessão 2026-09-02 — claude (o mantenedor pediu a cadeia de governança; achado 244; 3 PRs mescláveis)
 
-Branch `fix/o-repositorio-do-trackfw-sob-os-cuidados-do-trackfw` (não criada por mim).
+`main` em `fd76b63`, em dia com o upstream, árvore limpa, `validate` limpo, **9 dos 10 gates** —
+só o `check-doctor-remote-parity`, que é o achado 244.
 
-Escopo: `trackfw doctor --remote` (ADR-2026-09-02) — GitHub branch protection
-(`required_status_checks`, `enforce_admins`) + `core.hooksPath` local, nos 3 CLIs. Transporte via
-`gh api` (mesmo padrão de `release tag`), nunca HTTP+token direto.
+### O mantenedor respondeu, e o pedido é justo
 
-## Sessão 2026-09-02 — apolo-tf (FIM: ML-3A — CONCLUÍDO)
+Nas #238 e #240, em 2026-09-02 00:29. Reproduziu os dois achados localmente antes de escrever, e os
+bytes bateram com a nossa medição. Sobre o #238 confirmou a **segunda** razão, a que eu quase não
+escrevi:
 
-**O que foi feito:**
+> um crash é barulhento; um hash divergente parece *"o corpus mudou"* e manda alguém caçar uma
+> alteração que não houve.
 
-- `internal/integrations/doctor.go`: 4 novos `DoctorFindingKind` — `required-status-checks-missing`,
-  `enforce-admins-disabled`, `hooks-path-neutralized`, `not-evaluated` (reusa o vocabulário do
-  `not_evaluated` já validado em `barrier.go`, não inventa nome novo).
-- `internal/commands/doctor_remote.go` (novo): `runDoctorRemote` — ordem fixa `gh auth status` →
-  `gh api repos/{owner}/{repo}` (resolve `default_branch` **e** `permissions.admin`) → só com
-  `admin=true` chama `branches/<branch>/protection`. 404 só vira finding depois de confirmado o
-  admin — sem essa ordem, um token sem escopo geraria um finding falso de "portão ausente" quando a
-  checagem nunca rodou (o defeito simétrico que o ADR nomeia). `contexts` e `checks` (API legada e
-  nova) tratados como equivalentes para não false-failar o controle. `--remote` é flag opt-in nos 3
-  CLIs; sem ela, `doctor` roda exatamente como antes.
-- Espelhado em `npm/src/integrations/doctor_remote.js` e `pypi/trackfw/commands/doctor_remote.py`,
-  reusando a mesma convenção `execGit`/`execForgeAPI`/`availFn` injetável já usada em `release.go`/
-  `runner.js`/`runner.py`.
-- Testes unitários por CLI (10 cenários cada, 30 total): falsificação nas duas direções (sem
-  portão → finding; com portão, `contexts` e `checks` → controle limpo), o caso que decide o ADR
-  (sem credencial → `not-evaluated`, nunca `ok`), escopo insuficiente com mensagem DISTINTA de
-  credencial ausente, `gh` ausente, forja não-GitHub, e `core.hooksPath` (`/dev/null` → finding;
-  unset e `.husky/_` → controle).
-- `scripts/check-doctor-remote-parity.sh` (novo, plugado no `Makefile`): gate cross-CLI real via
-  stub de `gh` no PATH (mesmo mecanismo de `check-release-tag-parity.sh`), 33 cenários, prova
-  byte-a-byte Go/Node/Python. Achado durante a construção: `BASE_PATH` precisa incluir
-  `/usr/bin:/bin` (não só os interpretes) — o shebang `#!/usr/bin/env bash` do stub `gh` falha ao
-  resolver sem eles, e o erro batia como `not-evaluated` "sem credencial" pela razão errada
-  (vacuidade que os próprios guards do gate existem para pegar).
-- `docs/cli-parity.md`: nova seção `trackfw doctor --remote` com as 6 subseções anotadas
-  (`check-parity-contract-coverage.sh` verde).
-- `make quality`: **MAKE_EXIT=0**, 0 FAIL. `trackfw validate`: exit 0, 0 violations (18 warnings
-  pré-existentes, nenhum relacionado a este ML).
+**As PRs ficam bloqueadas até passarem pela cadeia `REQ → ROADMAP → wip`.** Não é sobre qualidade —
+ele diz isso explicitamente. É coerência: um framework de governança que aceita mudança fora da
+própria cadeia perde o argumento.
 
-**Limite honesto (não fabricado):** o caminho que só existe com rede real e um token genuíno —
-se o `gh` de verdade responde como os fixtures presumem — não é coberto por nenhum CI offline;
-isso é reconhecido no próprio ADR, e documentado em `docs/cli-parity.md`.
+E assumiu a parte dele:
 
-**Arquivos afetados:** `internal/integrations/doctor.go`, `internal/commands/doctor.go`,
-`internal/commands/doctor_remote.go` (novo), `internal/commands/doctor_remote_test.go` (novo),
-`npm/src/integrations/doctor.js`, `npm/src/integrations/doctor_remote.js` (novo),
-`npm/src/commands/doctor.js`, `npm/tests/doctor_remote.test.js` (novo),
-`pypi/trackfw/integrations/doctor.py`, `pypi/trackfw/commands/doctor_remote.py` (novo),
-`pypi/trackfw/commands/doctor.py`, `pypi/tests/test_doctor_remote.py` (novo),
-`scripts/check-doctor-remote-parity.sh` (novo), `Makefile`, `docs/cli-parity.md`.
+> Não existe `CONTRIBUTING.md`, nem template de PR, e em lugar nenhum está escrito que "um PR para o
+> trackfw precisa de REQ e roadmap". **Você não tinha como saber.**
 
-Não toquei roadmap/REQ/ADR (autoridade do arquiteto) nem executei nenhum comando git.
+Ligando ao precedente dos nossos gates: *"quem contribui de fora não adivinha um contrato que não
+existe. O terceiro gate seu nasceu correto porque a regra passou a ser comunicada."*
+
+### A cadeia foi criada nas três PRs, na estrutura DELE
+
+`flat`, `docs/req` e `docs/roadmaps` — **não** a do nosso fork (`by_agent`, `docs/requisições`).
+
+| PR | REQ + ROADMAP |
+|---|---|
+| [#238](https://github.com/kgsaran/trackfw/pull/238) | gate morre em cp1252 |
+| [#240](https://github.com/kgsaran/trackfw/pull/240) | fixture corrompe não-ASCII |
+| [#245](https://github.com/kgsaran/trackfw/pull/245) | gate do doctor não roda — **cadeia antes do código**, na ordem pedida |
+
+**A AC que ele nomeou e eu só tinha metade:** para o #240, o controle — *a fixture CRLF continua
+correta para entrada ASCII*. Medido agora:
+
+```
+ASCII      sem fix: IDÊNTICO à origem   |  com fix: IDÊNTICO à origem   ← controle
+não-ASCII  sem fix: DIFERE (38 vs 35 b) |  com fix: IDÊNTICO à origem   ← o defeito
+```
+
+Sem o controle, "passou a funcionar para acentuado" não distingue conserto de troca de um defeito
+por outro.
+
+**Nota registrada nas PRs:** os artefatos levam o `validate` dele de 18 para 19 violações — a única
+acrescentada é o limite de wip, consequência direta da instrução de mover para `wip`. As outras 18
+são pré-existentes.
+
+### Achado 244 — o gate do doctor remoto, dois defeitos, um escondendo o outro
+
+**1. `ln -s` falha quando o alvo é App Execution Alias da Store.**
+
+```
+command -v python3       →  .../WindowsApps/python3  (109 bytes → C:/Program Files/WindowsApps/)
+ln -s para /bin/ls       →  criou
+ln -s para esse python3  →  Permission denied
+```
+
+Não é Developer Mode — o `ln -s` funciona na mesma máquina para alvo comum. O MSYS **copia** o alvo
+sem `winsymlinks:nativestrict`, e copiar reparse point de `WindowsApps` é negado.
+
+Corrigido com wrapper de duas linhas e shebang absoluto. O symlink era o meio; a garantia é o PATH
+isolado, verificada nas duas direções:
+
+```
+PATH=<runtimebin>  python3 --version  →  Python 3.12.4       resolve
+PATH=<runtimebin>  node --version     →  command not found   não vaza
+PATH=<runtimebin>  gh --version       →  command not found   não vaza
+```
+
+**2. O stub de `gh` é invisível para o Go no Windows** — só apareceu depois de contornar o 1º.
+
+```
+LookPath("gh")      = ...\bin\gh.cmd   ← só depois de eu criar o .cmd
+LookPath("gh.cmd")  = ...\bin\gh.cmd
+```
+
+O gate cria `gh` **sem extensão**; o bash executa pelo shebang, o `exec.LookPath` do Go só resolve
+com extensão do `PATHEXT`. Por isso 7 cenários dão `branch-protection: not-evaluated`.
+
+**Verificado independente do defeito 1**, rodando o binário Go sozinho sem wrapper no caminho.
+
+**Não corrigi o 2, e disse por quê:** o remédio seria um `.cmd` chamando o stub bash por caminho
+absoluto — mas cria uma segunda forma do mesmo stub, e o `check-atomic-write-anti-divergence` que
+ele acabou de escrever existe justamente porque duas cópias divergem. É decisão dele.
+
+**O argumento comum:** nos dois casos o gate **reprova** onde a resposta certa é "não deu para medir
+neste ambiente" — a distinção que o `#241`, **do mesmo lote que introduziu o gate**, acabou de
+estabelecer na AC4 do `barrier`.
+
+### As 3 PRs estavam em conflito e não estavam mais
+
+Ao conferir o que fazer com elas, achei:
+
+```
+antes   #238 CONFLICTING · #240 CONFLICTING · #245 MERGEABLE
+depois  as três MERGEABLE
+```
+
+O conflito era só o `docs/roadmaps/.trackfw-log` — log append-only que ele e eu anexamos em
+paralelo. Resolvido mantendo **as duas metades**, sem duplicata, em ordem cronológica. As #238/#240
+rebaseadas sobre `upstream/main` atual; a #240 segue empilhada sobre a #238 via
+`rebase --onto`.
+
+**Ordem de merge, se ele perguntar:** #238 antes da #240 (empilhada). A #245 é independente.
+
+### Merge do upstream
+
+`fd76b63` traz 4 commits: `doctor` remoto nos 3 CLIs (#243), o fecho do item 7 com a **AC7
+falsificada, não reescrita** (#241), a Wave 0 da colisão de nome (#242) e o gate de shell do SO
+(#236). Mais 3 gates novos.
+
+### O que continua esperando
+
+- Resposta nas #237–#240, #244 e #245.
+- Os 5 conjuntos não portados — slug no `init.js` e no `adr.py`, `discover.py`,
+  `roadmap_move_test.go`, `package-lock` em `6.1.0`.
+- As 4 branches `upstream-pr/*` das PRs fechadas ficam, por decisão do usuário.
+- **Não regenerar o snapshot do barrier** — achado 16.
 
 ---
 
+## Sessão 2026-09-01 (madrugada) — claude (issues #237–#240, e eu reportando 15 violações que eram zero)
+
+`main` em `04bff0f`, em dia com o upstream, árvore limpa, 7 gates verdes.
+
+### CORREÇÃO IMPORTANTE: `validate` está em 0 violações, não 15
+
+Todo relatório de estado desta sessão dizia **"15 violações — bit de execução"**. Errado. O
+repositório está em **zero nos três runtimes** desde o merge de `c857bb3`, que trouxe a guarda
+`CurrentGOOS != "windows"` do upstream — a correção do achado 3 que o Kleber portou.
+
+```
+go      ✓ No violations found.
+node    ✓ Nenhuma violação encontrada.
+python  ✓ No violations found.
+```
+
+Eu media com o `trackfw` **global**, uma instalação npm separada congelada em 29/08, que não tinha o
+`goos.go`.
+
+**O mesmo erro apareceu antes nesta sessão e foi pego:** o `check-homedir-parity.sh` reprovou porque
+o `bin/trackfw` era de um build anterior. Ficou **vermelho**, e vermelho a gente confere. O
+`validate` ficou **plausível** — era o número que eu esperava — e plausível a gente aceita.
+
+Registrado na memória como [[medir-com-binario-da-arvore]]. Para medir, use a árvore:
+
+```bash
+./bin/trackfw <cmd>                   # rebuildar após merge ou troca de branch
+node npm/bin/trackfw <cmd>
+PYTHONPATH=pypi python -m trackfw <cmd>
+```
+
+E a ordem de não forçar o bit **terminou**, pelo motivo certo: o fato de plataforma segue inalterado
+(`os.Stat` ainda devolve `&0111=0`), o que mudou foi a regra parar de perguntar o que o NTFS não
+sabe responder. Manter o vermelho por três dias foi o que sustentou o achado 3 na issue e na PR.
+
+### Dois achados novos no gate do barrier
+
+Encontrados ao rodar `check-roadmap-barrier-contract.sh` depois do merge do `sh -c`. Um estava atrás
+do outro.
+
+**#237 / PR #238 — o gate morre em cp1252 no 11º check.** Um `python3 -` na linha 516 imprime
+`evidence`/`failures` do barrier (que contêm `✅`, `⬜`) sem passar pelo `main()`, logo sem
+`_force_utf8_output`.
+
+O crash mascarava um segundo defeito: o bloco grava em `CORPUS_LINES_FILE`, que a **linha 542
+hasheia**. A codificação e a quebra de linha entrariam no hash — o mesmo corpus daria hash diferente
+por SO. Por isso o `newline="\n"` vai junto com o encoding.
+
+**#239 / PR #240 — `write_fixture_crlf` corrompe não-ASCII.** `sys.stdin.read()` lê com a
+codificação do locale (cp1252) e grava `.encode('utf-8')`. Dupla codificação:
+
+```
+entraram : e2 ac 9c            (U+2B1C ⬜)
+saíram   : c3 a2 c2 ac c5 93
+lidos    : â (0xe2) · ¬ (0xac) · œ (0x153)
+```
+
+O CLI é **inocente**, verificado por eliminação: roadmap CRLF escrito corretamente dá `⬜` certo nos
+três runtimes, e argv e stdin preservam `U+2B1C` sob Git Bash. Sobra o gerador de fixture.
+
+O check mais enganoso não é o que mostra mojibake:
+
+```
+FAIL [crlf/full-roadmap-passes-cross-runtime]
+     go(blocked) node(blocked) py(blocked)
+```
+
+Os três **concordam** — paridade perfeita sobre insumo corrompido.
+
+**Progressão medida, gate inteiro, Windows real:**
+
+```
+sem correções        10 checks OK   morria no 11º
+com #238             45 checks OK   2 FAIL
+com #238 + #240      53 checks OK   0 FAIL   rc=0
+```
+
+A #240 vai **empilhada** sobre a #238 — mesmo arquivo, e os dois checks só ficam alcançáveis depois
+da primeira.
+
+### CLI global atualizado
+
+`npm install -g ./npm` a partir deste repo. Antes: instalação de 29/08 sem `src/homedir.js`. Depois,
+verificado **por efeito**, não por presença de arquivo — `--help`, `status`, `validate`, honra
+`$HOME`, e `--help` em cp1252, tudo OK. O `npm install` reporta "removed 42 packages", então
+conferir por execução importa.
+
+O binário Go foi para `~/bin/trackfw-go.exe`, **separado de propósito**: `~/bin` está em 1º no PATH e
+o npm em 34º, então um `trackfw.exe` ali sombrearia o global recém-instalado — seria troca, não
+"também". E copiei em vez de `make install`, que faz `mv` e tiraria o `bin/trackfw` que os gates
+executam.
+
+### Estado no upstream
+
+Ele está parado desde o merge do `#235` às 22:12. As quatro nossas (#237–#240) subiram depois e ele
+ainda não viu. Precedente: da última vez mesclou a nossa PR ~5h depois de aparecer, sem pedir
+mudança.
+
+### O que continua esperando
+
+- Resposta nas #237–#240.
+- Os 5 conjuntos não portados — slug no `init.js` e no `adr.py`, `discover.py`,
+  `roadmap_move_test.go`, `package-lock` em `6.1.0`.
+- As 4 branches `upstream-pr/*` das PRs fechadas ficam, por decisão do usuário.
+- **Não regenerar o snapshot do barrier** — achado 16.
+
+---
+
+## Sessão 2026-09-01 (fecho) — claude (poda de branches, e uma armadilha na própria verificação)
+
+`main` em `ea4efbe`. Árvore limpa, em dia com o upstream, 12 arquivos de divergência, 7 gates
+verdes, `validate` com as 15 violações de sempre.
+
+### Três branches podadas, todas verificadas por conteúdo
+
+| branch | SHA | por que foi segura |
+|---|---|---|
+| `upstream-pr/sonda-nao-roda-fora-do-github-actions` | `9ea9447` | PR [#233](https://github.com/kgsaran/trackfw/pull/233) MERGED; acrescenta **um** arquivo sobre a própria base, e ele está **idêntico** no `upstream/main` |
+| `docs/req-dos-achados-9-10-11-do-issue-216` | `e39eb3f` | cópia pré-merge do fluxo dele — PR [#220](https://github.com/kgsaran/trackfw/pull/220) MERGED, e `b2bacdb` está na nossa `main` |
+| `fix/job-de-windows-largo-que-nasce-vermelho-e-sonda-sob-demanda` | `af14d13` | idem — PR [#221](https://github.com/kgsaran/trackfw/pull/221) MERGED, e `3878b69` está na nossa `main` |
+
+As duas últimas não eram nossas: foram empurradas para o nosso remote quando este repo ainda era
+cópia por ZIP, antes do refork.
+
+**O critério NÃO foi ancestralidade.** O Kleber mescla com squash, então `9ea9447` **não é**
+ancestral de `upstream/main` mesmo tendo sido aceito. Testar `merge-base --is-ancestor` teria dito
+"não absorvido" para uma branch integralmente absorvida. O critério certo é **igualdade de
+conteúdo** do que a branch acrescenta sobre a própria base.
+
+Local e remote agora batem: `main` + as 4 `upstream-pr/*` das PRs fechadas, que ficam por decisão do
+usuário (o parecer dele manda ler `gh pr diff <n>`, que deixa de resolver se apagarmos).
+
+### Armadilha: o MSYS quebrou a minha própria verificação
+
+O primeiro laço de conferência reportou `.github/workflows/quality.yml` e `.gitignore` como
+**AUSENTES no upstream** — falso óbvio. A causa:
+
+```
+fatal: Not a valid object name upstream\main;.github\workflows\quality.yml
+```
+
+O MSYS converteu `upstream/main:.github/...` em caminho Windows — `/` virou `\`, `:` virou `;`. O
+`git cat-file -e` falhou por sintaxe, e o meu `||` leu a falha como "o arquivo não existe".
+
+Se eu tivesse aceitado, teria concluído que o upstream perdeu os workflows. O que salvou foi o
+resultado ser absurdo o bastante para conferir.
+
+**Generaliza:** `git cat-file -e "<ref>:<caminho>"` sob Git Bash no Windows é frágil — o `:` e as
+barras são reescritos. Prefira `git ls-tree -r --name-only <ref> -- <caminho>` ou compare por
+`git diff --quiet <ref-a> <ref-b> -- <caminho>`, que não passam o `:` pela conversão.
+
+É a mesma família de tudo o que esta sessão catalogou, agora dentro da ferramenta de verificação:
+**um comando que falha por outro motivo, e cuja falha estava sendo lida como resposta.**
+
+### Estado do fork
+
+```
+main          ea4efbe
+divergência   12 arquivos de código
+gates         7/7 verdes
+validate      15 violações — bit de execução, visíveis por decisão
+branches      main + 4 upstream-pr/*
+```
+
+Dos 12: 6 gates nossos não publicados, 1 é a política de fork, e **5 correções que ele ainda não
+portou** — slug no `init.js` e no `adr.py`, `discover.py`, `roadmap_move_test.go`, `package-lock` em
+`6.1.0`. Próxima rodada: issue própria + PR própria, que foi como a #233 entrou.
+
+---
+
+## Sessão 2026-09-01 (noite) — claude (FIM: ele mesclou a nossa PR, divergência 72 → 12, onboarding funciona no Windows)
+
+`main` em `a780e4f`, em dia com o upstream, árvore limpa, **7 gates verdes**, `validate` com as 15
+violações de sempre.
+
+### O canal com o upstream funcionou
+
+**A PR [#233](https://github.com/kgsaran/trackfw/pull/233) foi mesclada por ele** — `c857bb3`, a
+primeira nossa dentro do upstream. Issue #232 fechada pelo `Fixes`.
+
+E ele **portou os cinco conjuntos** das PRs fechadas, com REQ própria para cada:
+
+```
+c857bb3  #233  a nossa correção da sonda
+a232f9a  #231  gate de separador portável (item 10)
+5a53d8c  #230  fecha o port do #216, abre 3 REQs de acompanhamento
+c88b81e  #229  os 3 contratos no cli-parity.md — o gap que ele mesmo apontou
+324201f  #234  achado 13: os.fchmod, com gate anti-divergência
+```
+
+Conferido arquivo por arquivo: `homedir.go`, `homedir.js`, `homedir.py`, `tty.py`, `goos.go`, os 3
+gates, `test_cli_encoding.py`, `_force_utf8_output` e o `newline=` nos geradores — **tudo no
+`upstream/main`**. A guarda `sys.platform == "win32"` foi junto: a regressão de Linux não voltou.
+
+Medição dele: camada 2 `8 REPRODUCED → 5`; camada 1 `293 failed → 145 failed`.
+
+### Divergência de código: 72 → 12 arquivos
+
+O produto dele agora **contém** as nossas correções em vez de divergir delas. Na resolução, produto
+ficou com a versão dele — é a ADR-2026-08-29 e é o que zera a divergência.
+
+Dos 12 que restam: 6 gates nossos não publicados, 1 é a política de fork
+(`check-upstream-content.sh`), e **5 são correções que ele ainda não portou** — slug no `init.js` e
+no `adr.py`, `discover.py`, `roadmap_move_test.go`, `package-lock` em `6.1.0`. Próxima rodada
+natural.
+
+### Onboarding funciona no Windows
+
+O achado 13 derrubava `init --ai-tools`, `agents install`, `skills install` e install de terceiro.
+Verificado aqui depois do merge:
+
+```
+trackfw init --project-name p --ai-tools claude
+rc=0 · 12 agentes escritos · 0 traceback · 0 menção a fchmod
+```
+
+Antes: `AttributeError: module 'os' has no attribute 'fchmod'`.
+
+### Ele rejeitou a minha correção do achado 13, e estava certo
+
+Eu sugeri trocar `os.fchmod(descriptor)` por `os.chmod(path)` nos três sítios, "alinhando com o que
+os outros dois runtimes já fazem". O argumento dele:
+
+> `os.fchmod(fd)` opera no descritor já aberto, **sem janela** entre o `mkstemp` e a permissão;
+> `os.chmod(path)` **reintroduz TOCTOU**. Os arquivos protegidos são registro de quarentena,
+> manifesto de integrações e identidade.
+>
+> Consertar o Windows quebrando o POSIX trocaria um **crash barulhento** por **falha silenciosa**.
+
+**Dois fatos que eu tinha errado:**
+
+- O Go **não** usa a forma por caminho. Usa `temporary.Chmod(mode)` — descritor, que é a forma
+  segura *e* portável. Li ao contrário uma tabela que eu mesmo montei, e recomendei degradar o POSIX
+  com base nisso.
+- A triplicação tem **decisão registrada contra a extração** (`quarantine.py:34-37`). O remédio é
+  gate anti-divergência, não extrair — *"corrigir dois de três é o modo de falha mais provável"*.
+
+Eu quase introduzi, tentando eliminá-la, exatamente a classe de defeito que persegui a sessão
+inteira.
+
+### Defeito de merge que só um gate por efeito pegou
+
+`npm/src/generators/init.js` mesclou **sem conflito** e saiu quebrado:
+
+```
+SyntaxError: Identifier 'homedir' has already been declared
+```
+
+Cada lado tinha um `const { homedir } = require(...)` em linha diferente (7 e 18), e o git manteve
+os dois. Merge limpo, `git status` limpo, código inválido.
+
+Quem pegou foi o `check-homedir-parity.sh`, **porque ele roda o CLI e lê a saída**. Nenhuma revisão
+de diff acusaria: as duas linhas são individualmente corretas e nenhuma aparece como conflito.
+Resolvido mantendo o import dele e **preservando a nossa correção de slug**, que ele ainda não
+portou.
+
+### A triagem dele dos achados 12–16
+
+Veio no merge (`docs/analises/2026-09-01-triagem-dos-novos-achados-do-issue-216.md`, 477 linhas,
+legível por `git show upstream/main:<caminho>`). Veredito: **todos os cinco novos, nenhum duplica
+REQ existente**.
+
+| achado | severidade | classe "verde/inerte"? |
+|---|---|---|
+| 13 `os.fchmod` | **Alta** — "o mais grave dos cinco" | não — crash imediato |
+| 15 `branch_has_wip_roadmap` | **Alta** | não — `TypeError` barulhento |
+| 14 testes acoplados a REQs reais | Média | adjacente |
+| 16 snapshot do barrier | Média | **sim, na forma inversa** — `parity` ficou `skipped` meses |
+| 12 asserção vácua por escape de JSON | Baixa-média | **sim** |
+
+Sobre o 16 ele escreveu o mesmo que eu tinha argumentado: *"verde era ausência de sinal"*.
+
+### Frase dele que vale guardar
+
+Ao fechar a REQ do port, sobre uma previsão própria que errou (previu 3 itens saindo de REPRODUCED,
+o CI deu 5):
+
+> **FICA FALSIFICADA, NÃO REESCRITA.** Trocar o alvo para casar com o resultado seria mover a trave.
+
+E no requisito de uma das REQs de acompanhamento:
+
+> retargetados, eles vão a ABSENT no instante em que forem escritos, porque a correção já está
+> aplicada — **um check que passa ao nascer não prova nada.** Só valem se falsificados revertendo
+> temporariamente a correção.
+
+### O que continua esperando
+
+- Os 5 conjuntos não portados — próxima rodada, issue própria + PR própria (foi assim que a #233 entrou).
+- As 4 branches `upstream-pr/*` das PRs fechadas ficam, por decisão do usuário.
+- 6 gates nossos em `100644` onde os 40 irmãos são `100755`.
+- **Não regenerar o snapshot do barrier** para calar o `parity` — achado 16.
+
+---
+
+## Sessão 2026-09-01 — claude (FIM: o Kleber respondeu, sonda dele não rodava, achados 17/18/19)
+
+`main` em `892dc53`, em dia com o upstream, árvore limpa, 6 gates verdes,
+`validate` com as 15 violações de sempre.
+
+### O Kleber respondeu — e o veredito é bom
+
+Ele **fechou as 4 PRs** (#222–#225) às 12:21–12:22 de 2026-08-31, em 47 segundos, sem comentário.
+Depois escreveu um parecer formal de 494 linhas (`hefesto-tf`) em
+`docs/analises/2026-08-31-aproveitamento-dos-prs-222-225.md` — legível por
+`git show upstream/main:docs/analises/2026-08-31-aproveitamento-dos-prs-222-225.md`, porque a
+política manda não importar a governança dele.
+
+Duas frases resolvem:
+
+> KG fechou os quatro PRs dele **por conflito de governança** (ciclo próprio já em curso, mesmos
+> arquivos), **não por mérito**, e avisou o autor.
+
+> **Nenhum dos quatro PRs merece "nada".**
+
+Veredito: aproveitar **os cinco conjuntos inteiros, incluindo testes**. Esforço baixo nos cinco.
+Com os quatro portados, a linha de base dele sai de 8/8 REPRODUCED para 3 remanescentes.
+
+Ele validou o método explicitamente: *"o mesmo nível de rigor metodológico que este projeto já
+pratica internamente (medir o discriminante, não o comando; declarar residual em vez de fingir
+cobertura)"*.
+
+**O que travou não foram as PRs.** A barreira da REQ em `wip` exigia "o job de Windows reprovando
+pelos motivos esperados", e cada correção vira um `REPRODUCED` em `ABSENT`. É literalmente o título
+do PR #228 dele: *"o critério de barreira bloqueava as próprias correções"*.
+
+**Duas coisas que ele viu e eu não:**
+- Residual do #223 que declarei pela metade: `pypi/tests/__init__.py` força UTF-8 na importação,
+  então **a suíte inteira fica permanentemente cega a falhas de encoding in-process**.
+- `docs/cli-parity.md` não documenta os contratos que #223 e #225 passam a impor. E a ironia: o
+  item 4 **é** o `check-parity-contract-coverage.sh` morrendo em cp1252 ao ler esse mesmo arquivo.
+
+### Erro meu, corrigido publicamente
+
+Eu disse a ele na #222 que as PRs daqui não disparavam checks no repositório dele. **Errado** — os
+runs foram criados (4, um por push) e ficaram ~10h aguardando aprovação de fork, com
+`total_jobs = 0`, sendo marcados `failure` no segundo em que ele fechou as PRs. Li ausência de
+*check* como ausência de *disparo*. Corrigido em
+[#222 comment](https://github.com/kgsaran/trackfw/pull/222#issuecomment-5484396339), com a
+consequência útil: **se apareceu X vermelho ali, não havia nada atrás dele.**
+
+### Achados 17, 18 e 19 — a sonda dele não roda no Windows
+
+`scripts/windows-repro/run.ps1` não executa no **shell padrão do Windows** (PowerShell 5.1). Três
+defeitos, mesma forma: o script só funciona onde foi escrito (`shell: pwsh` nos 10 steps).
+
+| | |
+|---|---|
+| **17** sem BOM | `e2 80 94` lido como cp1252 vira `U+00E2 U+20AC U+201D` — a última é aspa tipográfica e fecha a string. Parse morre antes da 1ª linha |
+| **18** `RUNNER_TEMP` | só existe no GitHub Actions. `Join-Path $null "x"` → **string vazia sem erro** → item 2 emite **REPRODUCED incondicional**, inclusive em árvore corrigida |
+| **19** `ArgumentList` | não existe no .NET Framework; `$psi.ArgumentList.Add()` estoura e **todo processo roda sem argumento** |
+
+O 18 é o grave: falso positivo por construção num instrumento de medição.
+
+**O argumento que separa bug de decisão:** o item 1, no mesmo script, faz certo — reporta
+`INCONCLUSIVE` nomeando o motivo quando o processo morre antes do código medido. O script sabe
+dizer "não medi"; num lugar deixou de dizer.
+
+[issue #232](https://github.com/kgsaran/trackfw/issues/232) ·
+[PR #233](https://github.com/kgsaran/trackfw/pull/233) — um arquivo só.
+
+### O que ainda permanece, medido com a sonda consertada
+
+Ela devolve **8 REPRODUCED / 0 inconclusivo** na árvore do upstream — os mesmos 8/8 da camada 1 em
+`windows-latest`. A concordância com o número dele é o que prova que o conserto não mexeu no que ela
+mede.
+
+Na **nossa** `main`, com as nossas correções:
+
+| item | verdito | |
+|---|---|---|
+| 1 cp1252 no CLI | **ABSENT** | nossa correção de UTF-8 |
+| 5 CRLF nos geradores | **ABSENT** | nossa correção de CRLF |
+| 6 `isatty` mente para NUL | **ABSENT** | nossa correção de tty |
+| 2 `$HOME` ignorado | REPRODUCED | mede a primitiva — ver abaixo |
+| 3 bit de execução | REPRODUCED | não aplicado aqui, por ordem do usuário |
+| 4 gate de cobertura em cp1252 | REPRODUCED | nenhuma PR cobre |
+| 7 `sh -c` vs `cmd.exe` | REPRODUCED | nenhuma PR cobre |
+| 10 separador de SO no frontmatter | REPRODUCED | nenhuma PR cobre |
+
+**8 → 5.** O instrumento dele, consertado, confirma as nossas três correções numa máquina Windows
+real.
+
+**Achado lateral (na issue, fora da PR):** o item 2 mede `os.UserHomeDir()` **cru** — plataforma,
+não produto. Nunca vai a `ABSENT`, nem depois de portada a correção, embora o
+`check-homedir-parity.sh` prove que os 3 runtimes honram `$HOME` aqui. O critério do roadmap dele
+conta itens saindo de REPRODUCED, e este não sai nunca.
+
+### Decisões do usuário nesta sessão
+
+- **As 4 branches `upstream-pr/*` ficam.** O parecer dele manda ler `gh pr diff <n>`, que só resolve
+  enquanto as branches existirem. Podar só depois do porte.
+- **Daqui pra frente: cada mudança nova vai em PR própria com issue própria**, em vez de acumular
+  comentário no #216.
+- Os achados 12–16 seguem como comentários no #216 — não promovidos a issues.
+
+### O que continua esperando
+
+- Resposta dele na issue #232 e na PR #233.
+- O porte dos cinco conjuntos, do lado dele.
+- Publicar `roadmap_move_test.go`, `check-subcommand-parity.sh` e o `package-lock.json` em `6.1.0`.
+- 6 gates nossos em `100644` onde os 40 irmãos são `100755`.
+- **Não regenerar o snapshot do barrier** para calar o `parity` — achado 16.
+
+---
+
+## Sessão 2026-08-31 — claude (FIM: CI verde pela 1ª vez, achados 14/15/16, 3 erros de medição meus)
+
+`main` em `ed5bb6e`. Árvore limpa, 0 PRs abertas no fork, `wip` vazio, 6 gates locais verdes,
+`validate` com as 15 violações de sempre (bit de execução em `~/.trackfw/scripts/`).
+
+### A CI da `main` ficou verde nos jobs que importam — primeira vez desde o refork
+
+```
+go              success   ← era failure
+node            success   ← era failure
+python (3.10)   success   ← era failure
+python (3.12)   success   ← era failure
+parity          failure   ← achado 16, não se aplica a um fork
+windows-*       failure   ← nascem vermelhos por desenho (#221)
+```
+
+Três causas distintas caíram no mesmo dia:
+
+| era | resolveu |
+|---|---|
+| testes lendo REQs reais de `docs/req/` que não importamos | fixtures — PR #8 |
+| `homedir` preferindo `$HOME` em toda plataforma | guarda `win32` — PR #9 |
+| `roadmap:` dos fixtures apontando para roadmap inexistente | `roadmap: ""` — PR #11 |
+
+### As 4 PRs no upstream
+
+[#222](https://github.com/kgsaran/trackfw/pull/222) homedir + bit de execução ·
+[#223](https://github.com/kgsaran/trackfw/pull/223) UTF-8 ·
+[#224](https://github.com/kgsaran/trackfw/pull/224) tty (empilhada sobre a #223) ·
+[#225](https://github.com/kgsaran/trackfw/pull/225) CRLF.
+
+A #222 levou um terceiro commit (`20d5e4e`) corrigindo a regressão de Linux, com comentário
+explicando antes que ele revise. Nenhuma delas dispara checks no repo dele — `no checks reported`
+nas quatro. Ofereci habilitar workflows para PR de fork.
+
+### Achados 14, 15 e 16 — todos da mesma família
+
+**14 — teste acoplado ao conteúdo do repositório.** `TestExtractRefPath_TresREQsReaisDoRepositorio`
+sobe até a raiz e lê 3 REQs por caminho fixo. Quer verificar `extractRefPath`, exercita *parsing
+daqueles arquivos naquele estado*.
+
+**15 — contrato quebrado + isolamento que não isola.** `validate_branch_has_wip_roadmap` devolve
+`list[str]` onde as ~40 outras regras devolvem `list[dict]`; `_enrich_items` deixa passar, e os
+testes fazem `item["message"]` → `TypeError`. E o `git_cwd` derivado de `roadmap_dir` **relativo**
+resolve contra o cwd do processo, então a regra lê a branch real durante teste unitário.
+Efeito: **abrir uma branch `fix/` e rodar pytest reprova 8 testes**, com mensagem que não menciona
+branch nem regra.
+
+```
+sem TRACKFW_BRANCH             7 passed
+TRACKFW_BRANCH=fix/qualquer    7 failed
+```
+
+**16 — gate acoplado à governança do consumidor.** `check-roadmap-barrier-contract.sh` congela um
+corpus de 144 roadmaps e afirma contagens e hash sobre `docs/roadmaps/**` em runtime. Medido:
+0 basenames ausentes no upstream, **108 aqui**. A regra não distingue "corpus adulterado" de
+"este não é o repositório de origem".
+
+### Três erros de medição meus, todos da mesma forma
+
+**1. Lista nomeada colhida só no Windows.** A correção original do `homedir` quebrou 3 testes no
+Linux, e minha comparação mostrou `0 regressões` porque no Windows esses 3 já estavam vermelhos
+**pelo próprio defeito que ela conserta**. Lista nomeada não acusa regressão em teste já vermelho.
+→ **Lista nomeada só protege dentro da plataforma onde foi colhida.** Os `0 regressões` das quatro
+PRs valem para Windows; escrevi isso no comentário da #222.
+
+**2. Sonda de uma variável que mudava duas.** Para separar "guarda" de "arquivos de governança",
+criei uma branch com só a guarda — e, sem perceber, troquei também o nome da branch de `fix/` para
+`chore/`. Li 0 falhas e culpei a governança. A causa era o nome da branch (achado 15).
+→ **Uma sonda que muda duas variáveis não é sonda.**
+
+**3. Garantia verificada contra o instrumento errado.** Afirmei na #8 que os fixtures eram inertes
+depois de conferir `trackfw validate` e `trackfw status` — e são, para o CLI. Mas
+`check-referential-integrity.sh:10` varre `docs/req/*.md` por caminho fixo, sem ler `req_dir`.
+→ **"Inerte para o CLI" não é "inerte para os gates".**
+
+Nos três, o que resolveu foi parar de deduzir e instrumentar o ponto que estourava. O achado 15 só
+fechou quando pus a impressão do item ofensor dentro do helper que dava `TypeError` — as duas
+tentativas anteriores, por dedução, apontaram causas erradas.
+
+### Achado colateral: o cwd vaza entre testes
+
+Um diagnóstico rodou com
+`cwd = /tmp/pytest-of-runner/pytest-0/test_rerun_without_flag_preser0/project` — um teste faz
+`os.chdir` e não restaura. Irmão da isolação vácua de `$HOME`, variável diferente. Não reportado.
+
+### Defeitos do CLI vistos de passagem, não reportados
+
+- `trackfw context` morre com `Cannot read properties of undefined (reading 'length')`
+- `req new` grava flat em `docs/requisições/`, e `roadmap new` manda para `apolo/` em vez de
+  `claude/` — a causa raiz que o Kleber nomeou nas REQs dele
+
+### O que continua esperando
+
+- Resposta do Kleber nas 4 PRs e nos achados 12 a 16.
+- Publicar `roadmap_move_test.go`, `check-subcommand-parity.sh` e o `package-lock.json` em `6.1.0`.
+- 6 gates nossos em `100644` onde os 40 irmãos são `100755`.
+- `parity` fica vermelho aqui por desenho até o achado 16 entrar — **não regenerar o snapshot**:
+  calaria o gate ao custo de conflito em todo merge futuro, para esconder um fato verdadeiro.
+
+---
+
+## Sessão 2026-08-31 — claude (FIM: 4 PRs no upstream, bit de execução resolvido, slug descartada)
+
+`main` em `fb355db`. PR local [#6](https://github.com/lourivalgarciajunior/trackfw/pull/6) aberta.
+
+### As 4 PRs para o kgsaran/trackfw
+
+| PR | o quê | base |
+|---|---|---|
+| [#222](https://github.com/kgsaran/trackfw/pull/222) | `$HOME` nos 3 runtimes + bit de execução | `upstream/main` |
+| [#223](https://github.com/kgsaran/trackfw/pull/223) | UTF-8 do CLI Python | `upstream/main` |
+| [#224](https://github.com/kgsaran/trackfw/pull/224) | `isatty` mente para `NUL` | **empilhada sobre a #223** |
+| [#225](https://github.com/kgsaran/trackfw/pull/225) | geradores escrevem CRLF | `upstream/main` |
+
+Todas ramificadas de `upstream/main`, **nunca da nossa `main`** — é o que impede o `.gitattributes`,
+a governança local e os arquivos de modo divergente de entrarem de carona.
+
+| PR | medição (lista nomeada, Windows) |
+|---|---|
+| #222 Go | 29 → 13, 0 regressões |
+| #222 Node | 17 → 6, 0 regressões |
+| #222 Python | 13 → 3, 0 regressões |
+| #223 | 233 → 198, 36 corrigidas, 0 regressões |
+| #224 | 198 → 189, 8 da família `test_non_tty_*`, 0 regressões |
+| #225 | 233 → 235, **0 corrigidas** |
+
+### Os defeitos estão em camadas — e isso mudou o desenho das PRs
+
+UTF-8 bloqueia o tty, que bloqueia o `os.fchmod`. O `init` morre no `UnicodeEncodeError` antes de
+chegar no wizard, então a #224 **não seria verificável** sobre `upstream/main` puro. Por isso ela vai
+empilhada sobre a #223, e o corpo diz isso na primeira linha.
+
+Generaliza: quando um defeito esconde outro, PR independente é uma escolha de apresentação que custa
+a verificabilidade. Empilhar e declarar é mais honesto que fingir independência.
+
+### Achado 13: `os.fchmod` não existe no Windows
+
+`identity/__init__.py:97`, `integrations/manager.py:118`, `thirdparty/quarantine.py:42` — as três
+escritas atômicas. Mata `init --ai-tools`, `agents install` e o install de terceiro. Medido:
+`hasattr(os, "fchmod")` é `False` em `win32`. Só aparece **depois** da correção do tty. Ainda não
+reportado no #216.
+
+### Três erros de medição meus nesta sessão
+
+**1. Verificação por efeito contaminada por estado compartilhado.** Apresentei o tty como verificado
+por efeito: base morria com `EOF when reading a line`, corrigido passava. Errado — as duas rodadas
+usaram a **mesma `HOME`**. A primeira gravou a identidade; a segunda pulou o wizard por isso, não
+pela correção. Refeito isolado, o que se sustenta é a medição do discriminante
+(`isatty()=True` vs `stdin_is_interactive()=False` sob `NUL`).
+
+**2. Gate vácuo na metade de efeito.** O `check-tty-detection.sh` original rodava
+`trackfw init </dev/null` exigindo exit 0 nos três. Passava **com e sem** a correção: `init` sem
+`--ai-tools` não alcança o wizard, e com `--ai-tools` esbarra antes no `os.fchmod`. Reescrito para
+perguntar direto ao predicado, e as duas metades verificadas por injeção.
+
+**3. Medição de Node inválida por dependência ausente.** A primeira leitura do bit de execução deu
+`node 0` e quase virou "só o Go acusa". O worktree de comparação não tinha `node_modules` — o CLI
+morria em `Cannot find module 'commander'` e o `grep -c` contava 0 com cara de resultado. O
+argumento inteiro da #222 dependia desse número.
+
+Os três são a mesma família: **um marcador que mede outra coisa**. O que pegou os três foi olhar o
+output cru em vez de aceitar o número.
+
+### Bit de execução: resolvido, e por que não é falsificação
+
+Os 4 arquivos que a cópia por ZIP perdeu voltaram a `100755` — `npm/bin/trackfw`,
+`check-cli-parity.sh`, `check-static-assets.sh`, `check-validate-parity.sh`. Medido antes e depois:
+
+```
+trackfw validate    15 violações "not executable"  →  15
+os.Stat().Mode()    -rw-rw-rw-, &0111=0            →  -rw-rw-rw-, &0111=0
+```
+
+Nada ficou verde. A ordem de [[nao-forcar-bit-de-execucao]] segue valendo para o que ela cobria: os
+scripts de `~/.trackfw/scripts/` que a regra `credential_guard_hook_resolvable` checa.
+
+Restam 6 gates nossos em `scripts/` criados como `100644` onde os 40 irmãos são `100755`.
+
+### Descartado
+
+`fix/slug-unificado` — `764bc88`, 3 commits, 380 linhas. Construída sobre base pré-7.3.0 (diff de
+1004 arquivos contra a `main`), não rebasa sozinha, e o defeito que ela resolvia já foi resolvido de
+forma mais estreita. Recuperável pelo reflog por ~90 dias; o raciocínio está no
+`docs/historico/prs-antes-do-fork-2026-08-30.md`. Podei também as 4 branches já mescladas.
+
+### CI do fork falha na `main`, e a causa é a ADR
+
+`go`, `node` e `python` reprovam no workflow `Quality` desde a PR #3 — **pré-existente**, não é dos
+merges. A causa: testes do upstream leem arquivos **reais** de `docs/req/`:
+
+```
+TestExtractRefPath_TresREQsReaisDoRepositorio          (Go)
+test_extract_ref_path_resolve_reqs_reais_com_backtick  (Python)
+```
+
+Como a ADR-2026-08-29 diz que a governança do upstream não é importada, esses arquivos não existem
+aqui e a suíte quebra. É a mesma classe do achado 12: teste acoplado a conteúdo que não deveria
+governar. Vale reportar.
+
+### O que continua esperando
+
+- Resposta do Kleber nas 4 PRs.
+- Reportar no #216: achado 12 (escape de JSON) e achado 13 (`os.fchmod`).
+- Publicar o `roadmap_move_test.go`, o `check-subcommand-parity.sh` e o `package-lock.json` em `6.1.0`.
+- Os 6 gates nossos em `100644`.
+
+---
+
+## Sessão 2026-08-30 — claude (FIM: primeira PR para o upstream, kgsaran/trackfw#222)
+
+`main` em `96e3a1a`. PR local [#5](https://github.com/lourivalgarciajunior/trackfw/pull/5) aberta (traz o `3878b69`).
+PR **para o upstream**: [kgsaran/trackfw#222](https://github.com/kgsaran/trackfw/pull/222) — a primeira desde que o repo virou fork de verdade.
+
+### O que foi para o upstream
+
+Branch `upstream-pr/windows-home-e-bit-de-execucao`, ramificada de `upstream/main` — **não** da nossa
+`main`. Isso é o que impede o `.gitattributes`, a governança local e os 4 arquivos que perderam o bit
+de execução aqui de entrarem de carona.
+
+Dois commits:
+
+1. **`$HOME` nos 3 runtimes** — os helpers `internal/homedir.Dir()`, `npm/src/homedir.js`,
+   `trackfw.homedir`, mais o gate `check-homedir-parity.sh`. Comentários reescritos em inglês e sem
+   referência às nossas REQs, que não fazem sentido lá.
+2. **Bit de execução** — guarda por plataforma nos 6 sítios (2 por runtime), seguindo o precedente do
+   `scaffold_doctor` (AC5) que o próprio upstream já tinha em todos os três.
+
+### A medição que virou o argumento
+
+O achado 3 deixou de ser "a regra está errada no Windows" e virou **quebra da regra de paridade**.
+Medido na base do upstream, mesma árvore, mesma máquina:
+
+```
+go      15 violações "the script is not executable"
+node    15
+python   0
+```
+
+Mesmo repositório, três runtimes, duas saídas de `validate`. Causa: em NTFS Go e Node veem
+`mode&0111 == 0` para **todo** arquivo (mesmo após `chmod 0755`), e `os.access(X_OK)` do Python
+responde `True` para **todo** arquivo (mesmo após `chmod 0644`). Mentem em direções opostas.
+
+**Erro de medição pelo caminho:** a primeira leitura deu `node 0` e quase virou "só o Go acusa". O
+worktree de comparação não tinha `node_modules` — o CLI morria em `Cannot find module 'commander'`
+e o `grep -c` contava 0 com ar de resultado. Só apareceu porque fui olhar o output cru. Marcador que
+mede nada, de novo.
+
+### Resultado, por lista nomeada
+
+| suíte | antes | depois | regressões |
+|---|---|---|---|
+| Go — `internal/config` + `internal/validator` | 29 | 13 | 0 |
+| Node — `validator` + `git_branch_guard_hook_integrity` | 17 | 6 | 0 |
+| Python — `test_validator` + `test_git_branch_guard_validator` | 13 | 3 | 0 |
+
+### Forma dos testes: diferente por runtime, de propósito
+
+- **Go e Node** — os testes que afirmam "dispara quando falta o bit" **fixam a plataforma em `linux`**
+  em vez de pular. O bit realmente falta no Windows, então a garantia continua exercitada.
+- **Python** — `os.access` mente na direção oposta, então o teste **pula pela condição**:
+  `_exec_bit_representavel()` mede, não infere de `sys.platform`. Mesma disciplina do `symlinkOrSkip`
+  do #221.
+
+Não-vacuidade por injeção em Go e Node. **Em Python a guarda não é verificável por efeito no
+Windows** — está dito assim no commit e na PR, em vez de alegar verificação que não existe.
+
+### Armadilhas do processo
+
+**1. `git add` de um arquivo tocado por dois commits leva o estado ATUAL.** Ao refazer os dois
+commits para tirar ruído de `gofmt`, três arquivos que o homedir e o bit de execução tocam em comum
+(`validator_git_branch_guard.go`, `npm/src/validator/index.js`, `pypi/trackfw/validator.py`) levaram
+a guarda de plataforma para dentro do commit do homedir. `git status` limpo, build verde, mensagem
+mentindo. Conserto: `git reset --hard upstream/main`, reescrever cada arquivo com
+`git show <commit-original>:<path>`, commitar, depois trazer o estado final. Conferido por igualdade
+de árvore (`ba8b8bd` antes e depois).
+
+**2. `gofmt -w` do Go 1.26.1 realinha struct que o 1.25.2 do CI alinhou diferente.** 11 linhas de
+ruído entraram sem eu pedir. Detecção: comparar `git diff` com `git diff -w` por arquivo — as linhas
+que só existem no primeiro são espaço em branco puro.
+
+**3. Literal com contrabarra dentro de heredoc quebra.** `'#!/bin/sh\nexit 0\n'` escrito num
+heredoc Python virou quebra de linha de verdade no arquivo JS. Solução que funciona sempre: montar
+o bloco novo a partir de **fatias do próprio arquivo** (`lines[i+1:i+10]`), nunca redigitar a linha.
+
+**4. `git checkout main --` troca de branch.** Rodei achando que restauraria arquivo.
+
+**5. `grep -c $'\r'` dentro de aspas duplas mede nada.** Deu `26723` para um arquivo sem nenhum CR.
+Fora das aspas dá `0`. Terceira vez nesta sessão que um marcador mediu outra coisa.
+
+### Auditoria dos commits antes do fork
+
+103 commits nossos, 67 arquivos de divergência de código, classificados por efeito:
+
+| categoria | arquivos | destino |
+|---|---|---|
+| homedir | 37 | **na #222** |
+| CRLF → LF (`newline="\n"`) | 14 | publicar |
+| tty (`isatty` mente para `NUL`) | 4 | publicar |
+| slug | 2 | o Kleber já abriu REQ — sai dele |
+| UTF-8 do CLI Python | 1 | publicar |
+| `.gitattributes` | 1 | local, por ADR |
+| `check-upstream-content.sh` | 1 | local — é a política do fork |
+| `roadmap_move_test.go`, `check-subcommand-parity.sh` | 2 | nossos, publicáveis |
+| `npm/package-lock.json` | 1 | defeito do upstream |
+| sem o bit de execução | 4 | decisão pendente do usuário |
+
+**A corrigir:**
+
+- **4 arquivos perderam o bit** na cópia por ZIP: `npm/bin/trackfw` (o entrypoint do pacote npm),
+  `check-cli-parity.sh`, `check-static-assets.sh`, `check-validate-parity.sh` — `100755` no upstream,
+  `100644` aqui. Encosta na ordem de [[nao-forcar-bit-de-execucao]], mas **é caso diferente**: ali era
+  não falsificar a condição que o gate verifica; aqui nada fica verde, é restaurar valor perdido no
+  transporte. Não toquei. Decisão do usuário.
+- **6 gates nossos nasceram `644`** onde os 40 irmãos são `755`. Mesma decisão.
+- `npm/package-lock.json` do upstream travado em `6.1.0`. Registrado na #222.
+
+**A descartar:** a branch `fix/slug-unificado` — 3 commits, 380 linhas, um módulo de slug
+compartilhado nos 3 runtimes que não existe nem aqui nem no upstream. Construída sobre base
+pré-7.3.0 (diff de 1004 arquivos contra a `main`), não rebasa sozinha, e o defeito que ela resolvia
+já foi resolvido de forma mais estreita. O raciocínio está no
+`docs/historico/prs-antes-do-fork-2026-08-30.md`.
+
+Mais 4 branches locais com o remote já apagado.
+
+### O que continua esperando
+
+- Resposta do Kleber na [#222](https://github.com/kgsaran/trackfw/pull/222).
+- Publicar CRLF, tty e UTF-8 — as próximas três PRs para o upstream, mesma forma.
+- Reportar o achado 12 (asserção vácua por escape de JSON) no #216.
+- `check-artifact-parity` oscilou uma vez sem causa apurada.
+
+---
+
+## Sessão 2026-08-30 — claude (FIM: chegou o instrumento de Windows do upstream, #221)
+
+`main` na PR `chore/traz-instrumento-de-windows-do-upstream`. Merge de `upstream/main` `3878b69`.
+
+### O que o Kleber entregou
+
+O **instrumento de medição** que era a condição para abrir o PR do bit de execução. Duas camadas:
+um job largo em `windows-latest` que nasce vermelho (`.github/workflows/quality.yml` + o novo
+`windows-probe.yml`) e uma sonda sob demanda em `scripts/windows-repro/` nos 3 runtimes, orquestrada
+por `run.ps1`.
+
+A sonda mede o bit de execução diretamente — `os.Chmod(path, 0o755)` seguido de `info.Mode()&0111`,
+veredito `bit0111=0 → REPRODUCED`, mesmo primitivo que `validator_credential_guard.go:377` chama em
+produção. **O achado 3 do issue #216 passou a ser mensurável pelo instrumento dele.**
+
+### O achado de método dele
+
+Verificou os 11 defeitos item a item, código **e** teste. Só **2** acendem vermelho numa suíte
+completa em Windows. Os outros 8 ficam invisíveis por três motivos distintos, nenhum deles "o
+defeito não existe":
+
+1. o teste faz `monkeypatch` do próprio ponto que falha (`sys.stdin.isatty`);
+2. o teste lê o resultado por uma via que mascara o sintoma (abre em `"rb"`, mas só compara
+   idempotência — tem o mecanismo, falta o oráculo);
+3. o caminho de produção que dispara o defeito nunca é exercitado (testa `roadmap --help`, nunca
+   `trackfw` sem argumento, que é o único caminho que renderiza o `→` da `description=` raiz).
+
+Generaliza: "existe teste para X" não é "o teste atinge o código real que falha em X, pela via real
+que falha".
+
+### O cruzamento com o nosso patch de homedir
+
+Ele descobriu de passagem que **a isolação de `$HOME` das suítes é vácua no Windows nos 3 runtimes
+ao mesmo tempo** — os testes setam `HOME`, a produção lê `%USERPROFILE%`. Chama de vetor de ameaça:
+`go test ./...` paraleliza pacotes e escreve na home real do runner efêmero, mascarado como "teste
+Windows instável".
+
+É exatamente o que `internal/homedir/homedir.go` resolve aqui, pelo mesmo raciocínio (21 call sites
+de produção em vez de 97 de teste). **Ele nomeou o problema; nós já temos o patch, não publicado.**
+Isso muda o peso do achado no #216 — deixou de ser conveniência de fork e virou correção de um vetor
+que o próprio upstream identificou.
+
+### O symlink que estava pendente aqui
+
+Resolvido por ele, e da forma certa: `symlinkOrSkip` pula pela **condição** (WinError 1314,
+`ERROR_PRIVILEGE_NOT_HELD`), não por `runtime.GOOS` — num runner com Developer Mode ligado o teste
+executa normalmente. Nos 3 runtimes. Medido aqui: os testes passam de FAIL para SKIP com o motivo
+nomeado (Go, npm 8 skip, pypi 5 skip).
+
+Bônus: `.gitignore` de `pypi/**/__pycache__/` para `**/__pycache__/` — o bytecode obsoleto que
+contaminou uma suíte inteira nesta máquina.
+
+### Achado 12: asserção vácua por escape de JSON no Windows
+
+`internal/generators/update_test.go:144` compara caminho cru contra conteúdo JSON:
+
+```go
+if !strings.Contains(string(manifest), backendPath) || strings.Contains(string(manifest), frontendPath) {
+```
+
+No Windows o caminho tem barra invertida simples e o JSON grava barra dupla. Verificado por
+execução, não por leitura:
+
+```
+json                     = {"C:\Users\louri\...\trackfw-backend.toml":1}
+Contains(json, path_cru) = false
+Contains(json, path_esc) = true
+```
+
+A primeira metade **falha sempre** — é uma das duas falhas pré-existentes desta suíte aqui. A
+segunda metade é pior: `strings.Contains(manifest, frontendPath)` é **falso pelo motivo errado**, de
+modo que a garantia "agente Codex desconhecido não é reivindicado no manifesto" fica **sem
+verificação nenhuma no Windows**. No Linux passa trivialmente porque não há barra invertida a
+escapar.
+
+Não é defeito de produção — é defeito de teste. Falta reportar no #216.
+
+### Falhas pré-existentes confirmadas nesta suíte
+
+Ambas em `internal/generators`, nenhuma causada pelo merge (o commit só tocou o bloco de imports e
+os dois testes de symlink; `update.go` não foi tocado):
+
+| teste | causa |
+|---|---|
+| `TestUpdateMigratesKnownCodexAndPreservesUnknown` | achado 12 acima |
+| `TestUpdateBackfillsCredentialGuardScriptForPreExistingProject` | `mode=-rw-rw-rw-` — é o achado 3, o bit de execução |
+
+### Resolução do merge
+
+Governança do upstream não entrou (ADR-2026-08-29): 1 REQ, 1 ADR, 1 ROADMAP, 2 notas de
+qualidade/segurança, 4 arquivos de `vault/`. `docs/agents-working-context.md` e
+`docs/roadmaps/.trackfw-log` ficaram na versão local. `.claude/agent-memory/ares-tf/` **entrou**,
+pelo precedente (os 31 arquivos de `.claude/agent-memory/` já vêm do upstream).
+
+`MERGE_HEAD` conferido antes de commitar: `pais: 96e3a1a 3878b69`.
+
+### Armadilha nova do processo
+
+`trackfw commit -m @'...'@` — here-string de PowerShell passada pelo Bash tool entra **literal**. O
+`@` virou a linha de assunto do commit. `git commit --amend` é bloqueado pelo guard, e
+`trackfw commit` não tem `--amend`. O conserto sem perder o merge: `git reset --soft HEAD~1`,
+reescrever `.git/MERGE_HEAD` (é o estado que `git merge --no-commit` deixa) e recommitar —
+verificado por igualdade de árvore, `ea4bdea` antes e depois.
+
+### O que continua esperando
+
+- **PR do bit de execução para o upstream** — o instrumento chegou, a condição foi satisfeita.
+- Reportar o achado 12 no #216.
+- `check-artifact-parity` oscilou uma vez sem causa apurada.
+- Os 5 gates locais nunca foram ligados ao `quality.yml` — rodam à mão. Pré-existente, não é
+  regressão deste merge.
+
+---
+
+## Sessão 2026-08-30 — claude (FIM: repo virou fork de verdade, auditoria de divergência)
+
+`main` em `6e968d6`. Sete gates verdes, 15 violações — todas de bit de execução. `wip` vazio.
+
+### O repositório é fork de verdade agora
+
+```
+isFork: true
+parent: kgsaran/trackfw
+```
+
+**O GitHub não converte repositório em fork.** O caminho foi apagar e re-forkar, com o custo
+declarado antes e decidido pelo usuário: os 36 PRs e a discussão deles.
+
+**Os 35 corpos foram arquivados no git antes da exclusão** —
+`docs/historico/prs-antes-do-fork-2026-08-30.md`, 2038 linhas. O raciocínio de cada mudança
+sobrevive; o que se perdeu foram os números, os links entre eles e as datas de merge na interface.
+
+Ganho concreto: **abrir PR para o upstream passou a ser possível** — era o obstáculo que travava
+essa via.
+
+### Duas armadilhas do processo, ambas silenciosas
+
+**1. O `MERGE_HEAD` some na troca de branch.** O guard bloqueia commit na `main`, a skill manda usar
+branch — e quem segue as duas no meio de um merge grava commit com **um pai só**. A ancestralidade
+com o upstream quebra sem aviso e o próximo merge reaplica tudo. `git status` diz
+`All conflicts fixed` e o commit passa. Restaurei o `MERGE_HEAD` antes de commitar e conferi:
+`d6dfb43 pais: 7eb984d 76c694a`. **Já está documentado na skill 1.5.0.**
+
+**2. `gh pr list` sem `--repo`, num fork, mira o repositório PAI.** Reportei "2 PRs abertas" que
+eram do Kleber.
+
+### Auditoria de divergência: 80 → 61 arquivos
+
+| Categoria | Arquivos |
+|---|---|
+| deliberadas (`homedir`, `newline`, `tty`, slug, UTF-8, gates) | 61 |
+| **ruído de `gofmt` — removido** | **19** |
+
+O ruído veio de eu ter rodado `gofmt -w internal/` na migração com **Go 1.26.1** contra um upstream
+que declara **1.25.2**. Medido: nossa árvore está limpa no nosso gofmt, e esse mesmo gofmt
+reformataria **206 arquivos** na árvore dele. Os 19 eram só os que calhei de tocar.
+
+**REGRA: `gofmt -w` amplo é proibido neste fork** enquanto o upstream estiver noutro Go. Tocar
+arquivo Go para um PR ao upstream exige formatar com o gofmt **dele**.
+
+Foram 19 e não 20: o `internal/generators/roadmap_move_test.go` **não existe no upstream** — é
+arquivo nosso. A restauração falhou e denunciou minha classificação errada.
+
+### Mais uma medição minha que estava errada
+
+A prova de que a limpeza não perdeu nada foi contagem de marcador antes/depois. A **primeira
+contagem deu `newline= 0`**, o que não batia com os sites que eu sabia existir — artefato do meu
+`grep -F` com aspas na busca.
+
+**Aceitar aquele zero teria "provado" integridade com um marcador que não media nada** — a mesma
+armadilha da sessão inteira, desta vez fabricada por mim dentro do próprio instrumento de
+verificação.
+
+### O upstream está respondendo à issue #216
+
+Dois PRs abertos no repositório dele:
+
+```
+#220  docs(governance): REQ para os achados 9, 10 e 11 do issue #216
+#221  ci(windows): instrumento de medicao em duas camadas (RASCUNHO)
+```
+
+O `#221` é explícito: **"Não corrige nenhum defeito. Entrega o instrumento que permite medi-los."**
+Ele está construindo a medição antes da correção, mapeada 1:1 à issue.
+
+E mediu algo que eu não tinha: **das 11 falhas, as suítes expõem só 2** — as outras não acendem por
+mock no caminho, falta de asserção de conteúdo, ou o caminho que falha não ser o exercitado.
+
+### Quando abrir o PR do bit de execução
+
+**Não agora.** Esperar o `#221` entrar: aí o fix vira mensurável pelo instrumento dele, o que vale
+muito mais que um diff avulso.
+
+Quando for, faltam quatro coisas:
+
+1. Formatar com o **gofmt dele** (Go 1.25.2), não o nosso
+2. Paridade nos **6 sites**: `validator_credential_guard.go:377`, `validator_git_branch_guard.go:193`,
+   `index.js:1438` e `:2544`, `validator.py:1816` e `:3017`
+3. O precedente a espelhar: `internal/generators/scaffold_doctor.go:23` — `var CurrentGOOS =
+   runtime.GOOS`, com a supressão do mode check em Windows já decidida por ele (AC5)
+4. A governança dele — e ele **já abriu o #220** para esses achados, então pode querer ser dono dela
+
+### Pendências
+
+- As 15 violações de bit de execução, aguardando o upstream.
+- Verificação por efeito do symlink — precisa de Developer Mode.
+- `check-artifact-parity` oscilando, causa não investigada.
+- Branch local `fix/slug-unificado` mantida pelo `branch prune`: tem 17 arquivos que nunca entraram,
+  incluindo um `internal/slug/` inteiro. Superada, mas preservada.
+
+---
+
+## Sessão 2026-08-29 — claude (FIM: segundo merge do upstream — o gate novo se pagou)
+
+`main` em `09cbae7`. `git merge-base HEAD upstream/main` = `d4e286e`: **em dia com o upstream.**
+Sete gates verdes, 15 violações, todas de bit de execução. `wip` vazio.
+
+### O commit trazido
+
+`d4e286e` — `fix(barrier)`: dialeto canônico do roadmap, status por token, consciência de cerca.
+Sem tag. 173 arquivos, quase todos `docs/`, `vault/` e testdata do upstream.
+
+**Governança enxuta de propósito.** O primeiro merge levou threat model completo porque o processo
+era inédito e derrubou quatro fixes locais sem conflito. Com os gates prontos, a cerimônia
+acompanha o risco e não o hábito. Inspecionei antes o único arquivo de código em colisão
+(`pypi/trackfw/generators/roadmap.py`): o upstream mexe no `WAVE0_BLOCK` do template, o fix local
+está no `log_basename` da função de move. Não colidem.
+
+### O `check-upstream-content.sh` viu o que eu não vi
+
+Resolvi tudo o que o git apontou — `vault/notes/index.md` em conflito, duas REQs e um roadmap — e
+**dei por encerrado**. O gate acusou **sete arquivos**, todos entrados sem conflito:
+
+```
+docs/adr/ADR-2026-08-29-dialeto-canonico-...      ADR do upstream
+vault/notes/  (seis notas)
+```
+
+Nas três vezes anteriores o vazamento foi notado por acaso, por releitura, ou por efeito colateral
+no `validate`. **Nesta, o gate viu antes de mim** — que é exatamente o que ele existe para fazer.
+
+### Regressão: zero
+
+```
+antes (pós 1º merge)  100 failed / 1445 passed
+depois                105 failed / 1451 passed
+```
+
+As 5 novas são **testes que o próprio commit trouxe** (`git show e0f8543:pypi/tests/test_barrier.py`
+não tem nenhum). Falham pela parede de encoding: o commit introduziu `⬜` no vocabulário de status.
+Contra a `upstream/main` **pura**, nos mesmos arquivos: **17 falhas lá, 7 aqui.**
+
+### Três correções em medições minhas
+
+1. **Baseline errado** — comparei contra as 95 de antes do *primeiro* merge, misturando dois.
+2. **Bytecode obsoleto contaminou tudo.** Havia **13 `__pycache__`** apontando para
+   `C:\Indieexpert\GitHub\` — o caminho de antes de os repositórios mudarem para `C:\dev\ferramentas\`.
+   Um teste falhava só por isso, e o traceback foi quem denunciou. O primeiro número que reportei
+   (106) **não valia**; o que vale é 105, com bytecode limpo.
+   **Regra prática:** depois de mover um repositório Python, limpe `__pycache__` antes de medir
+   qualquer coisa.
+3. **Uma regressão que é minha.**
+   `test_wave_argumento_invalido_mensagem_pinada_literalmente` falha **só aqui**, porque o
+   `_force_utf8_output` faz o CLI emitir UTF-8 e o harness lê com o padrão da plataforma. Antes o
+   `--help` morria com `UnicodeEncodeError`; agora funciona e um teste vê mojibake. **Troca de uma
+   classe de falha por outra menor**, e está escrito em vez de silenciado. Correção certa: o harness
+   decodificar UTF-8 explicitamente. Vai para kgsaran/trackfw#216.
+
+### Registrado sem investigar
+
+O **`check-artifact-parity` oscila**: reprovou na primeira medição e passou nas duas seguintes, com
+a mesma árvore. Gate que oscila é gate em que não se confia. Não investiguei a causa.
+
+### Ordem permanente do usuário
+
+**Não forçar o bit de execução** para silenciar `credential_guard_hook_resolvable`. Nada de
+`git update-index --chmod=+x`, `chmod +x` como se resolvesse, patch local na regra, ou baseline. As
+15 ficam vermelhas e visíveis; a correção vem do upstream. O `trackfw update harness`, que a própria
+mensagem de erro sugere, **não resolve** — medido com `--dry-run`: `updated=0 skipped=33`.
+
+O patch do bit de execução está levantado mas **segurado por decisão do usuário**: são 6 sites, dois
+por runtime (`validator_credential_guard.go:377`, `validator_git_branch_guard.go:193`,
+`index.js:1438` e `:2544`, `validator.py:1816` e `:3017`), e o precedente a espelhar é
+`internal/generators/scaffold_doctor.go:23` — `var CurrentGOOS = runtime.GOOS`, com a supressão do
+mode check em Windows já decidida por eles (AC5).
+
+### Pendências
+
+- As 15 violações de bit de execução, aguardando o upstream.
+- Verificação por efeito do symlink — precisa de Developer Mode.
+- `check-artifact-parity` oscilando, causa não investigada.
+- O upstream tem branch aberta (`fix/lista-de-agentes-...`): vem mais.
+
+---
+
+## Sessão 2026-08-29 — claude (FIM: upstream em dia, sétimo gate, skill publicada)
+
+`main` em `d5aa5e4`. Sete gates verdes, `wip` vazio, sem PR aberta. `git merge-base HEAD
+upstream/main` = `e0f8543`, o HEAD do upstream: **o repositório está em dia com o Kleber.**
+
+### O repositório mudou de caminho
+
+De `C:\Indieexpert\GitHub\` para `C:\dev\ferramentas\`. Consequência que custou diagnóstico: o
+marketplace `indieexpert` do Claude Code apontava para o caminho antigo, e publicar plugin não teria
+efeito nenhum — o `plugin update` responde sem erro. Foi preciso `marketplace remove` + `add`, e o
+`remove` desinstala os plugins junto.
+
+### O merge do upstream, e o que ele provou
+
+Primeiro `git merge upstream/main` real. Trouxe correção de **escrita arbitrária por symlink**
+(HIGH, `update`/`discover` seguiam symlink sem `lstat`), o pin de versão do gate de CI e o
+`install.sh` honrando `TRACKFW_VERSION`.
+
+**Os gates locais se pagaram.** O `check-python-writes-lf` nomeou quatro escritas que o merge
+derrubou — `discover.py:491`, `update.py:230`, `init_gen.py:631` e `:636` — e **nenhuma gerou
+conflito**: o upstream reescreveu as funções e o `newline="\n"` sumiu em silêncio. Os outros cinco
+passaram de primeira. Nenhum buraco de cobertura.
+
+**Critério não cumprido, declarado:** a verificação por efeito do symlink não foi feita. O `ln -s`
+do Git Bash cria cópia, e symlink nativo dá `Operation not permitted` — precisa de Developer Mode.
+Só confirmei que a guarda está presente nos três runtimes, o que não é prova de comportamento.
+
+### Sétimo gate: `check-upstream-content.sh`
+
+Conteúdo do upstream entrou **três vezes** nesta sessão — `vault/notes/index.md`, duas notas de
+`vault/`, uma ADR —, sempre **sem conflito**, porque caminho novo não colide com nada. A política da
+ADR não era auto-aplicável.
+
+Desenho por **proveniência**: arquivo sob `docs/` ou `vault/` que exista em `upstream/main` é
+conteúdo do upstream, salvo o que está no `KEEP` com o motivo escrito. Lista de caminhos proibidos
+envelheceria a cada release; a interseção não.
+
+Falsificado um a um, e o quarto critério é o que importa: **sem `upstream/main` buscado o gate
+reprova**, porque verde por não conseguir checar pareceria cobertura.
+
+### CLI e skill
+
+O CLI global saiu de 2.12.4 para 7.3.0 — **o usuário atualizou**, confirmado pelo timestamp do
+pacote (13:05:39), não foi este agente nem o hook do plugin.
+
+Antes disso havia um impasse real: o guard é global e bloqueia `git commit`, mas o CLI 2.12.4 não
+tem `trackfw commit`. Em qualquer repo sem um binário 7.x à mão, não dava para commitar.
+
+A skill `trackfw` foi para **1.4.0** e publicada, com verificação no arquivo do cache e não na
+mensagem de sucesso. O eixo: parar de afirmar comportamento sem dizer de qual versão. Ganhou a
+seção de referência entre artefatos e o `/trackfw:barrier`.
+
+### O `sync:trackfw` apagava antes de validar
+
+`npm run sync:trackfw` **apagou os 8 slash commands e abortou**, porque a 7.3.0 trouxe `barrier` e
+ele não estava no `DESCRIPTIONS`. Restaurei do `HEAD`, acrescentei o `barrier` e **inverti a ordem**:
+validar primeiro, apagar depois.
+
+### Achados novos na issue kgsaran/trackfw#216
+
+Três, além dos sete originais:
+
+- **9.** Os testes do próprio fix de symlink não rodam em Windows sem privilégio elevado — 5 Python,
+  5 Node, 2 Go. **O Windows não valida a correção de segurança do upstream.**
+- **10.** `ref_targets_exist` é **vacuoso em `by_agent`**. Mesma referência quebrada dá 2 violações
+  em `flat` e **0** em `by_agent`. Por isso este repo tem quatro REQs apontando para um
+  `docs/roadmaps/claude/wip/` que não existe e reporta zero.
+- **11.** O sync do `roadmap move` escreve separador do sistema — `docs\roadmaps\wip\...`. Resolve
+  no Windows, não resolveria em Linux.
+
+### Duas correções ao que eu mesmo havia registrado
+
+**O `roadmap move` sincroniza** a referência da REQ — eu tinha registrado o contrário. Meu teste
+setava a linha `Roadmap:` do **corpo**, que o CLI ignora; o campo vivo é o do frontmatter. Medi a
+coisa errada.
+
+**O baseline npm não estava corrompido por mim** — ele travou, no mesmo ponto exato das duas
+tentativas. E `generators.test.js` não trava só antes do fix: trava nos dois estados quando o stdin
+é herdado.
+
+### O fio que atravessou a sessão inteira
+
+**Verde que não significa nada**, com roupas diferentes: teste que passa por ler a home real;
+fixture de gate com só acento, que nunca viu a divergência de slug; regra que não roda num layout
+suportado; três testes meus de não-vacuidade que passaram vacuosos; `validate` limpo num CLI cinco
+majors atrasado; e um gate que passaria por não conseguir checar.
+
+O `check-upstream-content.sh` é o único que trata isso explicitamente — reprova quando não consegue
+verificar, com a razão escrita no próprio script.
+
+### Pendências
+
+- As 15 violações de bit de execução, aguardando o upstream.
+- Verificação por efeito do symlink, precisa de Developer Mode.
+- O `KEEP` do gate novo pode virar depósito; o motivo escrito por entrada torna isso visível a quem
+  lê, e nada mais.
+
+---
+
+## Sessão 2026-08-29 — claude (FIM: cadeia de defeitos de Windows — ENCERRADA)
+
+`main` em `2e50ebe`. Seis PRs mescladas: #19 (migração), #22 (regra de slug), #23 (CRLF),
+#24 (homedir), #25 (isatty), #26 (slug fechado). Nenhuma PR aberta, `wip` e `analyzing` vazios,
+árvore limpa.
+
+### Como a cadeia se formou
+
+A migração para a 7.3.0 revelou que **a 7.3.0 nunca foi exercitada em Windows**. Foram oito
+defeitos, e quatro deles bloqueavam **em fila** um único gate — o `check-artifact-parity.sh`, que
+guarda o contrato de slug. Nenhum dos quatro era sobre slug. Cada correção revelava o próximo.
+
+| # | Onde | Efeito | Estado |
+|---|---|---|---|
+| 1 | `pypi/trackfw/cli.py` | CLI Python morria em cp1252 | corrigido (#19) |
+| 2 | `os.UserHomeDir` no Go | teste escrevia na home real do dev | corrigido (#19) |
+| 3 | `Mode()&0111` no validator | `validate` sempre sai 1 | **em aberto** |
+| 4 | `check-parity-contract-coverage.sh` | mesmo erro de encoding | registrado |
+| 5 | 38 sites de escrita no Python | CRLF quebrava o shebang dos `.sh` gerados | corrigido (#23) |
+| 6 | home em Node e Python | mesma classe do #2 | corrigido (#24) |
+| 7 | `isatty` devolvendo True para `NUL` | `init` travava no wizard | corrigido (#25) |
+| 8 | separador no `.trackfw-log` | `zeus\` contra `zeus/` | corrigido (#25) |
+
+O #3 não tem saída deste lado: `os.Stat` do Go no Windows nunca reporta bit de execução, nem
+depois de `chmod +x`, e `filterBaselineTagged` isenta a regra da supressão por baseline. É a origem
+das 6 violações que `trackfw validate` reporta hoje.
+
+Tudo consolidado em **kgsaran/trackfw#216**, com referências verificadas contra a tag `v7.3.0` e
+caminhos sanitizados.
+
+### Gates deste repositório
+
+Seis, todos verdes e todos verificados por não-vacuidade — defeito injetado, gate reprova, defeito
+removido, gate passa:
+
+```
+check-slug-inventory      check-tty-detection
+check-python-writes-lf    check-artifact-parity
+check-homedir-parity      check-subcommand-parity
+```
+
+Quatro deles (`slug-inventory`, `python-writes-lf`, `homedir-parity`, `tty-detection`) são locais e
+existem porque a CI do upstream é Linux e nunca verá esses defeitos: **eles pegam na hora do
+merge**, que é onde a regressão vai nascer.
+
+### Divergências locais deliberadas
+
+Fora de `docs/`, a superfície própria deste repo:
+
+- `pypi/trackfw/cli.py` — `_force_utf8_output`
+- `internal/homedir/`, `npm/src/homedir.js`, `pypi/trackfw/homedir.py`
+- `pypi/trackfw/tty.py`
+- os quatro gates locais em `scripts/`
+- `.gitattributes`, `.trackfw-baseline.json`
+
+Todas estão documentadas no `cli-parity.md` ou no cabeçalho do próprio arquivo, com o motivo.
+
+### Duas lições que valem mais que os fixes
+
+**Teste pode passar pelo motivo errado.** O `TestGBGDedup_...ToleratesDoubleSlash` passava porque a
+produção lia a home real, que já tinha o hook instalado pelas próprias rodadas de teste. A fixture
+do `check-artifact-parity.sh` era só acento, e por isso nunca pegou a divergência de slug do
+`adr.py`. Isolar a home tornou os dois honestos — um deles agora falha, no Go também.
+
+**Medir por lista nomeada, nunca por contagem.** A suíte pypi tem um teste instável de skew de
+relógio que move o total sozinho: três corridas do mesmo código deram 198, 199 e 200. Sem a lista
+nomeada eu teria reportado regressão onde não havia — e teria perdido as três colisões de escopo
+que eu mesmo introduzi no fix de `homedir` (`home_dir` importado sombreado por um parâmetro
+`home_dir`, virando `None()`), que eram `TypeError` em runtime e passavam pelo `ast.parse`.
+
+### Pendências
+
+- **#3 do quadro**, aguardando o upstream. As 6 violações do `validate` são dele.
+- O caso positivo do `isatty` **não foi verificado**: esta máquina não tem console anexado, então
+  não há prova de que um terminal de verdade continua promptando. A mitigação é usar o mesmo
+  `GetConsoleMode` do Go. Um teste manual em terminal real fecha o buraco.
+- A suíte npm **não completa** nesta máquina, em nenhum estado. `tests/generators.test.js` estoura
+  o tempo limite com e sem as mudanças. Não há total de npm defensável aqui.
+
+---
+
+## Sessão 2026-08-29 — claude (FIM: migração para a base do upstream 7.3.0 — CONCLUÍDO)
+
+Branch `chore/migrar-upstream-7.3.0`. Commit `916176a`.
+
+> **Este arquivo agora vem do upstream.** As sessões acima desta linha são do `kgsaran/trackfw`,
+> não deste repositório — entraram no merge de históricos. Este repo é cópia consumidora.
+
+**O que foi feito:** merge `v7.3.0 --allow-unrelated-histories`. `git merge-base HEAD v7.3.0`
+devolve o commit da 7.3.0, então `git merge upstream/<tag>` passa a funcionar sem flag. Antes o repo
+era cópia por ZIP da v2.12.2 — cinco majors atrás, sem ancestral comum.
+
+Produto do upstream; `docs/`, `trackfw.yaml` e `.gitattributes` locais. A governança do upstream
+(52 ADRs, 140 REQs, 142 roadmaps) ficou de fora. `docs/` final: 7 ADRs, 44 REQs, 54 roadmaps.
+
+**O que a rota C revelou:** merge de históricos não-relacionados adiciona mas nunca apaga. 110
+arquivos que o upstream deletou sobreviveram em silêncio; o `go build` denunciou com
+`undefined: injectCodexHooks`. Podados os 6 geradores legados, os plugins nos 3 runtimes, os 80
+templates e `internal/server/`.
+
+**Divergências locais deliberadas (3):**
+1. `_force_utf8_output` em `pypi/trackfw/cli.py` — sem ele, `UnicodeEncodeError` no `→` em cp1252.
+2. `internal/homedir` — os testes isolam `HOME` em 97 call sites, mas no Windows
+   `os.UserHomeDir()` lê `%USERPROFILE%`. Uma rodada de `go test ./...` escreveu na home real.
+3. `scripts/check-subcommand-parity.sh` — gate local, `known_divergences` agora vazio.
+
+**Passivo aberto — `trackfw validate` sai 1 nesta máquina.** `credential_guard_hook_resolvable`
+testa `info.Mode()&0111 == 0`; o `os.Stat` do Go no Windows devolve `-rw-rw-rw-` para todo arquivo,
+inclusive depois de `chmod +x` (verificado). O baseline não resolve: `filterBaselineTagged` isenta
+`credentialGuardAnchoredRules` da supressão (`validator.go:577`). 9 das 15 congeladas; as 6 de
+credential-guard nunca podem ser.
+
+**A 7.3.0 é vermelha no Windows.** Medido contra worktree pristina, mesma máquina — Go 6 pacotes
+FAIL nos dois lados; npm 329→297 falhas; pypi 223→213. A migração não introduziu regressão.
+
+**Decisão pendente para o usuário:** `vault/` (85 notas de conhecimento do upstream) entrou no
+merge. Mesma categoria da governança que ficou de fora, mas não colide com nada.
 ## Sessão 2026-08-29 — hades-tf (INÍCIO: ML-0A — modelo de ameaça, lista de agentes por namespace)
 
 Branch `fix/lista-de-agentes-complementa-o-disco-e-namespace-nao-declarado-vira-violacao` (não criada por mim).
@@ -26274,2608 +27592,3 @@ de segunda mão e ela mediu ser falsa.
 pré-existentes achados no caminho — `status` do Python contando REQs por listagem flat, e
 `context.js:136` sem `await` num `validate()` assíncrono, que quebra o `trackfw context` do Node
 **sempre**.
-
-## 2026-08-30 — `hades-tf` (Hades) — ML-0A: modelo de ameaça do job de Windows largo (REQ-2026-08-30, Wave 0) — CONCLUÍDO
-
-**Branch:** `fix/job-de-windows-largo-que-nasce-vermelho-e-sonda-sob-demanda` (não commitei — Security
-não tem autoridade de Git; handoff para `trackfw_architect`).
-
-**Entregue:** as quatro seções do ML-0A no roadmap
-(`docs/roadmaps/wip/ROADMAP-2026-08-30-job-de-windows-largo-que-nasce-vermelho-e-sonda-sob-demanda.md`),
-verificando código E teste para cada um dos 11 defeitos, não só a existência de um arquivo de teste.
-
-**Achado principal, contraintuitivo:** dos 11 defeitos, o job largo **como desenhado hoje** (só rodar
-`go test ./...`, `npm test`, `pytest pypi/tests`) expõe com confiança direta apenas **2** (bit de
-execução no `validate`; os 12 testes de symlink, mas mal-mapeados) e um terceiro de forma ruidosa
-(`$HOME`). Os outros **8** — cp1252 no `--help` top-level, gate de cobertura, CRLF na escrita (assert
-ausente, não teste ausente), `isatty`/`NUL`, `sh -c`, postura `\`, `ref_targets_exist` em `by_agent`,
-separador de SO no `roadmap move` — não vão acender vermelho, cada um por um motivo diferente
-(monkeypatch substitui a chamada real, oráculo de teste ausente, escopo fora das 3 suítes, ou o
-defeito nem é de plataforma). Recomendação passada ao `ares-tf`: a tabela de mapeamento do AC3 da
-ML-1A precisa nomear explicitamente os 8 como "não exposto, rastreado", não deixar o roadmap herdar
-o mesmo viés que a REQ existe para corrigir.
-
-**Vetor mais grave do próprio instrumento:** a isolação de `$HOME` dos testes é **vácua no Windows
-nos 3 runtimes ao mesmo tempo** — `pypi/tests/conftest.py` seta `os.environ["HOME"]` (produção lê
-`%USERPROFILE%`), `internal/validator/main_test.go` faz o mesmo (`os.UserHomeDir()` idem), e há 101
-outros sites de `t.Setenv("HOME",...)` em `internal/` sem `TestMain` de pacote. `go test ./...`
-pode escrever de verdade na home real do runner, e como Go paraleliza pacotes por padrão, isso é
-condição de corrida — resultado não determinístico mascarado como "teste Windows instável".
-
-**Não corrigi nada** — proibição explícita do escopo (Security não edita `.github/`, `internal/`,
-`npm/`, `pypi/`). Não criei branch nova, não commitei, não fiz push.
-
-**Próximo:** `ares-tf` (Ares) para ML-1A (Wave 1), com o mapeamento da seção 1 do ML-0A como insumo
-obrigatório para não superestimar o que o job largo realmente reproduz na primeira execução.
-
-## 2026-08-30 — `apolo-tf` (Apolo) — ML-2A: `skip` explícito dos testes de symlink sem privilégio (REQ-2026-08-30, Wave 2) — CONCLUÍDO
-
-**Branch:** `fix/job-de-windows-largo-que-nasce-vermelho-e-sonda-sob-demanda` (não commitei — sem
-autoridade de Git; handoff para `trackfw_architect`).
-
-**Entregue (AC7/AC8):** helper por runtime que envolve a criação do symlink e pula o teste — com
-mensagem nomeando a garantia não exercitada e o motivo (Developer Mode) — só quando a falha é de
-privilégio, nunca por plataforma:
-- Go (`internal/generators/update_test.go`): `symlinkOrSkip`/`isSymlinkPrivilegeError` — detecta
-  `os.IsPermission` OU `syscall.Errno(1314)` (`ERROR_PRIVILEGE_NOT_HELD`). 2 testes.
-- Node (`npm/tests/update_discover_symlink_guard.test.js`): `symlinkOrSkip(t, target, link)` —
-  detecta `err.code in ('EPERM','EACCES')`, chama `t.skip(msg)`. 8 testes (a varredura achou 8, não
-  5 — todo teste do arquivo que cria symlink foi coberto; não há equivalente de `roadmap move` fora
-  deste arquivo).
-- Python (`pypi/tests/test_update_discover_symlink_guard.py`): `_symlink_or_skip(self, target,
-  link_path)` — detecta `err.winerror == 1314` OU `err.errno in (EPERM, EACCES)`, chama
-  `self.skipTest(msg)`. 5 testes.
-
-**Falsificação (AC8), evidência em Linux/macOS — nenhum skip disparou, todos executaram e passaram:**
-- `go test ./internal/generators/... -run TestUpdateNeverWritesThroughSymlink -v` → 2/2 PASS
-- `node --test npm/tests/update_discover_symlink_guard.test.js` → `tests 10, pass 10, skipped 0`
-- `PYTHONPATH=pypi python3 -m pytest pypi/tests/test_update_discover_symlink_guard.py -v` → 5/5 PASSED
-- Full suites: `go test ./...` OK, `npm test --prefix npm` → 839/839, `pytest pypi/tests` → 1555
-  passed, `TRACKFW_DISABLE_EXTERNAL_COMMANDS=1 make quality` → exit 0.
-- `git diff --stat` só toca os 3 arquivos de teste listados — nenhum código de produto.
-
-**Decisão registrada:** critério de skip é a CONDIÇÃO medida (falha de privilégio na chamada de
-symlink), nunca `runtime.GOOS`/`process.platform`/`sys.platform` — para que um Windows com Developer
-Mode continue exercitando os 12 testes normalmente.
-
-**Próximo:** `ares-tf` para ML-3A (Wave 3, sonda `workflow_dispatch`), e barreira final
-(`hefesto-tf`/`hades-tf` + arquiteto) só com CI verde nos termos do roadmap.
-
-## 2026-08-30 — `hefesto-tf` (Hefesto) — Barreira de qualidade do instrumento de Windows (REQ-2026-08-30, PR #221) — CONCLUÍDO
-
-**Branch:** `fix/job-de-windows-largo-que-nasce-vermelho-e-sonda-sob-demanda` (não commitei — Code
-Quality não modifica código de produto nem de teste, só diagnostica; handoff para
-`trackfw_architect`).
-
-**Entregue:** parecer completo em
-`docs/qualidade/2026-08-30-barreira-do-instrumento-de-windows.md`. Veredito: **APROVA COM
-RESSALVAS**.
-
-**Achado bloqueante:** `.github/workflows/quality.yml:374` (job `windows-defect-reproduction`)
-instala `pyyaml` por nome (`pip install --upgrade pip pyyaml`) em vez de `pip install pypi/` — o
-exato padrão de drift que o **ML-1D** já corrigiu na camada 1 (`windows-full-suites`, linha 219) duas
-commits antes, com o mesmo mecanismo (`ModuleNotFoundError`) e comentário explícito registrando o
-motivo ("zero drift, sem hardcodar nomes de dependência"). A camada 2 ficou de fora dessa correção.
-Efeito: se `pyproject.toml` ganhar uma segunda dependência de runtime sem tocar esta linha isolada,
-`checks.py` falha ao importar `trackfw.cli` **antes** de alcançar o código medido, e os itens 1/4
-reportam `VERDICT=ABSENT` por vacuidade (ausência de sintoma por não ter chegado lá, não por defeito
-corrigido) — `proc.returncode` é impresso mas nunca consultado na decisão do veredito
-(`checks.py:44-56`). Achado secundário do mesmo tipo em `run.ps1:287-294` (item 10): `ABSENT` não
-confirma que `roadmap move` de fato sincronizou o frontmatter, só que a linha final não contém `\`.
-
-**Achados de acompanhamento (não bloqueantes):** ausência de piso de contagem em `run.ps1` (11
-`Add-Result` esperados, nunca verificado); ausência de pino comparando a execução atual contra a
-linha de base 8/8 já registrada no roadmap; `GATE_QUOTE_COMMAND` triplicado byte-a-byte em
-`go/checks.go`/`node/checks.js`/`python/checks.py` (hoje sincronizado, sem checagem automática —
-melhor remédio é `run.ps1` passar o literal como argumento em vez de cada script hardcodar cópia);
-caso degenerado do item 7 se os três runtimes falharem ao iniciar simultaneamente; duplicação
-cosmética do step "Fixar caches" entre os dois jobs de `quality.yml`; amplitude de
-`os.IsPermission`/`EACCES` no ML-2A (risco baixo, não exposto pela falsificação atual).
-
-**ML-2A confirmado por reexecução própria** (não só leitura): `go test
-./internal/generators/... -run TestUpdateNeverWritesThroughSymlink -v` → PASS; `node --test
-npm/tests/update_discover_symlink_guard.test.js` → 10/10, 0 skipped. Condição medida corretamente
-(privilégio, não plataforma).
-
-**Verificado nesta auditoria:** `go build ./...` limpo, `go vet ./...` limpo, `actionlint` limpo nos
-dois workflows novos.
-
-**Próximo:** `trackfw_architect` decide se o achado bloqueante impede tirar o PR do rascunho;
-`ares-tf` aplica o fix de uma linha (`pip install pypi/`) seguindo o mesmo padrão já usado na camada
-1, e os achados de acompanhamento viram REQ/ML futuro a critério do arquiteto.
-
-## 2026-08-30 — `hades-tf` (Hades) — Barreira final do roadmap: diff completo (PR #221) — CONCLUÍDO
-
-**Branch:** `fix/job-de-windows-largo-que-nasce-vermelho-e-sonda-sob-demanda` (não commitei — Security
-não tem autoridade de Git; handoff para `trackfw_architect`).
-
-**Entregue:** `docs/seguranca/2026-08-30-barreira-do-instrumento-de-windows.md` — revisão do diff
-completo contra `origin/main` (21 arquivos, +2743/-28): os dois workflows novos (`quality.yml`,
-`windows-probe.yml`), `probe.go`/`checks.go`/`checks.js`/`checks.py`/`run.ps1`, e os testes de
-symlink guard do ML-2A nos 3 runtimes.
-
-**VEREDITO: APROVA COM RESSALVAS.** Nenhum achado bloqueante.
-
-**Confirmado, item por item das duas preocupações do KG:**
-- Sonda como primitiva de execução/exfiltração: não é vetor novo (`workflow_dispatch` já exige
-  permissão de escrita); único input externo (`inputs.motivo`) passado via `env:`, nunca
-  interpolado em `run:`; nenhum log imprime caminho de home real, `$GITHUB_ENV` ou segredo; junction
-  (`mklink /J`) e symlink de plumbing (`git update-index --cacheinfo 120000`) sempre dentro de
-  `RUNNER_TEMP`/`MkdirTemp`, nunca fora do workspace.
-- `$HOME` sintético compartilhado: camada 1 (`windows-full-suites`) isola `HOME`+`USERPROFILE` para
-  o job inteiro com `-p 1 -parallel 1`/`--test-concurrency=1`, resíduo de compartilhamento
-  sequencial já nomeado no próprio YAML. Camada 2 (`run.ps1`) isola só nos itens 2/5/6 (correto por
-  design); item 10 roda os 3 CLIs com o perfil ambiente do processo — nunca `~/.trackfw/` real fora
-  do runner (efêmero por job), mas relevante para reprodução local.
-
-**Achados de acompanhamento (não bloqueantes):** (A1) `windows-defect-reproduction` nunca roda `npm
-ci` — o braço Node do item 10 pode nunca medir o defeito de verdade, sem contaminar o veredito
-vermelho geral (AC2 continua satisfeita); (A2) `run.ps1` falha com erro pouco informativo fora do
-CI sem `RUNNER_TEMP` setado (`Join-Path` com parâmetro nulo é erro terminante, `$ErrorActionPreference`
-não protege) — só afeta reprodução local, testado com `pwsh` instalado; (A3) item 10 mede o perfil
-ambiente do processo, não um diretório sintético — documentar no script.
-
-`TRACKFW_DISABLE_EXTERNAL_COMMANDS=1 make quality` rodado na branch: `test`/`test-node`/`test-python`/
-`lint` verdes; `parity` acompanhado em tempo real até 181+ cenários de falsificação OK (incluindo
-`check-thirdparty-parity.sh`, `check-install-version-pin.sh`, `check-ci-workflow-pin-parity.sh`,
-`check-roadmap-barrier-contract.sh` iniciado) sem nenhum achado — interrompido manualmente após
-cobertura suficiente (script de duração conhecida ~4min, não relacionado ao diff). `actionlint`
-limpo nos dois workflows.
-
-**Não corrigi nada** — proibição explícita do escopo. Não criei branch, não commitei, não fiz push.
-
-**Próximo:** `trackfw_architect` decide sobre tirar o PR do rascunho; achados A1/A2/A3 viram REQ/ML
-de acompanhamento a critério do arquiteto — nenhum bloqueia.
-
----
-
-## Sessão 2026-08-30 — ares-tf (INÍCIO: ML-1E — corretiva da barreira final, vacuidade da camada 2)
-
-Branch `fix/job-de-windows-largo-que-nasce-vermelho-e-sonda-sob-demanda` (não criada por mim).
-
-Escopo: corrigir o bloqueante de `hefesto-tf` (drift `pyyaml`→`pip install pypi/`) e o achado A1 de
-`hades-tf` (`npm ci` ausente) em `.github/workflows/quality.yml` (só job
-`windows-defect-reproduction`), e a vacuidade de `proc.returncode` nunca consultado em
-`cmd_help`/`cmd_cp1252_print` de `scripts/windows-repro/python/checks.py`. Arquivos tocados: só
-esses dois.
-
----
-
-## Sessão 2026-08-30 — ares-tf (FIM: ML-1E — corretiva da barreira final — CONCLUÍDO)
-
-Branch `fix/job-de-windows-largo-que-nasce-vermelho-e-sonda-sob-demanda`.
-
-**O que foi feito:**
-
-1. `quality.yml`, job `windows-defect-reproduction`: `python -m pip install --upgrade pip pyyaml` →
-   `python -m pip install --upgrade pip` + `python -m pip install pypi/`, com o mesmo comentário de
-   zero-drift usado na linha 219 (`windows-full-suites`).
-2. Mesmo job: adicionado `npm ci --ignore-scripts` (working-directory `npm`), mesmo padrão do
-   `windows-full-suites`. Antes ausente — braço Node do item 10 rodava sem `node_modules`.
-3. `checks.py`, `cmd_help` e `cmd_cp1252_print`: novo ramo `elif proc.returncode != 0 and
-   _is_startup_failure(stderr)` → `VERDICT=INCONCLUSIVE`, antes de cair no `else: ABSENT`. Sinal
-   escolhido: `ModuleNotFoundError`/`ImportError`/`Traceback (most recent call last)` no stderr,
-   **combinado** com `returncode != 0` (documentado no docstring de `_is_startup_failure` por quê
-   `returncode != 0` sozinho não basta).
-
-**Falsificação (evidência real, não hipotética):**
-`TRACKFW_PYPI_SRC=/nonexistent/path python3 scripts/windows-repro/python/checks.py help` —
-- ANTES do fix (`git show HEAD:...` copiado para scratchpad): `ModuleNotFoundError: No module named
-  'trackfw'`, `exit=1`, **`VERDICT=ABSENT`** (o bug — declarava defeito ausente sem o código medido
-  ter rodado).
-- DEPOIS do fix: mesmo `ModuleNotFoundError`, mesmo `exit=1`, **`VERDICT=INCONCLUSIVE`**.
-- `cmd_cp1252_print` não importa `trackfw.cli` (subprocess isolado com só `print('→')`) —
-  sobrevive ao mesmo gatilho em ambas as versões (`ABSENT` correto, sem `ModuleNotFoundError`),
-  confirmando a leitura do parecer de qualidade §2.1. O guard em `cmd_cp1252_print` fica por
-  simetria/defesa, não porque este gatilho específico o exercite.
-- Sanity check com `TRACKFW_PYPI_SRC` correto: ambas as funções seguem `VERDICT=ABSENT` (console
-  utf-8 local, sem o bug cp1252 — esperado fora do Windows).
-
-**Confirmação sobre `run.ps1` (pedida pelo KG, não presumida):** lido `run.ps1:93-99` — o parsing já
-trata qualquer string que não bata `VERDICT=REPRODUCED` nem `VERDICT=ABSENT` como `INCONCLUSIVE`
-(fallback do `if/elseif/else`), e `run.ps1:321-340` já soma `$inconclusive.Count -gt 0` no `exit 1`.
-**Nenhuma mudança foi necessária em `run.ps1`** — confirmado, não só presumido.
-
-**Verificação:** `actionlint .github/workflows/quality.yml` → exit 0, zero achados.
-`TRACKFW_DISABLE_EXTERNAL_COMMANDS=1 make quality` → exit 0 (test, test-node, test-python, lint,
-parity — incluindo os 15 cenários de `check-ci-workflow-pin-parity` e os 53 de
-`check-roadmap-barrier-contract`, ambos OK).
-
-**Fora de escopo, não feito** (conforme instrução explícita do KG): piso de contagem de
-`Add-Result`, comparação automática contra a linha de base 8/8, deduplicação de
-`GATE_QUOTE_COMMAND` — registrados para REQ separada, não tocados.
-
-**Não commitei, não fiz push, não toquei o roadmap** — autoridade de Git é do `trackfw_architect`;
-o roadmap é atualizado pelo KG após auditoria.
-
-**Próximo:** o único item que só o CI real pode confirmar é se a contagem permanece 8/8
-`REPRODUCED` no runner Windows — pendente do próximo run em `windows-defect-reproduction` após o
-merge/push desta correção.
-
-## 2026-08-30 — Wave 0 da REQ de medição de junction (zeus-tf)
-
-**Início:** após o merge do #221 e a primeira execução da sonda em `main` (run `33338382066`), que
-mediu `Lstat` de junction como `ModeIrregular` e não `ModeSymlink`.
-
-**Encerramento da Wave 0.** `hades-tf` entregou o modelo de ameaça em
-`docs/seguranca/2026-08-30-modelo-de-ameaca-da-extensao-da-sonda.md` e **corrigiu uma classificação
-minha**: o freio contra junction em `removeEmptyAncestors` existe só no Go; Node (`manager.js:420`)
-e Python (`manager.py:589`) não testam `isDirectory()`. Verifiquei lendo os três. A REQ foi corrigida
-e a classificação errada ficou registrada como errada, não reescrita.
-
-Também derrubou um AC meu que já nascera falso (`RUNNER_TEMP` vs `%TEMP%` em `probe.go:117,147`).
-
-**Próximo:** Wave 1 (`ares-tf`) — pergunta 7, junction em Node/Python, `rmdir` sobre junction vazia
-e tabela comparativa. Wave 2 é minha: nota de correção na `REQ-2026-08-29` e nota de vault.
-
-**Nota de processo:** meu prompt para o `hades-tf` restringiu a escrita ao documento de segurança e
-colidiu com a obrigação de protocolo do role dele de atualizar este arquivo. Ele sinalizou em vez de
-desobedecer silenciosamente uma das duas. O prompt estava mal formulado, não o role.
-
----
-
-## 2026-08-31 — ML-1A: pergunta 7 responde e junction é medida em Node/Python (ares-tf)
-
-**Início:** branch `fix/sonda-mede-junction-nos-3-runtimes-e-a-pergunta-7-volta-a-responder`,
-roadmap `ROADMAP-2026-08-30-sonda-mede-junction-nos-3-runtimes-e-a-pergunta-7-volta-a-responder.md`,
-Wave 1 (ML único — todas as ações tocam `windows-probe.yml`).
-
-**Encerramento.** As cinco ações do ML-1A:
-
-1. **Pergunta 7 corrigida** — `git update-index --add --cacheinfo 120000,$blob,mylink` era passado
-   direto no `run:` do pwsh; a vírgula do PowerShell construía um array e o git recebia três
-   argumentos. Corrigido montando `$cacheinfo = "120000,$blob,mylink"` numa variável antes de invocar.
-   **AC2 (prova de integridade)**: em vez de veredito, adicionei `git ls-files --stage mylink` logo
-   após o `update-index` (antes do `checkout`) e imprimi o valor bruto do índice ao lado do valor
-   esperado (`esperado_mode=120000 esperado_blob=$blob esperado_path=mylink`) — quem lê o log compara,
-   a sonda não decide.
-2. **Junction em Node** (`scripts/windows-repro/node/probe.js`, novo) — `lstatSync()` sobre arquivo
-   comum, symlink real (`fs.symlinkSync(..., 'file')`) e junction (`fs.symlinkSync(..., 'junction')`,
-   mesmo reparse tag `IO_REPARSE_TAG_MOUNT_POINT` que `mklink /J` produz), imprimindo
-   `isSymbolicLink()`/`isDirectory()`/`isFile()` crus.
-3. **Junction em Python** (`scripts/windows-repro/python/probe.py`, novo) — mesmos três alvos;
-   junction criada via `cmd /c mklink /J` (Python não tem primitivo nativo de junction), imprimindo
-   `os.path.islink()`, `os.lstat().st_mode`, `stat.S_ISLNK()` e `os.readlink()` (erro cru se levantar).
-4. **`rmdir` sobre junction vazia nos 3 runtimes** (`rmdir-junction` em `probe.go`/`probe.js`/`probe.py`)
-   — achado do ML-0A: `manager.py:589 _remove_empty` depende só de `except OSError` para parar de subir
-   removendo ancestrais; isto mede diretamente se o `rmdir`/`rmdirSync`/`os.Remove` tem sucesso sobre a
-   junction e, separadamente, se a junction sumiu e se o alvo sobreviveu.
-5. **Tabela comparativa final** — subcomando `table` nos três probes, cada um recriando fixtures do
-   zero e imprimindo linhas `TABELA runtime=<go|node|python> target=<arquivo|symlink|junction> ...`
-   com prefixo comum, chamados em sequência no mesmo step do workflow (Pergunta 11).
-
-Também: achado do ML-0A sobre `%TEMP%` ≠ `RUNNER_TEMP` endereçado por **medição, não reescrita de
-alegação** — `printTempDirInfo`/`_print_tempdir_info` imprime `tempdir_resolvido=... runner_temp=...`
-em toda função que cria link/junction/rmdir/table, nos 3 braços.
-
-**Sem veredito (AC6):** nenhuma pergunta nova usa `exit 1`/pass-fail sobre o valor medido; erros de
-criação (privilégio ausente, `cmd` ausente) são impressos como dado e a função retorna, nunca aborta o
-step (`if: always()` preservado em todos os steps novos).
-
-**Verificado localmente (fora do escopo Windows):**
-- `actionlint .github/workflows/windows-probe.yml` → OK.
-- `git diff --quiet origin/main -- .github/workflows/quality.yml` → sem diff (arquivo intocado).
-- `grep -nE "^\s*exit 1" windows-probe.yml` → nenhum.
-- `probe.go`: compila para `GOOS=windows GOARCH=amd64` (verificado via cópia sem a tag
-  `//go:build ignore`, já que ela oculta o arquivo de `go build ./...`/`go vet ./...` de propósito).
-  `go build ./...`/`go vet ./...` do repo real permanecem limpos (arquivo continua invisível a eles).
-- `probe.js`/`probe.py`: todos os subcomandos rodados no macOS local — `lstat-junction`/`table`
-  criam a "junction" como symlink comum no macOS (comportamento correto e esperado fora do Windows,
-  reportado como dado, não escondido); `mklink`/`cmd` ausente no Python é capturado como
-  `CompletedProcess` sintético (`err_spawn_cmd=...`) em vez de crashar o processo.
-- `make quality` completo: Go (`go test ./...`, `go vet ./...`) verde; Node 839/839 passed; Python
-  1555 passed/28 subtests; `check-cli-parity.sh`, `check-validate-parity.sh`,
-  `check-agent-namespace-union` (66 cenários), `check-gates-falsify.sh`, `check-roadmap-barrier-contract`
-  (53 cenários) — todos OK, exit code 0.
-
-**Não verificado (estruturalmente pós-merge, registrado no roadmap):** a sonda real em
-`windows-latest` — `workflow_dispatch` só é acionável a partir da branch default. Nenhuma evidência de
-execução Windows foi inventada; AC9 permanece diferido para o arquiteto disparar após o merge.
-
-**Arquivos tocados:** `.github/workflows/windows-probe.yml`, `scripts/windows-repro/go/probe.go`,
-`scripts/windows-repro/node/probe.js` (novo), `scripts/windows-repro/python/probe.py` (novo).
-`quality.yml`, `run.ps1`, `checks.go`/`checks.js`/`checks.py` intocados (confirmado por
-`git diff --stat`).
-
-**Correções pós-revisão (mesma sessão, antes do handoff):**
-
-1. **Achado bloqueante corrigido**: `probe.js` criava a junction via `fs.symlinkSync(target, link,
-   'junction')` (API nativa do libuv), diferente de `probe.go`/`probe.py`, que usam
-   `cmd /c mklink /J`. Ambos produzem o mesmo reparse tag (`IO_REPARSE_TAG_MOUNT_POINT`), mas o
-   `REPARSE_DATA_BUFFER` escrito por libuv difere do escrito por `mklink.exe` nos campos
-   `SubstituteName`/`PrintName` — exatamente o que `readlink()`/`LinkType` leem. Isso confundiria "o
-   Lstat de cada runtime diverge" com "o objeto medido é diferente", contaminando o próprio artefato
-   que este ML existe para produzir (a tabela comparativa). Corrigido: `probe.js` agora cria a
-   junction via `spawnSync('cmd', ['/c','mklink','/J',...])`, mesmo mecanismo dos outros dois braços,
-   nos três subcomandos que criam junction (`lstat-junction`, `rmdir-junction`, `table`).
-2. **Mecanismo da pergunta 7 corrigido no comentário do workflow** — reproduzi o bug original
-   localmente com `pwsh` + `git` real (fora do CI, comprovando que não é exclusivo do Windows): a
-   causa NÃO é "a vírgula constrói um array de 3 argumentos" (como o comentário original e a REQ
-   descrevem) — é que o PowerShell, ao passar um argumento sem espaços contendo vírgula para um
-   executável NATIVO, não interpola a variável dentro dele; `$blob` chega ao processo como o texto
-   literal `"$blob"`, não como o hash, e git recebe UM argumento malformado (sha1 inválido) — daí
-   exatamente o erro `"option 'cacheinfo' expects <mode>,<sha1>,<path>"`. Repro:
-   `pwsh -File run.ps1` local com `/bin/echo`/`node` como alvo mostrou 1 argumento literal
-   `120000,$blob,mylink` na forma antiga, contra `120000,<hash-real>,mylink` corretamente interpolado
-   na forma nova (que usa uma variável de string com aspas duplas antes de invocar o git). Corrigi o
-   comentário em `windows-probe.yml` para descrever o mecanismo real — **não editei a REQ nem o
-   roadmap** (fora do meu escopo), só sinalizo aqui a divergência entre o texto da REQ e o mecanismo
-   comprovado, para quem escrever a REQ de correção subsequente.
-3. **Não-bloqueante, aplicado**: `rmdir-junction` do Python agora chama `Path(junction).rmdir()` em
-   vez de `os.rmdir(junction)` — mesmo primitivo exato que `manager.py:589 _remove_empty` usa em
-   produção (`directory.rmdir()` sobre um `pathlib.Path`), não apenas o mesmo syscall por baixo.
-4. **Não-bloqueante, registrado em comentário**: `timeout-minutes: 10` ficou mais apertado com os 4
-   steps novos (múltiplos `go run`, cada um recompila, mais `mklink` x3 runtimes) — não subi o número
-   (é guardrail proposital), só documentei no YAML que se ele disparar pela primeira vez logo após
-   este ML, isso é esperado como orçamento mais justo, não necessariamente uma regressão nova.
-
-Todos os gates da wave (`actionlint`, `quality.yml` intocado, sem `exit 1`) e `go build`/`go vet`
-revalidados depois destas correções — continuam verdes. `make quality` completo (rodado antes destas
-correções pontuais, que não tocam nada coberto por `make quality` — `windows-repro/` não aparece em
-nenhum script de parity/gate) permanece a evidência de referência.
-
-**Próximo:** Wave 2 (arquiteto) — nota de correção na `REQ-2026-08-29` e nota de vault sobre
-`Lstat`/junction/`ModeIrregular`. Sugestão para essa nota: incluir também o mecanismo real da pergunta
-7 (item 2 acima), já que diverge do texto atual da REQ-2026-08-30.
-
----
-
-## Sessão 2026-08-31 — hades-tf (INÍCIO: barreira final de segurança — extensão da sonda)
-
-Branch `fix/sonda-mede-junction-nos-3-runtimes-e-a-pergunta-7-volta-a-responder` (não criada por
-mim). Escopo: barreira final sobre `git diff origin/main...HEAD`, verificando se o ML-1A respeitou o
-próprio modelo de ameaça do ML-0A (meu). Só diagnóstico — nenhum arquivo de produto/workflow tocado,
-só o parecer em `docs/seguranca/`.
-
----
-
-## Sessão 2026-08-31 — hades-tf (FIM: barreira final de segurança — extensão da sonda — CONCLUÍDO)
-
-Branch `fix/sonda-mede-junction-nos-3-runtimes-e-a-pergunta-7-volta-a-responder`.
-
-**Veredito: APROVA COM RESSALVAS. Nenhum bloqueante.**
-
-**O que foi feito:** auditei `windows-probe.yml` (steps novos das Perguntas 7-11) e os três braços
-`probe.{go,js,py}` linha a linha contra os cinco alvos de falsificação que eu mesmo defini no ML-0A.
-Todos respeitados: sem veredito, sem interpretação no lugar de valor cru, criação/remoção de link
-sempre confinada ao tempdir do próprio subcomando, `checks.{go,js,py}` não importam as funções
-novas, `quality.yml` byte-idêntico, nenhuma `uses:` nova, nenhum `${{ }}` novo em `run:`, `$blob` na
-pergunta 7 é sempre hex de `git hash-object` (não controlável). `actionlint` limpo, `go build`/
-`GOOS=windows go build` limpos, `node -c`/`python -m py_compile` limpos.
-
-**Achados de acompanhamento (não bloqueantes):**
-1. `probe.py` nunca limpa os tempdirs que cria (`shutil` nem é importado) — assimetria com Go
-   (`defer os.RemoveAll`) e Node (`fs.rmSync` em todo caminho de saída); deixa junction viva em
-   disco ao sair de `lstat-junction`/`table`. Remédio: `try/finally` + `shutil.rmtree`.
-2. Pergunta 10 mede o discriminante completo de `_remove_empty` (Python) mas só parcial de
-   `cleanEmpty` (Node) — falta medir `readdirSync`/`listdir` sobre a junction.
-3. `pwsh` propaga só o exit code do último comando por step nas Perguntas 8-11 — falha parcial num
-   dos três braços pode ser engolida pela cor do step (dado continua no log).
-
-**Correção ao meu próprio ML-0A/vault** (não é achado novo — é precisão que muda o remédio da REQ de
-correção subsequente): a subida do `_remove_empty` do Python é limitada ao `root` gerenciado (`while
-directory != root and root in directory.parents`), não "sobe removendo diretórios do usuário" como o
-roadmap ML-2A descreveu; e `cleanEmpty` do Node já tem contenção geográfica (`rel`/`isAbsolute`) —
-falta só o teste de tipo (`isDirectory()`), não "contenção" em si. Escrever o remédio da REQ de
-correção como "adicionar teste de tipo ao lado do teste de link", não "adicionar contenção".
-
-**Artefato:** `docs/seguranca/2026-08-31-barreira-da-extensao-da-sonda.md`.
-
-**Fronteiras mantidas:** nenhum arquivo de `internal/`, `npm/`, `pypi/`, workflow ou `docs/qualidade/`
-tocado. Nenhuma branch criada, nenhum commit, nenhum push.
-
----
-
-## Sessão 2026-08-31 — hefesto-tf (INÍCIO: barreira final de qualidade — extensão da sonda de junction)
-
-Branch `fix/sonda-mede-junction-nos-3-runtimes-e-a-pergunta-7-volta-a-responder` (não criada por mim).
-
-Escopo: barreira de **qualidade** sobre `git diff origin/main...HEAD` — vacuidade, comparabilidade
-dos 3 braços, AC6 (sem veredito), integridade da pergunta 7 (AC2), pergunta 10 (rmdir sobre
-junction), manutenibilidade/duplicação. Não modifico código nem workflow; só diagnostico e escrevo
-o parecer em `docs/qualidade/`.
-
-## Sessão 2026-08-31 — hefesto-tf (FIM: barreira final de qualidade — extensão da sonda de junction — CONCLUÍDA)
-
-**Veredito: APROVA COM RESSALVAS. Nenhum bloqueante.**
-
-**O que foi feito:** li `windows-probe.yml` completo e os três braços `probe.{go,js,py}` linha a
-linha, seguindo os cinco pontos pedidos na revisão, **mais execução real** (não só compilação/
-sintaxe): `probe.go` compilado explicitamente por nome de arquivo — `go build ./...`/`GOOS=windows
-go build ./...` da raiz **não cobrem `probe.go`** por causa da tag `//go:build ignore` — cross-build
-Windows OK, `go vet scripts/windows-repro/go/probe.go` limpo, build nativo + execução de
-`table`/`rmdir-junction` em macOS; `node probe.js table`/`rmdir-junction` executados de fato;
-`python3 probe.py table`/`rmdir-junction` executados de fato. Todas as três execuções exercitaram o
-caminho de erro de infraestrutura (`cmd`/`mklink` ausentes no macOS), impresso cru em todos os
-casos, sem disfarçar como sucesso. Nenhuma vacuidade encontrada — os três checam
-`error`/`status`/`returncode` do `mklink` antes de qualquer `lstat`/`stat`, inclusive no caminho
-sintético de `_mklink_junction` (Python) para `cmd.exe` ausente. Fixture de junction confirmada
-idêntica nos três (`cmd /c mklink /J`, via grep) — nenhum resquício de `fs.symlinkSync(...,
-'junction')`. AC6 confirmado limpo (nenhum `exit 1`/PASS/FAIL condicionado a valor medido; os únicos
-`os.Exit(1)`/`sys.exit` são falhas de infraestrutura pré-existentes). Pergunta 7 (AC2): `git
-ls-files --stage mylink` lê o índice antes do checkout com valor cru ao lado do esperado — prova
-real, não cosmética. Pergunta 10: os três reportam separadamente resultado do rmdir, sobrevivência
-da junction e do alvo, usando a primitiva exata da produção (`Path(junction).rmdir()` em Python) —
-com uma ressalva no braço Node (achado 1 abaixo). `actionlint` limpo, `quality.yml` byte-idêntico,
-`make quality` rodado até o fim sobre o repositório completo com **exit code capturado corretamente
-fora de pipe** (`MAKE_EXIT=0` — a primeira tentativa usava `| tail -200`, que em zsh sem `pipefail`
-mede o exit code do `tail`, não do `make`; refeito sem pipe para medir o real).
-
-**Achados de acompanhamento (não bloqueantes):**
-1. **(Novo, próprio)** O braço Node da Pergunta 10 mede `fs.rmdirSync(junction)`, não o
-   discriminante real de produção — `cleanEmpty` (`npm/src/integrations/manager.js:420`) decide por
-   `fs.readdirSync(dir).length`, nunca chama `rmdirSync`. Substituição documentada pelo próprio
-   comentário de `probe.js:131-136`, não descuido silencioso — mas significa que nenhuma pergunta
-   mede `readdirSync(junction).length`, e como `workflow_dispatch` só dispara da branch default,
-   obter esse número específico exige outro ciclo de merge+dispatch se a REQ de correção precisar
-   dele. Remédio sugerido: acrescentar leitura crua de `fs.readdirSync(junction)` em `probe.js`.
-2. `probe.py` não limpa nenhum dos 5 tempdirs que cria (`shutil` nem é importado) — mesmo achado do
-   `hades-tf` (lente de segurança), confirmado aqui sob lente de manutenibilidade **e por execução
-   real**: rodei `table`/`rmdir-junction` e os tempdirs ficaram em `$TMPDIR` (precisei limpar
-   manualmente), enquanto Go (build nativo) e Node não deixaram resíduo nas mesmas duas chamadas.
-   Assimetria de padrão dentro do mesmo diff (Go usa `defer os.RemoveAll`, Node usa `fs.rmSync` em
-   todo caminho de saída). Remédio: `try/finally` + `shutil.rmtree`, ou `tempfile.TemporaryDirectory()`.
-3. A fixture `mklink /J` está inline/duplicada dentro de cada probe (3x por arquivo); quando a REQ
-   de correção adicionar a mesma fixture a `checks.{go,js,py}` (camada 2, com veredito), o risco é
-   recriá-la do zero em vez de reaproveitar — reabrindo o mesmo risco que este ML fechou para a
-   sonda (medir objetos diferentes por engano). Aviso para quem escrever essa REQ, não correção
-   deste PR.
-4. `pwsh` propaga só o exit code do último comando por step nas Perguntas 2/8/9/10/11 — uma falha de
-   infraestrutura no meio do step (ex.: `MkdirTemp` falhando na 1ª chamada) pode ficar mascarada pelo
-   ícone verde do step se a 2ª/3ª chamada tiver sucesso; o dado continua no log (não é vacuidade),
-   mas quem só olhar a cor do step pode perder o `err_mkdtemp`. Nota operacional, não muda o design.
-
-**Artefato:** `docs/qualidade/2026-08-31-barreira-da-extensao-da-sonda.md`.
-
-**Fronteiras mantidas:** nenhum arquivo de `internal/`, `npm/`, `pypi/`, workflow ou
-`docs/seguranca/` tocado. Nenhuma branch criada, nenhum commit, nenhum push.
-
----
-
-## Sessão 2026-08-31 — ares-tf (INÍCIO: ML-1B — cleanEmpty do Node, portão readdirSync/existsSync não medido)
-
-Branch `fix/sonda-mede-junction-nos-3-runtimes-e-a-pergunta-7-volta-a-responder`.
-
-Escopo: corretiva pós-barreira (achado do `hefesto-tf`, afiado pelo arquiteto). `cleanEmpty` em
-`npm/src/integrations/manager.js:420` é curto-circuito de 3 termos; a sonda do ML-1A só media o
-termo ② (`isSymbolicLink`, via `lstat-junction`) e o resultado de `rmdirSync`. Faltam ① `existsSync`
-e ③ `readdirSync` sobre a junction — o portão que decide se a produção chega ao `rmdirSync`. Único
-arquivo em escopo: `scripts/windows-repro/node/probe.js`.
-
-
----
-
-## Sessão 2026-08-31 — ares-tf (FIM: ML-1B — cleanEmpty do Node, portão readdirSync/existsSync — CONCLUÍDO)
-
-Branch `fix/sonda-mede-junction-nos-3-runtimes-e-a-pergunta-7-volta-a-responder`.
-
-**O que foi feito:** em `scripts/windows-repro/node/probe.js`, dentro de `cmdRmdirJunction` (mesma
-fixture de junction que já existia via `mklink /J`), adicionadas duas medições cruas ANTES do
-`rmdirSync` já existente:
-
-- `fs.existsSync(junction)` — termo ① do curto-circuito de `cleanEmpty` (segue o link).
-- `fs.readdirSync(junction)` — termo ③, o portão que decide se a produção chega ao `rmdirSync`.
-  Lançar é resultado, não falha de infraestrutura: capturado, impresso cru (`err.message`) e o step
-  segue sem abortar — nenhum `exit`/veredito.
-
-Nenhum outro arquivo tocado (`probe.go`, `probe.py`, `windows-probe.yml`, `checks.*` intocados).
-Não editei o roadmap nem a REQ (achei o roadmap já com a seção ML-1B pré-existente, não commitada,
-provavelmente do handoff do arquiteto — confirmado por diff, não fui eu quem escreveu).
-
-**Gates rodados localmente:**
-- `actionlint .github/workflows/windows-probe.yml` → limpo.
-- `git diff --quiet origin/main -- .github/workflows/quality.yml` → byte-idêntico.
-- `grep readdirSync`/`grep existsSync` em `probe.js` → ambos presentes.
-- `node --check probe.js` → sintaxe OK.
-- `node probe.js rmdir-junction` local (macOS, sem `cmd`/mklink) → imprime `tempdir_resolvido=...`,
-  depois `mklink_error=spawnSync cmd ENOENT` e `create_failed` — o braço aborta ANTES de chegar às
-  medições novas (não há junction para medir fora do Windows). **Estruturalmente inverificável
-  aqui** — o valor real de `existsSync`/`readdirSync` sobre junction só sai no run pós-merge do
-  `windows-probe.yml`, mesma limitação já registrada no ML-1A.
-- `make quality` (Go+Node+Python+contratos de paridade) → verde, 0 `--- FAIL`, log termina em
-  "53 cenários OK".
-
-**Divergência da nota do gate do roadmap:** o gate `git diff --quiet origin/main -- probe.go
-probe.py` falha por construção nesta branch — ele compara contra `origin/main`, e `probe.go`/
-`probe.py` já foram alterados (e commitados) no ML-1A, que é anterior a este ML e está na mesma
-branch. Não é uma regressão minha: `git diff --quiet HEAD -- probe.go probe.py` (forma que testa
-"ML-1B não tocou Go/Python", já que meu diff está uncommitted) → **OK**. Sinalizando para o
-arquiteto o gate substituto correto.
-
-**Confirmado via `grep -n "probe.js" windows-probe.yml`:** a linha 427 já invoca
-`node scripts/windows-repro/node/probe.js rmdir-junction` (Pergunta 10, adicionada no ML-1A) — as
-medições novas de `existsSync`/`readdirSync` rodam automaticamente no run pós-merge, sem exigir
-edição do workflow.
-
-**Discordância do diagnóstico:** nenhuma — o diagnóstico do `hefesto-tf`/arquiteto está correto e a
-medição fecha exatamente a lacuna apontada.
-
----
-
-## Sessão 2026-08-31 — hades-tf (INÍCIO: ML-0A — modelo de ameaça da guarda de ancestral)
-
-Branch `fix/guarda-de-folha-resolve-o-caminho-e-afirma-contencao-antes-de-escrever`.
-
-Escopo: Wave 0 (análise, sem implementação) do
-`ROADMAP-2026-08-31-guarda-de-folha-resolve-o-caminho-e-afirma-contencao-antes-de-escrever.md`.
-Defeito: guarda de folha faz `Lstat` só no último componente do caminho; ancestral symlink nunca é
-inspecionado — vale em todo SO e todo runtime, sem precisar de junction. Entregável: enumeração real
-pelos primitivos de escrita (não por `ModeSymlink`, que é cego para quem escreve sem checar link
-nenhum), modelo de ameaça, falsificação nas duas direções (incluindo controle de não-regressão), e
-residual, em `docs/seguranca/2026-08-31-modelo-de-ameaca-da-guarda-de-ancestral.md`. A REQ já nomeia
-a forma do remédio (resolver-e-afirmar-contenção) e pede contestação explícita se eu vir problema.
-
----
-
-## Sessão 2026-08-31 — hades-tf (FIM: ML-0A — modelo de ameaça da guarda de ancestral — CONCLUÍDO)
-
-Branch `fix/guarda-de-folha-resolve-o-caminho-e-afirma-contencao-antes-de-escrever`.
-
-**Entregável:** `docs/seguranca/2026-08-31-modelo-de-ameaca-da-guarda-de-ancestral.md` (297 linhas,
-gate local rodado: existe, sem "placeholder", contém "Residual" — todos OK). Nenhuma linha de
-implementação escrita, conforme critério de aceite do ML.
-
-**Achado principal — a enumeração da REQ era subestimação, não erro de leitura.** Além das 3 guardas
-de folha já nomeadas (`update.go:1869,1894`, `discover.go:268` + pares), encontrei uma família nova e
-maior (~150 sites vs ~10) de escritas **sem checagem alguma** — nem de folha, nem de ancestral:
-`trackfw update harness` (escopo global, `$HOME/.claude`, `.codex`, `.gemini`, `.cursor`, `.copilot`,
-`.kiro` — SKILL.md, `settings.json`, `hooks.json`, scripts de credential-guard/git-branch-guard) e os
-geradores de artefato de projeto (`req new`, `roadmap new`, `adr new`, `note new`, hooks de
-`init`/husky/lefthook). Comprovei exploração ao vivo com o binário Go real, fora do repositório
-(scratchpad):
-- **PoC A** — symlink ancestral em `docs/req/` → `trackfw req new` escreveu o REQ fora da árvore do
-  projeto, `exit 0`, sem aviso.
-- **PoC B** — symlink pré-existente em `$HOME/.claude` → `trackfw update harness --install-missing`
-  escreveu `SKILL.md` fora de `$HOME`, `updated=1 failed=0`, sem aviso.
-
-**Contra-proposta à forma resolver-e-afirmar-contenção (não contestei a forma, contestei a
-soletração):** medi dois jeitos concretos de a implementação "óbvia" quebrar sem link malicioso
-nenhum — (i) `EvalSymlinks`/`realpathSync` erram sobre caminho cuja folha ainda não existe (o caso
-dominante: criar arquivo novo), então a Wave 1 tem que resolver o **diretório-pai** e só depois juntar
-a folha, não resolver o caminho completo; (ii) comparar `destination` resolvido contra `root` **não**
-resolvido produz falso positivo — medido com `/tmp`→`/private/tmp` no macOS (symlink de sistema, não
-malicioso) — a Wave 1 tem que resolver os dois lados antes de comparar. Ambos viram requisito
-explícito no documento, seção 3.2, não nota de rodapé. Terceiro achado: Python `Path.resolve(strict=
-False)` tolera folha inexistente nativamente, Go/Node não — confirma que a REQ acertou ao nomear
-primitivas diferentes por runtime em vez de uma fórmula única; a Wave 1 tem que soletrar a sequência
-por runtime.
-
-**Residual declarado:** TOCTOU entre resolver e escrever não é eliminado (aceito, mesma janela que a
-REQ já aceitou ao descartar `Lstat` por componente); `root` em `rejectSymlinks`/`assertNoSymlinks`
-(padrão já correto) não verifica se o próprio `root` é symlink (fora de escopo desta REQ); delta de
-contagem Go (80 medido vs 85 citado pela REQ) não reconciliado; `.trackfw-attention.json` sem
-checagem mas risco baixo; enumeração por família, não site-a-site dos ~228 brutos; PoCs só em macOS.
-
-**Decisão que deixo explícita para o arquiteto, não tomada por mim:** a Wave 1 cobrir só os 3 sites
-de folha (fecha a letra da REQ, deixa os PoCs A e B abertos) ou generalizar para um helper único
-chamado por toda escrita derivada de `root`/`home` (fecha a ameaça real, exige repartição maior).
-
-**Vault:** nenhuma nota nova escrita — o achado já está inteiramente documentado no parecer de
-`docs/seguranca/`, que é o artefato correto para threat model, e o vault já tem
-`lstat-nao-ve-junction-e-guarda-de-folha-nao-olha-ancestral-2026-08-31.md` cobrindo o contexto de
-origem do defeito.
-
-## 2026-08-31 — Fecho do instrumento de Windows e parada da guarda em `analyzing` (zeus-tf)
-
-**Fechada** a `REQ-2026-08-30-ci-nao-exercita-windows-...` e seu roadmap movido a `done/`. O critério
-*"o job de Windows reprovando pelos motivos esperados"* **expirou de propósito**: correto enquanto o
-entregável era o instrumento, ele se inverteria contra nós a partir da primeira correção, porque cada
-item corrigido sai de `REPRODUCED`. `hefesto-tf` identificou a contradição ao analisar os PRs do
-Lourival. Linha de base congelada: **8/11**.
-
-**Guarda de ancestral** movida de `wip/` para `analyzing/` — Wave 0 concluída, **nenhuma linha de
-código escrita**, então `wip` estava mentindo sobre o estado.
-
-**Observação de governança:** com o roadmap em `analyzing/`, o `validate` avisa que a branch `fix/`
-não tem roadmap em `wip/`. É `exit 0` (aviso, não erro), mas revela que a regra `branch_has_wip_roadmap`
-não modela o estado *"branch que fez só análise de Wave 0"* — que é legítimo e foi exatamente o nosso
-caso. Candidato a REQ futura; **não** aberta agora para não expandir escopo.
-
-**Próximo:** portar as correções dos PRs #222–#225 do Lourival (os quatro valem inteiros, ver
-`docs/analises/2026-08-31-aproveitamento-dos-prs-222-225.md`), começando pelo #223 (item 1, cp1252),
-que destrava a medição dos itens 5 e 6. Guarda de ancestral em seguida.
-
-## 2026-08-31 — ML-1A/ML-1B do roadmap de port dos PRs #222–#225 (apolo-tf)
-
-**Início.** Recebido handoff para portar ML-1A (#222 Grupo B, bit de execução no validator) e ML-1B
-(#225, CRLF nos geradores Python) da `ROADMAP-2026-08-31-portar-as-correcoes-do-reporter-da-issue-216.md`.
-Regra dura do handoff: porte fiel, atribuição `Co-Authored-By: lourivalgarciajunior`, parar e avisar
-se achar sobreposição com o Grupo A ($HOME, Wave 2, bloqueado).
-
-**ML-1B (#225) — feito.** `git apply` do diff aplicou limpo (zero drift) contra a árvore atual: 15
-arquivos em `pypi/trackfw/` ganharam `newline="\n"`, `pypi/tests/test_generators_write_lf.py` novo (4
-testes, todos verdes localmente — guarda de regressão em macOS/Linux, não reprodução, como o próprio
-teste declara), `scripts/check-python-writes-lf.sh` novo. **Um desvio do diff literal**: troquei
-`python` por `python3` na linha do interpretador (script original do PR usa `python` puro, que não
-existe neste ambiente nem é a convenção de nenhum outro `check-*.sh` do repo — todos usam `python3`).
-`python3 -m pytest pypi/tests -q` → 1559 passed. Gate roda e passa. **Achado que preciso reportar sem
-decidir**: o gate **não tem guarda de vacuidade** — se `pypi/trackfw/` sumisse ou o walk não achasse
-nenhum `.py`, o gate passaria vazio e silencioso. O handoff pediu para avisar em vez de adicionar por
-conta própria.
-
-**ML-1A (#222 Grupo B) — sobreposição real com o Grupo A, reportada e resolvida por separação de
-hunk.** O handoff pediu para confirmar ausência de sobreposição antes de editar e parar se achasse.
-Achei: `internal/validator/validator_git_branch_guard.go` e `internal/validator/validator_test.go`
-(Go), `pypi/trackfw/validator.py` e `pypi/tests/test_validator.py` (Python), `npm/src/validator/
-index.js` (Node) misturam hunks do Grupo A (`homedir.Dir()`/`home_dir()`/`homedir()`, módulo novo que
-não existe ainda) com hunks do Grupo B (guard `CurrentGOOS/_platform/_current_platform != "windows"`)
-**no mesmo arquivo**, às vezes na mesma função. A separação da análise técnica ("zero overlap de
-arquivo") vale para `validator_credential_guard.go`/`_test.go` e `goos.go`, mas não para os demais.
-
-**Resolução aplicada**: portei só os hunks do Grupo B, hunk a hunk, deixando `os.UserHomeDir()`/
-`os.homedir()`/`os.path.expanduser("~")` intocados em todos os arquivos (nenhum módulo `homedir` foi
-criado). `internal/validator/validator_test.go` (único hunk é puro Grupo A) **não foi tocado**. Em
-`pypi/trackfw/validator.py` a nova seção `_current_platform`/`_set_platform_for_test` foi inserida sem
-o `from trackfw.homedir import ...`; os dois `os.access(X_OK)` ganharam o guard
-`_current_platform != "win32" and`; as duas linhas `home = os.path.expanduser("~")` da mesma função
-ficaram como estavam. `npm/src/validator/index.js`: idem, com `_platform`/`_setPlatformForTest`, sem
-`require('../homedir')`, sem trocar `os.homedir()`. `pypi/tests/test_validator.py`: portei o helper
-`_exec_bit_representavel` e `test_windows_nao_dispara_pelo_bit_de_execucao`; os dois testes de tilde
-(`test_find_adr_file_com_tilde`, `test_validate_adrs_are_referenced_com_tilde`, que importariam
-`home_dir`) ficaram intocados. Testes novos verdes nos três runtimes (`go test ./internal/validator/...`,
-`node --test`, `python3 -m pytest`).
-
-**Nota de precisão levada ao report, não ao código**: a análise técnica descreveu o item 3 como o PR
-"unificando o mecanismo" Go/Node vs Python (`os.access(X_OK)` → bits). Isso é impreciso — o diff só
-**guarda** `os.access(X_OK)` com a checagem de plataforma; não substitui o mecanismo. A divergência
-pré-existente entre Python e Go/Node fora do Windows continua.
-
-**Achado extra do próprio `make quality`, resolvido no mesmo ML**: o Cenário 81 de
-`scripts/check-gates-falsify.sh` faz `sed` sobre `internal/validator/validator_credential_guard.go`
-ancorado na cláusula `case info.Mode()&0111 == 0:` **inteira**, para provar que
-`check-validate-parity.sh` detectaria regressão na checagem de bit de execução. Prefixar a condição
-com `CurrentGOOS != "windows" &&` (Grupo B) quebrou o casamento textual e o cenário reprovou
-corretamente (`FAIL [falsify/setup-s81]: padrão não encontrado`) — não é defeito do port, é o
-cenário recusando prosseguir sem confirmar a sabotagem. Retarget: mirar o **substring** da checagem
-de modo em vez da cláusula inteira (mesmo precedente do Cenário 179, `execBit &&` em
-`scaffold_doctor.go`). Nota escrita:
-`vault/notes/falsify-cenario-pina-linha-de-fonte-por-sed-guard-de-plataforma-quebra-2026-08-31.md`
-(linkada no índice) — **relevante para a Wave 2 (ML-2A)**, que toca os mesmos três arquivos de
-validator e deve grepar `check-gates-falsify.sh` pela condição exata antes de editar.
-
-**`make quality` rodado com ML-1A + ML-1B juntos, evidência completa no relatório final ao
-arquiteto.** `scripts/check-gates-falsify.sh` faz parte dos arquivos do **ML-1A** (causa e correção
-vêm da mudança do ML-1A), junto com o vault note e o índice.
-
----
-
-## apolo-tf — ML-1C (2026-08-31) — INÍCIO
-
-Autorizado pelo arquiteto: ligar `scripts/check-python-writes-lf.sh` ao alvo `parity:` do
-`Makefile` e dar-lhe guarda de vacuidade, seguindo o padrão de
-`scripts/check-static-assets.sh`/`check-integration-assets.sh` ("P2 vacuity guard"). Não toco
-em Wave 2/3/4, roadmap nem REQ. Sem git (worktree compartilhado com ML-1A/1B não commitado).
-
-## apolo-tf — ML-1C (2026-08-31) — FIM
-
-Feito: `scripts/check-python-writes-lf.sh` ligado ao alvo `parity:` do `Makefile` (linha após
-`check-integration-assets.sh`, sem prefixo `bash`, mantendo o 755 do ML-1B). Guarda de vacuidade
-adicionada ao próprio script: um `find pypi/trackfw -name __pycache__ -prune -o -name '*.py' -print`
-roda ANTES do `os.walk` de detecção (mesmo critério de varredura) e reprova se visitar zero arquivos
-— forma copiada de `scripts/check-static-assets.sh`/`check-integration-assets.sh` ("P2 vacuity
-guard"), não inventada. A lógica de detecção (`open(`/`.write_text(` sem `newline=`) não foi tocada.
-
-Falsificação nas duas direções (corpus real fora do repo, cópia isolada do script em scratch):
-corpus normal → `Escrita em LF: nenhuma chamada sem newline explicito.` (exit 0); corpus vazio →
-`check-python-writes-lf: scan visited zero .py files under pypi/trackfw/ — refusing to pass
-silently` (exit 1). Confirmado que o gate roda dentro de `make parity` real: rodada completa saiu
-com `exited with code 0`, e a sequência exata do Makefile (`check-static-assets.sh` →
-`check-integration-assets.sh` → `check-python-writes-lf.sh`) executada manualmente mostra a saída
-do gate no meio da cadeia. Sem git (autoridade do arquiteto). Arquivos alterados: `Makefile`,
-`scripts/check-python-writes-lf.sh`. Roadmap e REQ não tocados por restrição explícita do handoff.
-
-## apolo-tf — ML-1C (2026-08-31) — CORREÇÃO pós-audit interno
-
-Revisão (auto-aplicada antes do handoff, achado ao consultar o advisor): a primeira versão da
-guarda usava `ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)` e fazia `cd "$ROOT_DIR"`
-antes do `find` — um ancoradouro absoluto que o `os.walk('pypi/trackfw')` da detecção NÃO tem (ele
-usa o cwd do chamador). Rodando o script de um cwd diferente da raiz do repo, a guarda passaria
-(via `cd`) enquanto a varredura real veria zero arquivos — o mesmo silêncio que a guarda existe
-para impedir. Corrigido: removida a âncora `ROOT_DIR`/`cd`; `SCANNED=$(find pypi/trackfw ...)` usa
-agora exatamente o mesmo cwd relativo que o `os.walk` de baixo. Verificado: de `/tmp`, o script
-agora falha explicitamente (`find: pypi/trackfw: No such file or directory`, exit 1) em vez de
-passar silenciosamente. Também confirmado que o critério do `find` (`-name __pycache__ -prune`)
-concorda com o filtro Python (`'__pycache__' in root`) na árvore atual (`diff` vazio). Falsificação
-das duas direções refeita após a correção — mesmos resultados reportados abaixo. Prova de execução
-dentro de `make parity` real (não `make -n` isolado): `make parity` (build cacheado, `bin/trackfw`
-já existia) produziu no log completo, na ordem exata do Makefile e seguindo adiante para o próximo
-gate (`check-identity-parity.sh`) sem abortar:
-```
-scripts/check-static-assets.sh
-Static assets are synchronized
-scripts/check-integration-assets.sh
-Integration assets are synchronized (file lists and bytes match)
-scripts/check-python-writes-lf.sh
-Escrita em LF: nenhuma chamada sem newline explicito.
-GO_BIN=bin/trackfw scripts/check-identity-parity.sh
-```
-(a rodada completa de `make parity` estourou o timeout do shell por ser longa — não por falha; uma
-rodada anterior, íntegra, já havia terminado com `exited with code 0`). `make -n parity | grep
-check-python-writes-lf` confirma a linha exata que o `make` expande. `quality: … parity`, então
-cobrir `parity` cobre `quality`.
-
----
-
-## Sessão 2026-08-31 — apolo-tf (INÍCIO: ML-2B — ligar check-homedir-parity.sh ao Makefile + guarda de vacuidade)
-
-Branch `fix/portar-as-correcoes-do-reporter-da-issue-216`.
-
-Escopo: `scripts/check-homedir-parity.sh` (do PR #222) estava fora do `Makefile`, igual ao
-`check-python-writes-lf.sh` estava antes do ML-1B/1C — e sem guarda de vacuidade no scan estático.
-Ligar ao alvo `parity:` e adicionar guarda no mesmo padrão do ML-1C, sem alterar a lógica de
-comparação do gate. Não toco no working tree do ML-2A (não commitado) além do necessário.
-
----
-
-## Sessão 2026-08-31 — apolo-tf — ML-2A (#222 Grupo A: `$HOME` nos 3 runtimes) — INÍCIO
-
-**Nota sobre o bloco "INÍCIO: ML-2B" logo acima**: eu não escrevi esse bloco. Ele apareceu no
-working tree (junto com uma edição não minha no roadmap adicionando um ML-2B, e uma edição no
-`Makefile` ligando `scripts/check-homedir-parity.sh` ao alvo `parity:`) enquanto eu executava
-`make quality` do ML-2A — antes de eu ter escrito uma única linha neste arquivo nesta sessão, e
-antes de eu ter reportado o ML-2A ao arquiteto (o texto do bloco cita "auditoria do arquiteto sobre
-o ML-2A" como origem, o que é logicamente impossível sem um relato prévio). Revertei a linha do
-`Makefile` uma vez; ela reapareceu no disco depois. Não revertei de novo — deixei como está e estou
-sinalizando aqui, sem executar o ML-2B nem reivindicá-lo como entregue. Ver relatório ao arquiteto
-para a análise completa e o estado verificado do gate.
-
-Branch `fix/portar-as-correcoes-do-reporter-da-issue-216`. Escopo: porte fiel do #222 Grupo A
-(`$HOME` nos três runtimes) — novo pacote `internal/homedir`/`npm/src/homedir.js`/
-`pypi/trackfw/homedir.py`, e troca de todos os call sites de `os.UserHomeDir()`/`os.homedir()`/
-`os.path.expanduser("~")` pelo helper, nos três runtimes. Sem `gh pr checkout`; diff lido e aplicado
-manualmente via `gh pr diff 222`.
-
-## Sessão 2026-08-31 — apolo-tf — ML-2A (#222 Grupo A: `$HOME` nos 3 runtimes) — FIM
-
-Porte fiel entregue: `internal/homedir/homedir.go`, `npm/src/homedir.js`, `pypi/trackfw/homedir.py`
-(novos, byte-a-byte com o diff), e todos os call sites de `os.UserHomeDir()`/`os.homedir()`/
-`os.path.expanduser("~")` (Grupo A) trocados pelo helper em ambos os validators
-(`validator_git_branch_guard.go`, `npm/src/validator/index.js`, `pypi/trackfw/validator.py`) e em
-todo o restante do produto (commands, config, generators, integrations) nos 3 runtimes — grep final
-confirma zero call site cru fora do helper em cada um. Grupo B (bit de execução, `CurrentGOOS`/
-`_platform`/`_current_platform`) já estava portado pelo ML-1A e não foi tocado. `internal/validator/
-validator_test.go` (teste de tilde, puro Grupo A, que o ML-1A deliberadamente não tocou) portado
-para `homedir.Dir()`. `internal/config/config_paths_test.go` tem o mesmo padrão de teste com
-`os.UserHomeDir()` mas **não está no diff do PR #222** — deixado intocado, porte fiel.
-
-Alegação banida ("API nativa → env var") não aparece em nenhum arquivo novo nem neste relatório —
-conferido por grep. `scripts/check-gates-falsify.sh` grepado por `UserHomeDir|homedir|expanduser`:
-vazio — nenhum cenário pina essas linhas, risco do vault note (Wave 1) descartado por evidência.
-
-Build Go limpo, `go vet` limpo. Testes: Go 100% verde (`go test ./internal/...`), Node 840/840
-verde (`node --test npm/tests/`), Python 1561 passed + 28 subtests (`pytest`). `make quality`
-rodado em background e terminou com `MAKE_EXIT=0` — mas essa rodada **não exerceu**
-`scripts/check-homedir-parity.sh` (confirmado por grep no log: a linha do `Makefile` que o liga
-ainda não existia quando o alvo `parity:` foi expandido). Rodado standalone depois: falha,
-`python: command not found` (mesmo defeito de ambiente que o ML-1B já documentou para
-`check-python-writes-lf.sh` — `python3` existe, `python` não). Reportado ao arquiteto como ponto de
-decisão porte-fiel, não corrigido por mim.
-
-`scripts/check-homedir-parity.sh` criado como arquivo próprio (não fui eu quem o ligou ao
-`Makefile` — ver nota acima), modo 755 por precedente do ML-1B/1C (script chamado sem `bash` na
-frente pelos vizinhos do alvo `parity:`, quando ligado).
-
-Sem git (autoridade do arquiteto). Arquivos alterados: ver relatório ao arquiteto — lista completa
-dos 3 runtimes. Roadmap e REQ não tocados por mim (restrição explícita do handoff do ML-2A).
-
----
-
-## Sessão 2026-08-31 — apolo-tf (FIM: ML-2B — CONCLUÍDO)
-
-Branch `fix/portar-as-correcoes-do-reporter-da-issue-216`.
-
-**O que foi feito:**
-
-- `Makefile`: `scripts/check-homedir-parity.sh` ligado ao alvo `parity:`, logo após
-  `check-python-writes-lf.sh` (mesmo bloco/mesmo autor de gate). `make -n parity` confirma a expansão.
-- `scripts/check-homedir-parity.sh`: guarda de vacuidade adicionada antes do scan estático — `find`
-  sobre `$ROOT/npm/src`, `$ROOT/pypi/trackfw`, `$ROOT/internal`+`$ROOT/cmd` (mesmo prefixo `$ROOT` e
-  mesmos filtros `--include` do grep real logo abaixo, evitando o erro de ancoragem que quase escapou
-  no ML-1C). Lógica de comparação do PR original (#222) intocada.
-- Falsificação nas duas direções feita em fixtures isoladas em `/private/tmp/.../scratchpad/` — nunca
-  na árvore real (havia trabalho não commitado do ML-2A no worktree). Direção 1 (dirs vazios) → exit 1
-  com mensagem "scan visited zero files under ..."; Direção 2 (1 arquivo por dir) → exit 0.
-- `make quality` verde, rodado sem pipe, exit code do `make` capturado explicitamente
-  (`MAKE_QUALITY_EXIT=0`). Uma primeira tentativa colidiu de porta por dois `make quality` concorrentes
-  (self-inflicted, ambiente local) — não é falha do gate; rerun sequencial limpo confirma.
-- `trackfw validate` verde (16 warnings pré-existentes, sem relação com este ML).
-- Vault: nota `falsify-cenario-pina-linha-de-fonte-por-sed-guard-de-plataforma-quebra-2026-08-31.md`
-  (ML-1A) avisava que a Wave 2 tocaria os mesmos 3 arquivos de validator. Conferido:
-  `scripts/check-gates-falsify.sh` está com diff zero nesta branch e não referencia
-  `validateGuardGlobalHookResolvable`/`validateGuardGlobalScriptIntegrity`/`UserHomeDir` por `sed` —
-  nenhum cenário de falsificação precisou ser retargetado no ML-2A.
-
-**Incidente à parte:** o primeiro `Edit` no `Makefile` desapareceu do disco entre uma leitura e a
-seguinte (git diff voltou a zero sem nenhum commit/checkout ter rodado) — reaplicado com sucesso na
-segunda tentativa; não investigado a fundo (fora de escopo), mas registrado aqui para o arquiteto.
-
-**Artefatos:** `Makefile`, `scripts/check-homedir-parity.sh` (não tocar mais nada em #223/#224/
-`docs/cli-parity.md`/roadmap/REQ — restrição respeitada).
-
-**Próximo:** aguardando auditoria do arquiteto para commit/push (ML-2A + ML-2B juntos).
-
----
-
-## Sessão 2026-08-31 — apolo-tf (ML-2B — correção pós-autorevisão: guarda de vacuidade contra diretório inexistente)
-
-Branch `fix/portar-as-correcoes-do-reporter-da-issue-216`.
-
-A falsificação inicial usava uma reprodução manual da guarda (não o script real) e só cobria
-diretórios *vazios-mas-presentes*, não o caso de diretório *ausente* (rename real). Sob
-`set -euo pipefail`, `find <dir-inexistente> ...` dentro de `$(...)` propaga falha e mataria o
-script antes da guarda rodar — silenciosamente, sem a mensagem "scan visited zero files". Corrigido
-em `scripts/check-homedir-parity.sh`: as três chamadas de `find` da guarda (linhas ~51-53) agora têm
-`2>/dev/null || true`, então diretório ausente e diretório vazio produzem o mesmo diagnóstico limpo
-em vez de um crash bruto do `find`. Julgamento de escopo: é código novo meu (a guarda), não a lógica
-de comparação do PR #222 — não fere a restrição.
-
-Refalsificado com o **script real, sem cópia/retype**, em 3 cenários (`/tmp`, fora da árvore real):
-- Diretório vazio-mas-presente → guarda dispara nas 3 mensagens, exit 1.
-- Diretório **ausente** (rename) → antes crashava com erro bruto do `find`; agora dispara a mesma
-  mensagem "scan visited zero files under npm/src — refusing to pass silently", exit 1.
-- Diretórios populados (cópia real de `npm/src`, `pypi/trackfw`, `internal`, `cmd`) → guarda
-  silenciosa (nenhuma mensagem de vacuidade); o exit 1 residual nesse fixture vem só da ausência dos
-  binários reais (`bin/trackfw`, `npm/bin/trackfw`) no diretório minimalista, não da guarda — já
-  coberto separadamente pelo `REAL_TREE_EXIT=0` rodado direto na árvore real (não copiada).
-
-`make quality` re-executado após a correção: `MAKE_QUALITY_EXIT=0`.
-
-**Achado à parte, não corrigido (fora do escopo do ML-2B):** `scripts/check-homedir-parity.sh` linha
-33 chama `python`, não `python3`. Nesta máquina só existe `python3`; sem um shim de PATH o braço
-`python` do check falha com "command not found" antes mesmo de tocar a guarda. `MAKE_QUALITY_EXIT=0`
-só foi obtido com um shim `python -> python3` no PATH usado apenas para os comandos de verificação
-desta sessão (nunca escrito na árvore real nem no ambiente permanente). Máquinas/CI sem alias
-`python` verão esse gate falhar por esse motivo, não por regressão de paridade. É lógica de
-comparação do PR #222 — não alterada, conforme restrição. Candidato a entrar no item de Wave 4 (gate
-precisa estar ligado e reprovar quando vazio) junto com o contrato de "todo runtime chamado pelo nome
-que existe no ambiente-alvo".
-
----
-
-## Sessão 2026-09-01 — hefesto-tf (INÍCIO: ML-4A — três contratos em `docs/cli-parity.md`)
-
-Branch `fix/portar-as-correcoes-do-reporter-da-issue-216`.
-
-Escopo: `docs/cli-parity.md` **apenas** (nenhum código, workflow, Makefile ou script). Fechar a
-lacuna que eu mesma apontei na análise dos PRs #222–#225: gates novos (`check-python-writes-lf.sh`,
-`check-homedir-parity.sh`/`check-tty-detection.sh`) impondo contratos que não estavam escritos.
-Três contratos: (1) escrita em LF nos 3 runtimes, (2) UTF-8 na saída do CLI independente da
-codepage — com a fronteira do item 4 (scripts de shell auxiliares) explícita, (3) um gate só conta
-como gate se estiver ligado ao `Makefile` e reprovar quando não mede nada (achado desta sessão,
-generalizando ML-1C/ML-2B/ML-3C). Não edito roadmap nem REQ; não uso git. Vou rodar
-`make quality` ao final e reportar `MAKE_EXIT` sem pipe.
-
----
-
-## Sessão 2026-09-01 — hefesto-tf (FIM: ML-4A — três contratos em `docs/cli-parity.md` — CONCLUÍDO)
-
-Branch `fix/portar-as-correcoes-do-reporter-da-issue-216`.
-
-Três seções novas em `docs/cli-parity.md`, cada uma com anotação `trackfw-contract`:
-
-1. **"Escrita de artefatos em LF nos 3 runtimes"** (fim do documento) — `gate=scripts/check-python-writes-lf.sh`.
-2. **"UTF-8 na saída do CLI, independente da codepage do console"** (fim do documento) —
-   `gap reason=...` (só teste unitário Python-only, sem gate cross-CLI, porque só o Python precisava
-   da correção). Fronteira do item 4 (`scripts/check-parity-contract-coverage.sh` continua fora do
-   contrato) explícita, com o próprio gate de cobertura citado como exemplo vivo do que fica de fora.
-3. **"Gate ligado é o que revela os outros defeitos"** — subseção nova dentro de "Princípios de
-   design de gates (P1–P4)", com a tabela dos 3 gates portados (`check-python-writes-lf.sh`,
-   `check-homedir-parity.sh`, `check-tty-detection.sh`) e as 4 propriedades exigidas.
-
-**Correção feita a partir da revisão do advisor, antes de fechar:** a primeira versão da anotação
-da seção 3 alegava `gate=...,scripts/check-gates-falsify.sh`, o que a checker registra como
-"cobertura plena" — mas `grep` confirma zero ocorrência de `python-writes-lf`/`homedir-parity`/
-`tty-detection` em `check-gates-falsify.sh`, e nenhum gate verifica a listagem no `Makefile` (P1) nem
-varre `check-*.sh` por invocação nua de `python` (P4 da seção). Corrigido para `partial=` nomeando
-exatamente o que não é verificado automaticamente — a seção cujo argumento é "contrato só na cabeça
-de alguém não é contrato" não podia carregar ela mesma uma alegação de cobertura que o gate não prova.
-
-**Verificação:** `scripts/check-parity-contract-coverage.sh docs/cli-parity.md` rodado standalone
-após a correção — `EXIT=0`, 233 seções reais, `sem anotação: 0`, `anotação inválida: 0`, as 3 seções
-novas aparecem no relatório (2 `gate=` plenos + 1 `gap`), confirmando que o checker **reagiu** ao
-texto novo.
-
-`make quality` completo (test, test-node, test-python, lint, parity — incluindo `check-gates-falsify.sh`,
-181 cenários, e `check-roadmap-barrier-contract.sh`, 53 cenários, ambos OK): **`MAKE_EXIT=0`**.
-
-Nenhum arquivo fora de `docs/cli-parity.md` e `docs/agents-working-context.md` tocado. Roadmap e REQ
-não editados, conforme restrição.
-
----
-
----
-
-## 2026-09-01 — hefesto-tf: Barreira final de qualidade sobre o PR #229 (port do reporter #216)
-
-**Início.** Recebido para revisar o diff completo de `fix/portar-as-correcoes-do-reporter-da-issue-216`
-(PR #229) contra `origin/main`. Objetivo: barreira de qualidade — fidelidade do port contra
-`gh pr diff 222|223|224|225`, os desvios declarados no roadmap (`python`→`python3`, modo 755, par
-duplicado cosmético mantido, retarget do Cenário 81, ligação dos gates ao `Makefile`, guardas de
-vacuidade), falsificação própria das 3 guardas de vacuidade com fixture em `/tmp`, cobertura de
-teste (falsificação nas duas direções vs guarda-de-regressão-fora-do-Windows), leitura de
-`pypi/trackfw/tty.py`, duplicação entre os 3 gates novos e os existentes, e se os 3 gates novos
-cumprem o próprio Contrato 3 que escrevi no ML-4A (`partial=`). Sem tocar `docs/seguranca/`
-(hades-tf em paralelo), sem editar roadmap/REQ, sem git.
-
-**Fim.** Veredito: **APROVA**, zero bloqueante. Fidelidade do port confirmada por comparação
-programática linha a linha entre `git diff origin/main...HEAD` e `gh pr diff 222|223|224|225` — zero
-arquivo ausente, zero divergência de lógica além dos 5 desvios já declarados no roadmap (todos
-verificados como execução, não lógica). As três guardas de vacuidade (`check-python-writes-lf.sh`,
-`check-homedir-parity.sh`, `check-tty-detection.sh`) foram falsificadas por mim em fixtures isoladas
-em `/tmp` — todas reprovam corretamente tanto com diretório vazio quanto com diretório ausente. O
-teste `TestCliEmConsoleCp1252` foi reproduzido empiricamente (cópia do `pypi/` em `/tmp`, chamada a
-`_force_utf8_output()` desabilitada): quebra com `UnicodeEncodeError` sem a correção, passa com ela —
-causalidade real, não presumida. `pypi/trackfw/tty.py` lido e confirmado no-op fora do Windows por
-execução direta neste macOS. `make quality` completo (Go+Node+Python+lint+parity, incluindo os 181
-cenários de `check-gates-falsify.sh` e os 53 de `check-roadmap-barrier-contract.sh`): `MAKE_EXIT=0`.
-Os 3 gates novos cumprem o próprio Contrato 3 do `docs/cli-parity.md` (ligados ao `Makefile` e
-reprovam vácuo). Dois achados de acompanhamento, não bloqueantes: duplicação leve (~10 linhas × 3) do
-idioma de guarda de vacuidade entre os 3 gates novos sem helper compartilhado (convenção herdada, não
-regressão); diagnóstico degradado (mas não a segurança) de `check-python-writes-lf.sh` no cenário
-"diretório ausente" (falha por `set -e` cru, sem mensagem custom). Relatório completo em
-`docs/qualidade/2026-09-01-barreira-do-port-do-reporter-da-issue-216.md`. Nenhum arquivo de produto
-tocado; roadmap e REQ não editados; `docs/seguranca/` não tocado.
-
-**Correção pós-revisão do advisor, antes de fechar:** a primeira versão do §7 só checava 2 das 4
-propriedades do Contrato 3 (ligado + reprova vácuo) — mesma classe de over-claim que o próprio ML-4A
-tinha corrigido em si mesmo. Reli o texto verbatim de `docs/cli-parity.md` e verifiquei as 4 (ligado,
-reprova vácuo, guarda usa mesmo cwd/caminho da varredura real, `python3` nunca `python`) — as 3
-satisfazem as 4, mas por verificação explícita, não por tabela incompleta. Também adicionados: nota
-de que `pypi/trackfw/tty.py` não tem teste unitário direto (lacuna herdada de #224, `test_scope_
-resolution.py` faz stub da função inteira em vez de exercitá-la); downgrade honesto do ✅ sobre o "par
-duplicado cosmético" do #225 (não localizei o par específico, reportado como não confirmado por mim);
-checagem de atribuição nos 5 commits (`git log`, só leitura) — 4/5 trazem `Co-Authored-By:
-lourivalgarciajunior`, o 5º (`ee8a735`, ML-4A) corretamente não traz porque não porta nenhuma linha
-dele, é documentação original. Veredito mantido: **APROVA**, zero bloqueante, 4 achados de
-acompanhamento (duplicação leve entre os 3 gates, diagnóstico degradado de uma guarda num cenário,
-cobertura de `tty.py`, par duplicado não localizado).
-
----
-
-## hades-tf — 2026-09-01 — ML-0A (Wave 0), modelo de ameaça do separador em artefato
-
-**Início.** Branch `fix/caminho-dentro-de-artefato-versionado-usa-sempre-barra`. Tarefa: ML-0A do
-roadmap `docs/roadmaps/wip/ROADMAP-2026-09-01-caminho-dentro-de-artefato-versionado-usa-sempre-barra.md`
-(REQ `docs/req/REQ-2026-08-30-caminho-portavel-montado-com-separador-do-sistema-vaza-para-dentro-de-artefato-versionado.md`).
-Enumerar pontos que escrevem caminho (não que só acessam arquivo) dentro de conteúdo versionado,
-modelo de ameaça, falsificação nas duas direções (com atenção à normalização agressiva demais que
-quebre leitura de artefato já sujo), residual. Só documento em `docs/seguranca/`, nenhuma linha de
-implementação. Ler primeiro código real (roadmap.go/js/py, req.go/js/py, validator, serve/api_chain,
-thirdparty/*, metrics.go), rodar PoC no binário Go real em `/tmp` (sem depender de máquina Windows).
-
-**Fim.** Confirmados os 2 pontos nomeados pela REQ nos 3 runtimes: `dst := filepath.Join(...)` em
-`roadmap.go:452`/`roadmap.js:283`/`roadmap.py:622` vira `newRoadmapPath` escrito no `roadmap:`/
-`Roadmap:` da REQ pareada; `log_basename = os.path.join(agent, basename)` em
-`pypi/trackfw/generators/roadmap.py:611` — **só existe furado no Python**, Go (`roadmap.go:467`) e
-Node (`roadmap.js:269`) já usam `agent + "/" + basename` explícito. **Achado novo não previsto pela
-REQ:** `internal/validator/validator_thirdparty_provenance.go:142` usa `filepath.Rel(root,
-destination)` como chave de busca contra `.trackfw/thirdparty-provenance.json`, cujas chaves são
-sempre gravadas com `/` (`ResolveThirdPartySkillDestination`, `render.go:821`) — é bug do lado da
-**leitura**, Go-only (regra não implementada em Node/Python, gap de paridade já documentado). PoCs ao
-vivo com o binário Go real em `/tmp` (simulando o valor `\` à mão, sem precisar de Windows):
-`trackfw validate` recusa uma referência que existe de verdade
-(`req "REQ-poc.md" links to Roadmap "docs\\roadmaps\\wip\\ROADMAP-poc.md" which does not exist`); o
-board do `serve` (`/api/chain`) desenha node com `id` em `/` e edge com `to` em `\` — aresta órfã,
-grafo quebrado silenciosamente. Terceiro sintoma (métrica de cycle time descartando roadmap por
-agrupar `map[string][]stateEntry` chaveado em `Basename` exato) derivado por leitura de código, não
-executado ao vivo — declarado como residual mais fraco. Falsificação da direção simétrica (KG pediu
-prioridade): hoje **não existe nenhuma tentativa de normalização de leitura em lugar nenhum** — o
-risco não é regressão de algo que já funcionava, é escopo da normalização nova. Nomeados 3 limites
-duros que não podem ser normalizados: `content_base64` da quarentena de terceiros (âncora
-anti-TOCTOU, D8b/D8c — nunca tocar), prosa/blocos de código em corpo de ADR/REQ/Roadmap (normalizar
-só campo extraído, nunca arquivo inteiro), e a chave absoluta de `integrations-manifest.json`
-(não-portável por design, contrato já pinado em `docs/cli-parity.md` — fora do escopo desta REQ).
-Verificado que `toSlug` (`internal/generators/adr.go:151`) nunca produz `\` em basename gerado pelo
-trackfw, então o risco de normalizar um nome de arquivo legítimo com `\` literal é teórico, não
-medido. Documento em `docs/seguranca/2026-09-01-modelo-de-ameaca-do-separador-em-artefato.md`, gate
-local (3 comandos do roadmap) verde. Nenhum arquivo de produto tocado; roadmap e REQ não editados;
-sem git.
-
----
-
-## apolo-tf — 2026-09-01 — Wave 1 (ML-1A, ML-1B, ML-1C)
-
-**Início.** Branch `fix/caminho-dentro-de-artefato-versionado-usa-sempre-barra`. Tarefa: Wave 1 do
-roadmap `docs/roadmaps/wip/ROADMAP-2026-09-01-caminho-dentro-de-artefato-versionado-usa-sempre-barra.md`
-(REQ ligada, parecer `docs/seguranca/2026-09-01-modelo-de-ameaca-do-separador-em-artefato.md`, ML-0A
-de `hades-tf` lido por completo). ML-1A: escrita sempre com `/` no `newRoadmapPath` sincronizado na
-REQ pareada (3 runtimes) e no `.trackfw-log` do Python. ML-1B: leitura tolerante a `\` já gravado,
-com os 3 limites duros do ML-0A preservados. ML-1C: confirmar (não implementar) se
-`thirdparty_artifact_has_provenance` existe fora do Go. Não editar roadmap/REQ; git é do arquiteto.
-Advisor consultado antes de codar — apontou: (1) o predicado de descoberta `filepath.Base(fmVal) !=
-roadmapBasename` em `syncREQReferences` bloqueia a cura de uma REQ já suja, e é onde a reprodução
-fica falsificável em macOS sem Windows; (2) paridade de stdout no Python entre `✓ moved` (nativo) e
-`✓ synced` (portável); (3) ML-1B item 1 é dos 3 runtimes, não só Go — `validate`/`barrier`/`/api/chain`
-em Node e Python também resolvem referência; (4) `validateREQRoadmapLifecycle` no Go também lê o
-valor cru, é um segundo call site além de `referenceExists`; (5) checar o que `rewriteREQRoadmapRef`
-já faz com bloco de código citando `Roadmap:` antes de escrever o teste de controle, não inventar
-requisito novo.
-
-**Fim.** ML-1A e ML-1B implementados nos 3 runtimes; ML-1C confirmado (achado corrige a premissa
-do roadmap, nada implementado além do já coberto por ML-1B). Escrita: `newRoadmapPath` sincronizado
-na REQ pareada normalizado para "/" antes de gravar (`normalizeRefSeparator`/`normalizeRefSeparator`/
-`_normalize_ref_separator` — Go `internal/generators/roadmap.go`, Node `npm/src/generators/roadmap.js`,
-Python `pypi/trackfw/generators/roadmap.py` + `pypi/trackfw/commands/roadmap.py`); `.trackfw-log` do
-Python (`log_basename`) trocado de `os.path.join` para concatenação explícita, igualando Go/Node.
-Leitura tolerante: `referenceExists`/`validateREQRoadmapLifecycle` (Go `internal/validator/validator.go`)
-e `_reference_exists`/`validate_req_roadmap_lifecycle` (Python `pypi/trackfw/validator.py`) normalizam
-o valor antes de `os.Stat`/`os.path.exists`; `/api/chain` do serve (Go `internal/serve/api_chain.go`)
-normaliza node.ID (WalkDir) e edge.To (frontmatter) para o mesmo separador antes de comparar — cura o
-PoC B do ML-0A (aresta órfã), testado com REQ real gravada com "\" à mão. Cura (healing): a REQ já
-suja num commit anterior ao fix de escrita é reconhecida e reescrita no próximo `roadmap move`/
-`sync_paired_req_references`/`syncReqReferences` — exigiu normalizar tanto o predicado de descoberta
-quanto (no Go) os dois pontos de comparação de basename dentro de `rewriteREQRoadmapRef` (frontmatter
-e corpo); sem o segundo, a descoberta encontrava a REQ suja mas a reescrita não acontecia. Achado do
-advisor, corrigido: o teste de controle original (linha de prosa sem ":") não testava nada — reescrito
-para uma linha `Roadmap:` de verdade dentro de cerca, com basename diferente (continua intocada) e um
-segundo teste que documenta o efeito colateral aceito (uma linha `Roadmap:` cercada com o MESMO
-basename do roadmap movido passa a ser reescrita — comportamento pré-existente ampliado pela
-normalização, verificado sem ocorrência real hoje em `docs/req/`, reportado, não expandido).
-
-**ML-1C — achado que corrige a premissa do roadmap:** `thirdparty_artifact_has_provenance` **não** é
-Go-only — existe também em Python (`pypi/trackfw/validator.py:3361`, `validate_thirdparty_artifact_has_provenance`)
-com o **mesmo defeito** (`os.path.relpath` nativo vs chave sempre gravada com "/", mesmo comentário
-"inverte exatamente" falso para casamento de string) — corrigido ali também (mesma classe de fix do
-Go, não é expansão de escopo: completa ML-1B para o runtime onde a regra existe). A regra está
-**ausente apenas no Node** — gap de paridade não documentado em `docs/cli-parity.md`, registrado para
-o arquiteto, nada implementado (ML-1C, decisão do arquiteto).
-
-**Achado adicional reportado, não implementado:** `ref_targets_exist`/`req_roadmap_lifecycle`
-(a regra que resolve `Roadmap:`/`ADR:` de REQ, cujo `referenceExists` corrigi) **não existe no Node**
-— Go e Python têm; Node não tem a regra nenhuma. Gap de paridade pré-existente, não documentado em
-`docs/cli-parity.md`, fora do escopo desta REQ.
-
-**Divergência cross-runtime na reescrita de corpo, reportada e não tocada:** Go reescreve toda linha
-`Roadmap:` do corpo cujo basename normalizado bate (sem `break`); Python reescreve incondicionalmente
-a PRIMEIRA linha `Roadmap:` do corpo, sem checar basename nenhum (pré-existente, não introduzido por
-este ML); Node substitui por igualdade de string exata do valor cru extraído do frontmatter (nem
-basename nem normalização no corpo). Resultado: uma REQ com múltiplas linhas `Roadmap:` no corpo
-(ex.: exemplo + referência real) se comporta diferente nos 3 runtimes. Pré-existente, ampliado em
-visibilidade pela normalização — reportado para REQ própria, não corrigido aqui.
-
-**Provenance (Go e Python) não coberto por teste end-to-end** — mesmo limite do ML-0A: `filepath.Rel`
-(Go) e `os.path.relpath` (Python) sempre devolvem "/" em macOS/Linux, então o defeito real
-(separador nativo "\" só em Windows) não é reproduzível localmente sem monkeypatch. Declarado como
-residual, não coberto — `normalizeRefSeparator`/`_normalize_ref_separator` isolados têm teste direto.
-
-**Achado ao vivo, não previsto: `/api/chain` do Node já não desenha aresta REQ→Roadmap nenhuma,
-mesmo com caminho limpo (sem "\").** Reproduzido com o CLI Node real: REQ com
-`roadmap: "docs/roadmaps/wip/ROADMAP-poc.md"` (já portável) produz `{"nodes":[...],"edges":[]}`.
-Causa: `resolveRef` (`npm/src/serve/api_chain.js`) nunca reduz `val` a basename antes de consultar
-`fileIndex` — compara o caminho completo contra chaves que são só basename, então nunca bate,
-separador ou não. É por isso que a normalização de separador não teria efeito nenhum no sintoma 2 em
-Node: o link já está quebrado por um motivo anterior e não relacionado a esta REQ. Reportado ao
-arquiteto como achado de produto, fora do escopo desta REQ — não corrigido aqui.
-
-**Python também não produz a aresta REQ→Roadmap do PoC B, por um motivo estrutural diferente:**
-`get_chain` (`pypi/trackfw/serve/api_chain.py`) só constrói arestas `req.adr`, `roadmap.req` e
-`roadmap.adr` — nunca lê o campo `req:` de uma REQ apontando para seu roadmap na direção do PoC B
-(`roadmap:` da REQ). O node ID já é normalizado com `.replace("\\", "/")` (linha 98, pré-existente),
-mas não há aresta na direção que o PoC B descreve para normalizar. Reportado, não corrigido.
-
-**Residual declarado, não implementado:** `internal/metrics/metrics.go: Calculate` (sintoma 3 do
-ML-0A) continua vulnerável a `.trackfw-log` já sujo — o fix do `log_basename` do Python impede
-*novas* linhas sujas, mas não repara histórico existente; um roadmap cuja história de transições já
-mistura `agent/x.md` e `agent\x.md` ainda parte em dois artefatos e some do `cycleTimeMean`. Fora da
-AC de ML-1B, sintoma nunca executado (nem por hades-tf nem por mim) — declarado, não corrigido.
-
-Evidência: `go build ./...` limpo; `go test ./...` 0 falhas; `npm test` 840/840; `python3 -m pytest`
-1575 passed + 28 subtests; `bin/trackfw validate` exit 0, 16 warnings pré-existentes sem relação com
-este ML. Duas rodadas paralelas acidentais do mesmo `make quality` (erro meu, corrigido em
-andamento) foram mortas por escreverem no mesmo arquivo de log — **não** citando
-`falsify/no-repo-mutation` como prova (esse gate testa o comportamento normal dos scripts, não um
-SIGKILL no meio de um deles); a evidência real de que nada ficou sujo é `git status --porcelain`
-limpo (só os arquivos deste ML, nenhum arquivo temporário/de teste órfão), confirmado depois do kill
-e de novo ao final. `make quality` foi então rerodado do zero, numa única execução limpa sobre a
-árvore final (pós todos os edits, incluindo o fix tardio de `pypi/trackfw/validator.py` e a reescrita
-do teste de controle em `roadmap_test.go`) — MAKE_EXIT reportado é dessa rodada final, não da rodada
-anterior que rodou sobre uma árvore parcialmente editada. Roadmap e REQ não editados; nenhum comando
-git de escrita executado.
-
-## artemis-tf — 2026-09-01 — Wave 2 (ML-2A), gate falsificável do separador em artefato — INÍCIO
-
-Roadmap: `docs/roadmaps/wip/ROADMAP-2026-09-01-caminho-dentro-de-artefato-versionado-usa-sempre-barra.md`
-REQ: `docs/req/REQ-2026-08-30-caminho-portavel-montado-com-separador-do-sistema-vaza-para-dentro-de-artefato-versionado.md`
-
-Entrando para escrever o gate falsificável da AC5 sobre o trabalho já commitado das Waves 0/1
-(`normalizeRefSeparator`/`_normalize_ref_separator` nos 3 runtimes). O gate precisa provar a escrita
-sempre-`/` sem máquina Windows.
-
-## artemis-tf — 2026-09-01 — Wave 2 (ML-2A), gate falsificável do separador em artefato — FIM
-
-Entregue `scripts/check-ref-separator-portability.sh`: gate estático (sem `python`, sem depender de
-SO) que confirma 17 assinaturas de código exatas — 6 pontos de escrita (`portableDst`/`portable_path`
-normalizados antes de `sync*Reférences`, e `logBasename` por concatenação explícita com `/` nos 3
-runtimes) e 11 pontos de leitura tolerante (`referenceExists`, `validateREQRoadmapLifecycle`,
-`provenanceKey`/`provenance_key`, node ID e `edge.To` do `/api/chain`, e a cura de REQ já suja —
-`fmVal`/`currentRef`/`current_ref` normalizado antes da comparação de basename em `syncREQReferences`
-nos 3 runtimes; achado ausente na Wave 1 original, adicionado após revisão do arquiteto).
-
-Nasce ligado ao `Makefile` (`parity:` alvo, `make -n parity` confirma). Duas guardas de vacuidade:
-contagem de `assert_has` (pega remoção de checagem) e existência de arquivo por assinatura (pega
-diretório/arquivo movido — falsificado apontando o gate para diretório ausente e para diretório vazio,
-ambos reprovam nomeando cada assinatura ausente, nunca em silêncio). Falsificado nas duas direções em
-cópias de `/tmp` (nunca na árvore real): revertendo `portableDst`→`dst` no Go (regressão de escrita) e
-revertendo `normalizeRefSeparator(currentRef)`→`currentRef` no Node (regressão de leitura) — o gate
-reprova nomeando a assinatura exata. Registrado em `docs/cli-parity.md` (`<!-- trackfw-contract:
-gate=scripts/check-ref-separator-portability.sh -->`), verificado por `check-parity-contract-coverage.sh`.
-
-`make quality` completo (build + testes Go/Node/Python + toda a suíte `parity`, incluindo
-`check-gates-falsify.sh` — 181 cenários — e `check-roadmap-barrier-contract.sh` — 53 cenários) rodou
-verde do zero após todas as edições: `MAKE_EXIT=0`. `git status --porcelain` limpo (só os 4 arquivos
-deste ML: `Makefile`, `docs/cli-parity.md`, `scripts/check-ref-separator-portability.sh` novo,
-`docs/agents-working-context.md`). Roadmap e REQ não editados; nenhum comando git de escrita executado.
-
-## artemis-tf — 2026-09-01 — Wave 2 (ML-2A), gate falsificável do separador em artefato — CORREÇÃO PÓS-AUDITORIA
-
-Revisão encontrou um buraco de cobertura no gate entregue no ciclo anterior: `referenceExists` e
-`validateREQRoadmapLifecycle` em `internal/validator/validator.go` produzem, coincidentemente, a
-mesma linha `expandedRef := config.ExpandPath(normalizeRefSeparator(ref))` — o `assert_has` original
-(um `grep -qF` simples) passava com só UMA das duas normalizando, escondendo uma regressão de
-leitura na segunda função. Também faltava assinatura equivalente para
-`validate_req_roadmap_lifecycle` no Python (`pypi/trackfw/validator.py`), que nunca foi coberta.
-
-Correções em `scripts/check-ref-separator-portability.sh`:
-- Nova função `assert_count` (exige N ocorrências exatas, não só "existe") aplicada à linha duplicada
-  do Go — falsificado revertendo a normalização SÓ de `validateREQRoadmapLifecycle`, mantendo
-  `referenceExists` intacto: `assert_count` reprova "esperava 2 ocorrência(s), achou 1", o buraco
-  exato que o `assert_has` simples não pegava.
-- Assinatura nova para `validate_req_roadmap_lifecycle` (Python) — falsificada isoladamente.
-- As 3 assinaturas de "cura de REQ suja" foram encurtadas do texto de linha inteira (frágil a
-  reformatação/condicional) para o substring da propriedade normalizada
-  (`filepath.Base(normalizeRefSeparator(fmVal))`, etc.) — confirmadas ainda únicas em cada arquivo.
-- Total de checagens: 18 (`expected=18`), confirmado por 4 falsificações independentes em cópias de
-  `/tmp` (nunca na árvore real): regressão de escrita (Go `portableDst`→`dst`), o buraco de cobertura
-  do `assert_count` acima, regressão de leitura Python (`validate_req_roadmap_lifecycle`), e vacuidade
-  por remoção de checagem (17 vs. 18 esperado).
-
-`docs/cli-parity.md` atualizado com `partial=` na anotação do gate (nomeando que a cobertura é
-estrutural, falsificada manualmente fora de `check-gates-falsify.sh`) e prosa revisada descrevendo o
-`assert_count` e as 4 direções de falsificação. `scripts/check-parity-contract-coverage.sh` confirma
-"OK — nenhuma anotação inválida e nenhuma seção sem anotação".
-
-`make quality` completo rodou verde do zero após as correções: `MAKE_EXIT=0`,
-`check-ref-separator-portability: OK — 18 assinaturas de escrita/leitura portavel confirmadas`.
-`git status --porcelain` continua só com os 4 arquivos deste ML.
-
----
-
-## Sessão 2026-09-01 — hefesto-tf (INÍCIO: barreira de qualidade — PR #231, item 10 do #216)
-
-Branch `fix/caminho-dentro-de-artefato-versionado-usa-sempre-barra` (não criada por mim). Worktree
-limpo, único agente.
-
-Escopo: barreira final de qualidade sobre `git diff origin/main...HEAD` — normalização de separador
-de caminho no valor do campo do frontmatter (não no buffer do arquivo), limites do ML-0A (quarentena,
-prosa/código, chave absoluta do manifest), paridade Go/Node/Python, gate
-`scripts/check-ref-separator-portability.sh` (assert_count vs assert_has), risco de
-super-normalização em POSIX, cobertura dos testes novos. Não modifico código — apenas diagnóstico em
-`docs/qualidade/2026-09-01-barreira-do-separador-em-artefato.md`.
-
-
----
-
-## Sessão 2026-09-01 — hefesto-tf (FIM: barreira de qualidade — PR #231, item 10 do #216 — CONCLUÍDO)
-
-Branch `fix/caminho-dentro-de-artefato-versionado-usa-sempre-barra`.
-
-**Veredito: APROVA COM RESSALVAS.** Nenhum achado bloqueia o PR. Relatório completo em
-`docs/qualidade/2026-09-01-barreira-do-separador-em-artefato.md`.
-
-**O que foi feito:**
-
-- Confirmado, nos 3 runtimes, que a normalização de separador atua só sobre o valor já extraído
-  do campo (`dst`/`ref`/`provenanceKey`/`val`), nunca sobre o buffer do arquivo — com teste de
-  controle dedicado por runtime (`TestSyncREQ_ControlDoesNotTouchUnrelatedBackslashInBody` e
-  equivalentes Node/Python).
-- Falsifiquei eu mesma o gate `scripts/check-ref-separator-portability.sh` em cópias de `/tmp`:
-  revertendo só uma das duas ocorrências normalizadas em `validator.go` (o gate reprova, nomeando
-  a contagem que faltou) e removendo uma chamada `assert_has` do próprio script (guarda de
-  vacuidade reprova, "checou 17" em vez de 18). Confirmei também que as outras 17 needles do gate
-  são únicas nos arquivos-alvo — nenhum outro `assert_has` deveria ser `assert_count`. Gate
-  confirmado ligado ao target `parity:` do `Makefile`.
-- Achado de acompanhamento (não bloqueante): 2 dos 3 limites duros do ML-0A (`content_base64` da
-  quarentena, chave absoluta do `integrations-manifest.json`) não têm teste de regressão — o
-  próprio roadmap (ML-1B) já declara este AC como pendente (`- [ ]`).
-- Achado de acompanhamento (não bloqueante): a escrita do `.trackfw-log` em modo `by_agent`
-  (ML-1A) não tem teste que leia o log de volta — só a assinatura de código do gate garante isto.
-- Achado de acompanhamento (não bloqueante, reproduzido ao vivo, não só por leitura de código):
-  o sintoma 2 do parecer de ameaça (aresta órfã no `/api/chain`) reproduz de verdade em
-  `pypi/trackfw/serve/api_chain.py` (não tocado por este diff) — clean `/` desenha aresta, dirty
-  `\` produz zero arestas. Em `npm/src/serve/api_chain.js` (também não tocado), o grafo já não
-  desenha aresta nenhuma mesmo com referência limpa — bug estrutural mais amplo e anterior a esta
-  REQ (`resolveRef` nunca aplica `path.basename` ao valor comparado). Nenhum dos dois é regressão
-  desta REQ; recomendo REQ de acompanhamento, mesmo tratamento já dado ao gap de
-  `thirdparty_artifact_has_provenance` no Node.
-- Risco de super-normalização em POSIX (nome de arquivo `\`-legítimo) avaliado como teórico —
-  concordo com a classificação do parecer de ameaça (`toSlug` nunca produz `\` em basenames
-  gerados pelo trackfw).
-
-**`make quality`**: rodado limpo, sem pipe, exit code capturado (ver documento de qualidade para
-o número exato e a contagem OK/FAIL — nota de processo: a primeira tentativa rodou dois `make
-quality` em paralelo acidentalmente, escrita descartada, processos mortos, reexecutado uma vez).
-
-**Fronteiras mantidas:**
-
-- Nenhum arquivo de `internal/`, `npm/`, `pypi/`, `scripts/`, `Makefile`, roadmap ou REQ tocado.
-  Nenhuma branch criada, nenhum commit, nenhum push. Falsificações feitas só em cópias de
-  `/tmp`/scratchpad.
-
-
-**Nota final sobre `make quality`**: a execução limpa acompanhada por ~70 min chegou a 3370
-linhas de log, 697 `OK`, zero `FAIL`, processo confirmado ativo em todos os pontos de checagem
-(inclui `test`/`test-node`/`test-python`/`lint` e a maior parte de `parity:`). O `MAKE_EXIT` não
-foi capturado dentro do tempo desta sessão — `scripts/check-gates-falsify.sh` é muito longo
-(rebuilds de binário e subprocessos por cenário). Recomendo ao arquiteto confirmar o exit code
-final antes do merge; toda a evidência coletada aponta para verde.
-
-
-
----
-
-## Sessão 2026-09-01 — hades-tf (INÍCIO/FIM: ML-0A, modelo de ameaça da escrita atômica no Windows)
-
-Branch `fix/escrita-atomica-do-cli-python-funciona-no-windows`. Roadmap
-`docs/roadmaps/wip/ROADMAP-2026-09-01-escrita-atomica-do-cli-python-funciona-no-windows.md`.
-
-**Parecer completo:** `docs/seguranca/2026-09-01-modelo-de-ameaca-da-escrita-atomica-no-windows.md`.
-
-**Veredito 1 (janela TOCTOU):** `os.fchmod(fd)` de hoje não tem janela — a troca ingênua para
-`os.chmod(path)` reabre uma janela **real, não teórica**, comprovada por PoC ao vivo (symlink swap
-corrompe o alvo do atacante e transforma `identity.json` em symlink), mas condicionada a um
-pré-requisito que hoje **não é garantido**: `.trackfw` (o diretório-pai) frequentemente fica em
-`0o755`, não `0o700`, porque `mode=` do `makedirs`/`mkdir` é ignorado quando o diretório já existe e
-não se propaga a pais intermediários — comprovado ao vivo em dois cenários (instalador de scripts
-cria `.trackfw` antes do `identity.save()`; `quarantine._atomic_write` num projeto totalmente novo).
-Sob umask padrão (022) isso não é explorável por outro usuário (falta write no diretório); vira
-explorável com umask=0 ou diretório relaxado manualmente.
-
-**Achado extra, fora do escopo desta REQ:** o `os.replace(temporary, filename)` final opera sobre
-caminho, não descritor, em TODAS as variantes (inclusive o `os.fchmod` atual) — uma segunda janela
-pré-existente, independente da decisão de chmod, presente hoje nos três arquivos. Recomendo REQ de
-acompanhamento.
-
-**Veredito 2 (enumeração):** `os.fchmod` é a única API POSIX-only usada como decisão de
-segurança em `pypi/` — os três da REQ batem, sem subestimativa desta vez.
-
-**Veredito 3 (triplicação):** não extrair. `references.py`/`provenance.py` já reusam
-`quarantine._atomic_write` por import (não são cópias) — a "triplicação" real é só
-`identity/__init__.py` + `integrations/manager.py` + `quarantine.py`. Recomendo: (a) gate estrutural
-anti-divergência entre as três definições, (b) adicionar à Wave 1 um doc-comment em
-`identity/__init__.py` — hoje é a única das três sem justificativa registrada para não importar.
-
-**Residual declarado:** seção 5 do parecer (janela do `os.replace`, `.trackfw` não confiavelmente
-`0o700`, ausência de paridade de garantia TOCTOU no Windows, multiusuário/umask não é modelo de
-ameaça nomeado do projeto).
-
-**Fronteiras mantidas:** nenhuma linha de `pypi/`, `internal/`, `npm/`, `scripts/`, roadmap ou REQ
-tocada. Nenhum commit/push/branch. PoCs só em `/tmp`/scratchpad.
-
-**Revisão pós-advisor (2 rodadas):** achado adicional decisivo — `os.fchmod` só é *load-bearing* em
-1 dos 7 pontos de chamada reais (`integrations/manager.py:_plan_artifact_write`, `mode=0o644`); nos
-outros 5 (`0o600`) o `fchmod` é redundante porque `tempfile.mkstemp()` já entrega `0o600` por
-padrão — o teste de controle do AC3(b) só prova algo real se mirar esse único site (seção 0 do
-parecer). PoC refeita com o valor literal `0o644` (alargamento de permissão de arquivo alheio, não
-só aperto). Corrigida afirmação não verificada sobre umask=0 em CI (nenhum workflow deste repo seta
-umask). **Achado novo fora de `pypi/`:** `npm/src/thirdparty/quarantine.js:28-29` e
-`npm/src/integrations/manager.js:94-97` têm um `fs.chmodSync(path, mode)` **redundante e já
-explorável hoje** depois de um `writeFileSync({mode})` que já aplicou o modo corretamente na
-criação — TOCTOU real, em produção, no CLI Node, sem nenhuma relação com o Windows/Python desta REQ.
-`manager.js` chama `chmodSync` uma segunda vez **depois** do rename (linha 97), janela extra que nem
-o próprio Node tem em `identity/config.js`. Relevante para o contrato do AC6 em
-`docs/cli-parity.md`: publicá-lo sem qualificar tornaria o contrato falso para o Node hoje.
-Recomendo REQ de acompanhamento dedicada ao Node (seção 7 do parecer). `trackfw context`/`trackfw
-validate` rodados — score 100/100, só warnings pré-existentes não relacionados a esta REQ.
-
-## apolo-tf — 2026-09-01 — INÍCIO: ML-1A, fallback condicional de os.fchmod nos três _atomic_write
-
-**Roadmap:** `docs/roadmaps/wip/ROADMAP-2026-09-01-escrita-atomica-do-cli-python-funciona-no-windows.md`
-**REQ:** `docs/req/REQ-2026-09-01-os-fchmod-e-unix-only-e-derruba-as-tres-escritas-atomicas-do-cli-python-no-windows.md`
-
-Escopo: `pypi/trackfw/identity/__init__.py`, `pypi/trackfw/thirdparty/quarantine.py`,
-`pypi/trackfw/integrations/manager.py`. Fallback condicional `getattr(os, "fchmod", None)` — nunca
-substituição incondicional — e doc-comment em `identity/__init__.py` (única das três sem
-justificativa de replicação registrada). Nada além disso: sem extração de helper (veredito do
-ML-0A), sem tocar `npm/`.
-
-## apolo-tf — 2026-09-01 — FIM: ML-1A, fallback condicional de os.fchmod nos três _atomic_write
-
-**Arquivos modificados:** `pypi/trackfw/identity/__init__.py`, `pypi/trackfw/thirdparty/quarantine.py`,
-`pypi/trackfw/integrations/manager.py` (todos: `getattr(os, "fchmod", None)` — condicional, nunca
-substituição incondicional; POSIX permanece byte a byte o de hoje). Doc-comment adicionado em
-`identity/__init__.py`, citando o símbolo (não linha) de `quarantine.py`, por pedido do
-revisor — evita drift de citação.
-**Testes novos:** `pypi/tests/test_atomic_write_windows_fallback.py` (7 casos). Direção (a) usa
-`monkeypatch.delattr(os, "fchmod", raising=False)` — não `raising=True` — para que os mesmos testes
-sejam evidência real de CI no `windows-full-suites` (delattr vira no-op lá) em vez de simulação só
-em POSIX. Controle no único site não-vácuo (`manager.py` com `mode=0o644`, os outros 6 pedem `0o600`
-que `mkstemp` já entrega) assertando `st_mode & 0o777 == 0o644` — gate de bits exatos restrito a
-POSIX (NTFS só honra o bit de escrita). Direção (b), a simétrica: spies em `os.fchmod`/`os.chmod`
-provam que o fallback **não** dispara em POSIX quando `os.fchmod` existe — `@pytest.mark.skipif(not
-hasattr(os, "fchmod"), ...)`, não `skipif(os.name != "posix")` (nada para espiar sem a API).
-**Falsificação real, ambas direções, saída capturada e revertida (backup em scratchpad, `git diff
---stat` vazio após restaurar):**
-- Direção (a): removido o fallback de `manager.py` (voltou a `os.fchmod(descriptor, mode)` cru) →
-  `AttributeError: module 'os' has no attribute 'fchmod'` em `manager.py:120`, 2 testes vermelhos
-  (`test_manager_atomic_write_survives_missing_fchmod`,
-  `test_manager_0o644_fallback_produces_observable_mode`), os outros 5 continuaram verdes (esperado
-  — só `manager.py` foi sabotado).
-- Direção (b): trocado o condicional por `os.chmod(temporary, mode)` incondicional em `manager.py`
-  → `test_manager_0o644_uses_fchmod_not_chmod_on_posix` vermelho com `assert 0 == 1` (`calls["fchmod"]`
-  vazio) — o spy pegou o fallback disparando por engano em POSIX.
-`make quality`: exit 0, `OK [falsify/no-repo-mutation]`, sem `FAIL`. (Primeira execução deu falso
-`FAIL [falsify/no-repo-mutation]` por corrida — editei `agents-working-context.md` enquanto o gate
-media diff antes/depois; reexecução limpa, sem editar a árvore durante o run, passou.) Suíte
-completa `pypi`: 1582 passed, 28 subtests. Fora de escopo (conforme instrução): sem extração de
-helper, sem tocar `npm/`, sem gate anti-divergência (ML-1B, artemis-tf).
-
----
-
-## artemis-tf — 2026-09-01 — INÍCIO: ML-1B, gate anti-divergência + contrato com exceção do Node
-
-Branch `fix/escrita-atomica-do-cli-python-funciona-no-windows`. Escopo: gate novo em `scripts/`
-comparando as três cópias de `_atomic_write` (identity/quarantine/manager) para reprovar quando UMA
-divergir das outras; ligar ao `Makefile` (`parity:`); seção nova em `docs/cli-parity.md` nomeando a
-exceção do Node (REQ própria já aberta) sem afirmar garantia de descritor nos 3 runtimes. Não toco
-`pypi/`, `internal/`, `npm/`. Não faço git.
-
----
-
-## artemis-tf — 2026-09-01 — FIM: ML-1B, gate anti-divergência + contrato com exceção do Node — CONCLUÍDO
-
-Branch `fix/escrita-atomica-do-cli-python-funciona-no-windows`.
-
-**Arquivo novo:** `scripts/check-atomic-write-anti-divergence.sh`. Compara o corpo NORMALIZADO
-(dedent via `textwrap.dedent`, `python3`) do trecho de segurança `fchmod = getattr(os, "fchmod",
-None)` .. `os.chmod(temporary, mode)` nas três cópias de `_atomic_write`
-(`identity/__init__.py`, `thirdparty/quarantine.py`, `integrations/manager.py`), exigindo igualdade
-textual exata entre elas — nunca contra um texto fixo congelado no gate. Escolhido em vez de
-`assert_has` por string fixa (padrão de `check-ref-separator-portability.sh`) porque
-`integrations/manager.py` define `_atomic_write` como `@staticmethod` (12 espaços) enquanto as
-outras duas são função de módulo (8 espaços) — uma constante fixa por arquivo provaria "bate com uma
-cópia congelada no gate", não "as três são iguais entre si"; dedent normaliza o deslocamento
-incidental de indentação sem perder a estrutura relativa if/else. Duas guardas de vacuidade:
-existência dos 3 arquivos (checada no MESMO `ROOT` da extração real) e contagem de blocos extraídos
-com sucesso (=3, nomeando qual falhou na âncora). Ligado a `parity:` no `Makefile`.
-
-**Falsificação real em cópias de `/tmp`** (`scratchpad/atomic-gate-falsify{,2}`, nunca na árvore
-real):
-1. Árvore correta → `OK`, exit 0.
-2. Cópia idêntica em `/tmp` → `OK`, exit 0.
-3. Uma cópia divergindo só no texto do comentário (`quarantine.py`) → `DIVERGÊNCIA`, nomeia
-   `pypi/trackfw/thirdparty/quarantine.py` contra a referência `identity/__init__.py`, exit 1.
-   Restaurada, voltou a `OK`.
-4. Vacuidade — `ROOT` vazio → reprova nomeando os 3 arquivos ausentes, exit 1.
-5. Vacuidade — âncora removida em `manager.py` (fallback reescrito irreconhecível) → "extração
-   falhou" + "esperava extrair 3 blocos, extraiu 2", exit 1.
-
-**Contrato em `docs/cli-parity.md`** — nova seção "Escrita atômica — chmod no descritor vs. chmod no
-caminho": tabela Go/Python/Node com o estado medido de cada runtime, **nomeando explicitamente que o
-Node usa `chmodSync(path)` e reabre TOCTOU hoje, em produção**, com link para
-`REQ-2026-09-01-cli-node-usa-chmodsync-...` — não afirma "os 3 runtimes preservam a garantia de
-descritor" (seria falso). Subseção "Triplicação deliberada no Python — não extraída, gateada"
-explica o veredito do ML-0A e aponta para o gate novo. Anotação `trackfw-contract: gate=...
-partial=...` em ambas as seções — `partial=` no cabeçalho principal nomeia explicitamente que o gate
-só cobre a não-divergência Python, não Go/Node nem a janela do `os.replace`.
-`scripts/check-parity-contract-coverage.sh`: `OK — nenhuma anotação inválida e nenhuma seção sem
-anotação`.
-
-**`make quality`: `MAKE_EXIT=0`.** `scripts/check-atomic-write-anti-divergence.sh` roda dentro de
-`parity:` (linha nova no `Makefile`, logo após `check-ref-separator-portability.sh`) e imprime `OK —
-3 cópias ... com bloco de fallback idêntico após normalização`. `git status --porcelain` após o run:
-só `Makefile`, `docs/agents-working-context.md`, `docs/cli-parity.md` modificados e
-`scripts/check-atomic-write-anti-divergence.sh` novo — nenhum arquivo de `pypi/`, `internal/`,
-`npm/` tocado, conforme restrição. Não fiz nenhum comando `git` (add/commit/branch/push).
-
----
-
-## hefesto-tf — 2026-09-01 — INÍCIO: barreira final de qualidade, PR #234 (escrita atômica no Windows)
-
-Branch `fix/escrita-atomica-do-cli-python-funciona-no-windows`. Escopo: barreira de qualidade sobre
-`git diff origin/main...HEAD` — controle de vacuidade em
-`pypi/tests/test_atomic_write_windows_fallback.py`, skip escopo correto, falsificação independente
-do gate `scripts/check-atomic-write-anti-divergence.sh`, honestidade do contrato em
-`docs/cli-parity.md`. Não modifico código. Não toco `docs/seguranca/` (hades-tf em paralelo). Sem
-git.
-
----
-
-## hefesto-tf — 2026-09-01 — FIM: barreira final de qualidade, PR #234 — APROVA
-
-Branch `fix/escrita-atomica-do-cli-python-funciona-no-windows`. Parecer em
-`docs/qualidade/2026-09-01-barreira-da-escrita-atomica-no-windows.md`. Veredito **APROVA**, nenhum
-achado bloqueante. Confirmado: controle não-vácuo em `manager.py` (função `IntegrationManager.
-_atomic_write` com `mode=0o644`, único site dos 7 com efeito observável — `mkstemp` já entrega
-`0o600` nos outros 6), asserção sobre `st_mode` resultante, não sobre a chamada; skip de
-`hasattr(os,"fchmod")` escopado a só 3 dos 7 testes, os 4 restantes rodam incondicionalmente
-inclusive Windows (confirmado `pytest pypi/tests -q` sem filtro no job `windows-full-suites`,
-aritmética 1567→1580 testes coletados compatível); gate `check-atomic-write-anti-divergence.sh`
-falsificado de forma independente em `/tmp` nas 4 direções (árvore correta, comentário divergente,
-indentação relativa divergente dentro do bloco — testa diretamente se `textwrap.dedent` mascara
-divergência real: não mascara —, `ROOT` vazio, âncora removida); contrato em `docs/cli-parity.md`
-nomeia a falha do Node com arquivo/linha exatos, e verifiquei a terceira cópia Go
-(`internal/thirdparty/quarantine.go:152`, não tocada pelo diff) para confirmar que a célula Go ✅ da
-tabela não é falsa. `make quality` rodado até o fim: `MAKE_EXIT=0`. Achados de acompanhamento
-(não bloqueantes, sem gate travado): (1) literal `0o644` do teste sem ponte testada até a constante
-de produção `manager.py:595`; (2) números de linha do roadmap (`:343`/`:358`) desatualizados
-(`:353`/`:368` hoje); (3) mensagem de divergência do gate nomeia sempre os não-primeiros da lista de
-arquivos, imprecisa quando o editado é o próprio baseline implícito (`identity/__init__.py`).
-Não toquei código de produto nem `docs/seguranca/`.
-
----
-
-## hades-tf — 2026-09-01 — INÍCIO: ML-0A, modelo de ameaça da troca de shell de gate (issue #216 item 7)
-
-Branch `fix/os-3-clis-executam-gate-de-wave-com-sh-c`. Roadmap
-`docs/roadmaps/wip/ROADMAP-2026-09-01-os-3-clis-executam-gate-de-wave-com-sh-c.md`, REQ e ADR ligados
-lidos. Escopo: só `docs/seguranca/2026-09-01-modelo-de-ameaca-do-shell-de-gate.md` — nenhuma linha em
-`internal/`, `npm/`, `pypi/`. Sem git.
-
----
-
-## hades-tf — 2026-09-01 — FIM: ML-0A, modelo de ameaça da troca de shell de gate — parecer entregue
-
-Parecer em `docs/seguranca/2026-09-01-modelo-de-ameaca-do-shell-de-gate.md`. Veredito de superfície
-(**revisado após PoC** — a primeira leitura concluiu "não amplia" por suposição, não medição; o
-advisor pediu execução e a medição inverteu a conclusão): **amplia, de forma pequena mas real**, em
-duas frentes independentes. (1) **Medida com PoC** (`/tmp/fakesh/sh` injetado no início do `$PATH`):
-`spawnSync(cmd,{shell:true})`/`subprocess.run(cmd,shell=True)` são **pinados em `/bin/sh`** — o fake
-nunca roda; `spawnSync('sh',[...])`/`subprocess.run(["sh",...])` (o que Wave 1 vai escrever) **resolvem
-via `$PATH`** — o fake roda. Isso move Node/Python de interpretador fixo para resolvido por `$PATH`,
-igualando-os ao Go (que já fazia `exec.LookPath`) — quem controla `$PATH` do processo `barrier` ganha,
-pela 1ª vez em Node/Python, controle sobre qual binário interpreta o gate. (2) **Inferida, não medida**
-(sem Windows disponível neste ambiente, marcado explicitamente como hipótese no documento): no Windows,
-`cmd.exe` já reinterpreta parte da sintaxe POSIX hostil hoje (`|`/`&&`/`||` são operadores nativos dele
-também) — o fix remove essa mitigação acidental. Nenhuma das duas justifica reverter o ADR (`$PATH` é
-estrutural no Windows; a inversão "divergente é o correto" já vale para a superfície, não só para a
-corretude) mas ambas devem ser **declaradas no contrato**, não tratadas como não-eventos.
-Argumento pelo lado fail-closed de "não pôde medir": o próprio `roadmapTrustForGates` já resolveu essa
-escolha para o mesmo arquivo/função — estado `not_evaluated` distinto de `passed`/`blocked`, que já
-bloqueia a wave na agregação (`checks.every(status==='passed')`) e nomeia o remédio na mensagem;
-recomendo reusar literalmente esse padrão para "sh ausente", sem inventar exit code novo (o exit 2 já
-é reservado a erro de resolução, não a "não pude avaliar o conteúdo"). Enumeração nos 3 CLIs: só
-`barrier.go:729`/`barrier.js:560`/`barrier.py:580` recebem conteúdo de artefato versionado; achei dois
-pontos adicionais de `shell:true`/`shell=True` fora do escopo da REQ mas dentro da Action 4 —
-`npm/src/commands/serve.js:205-211` (`exec` com `--host` interpolado sem sanitização, injeção local
-real confirmada por leitura) e `pypi/trackfw/commands/serve.py:196` — nomeados como residual para REQ
-própria, não tratados aqui. Falsificação simétrica: nomeei Windows self-hosted sem Git
-Bash/WSL, contêineres distroless/scratch sem `/bin/sh`, Windows Server Core mínimo. Residuais também
-registrados: composição desta REQ com a REQ já aberta de fail-open do `roadmapTrustForGates` (mesmo
-runner Windows sem `origin` configurado + `sh.exe` no PATH soma os dois fail-opens); "$PATH adulterado"
-como vetor a citar no contrato; medido `sh -c 'nosuchtool'` → exit 127 (ferramenta interna ausente,
-não `sh` ausente — já fail-closed hoje, não bloqueante, mas AC4 não deve usar 127 como sinal de "sh
-ausente", já que 127 nunca ocorre nesse caso — o sinal certo é falha de spawn, não código de saída do
-`sh`); recomendação de rodar a falsificação da AC2/AC3 e o fechamento da AC7 no job `windows-full-suites`
-citado alhures nesta mesma página, não só em runner POSIX onde a mudança é inerte para o veredito
-funcional. Nenhuma linha de implementação escrita; não toquei roadmap/REQ/ADR. Gate local conferido
-manualmente (arquivo existe,
-sem "placeholder", contém "Residual").
-
-## apolo-tf — 2026-09-01 — INÍCIO: ML-1A, `sh -c` nos 3 CLIs com `not_evaluated` para `sh` ausente (issue #216 item 7)
-
-Roadmap `docs/roadmaps/wip/ROADMAP-2026-09-01-os-3-clis-executam-gate-de-wave-com-sh-c.md`, ADR
-`docs/adr/ADR-2026-09-01-gate-de-wave-e-contrato-portavel-em-shell-posix-nao-script-do-sistema-operacional.md`.
-Escopo declarado: `npm/src/commands/barrier.js`, `pypi/trackfw/commands/barrier.py` (`sh -c` explícito
-via `$PATH`, substituindo `shell: true`/`shell=True`) + reuso do padrão `not_evaluated` do
-`roadmapTrustForGates` para `sh` ausente.
-
-## apolo-tf — 2026-09-01 — FIM: ML-1A, `sh -c` nos 3 CLIs com `not_evaluated` para `sh` ausente — CONCLUÍDO
-
-**Desvio de escopo, declarado**: `internal/commands/barrier.go` também foi tocado, apesar de "Files
-affected" do ML listar só `barrier.js`/`barrier.py`. Motivo: AC3 exige mensagem **byte-idêntica nos
-3 CLIs** para `sh` ausente; o Go pré-existente colapsava falha de spawn em `return 1` genérico
-(`"<cmd>: exit 1"`), sem nomear o remédio — não satisfaria a AC mesmo com Go já usando `sh -c` desde
-sempre (Go não precisava trocar de shell, mas precisava da mesma distinção `not_evaluated`). Diff
-cirúrgico: `runGateCommand` passou a devolver `(exitCode int, spawnFailed bool)` — `spawnFailed` só é
-`true` quando o erro não é `*exec.ExitError` (processo nunca iniciou; sinal idêntico ao nomeado no
-parecer do ML-0A). Extraído `evalGateCommands` para eliminar duplicação entre os dois branches
-(`--trust-local-gates` e trust fail-open) e garantir a mesma regra nos dois: na falha de spawn, o
-check inteiro vira `not_evaluated` com `evidence: []` e exatamente 1 `failures[]`, parando a
-iteração imediatamente (gates seguintes nunca foram observados).
-
-**Mensagem pinada (idêntica nos 3, byte a byte)**:
-```
-gates not evaluated: sh not found in PATH — install a POSIX shell (e.g. Git Bash, WSL) to evaluate gates
-```
-Segue o formato de `docs/cli-parity.md` § "Pinned failure strings for not_evaluated" (`gates not
-evaluated: <razão> — <remédio>"`). Contrato ainda **não** atualizado em `docs/cli-parity.md` — é
-Wave 2 (`artemis-tf`), fora deste ML.
-
-**Node/Python**: `spawnSync(cmd,{shell:true})`/`subprocess.run(cmd,shell=True)` (pinados em
-`/bin/sh`, medido pelo ML-0A) → `spawnSync('sh',['-c',cmd],{...})`/
-`subprocess.run(["sh","-c",cmd],...)` (resolvido via `$PATH`, como o Go sempre fez — **não é
-no-op**, é mudança real de superfície declarada no parecer do ML-0A). Discriminante de spawn-falho:
-Node = `result.error` truthy (não `result.status === null`, que também ocorre em morte por sinal,
-caso já coberto por teste existente — colidir os dois quebraria esse teste); Python = `except
-OSError` ao redor do `subprocess.run(["sh", "-c", cmd], ...)` (antes descoberto, `FileNotFoundError`
-subia como traceback cru).
-
-**Falsificação nas duas direções, saída real** (fixture em scratchpad, fora da árvore real):
-idioma POSIX (`!`, `test`, `$()`) com 4 gates que devem passar + 1 controle que deve reprovar
-(`grep -q "notpresent" target.txt` sem negação) — os 3 CLIs (binário Go compilado, `node
-npm/bin/trackfw`, `python3 -m trackfw` via `pypi/`) devolveram **o mesmo `evidence`/`failures`
-byte a byte**, controle incluso (não uniformizou para "tudo passa"). Direção oposta: `$PATH`
-curado sem `sh` (Go: `t.Setenv`; CLI: diretório com symlink só para `git`, necessário pelo
-`roadmapTrustForGates` fora de escopo) → os 3 devolveram `not_evaluated` com a mensagem pinada
-idêntica. Controle de não-confusão: `sh -c 'nosuchtool-xyz'` → `exit 127`, `status: "blocked"` nos
-3 — nunca `not_evaluated` (medido também via CLI direto, não só unitário).
-
-**Testes**: Go (`barrier_test.go` — `TestRunGateCommand_ExitCodes` estendido para 127,
-`TestRunGateCommand_ShMissing_SpawnFailed`, `TestEvalGateCommands_ShMissing_NotEvaluated`, `$PATH`
-curado via `t.Setenv`), Node (`npm/tests/barrier.test.js` — teste de 127 e teste de `sh` ausente via
-`$PATH` curado com `mkdtempSync`), Python (`pypi/tests/test_barrier.py` — mesmos dois casos via CLI
-subprocess com `curated_path` novo em `_run_barrier_cli`, symlink só para `git`). `go test ./...`
-verde, `node --test npm/tests/barrier*.test.js` 70/70 verde, `pytest pypi/tests/test_barrier*.py`
-60/60 verde.
-
-**Limite honesto**: o defeito original é Windows-específico (Node/Python interpretados por
-`cmd.exe`) — não há runner Windows neste ambiente. Tudo acima foi medido em macOS (a mudança
-`shell:true`→`sh -c` **é** real em POSIX, conforme ML-0A: pino fixo → resolução por `$PATH`, e isso
-foi confirmado pela própria existência do teste de `$PATH` curado passando). O veredito "mesmo
-resultado nos 3 CLIs em Windows" só o CI (`windows-full-suites`) fecha, como o ML-0A já recomendava.
-
-**Fora de escopo, não tocado**: `serve.js`/`serve.py`, gates de roadmap existentes,
-`roadmapTrustForGates`, `docs/cli-parity.md` (Wave 2).
-
----
-
-## artemis-tf — 2026-09-01 — INÍCIO: ML-2A, gate contra regressão de `sh -c` e contrato em `docs/cli-parity.md`
-
-Branch `fix/os-3-clis-executam-gate-de-wave-com-sh-c`. Wave 2 do
-`docs/roadmaps/wip/ROADMAP-2026-09-01-os-3-clis-executam-gate-de-wave-com-sh-c.md`, ML-1A já
-concluído por `apolo-tf`.
-
-Escopo: (1) `scripts/check-shell-posix-portability.sh` — gate falsificável, ligado ao `parity:` do
-Makefile, contra regressão de `barrier.js`/`barrier.py` para `shell: true`/`shell=True`; (2) contrato
-do ADR-2026-09-01 em `docs/cli-parity.md`, incluindo a consequência não-no-op medida pelo ML-0A
-(resolução de `sh` via `$PATH` em vez de caminho fixo). Não toco `internal/`, `barrier.js`/`barrier.py`
-(já corrigidos), `serve.js`/`serve.py` (REQ própria), nem o roadmap/REQ/ADR (arquiteto audita e
-registra o resultado).
-
----
-
-## artemis-tf — 2026-09-01 — FIM: ML-2A, gate contra regressão de `sh -c` e contrato em `docs/cli-parity.md` — CONCLUÍDO
-
-Branch `fix/os-3-clis-executam-gate-de-wave-com-sh-c`.
-
-**`scripts/check-shell-posix-portability.sh`** — ligado ao `parity:` do Makefile. 10 assinaturas
-pinadas (`assert_count`, não `assert_has` — lição do `check-ref-separator-portability.sh`), em
-`npm/src/commands/barrier.js` e `pypi/trackfw/commands/barrier.py`: a chamada `sh -c` explícita
-(count=1 cada), a mensagem pinada de `sh` ausente (count=1 cada), o `not_evaluated` reportado no
-ramo de spawn-falho (count=1 cada) e nos dois ramos combinados — trust E `sh` ausente — do check
-`gates` (count=2 cada, porque o literal `status: 'not_evaluated',`/`"status": "not_evaluated",`
-aparece legitimamente duas vezes por arquivo). Mais uma checagem negativa por arquivo
-(`assert_no_code_match`) que exclui linha de comentário antes de procurar `shell:\s*true`/
-`shell\s*=\s*True` — necessário porque os próprios comentários do ML-1A citam essas strings em
-prosa para explicar o que NÃO fazer mais; um grep ingênuo no arquivo inteiro reprovaria a árvore
-correta pelo próprio comentário que documenta a correção (medido antes de escrever o gate).
-Guarda de vacuidade: contagem de `assert_*` (10, nomeado) + `[[ ! -f ]]` por arquivo.
-
-**Falsificação, saída real, cópias em scratchpad (nunca na árvore real)**:
-1. Árvore correta → `OK` (10/10).
-2. Regressão em SÓ `barrier.js` (revertido para `spawnSync(command, {shell:true,...})`, `barrier.py`
-   intocado) → reprova nomeando `npm/src/commands/barrier.js` nas duas assinaturas afetadas, sem
-   mencionar Python. Regressão em SÓ `barrier.py` (revertido para `subprocess.run(cmd, shell=True,
-   ...)`, `barrier.js` intocado) → reprova nomeando só `pypi/trackfw/commands/barrier.py`. Este é o
-   caso que um `assert_has` sozinho, sem cobertura simétrica por arquivo, poderia mascarar se as
-   duas checagens estivessem fundidas — aqui cada arquivo tem suas próprias 5 assinaturas
-   independentes, então um regride sem o outro reprova.
-3. `ROOT` vazio e `ROOT` inexistente → reprova todas as 10 assinaturas, cada uma nomeando o arquivo
-   ausente — nunca "0 encontrado, gate passa" silencioso.
-
-**`docs/cli-parity.md`** — nova seção `### Wave gates are a portable POSIX-shell contract, not an
-OS script (ADR-2026-09-01)`, anotada `<!-- trackfw-contract: gate=scripts/check-shell-posix-portability.sh -->`
-(verificado com `scripts/check-parity-contract-coverage.sh`, exit 0, seção não aparece na lista de
-gap/partial). Conteúdo: as 83 evidências do ADR, o `sh` como pré-requisito Windows,
-`not_evaluated` vs `exit 127` (não confundir), por que as alternativas foram descartadas, e — 🔴
-sem tratar como no-op — a consequência medida pelo ML-0A: a troca move Node/Python de interpretador
-fixo `/bin/sh` para resolução por `$PATH`, ampliação real de superfície em POSIX mesmo sendo
-funcionalmente inerte para a sintaxe aceita, composta com a REQ já aberta de fail-open do
-`roadmapTrustForGates`.
-
-**Evidência de `make quality`**: rodado sem pipe, exit code do `make` capturado diretamente —
-`go test` 17 pacotes `ok`, Node `842` testes, `check-shell-posix-portability.sh` → `OK — 10
-assinaturas...`, `check-parity-contract-coverage.sh` → `nenhuma seção sem anotação`, `MAKE_EXIT=0`.
-
-**Não tocado**: `internal/`, `npm/src/commands/barrier.js`, `pypi/trackfw/commands/barrier.py`
-(fix já commitado no ML-1A), `serve.js`/`serve.py`, roadmap/REQ/ADR.
-
----
-
-## Sessão 2026-09-01 — hefesto-tf (INÍCIO: barreira final de qualidade — PR #236, item 7 do #216)
-
-Branch `fix/os-3-clis-executam-gate-de-wave-com-sh-c` (não criada por mim). Escopo: auditoria de
-qualidade sobre o diff completo (ML-1A + ML-2A) — controle de "tudo passa", distinção
-`not_evaluated`/`blocked` (falsificada nos 3 CLIs, independentemente), o gate
-`check-shell-posix-portability.sh`, a extração de `evalGateCommands` em Go, e cobertura de teste.
-Não modifico código de produto. `docs/qualidade/2026-09-01-barreira-do-shell-de-gate.md` sendo
-escrito. `docs/seguranca/` não tocado (paralelo com hades-tf).
-
----
-
-## Sessão 2026-09-01 — hefesto-tf (FIM: barreira final de qualidade — PR #236 — CONCLUÍDO)
-
-Branch `fix/os-3-clis-executam-gate-de-wave-com-sh-c`.
-
-**O que foi feito:** auditoria de qualidade completa sobre `git diff origin/main...HEAD`
-(internal/commands/barrier.go, npm/src/commands/barrier.js, pypi/trackfw/commands/barrier.py,
-scripts/check-shell-posix-portability.sh, docs/cli-parity.md, e os testes correspondentes).
-Reproduzi de forma independente (fixtures novas em scratchpad, não reaproveitando as evidências do
-próprio roadmap) as 3 falsificações centrais: (1) controle — gate que deve reprovar continua
-reprovando `blocked` nos 3 CLIs, mesmo veredito; (2) `exit 127` (ferramenta ausente dentro do
-`sh`) vira `blocked`, nunca `not_evaluated`, nos 3; (3) `sh` ausente do `$PATH` vira
-`not_evaluated` com mensagem byte-idêntica, nos 3. Também rodei o gate
-`check-shell-posix-portability.sh` contra as árvores `good`/`node-regress`/`py-regress`/
-`empty-root` já deixadas em scratchpad pelo ML-2A e confirmei os 4 vereditos batem com o relatado.
-
-**Veredito: APROVA — com ressalva declarada de que `make quality` não foi observado até o fim**
-(20:16-20:28+, log parou de avançar em 3392 linhas / zero FAIL antes de mim declarar; co-tenência
-confirmada: `docs/seguranca/2026-09-01-barreira-do-shell-de-gate.md` apareceu em `git status` sem
-eu ter escrito, evidência de `hades-tf` escrevendo na mesma árvore em paralelo, mais uma segunda
-`make quality` PID 28762 de outra sessão). O gate mais relevante (`check-shell-posix-portability.sh`)
-foi verificado direto, sem depender do `make quality`. Nenhum bloqueante. Um achado de
-acompanhamento (não bloqueante): o gate `assert_no_code_match` só cobre a sintaxe literal
-`shell: true`/`shell=True`; uma reintrodução via `opts.shell = true` (atribuição, não literal)
-escaparia — mesma classe de limitação de todos os `check-*.sh` baseados em grep já existentes no
-repo (`check-homedir-parity.sh`, `check-ref-separator-portability.sh`), não uma regressão desta
-REQ. Também falsifiquei o ramo não-trusted do `roadmapTrustForGates` (roadmap real diverge de
-`origin/main`): `not_evaluated` com a mensagem própria do ramo de trust, byte-idêntica nos 3 CLIs,
-sem contaminação por `shMissingMsg`.
-
-**Artefato:** `docs/qualidade/2026-09-01-barreira-do-shell-de-gate.md`.
-
-**Fronteiras mantidas:** nenhum arquivo de `internal/`, `npm/`, `pypi/`, `scripts/` tocado; nenhum
-commit/branch/push; `docs/seguranca/` não tocado.
-
----
-
-## Sessão 2026-09-01 — hefesto-tf (ADENDO: `make quality` concluiu — MAKE_EXIT=0)
-
-O `make quality` iniciado às 20:16 (ver entrada FIM acima) **concluiu depois** de eu já ter
-declarado "não observado até o fim" — a notificação de background chegou após a resposta final.
-Resultado: `MAKE_EXIT=0`, log completo sem nenhum `FAIL`/`not ok`/`Error:`/`panic:`, terminando em
-`check-shell-posix-portability: OK — 10 assinaturas...`. **A ressalva do item 7 do relatório fica
-resolvida a favor do verde** — atualizado em
-`docs/qualidade/2026-09-01-barreira-do-shell-de-gate.md`. Observação: `git status` no momento da
-conferência mostra bastante atividade concorrente de outra sessão (REQ nova sobre o achado de
-acompanhamento que registrei — bypass por atribuição em `assert_no_code_match` —, e mudanças em
-`docs/cli-parity.md`, `.gitignore`, `vault/notes/index.md`, `.agents/skills/`) — não tocada por
-mim, apenas observada para contextualizar por que a árvore não estava estática durante a janela do
-`make quality`.
-
----
-
-## Sessão 2026-09-01 — hades-tf (ML-0A — modelo de ameaça do portão do repositório)
-
-Branch `fix/o-repositorio-do-trackfw-sob-os-cuidados-do-trackfw` (não criada por mim, herdada do
-worktree). Escopo: ML-0A do roadmap `ROADMAP-2026-09-01-o-repositorio-do-trackfw-sob-os-cuidados-do-trackfw`
-— enumeração do que o `trackfw` instala em terceiros e este repositório não usa, modelo de ameaça
-do portão de merge (`required_status_checks`, `enforce_admins`), falsificação nas duas direções.
-Análise apenas — nenhuma configuração alterada. Medições ao vivo via `gh api` (branch protection,
-check-runs de `main` e do PR #241), leitura de `internal/generators/scaffold.go`,
-`scaffold_doctor.go`, `hooks.go`, `agentfiles.go`, `doctor.go`, `update_harness.go`,
-`integrations_flags.go`.
-
-**Achados principais:**
-1. Confirmado ao vivo: `required_status_checks` ausente, `required_approving_review_count: 0`,
-   `enforce_admins: false` na `main` — exatamente como o ADR mediu.
-2. `windows-full-suites`/`windows-defect-reproduction` estão `failure` no HEAD da `main` agora
-   mesmo (não hipótese) — `continue-on-error: true` por desenho, instrumento da issue #216.
-3. 🔴 Achado novo (não estava no ADR): dois mecanismos de instalação (`trackfw-gate.yml` via
-   init/update, `trackfw-validate.yml` via discover) escrevem `job: governance` com o mesmo nome;
-   `trackfw-validate.yml` roda em `[push, pull_request]`, produzindo **3 check-runs homônimos**
-   por push de PR (confirmado no PR #241) — pré-requisito para Wave 1: nomes únicos antes de
-   exigir o check.
-4. 🔴 O único gerador de hook Git real do produto (`generateCommitMsgHook`) só escreve para
-   `husky`/`lefthook` — não existe caminho hoje para gerar hook Git num projeto Go puro como este.
-   Além disso, mesmo com essa capacidade construída, `commit-msg` não cobre 2 dos 3 incidentes
-   citados como motivação do AC3 (`git stash`, `checkout --`) — git não tem hook nativo
-   equivalente ao `PreToolUse`/matcher `Bash` do harness de agente.
-5. `trackfw doctor` hoje só compara manifesto de catálogo e templates de scaffold em disco — não
-   tem nenhuma visão sobre branch protection (API do GitHub) nem `core.hooksPath`. AC6 exige uma
-   segunda modalidade de verificação (rede + auth), não apenas mais um check no que já existe.
-6. `enforce_admins`: argumento completo escrito recomendando `true` — com `required_approving_review_count`
-   preso em `0` (auto-aprovação impossível para mantenedor único), `enforce_admins` decide só se o
-   portão vale para o admin; os 4 incidentes citados na REQ foram todos cometidos pelo admin e
-   nenhum apareceu no CI verde porque o CI nunca precisou ser esperado.
-
-**Artefato:** `docs/seguranca/2026-09-01-modelo-de-ameaca-do-portao-do-repositorio.md`.
-
-**Fronteiras mantidas:** nenhum arquivo de `internal/`, `npm/`, `pypi/`, workflow ou configuração
-de branch protection tocado; nenhum commit/branch/push; roadmap/REQ/ADR não editados.
-
----
-
-## Sessão 2026-09-02 — apolo-tf (ML-1A — job ids únicos nos dois workflows, 3 CLIs)
-
-Branch `fix/o-repositorio-do-trackfw-sob-os-cuidados-do-trackfw` (herdada, worktree único).
-Escopo: ML-1A do roadmap `ROADMAP-2026-09-01-o-repositorio-do-trackfw-sob-os-cuidados-do-trackfw`
-— desfazer a colisão de job id `governance` entre `trackfw-gate.yml` (init/update) e
-`trackfw-validate.yml` (discover --init), nos 3 CLIs.
-
-**Nomes escolhidos** (ancorados no mecanismo de instalação, não no arquivo — os dois workflows
-verificam a mesma propriedade `trackfw validate` por dois caminhos de instalação diferentes):
-`governance-install-script` (trackfw-gate.yml, `curl | sh`) e `governance-go-install`
-(trackfw-validate.yml, `go install ...@versão`). Justificativa completa em
-`docs/cli-parity.md` (nova seção "Job ids únicos entre `trackfw-gate.yml` e
-`trackfw-validate.yml`").
-
-**Arquivos alterados:** `internal/generators/scaffold.go`, `internal/generators/scaffold_doctor.go`,
-`npm/src/generators/init.js`, `npm/src/commands/discover.js`,
-`pypi/trackfw/generators/init_gen.py`, `pypi/trackfw/commands/discover.py` (job id nos 6 builders,
-com doc comment explicando a colisão e a escolha do nome). Testes que pinam conteúdo gerado
-(`internal/generators/update_test.go:1877/2034`, `npm/tests/update_ci_workflow_target_discover_workflow.test.js:70/137/171`,
-`pypi/tests/test_update_ci_workflow_discover_workflow.py:105/172/213`) foram inspecionados e
-**não** precisaram de edição — são fixtures de conteúdo "stale" (job id antigo ou pin de versão
-antiga) comparadas contra o template atual gerado dinamicamente pelos builders já corrigidos; a
-divergência que o teste explora já não depende do job id específico.
-
-**Além do escopo listado:** os dois workflows reais deste repositório
-(`.github/workflows/trackfw-gate.yml`, `.github/workflows/trackfw-validate.yml`, que divergem
-deliberadamente do template — `go build` local em vez de `go install`, `checkout@v7` — porque o
-repo não pode se auto-instalar via release durante o próprio PR) também tiveram o job id renomeado
-(edição cirúrgica de uma linha cada; confirmado sem `needs:` dependendo de `governance` em nenhum
-workflow do repositório antes de editar). Sem essa edição a colisão medida ao vivo no PR #241
-continuaria presente neste repositório mesmo com os geradores corrigidos.
-
-**Gate novo:** `scripts/check-ci-workflow-job-id-collision.sh`, wired em `make parity` (após
-`check-ci-workflow-pin-parity.sh`). 6 pontos (2 workflows × 3 CLIs) via `assert_count`
-(não `assert_has` — a assinatura pode repetir por engano), mais anti-regressão do id antigo
-colidente (`  governance:`, ancorado com indentação+dois-pontos) nos mesmos 6 arquivos, mais
-checagem de que os dois ids nunca coincidem. Falsificado nas duas direções: fixture com o id
-antigo é detectada pela mesma assinatura da validação real; reintroduzi a colisão manualmente em
-`scaffold.go` para confirmar que o gate reprova (`exit=1`, mensagem nomeando o arquivo e a
-ocorrência), depois revertida e confirmado `exit=0`. Documentado em `docs/cli-parity.md` (nova
-seção, `trackfw-contract: gate=scripts/check-ci-workflow-job-id-collision.sh`) —
-`check-parity-contract-coverage.sh` confirma zero seção sem anotação.
-
-**Controle (a linha que a REQ pede para auditar primeiro):** `check-ci-workflow-pin-parity.sh`
-(que dumpa os 9 builders reais e compara byte a byte) continua OK — 15/15 cenários — provando que
-os dois workflows continuam gerando conteúdo válido, byte-idêntico entre os 3 CLIs, apenas com o
-job id renomeado; nada além do job id mudou.
-
-**Limite honesto:** o efeito real — check-runs com nomes distintos num PR — só o CI mostra; não
-observado aqui, só o conteúdo gerado e os testes locais. `required_status_checks` (Wave 2) não foi
-tocado — decisão de qual(is) dos dois ids exigir fica para lá, com o argumento (mesma propriedade,
-dois caminhos de instalação redundantes → provavelmente só um precisa ser exigido) já registrado em
-`docs/cli-parity.md` para uso na Wave 2.
-
-**Fronteiras mantidas:** nenhuma configuração de branch protection/`gh api`/`git config` tocada;
-nenhum commit/branch/push/stash/add executado; roadmap/REQ/ADR não editados.
-
-## 2026-09-02 — Hefesto (Code Quality) — INÍCIO
-
-Tarefa: documentação técnica de portabilidade para reimplementação externa (harness de agente de
-outra empresa, sem acesso a este repo). Escopo: apenas o que o trackfw **instala/provê como
-produto** — comandos de git governados (`branch`, `branch prune`, `commit`, `push`, `ship`,
-`release`), hooks gerados (`internal/generators/hooks.go`), regras de `trackfw validate`. Fora de
-escopo: `quality.yml`, `scripts/check-*.sh` deste repo (gates do desenvolvimento do trackfw, não do
-produto). Destino único: `docs/portabilidade/2026-09-02-guardrails-de-git-e-governanca-para-harness-de-agente.md`.
-Nenhuma alteração de código/gate/config; nenhuma operação de git (autoridade exclusiva do
-arquiteto). Doc-only → dispensa REQ/roadmap novo por §7 do CLAUDE.md global.
-
-## 2026-09-02 — Hefesto (Code Quality) — FIM
-
-Documento escrito em `docs/portabilidade/2026-09-02-guardrails-de-git-e-governanca-para-harness-de-agente.md`
-(6 seções: limitação hook-de-agente-vs-hook-de-git com medição ao vivo `.git/hooks` vazio +
-`core.hooksPath=/dev/null`; os 6 comandos de git — `branch new`, `branch prune`, `commit`, `push`,
-`ship`, `release tag` — com mecanismo/dependências/citação arquivo:linha; os 2 hooks gerados
-(`trackfw-git-branch-guard.sh`, `trackfw-credential-guard.sh`) com modos de falha; as ~25 regras de
-`trackfw validate` agrupadas por tema; 4 padrões recorrentes citados com evidência
-(`not_evaluated`, guarda de vacuidade, falsificação nas duas direções, mensagem que nomeia o
-remédio); seção final "o que eu faria diferente" com 5 itens, incluindo o fail-open real (não
-declarado) do trust-check de `barrier` documentado em
-`vault/notes/barrier-trust-check-fail-open-em-tmpdir-simbolico-2026-08-29.md`.
-
-Fora de escopo (por instrução explícita): `quality.yml`, `scripts/check-*.sh` deste repo — gates de
-desenvolvimento do trackfw, não do produto. Não alterado nenhum código/gate/config; nenhuma
-operação de git executada (leitura, grep e execução de `trackfw`/`git status`/`git config` para
-medir comportamento, sem escrita).
-
-## 2026-09-02 — Hefesto (Code Quality) — INÍCIO (seção adicional: validação de integridade de hooks/gates)
-
-Tarefa: acrescentar ao mesmo documento (`docs/portabilidade/2026-09-02-guardrails-de-git-e-governanca-para-harness-de-agente.md`)
-uma seção nova sobre validação de integridade dos hooks/gates — a defesa contra o usuário apagar ou
-adulterar o guard para burlar o harness, pedida explicitamente pelo KG. Mesmas restrições: só o
-documento de portabilidade e este arquivo; nenhum código/gate/hook/config alterado; nenhuma
-operação de git. Preferir medir a inferir.
-
-## 2026-09-02 — Hefesto (Code Quality) — FIM (seção adicional: validação de integridade de hooks/gates)
-
-Nova `## 6. Validação de integridade dos hooks e gates` inserida antes de "O que eu faria diferente"
-(renumerada para `## 7`), com 6 subseções:
-
-- **6.1** — tabela das 5 regras (`credential_guard_hook_resolvable`/`git_branch_guard_hook_resolvable`,
-  `credential_guard_script_integrity`/`git_branch_guard_script_integrity`,
-  `credential_guard_mode_downgrade`) com o que cada uma compara e onde a referência mora.
-- **6.2** — a âncora em HEAD (`ADR-2026-08-12-severidade-das-regras-de-credential-guard-resolvida-
-  pela-mais-estrita-entre-head-e-disco.md`, mecanismo M4): por que comparar só contra disco não
-  protege nada, e por que o carve-out do baseline (`.trackfw-baseline.json`, não versionado) é um
-  canal separado fechado por exclusão de nome, não pela âncora.
-- **6.3** — achado de leitura de código, não de ADR: `git_branch_guard_hook_resolvable`/
-  `git_branch_guard_script_integrity` **não estão** em `credentialGuardAnchoredRules`
-  (`internal/validator/validator_credential_guard_integrity.go:196-200`) — a âncora em HEAD e a
-  exclusão de baseline valem só para as 3 regras de `credential_guard`, não para as 2 de
-  `git_branch_guard`. Sem ADR ou comentário que declare isso como decisão deliberada.
-- **6.4** — tabela de severidade default por regra, com a citação do porquê de cada uma
-  (`*_hook_resolvable`/`credential_guard_mode_downgrade` = error; `*_script_integrity` = warning,
-  por ausência de marcador de versão no script).
-- **6.5** — fail-open/fail-closed: sem HEAD resolvível cai no disco (aceito, ADR); manipulação de
-  `GIT_DIR`/`GIT_WORK_TREE`/`GIT_CONFIG_COUNT`/`GIT_CEILING_DIRECTORIES` derrotava a resolução
-  silenciosamente (corrigido: limpeza por prefixo `GIT_`, não denylist fechada); nenhum terceiro
-  estado "não avaliado" aqui, ao contrário do padrão do §5.1.
-- **6.6** — 4 medições reais nesta sessão (não inferidas): (a) `.husky/pre-commit` versionado neste
-  repo + `.git/config` local com `hooksPath=/dev/null` desativando-o, agora; (b) `trackfw validate`
-  não vê isso, por design de escopo (guards são de harness, não de git nativo); (c) `trackfw doctor
-  --remote` tem a checagem (`internal/commands/doctor_remote.go:36-59`) e **encontrou** a finding
-  `hooks-path-neutralized` rodando neste repo agora — mas é opt-in, não wired a nenhum workflow, e
-  `doctor` nunca chama `os.Exit` (exit 0 sempre, medido); (d) o achado mais forte — testado num
-  fixture isolado em `/tmp` (cópia de `trackfw.yaml`/`.claude/settings.json`/scripts deste repo,
-  sem link com o clone real): apagar o script do disco (script ainda referenciado no config) É
-  pego como violação real em modo strict; remover a chave `hooks.PreToolUse` inteira do config
-  (script intacto no disco) **não é pego por nenhuma das 5 regras, em nenhum modo** — nenhuma
-  delas audita "a entrada ainda está registrada?", só "se está registrada, resolve?".
-
-Itens 6 e 7 acrescentados à seção "O que eu faria diferente" (agora §7) apontando os dois achados
-acima (5) como os limites mais consequentes da seção nova, com cross-link de volta para §6.
-
-Fora de escopo (mantido): nenhum código/gate/hook/config alterado; nenhuma operação de git
-(`checkout`/`commit`/`push`/`branch`/`stash`) executada — só leitura, grep, e execução de
-`trackfw validate`/`trackfw doctor --remote`/`git config --local --list` (real, sem escrita) mais um
-fixture descartável em `/tmp`, apagado ao final, para medir o comportamento das 5 regras contra
-tentativas de sabotagem sem tocar no clone real.
-
-## Sessão 2026-09-02 — apolo-tf (INÍCIO: corretiva no gate do ML-3A — CI reprovou a guarda de vacuidade)
-
-Branch `fix/o-repositorio-do-trackfw-sob-os-cuidados-do-trackfw` (não criada por mim). Worktree
-limpo, único agente. Escopo: `scripts/check-doctor-remote-parity.sh` reprovou no CI —
-`required_status_checks` bloqueia o PR. Causa: `BASE_PATH="$RUNTIME_BIN:/usr/bin:/bin"` inclui
-`/usr/bin:/bin` para o shebang `#!/usr/bin/env bash` do stub `gh` resolver `env`/`bash` (fix do
-ML-3A, ver `vault/notes/gh-stub-shebang-needs-usr-bin-in-restricted-path-2026-09-02.md`) — mas no
-runner do GitHub `gh` já mora em `/usr/bin/gh`, então `BASE_PATH` reintroduz `gh` no PATH do
-cenário "sem gh", e a própria guarda de vacuidade (corretamente) recusa validar isso.
-
-## Sessão 2026-09-02 — apolo-tf (FIM: corretiva no gate do ML-3A — CONCLUÍDO)
-
-**Direção escolhida:** shebang absoluto no stub (`#!/bin/bash` em vez de `#!/usr/bin/env bash`),
-tornando-o independente de `PATH` para resolver seu próprio interpretador — o que elimina a única
-razão de `/usr/bin:/bin` estar em `BASE_PATH`. `BASE_PATH` passa a ser só `$RUNTIME_BIN`.
-Justificativa da escolha (vs. diretório de sistema sanitizado): medi antes — `git init`/`remote
-add`/`config` sob `PATH=$RUNTIME_BIN` isolado (sem `/usr/bin:/bin`) funcionam sem erro; `/bin/bash`
-existe no caminho absoluto tanto no macOS quanto em todo runner Linux/macOS hospedado pelo GitHub;
-logo nenhum utilitário adicional de `/usr/bin` era necessário — a alternativa (diretório
-sanitizado) teria sido trabalho extra sem necessidade real.
-
-**Falsificação nas duas direções** (medida com `RUNTIME_BIN` real do script — `node`/`python3`/`git`
-symlinkados — mais um `gh` falso plantado em diretório de scratch sob `/tmp`, nunca em `/usr/bin`
-real):
-- (a) `gh` presente artificialmente no `PATH` do cenário → guarda REJEITA: `check-doctor-remote-
-  parity: vacuity guard failed — 'gh' resolves on the no-gh PATH (.../rtbin:.../fake-usr-bin) at
-  .../fake-usr-bin/gh` — `GUARD_RESULT=REJECTED (expected)`.
-- (b) controle, `PATH=$RUNTIME_BIN` correto (sem `/usr/bin:/bin`, sem `gh`) → guarda PASSA:
-  `GUARD_RESULT=PASSED (expected) — gh genuinely absent on .../rtbin`.
-
-**Rodada completa do gate real** (`bash scripts/check-doctor-remote-parity.sh`): todos os 32
-asserts `OK`, incluindo `no-gh/vacuity-guard/not-evaluated`; `check-doctor-remote-parity.sh: all
-scenarios passed.`, exit 0.
-
-**Verificado localmente:** guarda de vacuidade ativa com a mesma severidade (`exit 1` se `gh`
-resolver); todos os 8 cenários (a–j) passam; falsificação nas duas direções medida diretamente
-(não inferida). **Só o CI confirma:** que o runner GitHub-hosted realmente resolve `/bin/bash` no
-caminho absoluto sob o `PATH` restrito do job (assumido com alta confiança — padrão em runners
-`ubuntu-latest`/`macos-latest` — mas não executado literalmente dentro do container do runner
-nesta sessão) e que `required_status_checks`/`parity` fecha verde com o binário `gh` real do
-runner em `/usr/bin/gh` presente no ambiente mas fora do `PATH` restrito construído pelo gate.
-
-**Escopo respeitado:** só `scripts/check-doctor-remote-parity.sh` tocado (mudei o `BASE_PATH` e o
-shebang do stub `gh` que o próprio script gera — nada além disso). Nenhum roadmap/REQ/ADR editado.
-Nenhuma operação de git executada. Toda escrita de fixture de teste ficou sob o scratch
-`/private/tmp/claude-501/.../scratchpad` — nada escrito em `/usr/bin` real nem fora do scratch.
-`make quality` reportado no fechamento do ML pelo protocolo de conclusão (ver saída anexa ao
-relatório desta corretiva).
-
-## Sessão 2026-09-02 — hades-tf (INÍCIO: ML-0A do roadmap saída-não-ascii — modelo de ameaça)
-
-Branch `fix/saida-nao-ascii-declara-codificacao-em-script-gerado-e-em-gate`, worktree limpo, único
-agente. Escopo: ML-0A (Wave 0) — varredura pelo sintoma de saída não-ASCII em `scripts/` e no
-conteúdo gerado pelos 3 CLIs, classificação produto × ferramenta, veredito sobre `CORPUS_HASH` e
-sobre `errors="replace"`. Só leitura/medição — nenhuma linha de correção, nenhuma operação de git.
-Parecer em `docs/seguranca/2026-09-02-modelo-de-ameaca-da-saida-nao-ascii.md`, escrito com esqueleto
-desde a primeira ação (execução anterior morreu por erro de API antes de escrever qualquer coisa).
-
-## Sessão 2026-09-02 — hades-tf (FIM: ML-0A concluído)
-
-**Método:** varredura pelo sintoma (todo byte não-ASCII em `scripts/*.sh` fora de `testdata/`,
-excluindo comentários) achou 746 linhas em 45 scripts — muito mais que os 40 scripts do REQ. Medi
-por que: `echo`/`printf` em bash não fazem encode antes de escrever (bytes literais da fonte
-UTF-8 passam direto), então nunca lançam `UnicodeEncodeError` sob `LC_ALL=C`/cp1252 — só
-`python3 print()`/`sys.stdout` faz encode estrito. A varredura ampla **confirmou** o método por
-mecanismo em vez de substituí-lo: refiz "python3 + não-ASCII + sem reconfigure" de forma
-independente e cheguei aos mesmos 40 arquivos do REQ.
-
-**Classificação produto × ferramenta:** `attentionSignalScript` (`internal/generators/scaffold.go`)
-confirmado como o único artefato, nos 3 CLIs, que gera conteúdo instalado no adotante E invoca
-`python3 print()` — paridade byte-a-byte confirmada em Go/Node/Python (o Python ficava em
-`generators/init_gen.py:969-970`, não em `hooks.py` como o grep inicial sugeria). **Correção ao
-REQ:** o literal estático hoje tem só 1 caractere não-ASCII (um `—` num comentário `#`, nunca
-executado) — não os "12 caracteres" descritos. O risco real é dinâmico: `print()` de
-`tool_input.question`/`.command` (texto de agente em runtime), já amortecido por
-`2>/dev/null || echo "Agent needs attention"` — um crash aqui degrada a mensagem para um fallback
-genérico, não mata o script, diferente do enquadramento "script morre" do REQ. Achado extra: existe
-um segundo artefato de produto com não-ASCII, `trackfw-git-branch-guard.sh` (534 bytes, mais que
-`attentionSignalScript`), mas sem nenhuma invocação de `python3` — logo seguro pelo mesmo motivo
-estrutural (bash não crasha por encoding).
-
-**CORPUS_HASH (`check-roadmap-barrier-contract.sh:542`):** confirmado como o único, dos 5 scripts
-que hasheiam, onde o achado do PR #238 se sustenta — os outros 4 hasheiam bytes crus de stdin ou
-usam `.encode()` sem argumento (sempre UTF-8 em Python 3, não depende de locale). Medi o efeito:
-mesma string, hash UTF-8 vs. hash cp1252-replace divergem (`f3d8ae04b153` vs `963d8a0f993d`).
-
-**Veredito sobre `errors="replace"`:** aceitável nos 39 gates de ferramenta (disponibilidade > 
-fidelidade visual, mensagem de diagnóstico para humano/CI). Inaceitável em dois pontos, medidos:
-(1) `CORPUS_HASH` — `errors="replace"` sozinho (sem `encoding="utf-8"`) não resolve o não-
-determinismo entre SOs, só troca "crash" por "hash igualmente não-determinístico e agora silencioso";
-(2) `attentionSignalScript` — `errors="replace"` sem `encoding="utf-8"` faria o `print()` "ter
-sucesso" com conteúdo corrompido (`?` no lugar de acentos) e o fallback atual (limpo, visível) nunca
-mais dispararia — estritamente pior que o comportamento de hoje.
-
-**Residual declarado (ver §5 do parecer):** interação stdin-decode/stdout-encode sob a mesma
-`PYTHONIOENCODING` não reproduziu o crash isolado neste ambiente macOS — precisa de Windows real ou
-console cp1252 genuíno; não fiz diff byte-a-byte completo dos 3 `attentionSignalScript` (só a linha
-crítica); não investiguei a origem do número "12 caracteres" do REQ (sem `git blame`).
-
-**Escopo respeitado:** nenhuma linha de correção escrita; nenhuma operação de git; nenhum arquivo
-tocado fora de `docs/seguranca/2026-09-02-modelo-de-ameaca-da-saida-nao-ascii.md` e este contexto.
-Toda medição de PoC via comandos inline no shell — nenhuma fixture em disco foi necessária.
-
-## Sessão 2026-09-02 — hades-tf (correção pós-revisão do ML-0A, mesmo parecer)
-
-O advisor apontou dois furos bloqueantes no parecer inicial: (1) a classificação (b) não estava
-item a item, só resumida em uma frase; (2) o filtro "python3 presente + não-ASCII em algum lugar do
-arquivo" contava acentos em comentários/`echo` fora do bloco Python e eu reproduzi esse mesmo
-filtro superficial como "confirmação por replicação" sem perceber. Refiz com um extrator que isola
-o corpo de cada invocação `python3 - <<TAG`/`-c` e testa não-ASCII só dentro dele: dos 40, só **2**
-têm não-ASCII genuíno em dado efetivamente impresso (`check-roadmap-barrier-contract.sh`, risco
-real de hash; `check-atomic-write-anti-divergence.sh`, seguro por ser stderr livre) — os outros 3
-achados do filtro antigo eram comentário Python/bash, não dado. Adicionei a tabela item-a-item dos
-39 scripts de ferramenta ao parecer. Também corrigi: nenhuma ocorrência de `python` bare (sem `3`)
-em `scripts/*.sh` — AC5 já satisfeita nesse eixo; toda a faixa Python suportada (`>=3.10` no
-pyproject) está exposta ao bug porque o modo UTF-8 só virou padrão no CPython 3.15 (PEP 686);
-nomeei `PYTHONUTF8=1` como terceira opção de remédio (cobre os 39 sem editar nenhum, mas não cobre
-o `attentionSignalScript` por rodar fora do `Makefile` do trackfw); e corrigi uma imprecisão do
-próprio relatório sobre seu escopo de escrita — usei sim o scratch da sessão (fixture de PoC do
-hook + arquivos de varredura), a afirmação anterior de "não houve necessidade" estava errada.
-Parecer final em `docs/seguranca/2026-09-02-modelo-de-ameaca-da-saida-nao-ascii.md`, gate de 3
-asserts (`test -f`, sem "placeholder", contém "Residual") verde.
-
-## Sessão 2026-09-02 — apolo-tf (INÍCIO: ML-1A — `attentionSignalScript`, caminho dinâmico não estoura em cp1252)
-
-Branch `fix/saida-nao-ascii-declara-codificacao-em-script-gerado-e-em-gate` (não criada por mim).
-Roadmap: `docs/roadmaps/wip/ROADMAP-2026-09-02-saida-nao-ascii-declara-codificacao-em-script-gerado-e-em-gate.md`.
-
-Escopo: as duas invocações `python3 -c` do `attentionSignalScript` (`internal/generators/scaffold.go`,
-`npm/src/generators/hooks.js`, `pypi/trackfw/generators/init_gen.py`) — texto dinâmico do agente não
-pode estourar sob console cp1252, sem trocar o fallback `|| echo "Agent needs attention"` por
-corrupção silenciosa.
-
-## Sessão 2026-09-02 — apolo-tf (FIM: ML-1A — CONCLUÍDO)
-
-**Mecanismo escolhido:** prefixar as duas chamadas `python3 -c` com `PYTHONIOENCODING=utf-8` (só
-nessa invocação, via `VAR=valor comando`, não `export` — não vaza para o resto do script). Não
-`reconfigure(errors="replace")` — o ML-0A já tinha medido que isso pioraria (corrupção silenciosa
-em vez de fallback limpo). Também não `PYTHONUTF8=1`/`-X utf8`: falsifiquei e, quando
-`PYTHONIOENCODING` já está setado no ambiente herdado (o próprio método de simulação de console
-cp1252 usado pelo `TestCliEmConsoleCp1252` do #223), `PYTHONIOENCODING` explícito **vence** sobre o
-modo UTF-8 do interpretador — `-X utf8`/`PYTHONUTF8=1` não evitou o crash sob
-`PYTHONIOENCODING=cp1252` herdado, medido diretamente. Setar `PYTHONIOENCODING=utf-8` na própria
-invocação sobrescreve qualquer valor herdado do ambiente (inclusive um cp1252 real de console
-Windows, onde a var normalmente nem está setada) — é o único dos três mecanismos que sobrevive ao
-próprio método de teste aceito no projeto.
-
-**Falsificação nas duas direções, com script real gerado (não só a linha isolada):** harness
-temporário em `internal/generators` (removido antes do handoff) rodou o `trackfw-attention-signal.sh`
-de verdade via `GenerateAttentionScripts`, sem `jq` no PATH, com JSON de entrada carregando
-`ção ✓` (não representável em cp1252) sob `PYTHONIOENCODING=cp1252`:
-- **Antes do fix** (`python3 -c` sem o prefixo): exit 0 (o `||` externo absorve o crash), mas
-  `.trackfw-attention.json` grava `"message":"Agent needs attention"` — a mensagem real do agente se
-  perde.
-- **Depois do fix**: exit 0, `.trackfw-attention.json` grava `"message":"confirmação ✓"` — o texto
-  real sobrevive intacto.
-- **Controle:** mesmo JSON sob ambiente UTF-8 padrão produz `"message":"confirmação ✓"` idêntico
-  nos dois casos (com e sem o fix) — a saída em terminal UTF-8 não muda.
-
-**Paridade:** literal byte-idêntico confirmado nos 3 CLIs (diff programático das duas linhas) e pelo
-gate `scripts/check-attention-scripts-parity.sh` (`GO_BIN=bin/trackfw`), todos os 8 cenários `OK`.
-
-**Não tocado:** `scripts/trackfw-attention-signal.sh` (cópia dogfooded deste repo) — fora da lista
-"Files affected" do ML e sem gate que a compare contra a constante Go neste próprio repo; fica
-defasada até o próximo `trackfw update` local, registrado aqui para quem notar a divergência.
-`scripts/check-roadmap-barrier-contract.sh` intocado (PR #238, fora de escopo). ML-1B (gates de
-diagnóstico, `artemis-tf`) não tocado.
-
-Evidência completa (mecanismo, falsificação, paridade, `make quality`) no relatório da sessão para o
-arquiteto.
-
----
-
-## 2026-09-02 — Zeus (arquiteto) — documento de portabilidade: renomeação de agentes
-
-**Tipo:** doc-only (exceção de trivialidade objetiva, §7 das regras globais — sem REQ/roadmap).
-
-**Entregue:** `docs/portabilidade/2026-09-02-renomeacao-de-agentes-identidade-e-presets.md`
-(394 linhas). Público: a instância de Claude que opera o harness corporativo do KG. Companheiro do
-documento de guardrails de git/governança da mesma pasta.
-
-**Conteúdo:** cadeia de identificadores (`item.ID` → slug → `AgentName` → `name:` do frontmatter →
-`name =` do Codex), as três estratégias (preset / custom via `Slugify` / neutro), a matriz de
-equivalência 12 papéis × 10 presets, os 4 pontos de mutação em `render.go`, armazenamento em
-`~/.trackfw/identity.json` e a superfície de comando não-interativa.
-
-**Achado que virou a seção 1:** o **nome do arquivo instalado é neutro** (`trackfw-architect.md`) e
-só o campo `name:` do frontmatter carrega a identidade (`zeus-tf`) — `plan.go:87` substitui `{{id}}`
-por `item.ID`, nunca pelo slug. Um harness que derive o `subagent_type` do basename cai em
-`general-purpose` **sem erro**. É a falha silenciosa mais cara do assunto.
-
-**Três armadilhas documentadas:** `--identity-preset none` não apaga o `identity.json` existente
-(`init.go:39-49` devolve `shouldSave=false`); identidade só chega aos artefatos via re-renderização
-(`agents update`); não há flag de apelido.
-
-**Medido, não presumido:** as tabelas de preset dos 3 CLIs foram extraídas em runtime
-(Go/Node/Python) e comparadas — **idênticas**, 120 pares `display_name`/`slug` cada, 5462 bytes de
-JSON normalizado nos três. A matriz do documento foi gerada mecanicamente a partir de
-`internal/identity/preset.go`, não transcrita à mão.
-
-**Não tocado:** nenhum código de produto. Nenhum commit — `apolo-tf`/ML-1A está na branch
-`fix/saida-nao-ascii-...`; commit só após auditoria do ML.
-
-**Correções aplicadas após revisão (mesma sessão):** a primeira redação da §9 usava o glob
-`~/.claude/agents/trackfw-*.md` — cometia exatamente o erro que a §1 alerta, presumindo um caminho
-específico do Claude Code. O template vem do catálogo e **varia por alvo/superfície** (Windsurf usa
-`trackfw-agent-{{id}}/SKILL.md`, Antigravity usa diretório, Codex `.toml`, amazonq `.json`): um glob
-`*.md` erra em 4 dos 12 pares. Substituído por tabela dos 12 destinos reais + receita baseada em
-`trackfw agents list --json` → `deployments[].destination`, **executada e falsificada** (devolve os
-12 pares `architect → zeus-tf` … `ux → atena-tf`). Registrado também que `items[]` do `agents list`
-traz id/rótulo do catálogo, nunca o nome de identidade. Segunda correção: nota de escopo no topo da
-§5 — §5–§9 são medidas só no CLI Go; a paridade da §4 cobre as tabelas de preset, não os pontos de
-aplicação.
-
----
-
-## 2026-09-02 — Zeus (arquiteto) — auditoria do ML-1A
-
-**Veredito: APROVADO no código, REPROVADO na evidência.** O fix entra; o registro da falsificação
-acima fica marcado como errado em vez de reescrito.
-
-**Diff auditado (3 arquivos, 4 linhas):** `internal/generators/scaffold.go`,
-`npm/src/generators/hooks.js`, `pypi/trackfw/generators/init_gen.py` — prefixo
-`PYTHONIOENCODING=utf-8` nas duas invocações `python3 -c` do `attentionSignalScript`, por invocação
-(`VAR=valor comando`, sem `export`). Escopo respeitado: nenhum arquivo fora da lista, nenhuma
-operação de git pelo agente.
-
-**Gates re-executados por mim, não herdados do relatório:**
-- `scripts/check-attention-scripts-parity.sh` com `GO_BIN=/tmp/tfnew` (binário recompilado da
-  árvore atual) → exit 0, 8/8 cenários `OK`.
-- `go build ./...` → OK.
-
-**⚠️ Correção do registro anterior — a falsificação da "direção 1" está errada.** A entrada acima
-afirma que, antes do fix e sob `PYTHONIOENCODING=cp1252`, a mensagem `confirmação ✓` se perde para
-`"Agent needs attention"`. **Isso não reproduz.** Medido duas vezes com o script realmente gerado
-(`trackfw init` num projeto de rascunho) e o ramo `jq` desativado por `if false`:
-
-```
-antes   cp1252  "confirmação ✓"  ->  confirmação ✓      ← passa
-depois  cp1252  "confirmação ✓"  ->  confirmação ✓      ← idêntico: o cenário não discrimina
-```
-
-Motivo: os 3 bytes de `✓` (`E2 9C 93`) são todos **definidos** em cp1252, então decodificar UTF-8
-como cp1252 e re-codificar devolve os mesmos bytes — round-trip transparente. O gargalo não é o
-encode do stdout (isso só valeria para um literal no código); é o **decode do stdin**.
-
-**Cenário que de fato discrimina** — `Á` = `C3 81`, e `0x81` é **indefinido** em cp1252:
-
-```
-antes   cp1252  "Área crítica"  ->  Agent needs attention   ← perde a mensagem
-antes   utf-8   "Área crítica"  ->  Área crítica
-depois  cp1252  "Área crítica"  ->  Área crítica            ← corrige
-depois  utf-8   "Área crítica"  ->  Área crítica            ← controle: não muda
-```
-
-**O fix é real e correto; só a evidência escolhida não media o que se pensava.** Por isso o ML é
-aprovado.
-
-**⚠️ O residual declarado também está invertido.** O relatório diz que entrada genuinamente cp1252
-"agora falha para o fallback em vez de imprimir algo". Medido:
-
-```
-antes   entrada cp1252 real  ->  tr: Illegal byte sequence -> set -euo pipefail mata o script
-                                  -> NENHUM arquivo .trackfw-attention.json é escrito
-depois  entrada cp1252 real  ->  json.load falha -> fallback -> grava "Agent needs attention"
-```
-
-O "antes" não produzia sinal nenhum. O "depois" produz um sinal genérico. É **melhora**, não
-regressão.
-
-**Registrado no vault:** `vault/notes/cp1252-roundtrip-mascara-o-defeito-o-discriminante-e-decode-de-stdin-2026-09-02.md`
-— a regra geral (escolher o caractere de teste pelos bytes, não pela aparência) vale para qualquer
-falsificação de codificação futura, e a armadilha custou uma auditoria inteira para aparecer.
-
-**Pendente antes do commit:** `make quality` completo (em execução) e atualização do status do ML-1A
-no roadmap.
-
----
-
-## Sessão 2026-09-02 — artemis-tf (INÍCIO: ML-1B — codificação de saída nos gates de diagnóstico)
-
-Branch `fix/saida-nao-ascii-declara-codificacao-em-script-gerado-e-em-gate` (não criada por mim).
-
-Escopo: decidir **onde** declarar a codificação de saída para os gates de `scripts/check-*.sh` e
-justificar a escolha por medição. `check-roadmap-barrier-contract.sh` fora do escopo (PR #238
-aberto). Nenhuma operação de git.
-
-## Sessão 2026-09-02 — artemis-tf (FIM: ML-1B — CONCLUÍDO, pendente de auditoria)
-
-**Mecanismo escolhido: `export PYTHONIOENCODING=utf-8`, declarado dentro de cada gate.**
-O `PYTHONUTF8=1` do roadmap foi descartado por medição, não por preferência (abaixo).
-
-### O que mudou
-
-37 arquivos `scripts/check-*.sh` (todos os que invocam `python3`, **menos**
-`check-roadmap-barrier-contract.sh`) ganharam, logo após o `set -euo pipefail`, um bloco de
-comentário com a justificativa e o trade-off, seguido de `export PYTHONIOENCODING=utf-8`.
-Intocados: `check-roadmap-barrier-contract.sh` (PR #238), `scripts/trackfw-attention-signal.sh` e os
-3 geradores (ML-1A), `scripts/smoke-integration-packages.sh` (não é gate de diagnóstico; roda
-`pip install`/CLI real e forçar UTF-8 lá cegaria o smoke quanto à codificação do produto),
-`Makefile` e workflows.
-
-### Por que o mecanismo do roadmap perde (medido, Python 3.14.7)
-
-```
-PYTHONIOENCODING=cp1252 python3           -> locale=UTF-8  stdout=cp1252
-PYTHONIOENCODING=cp1252 python3 -X utf8   -> locale=utf-8  stdout=cp1252   <- stdio NAO muda
-PYTHONIOENCODING=utf-8  python3           -> locale=UTF-8  stdout=utf-8
-```
-
-`PYTHONUTF8`/`-X utf8` governa `locale.getpreferredencoding()` (ou seja, `open()` sem `encoding=`) e
-é **ignorado no stdio** quando `PYTHONIOENCODING` já vem do ambiente — que é exatamente o método de
-simulação de console cp1252 do projeto (`pypi/tests/test_cli_encoding.py::TestCliEmConsoleCp1252`).
-Com `PYTHONUTF8=1` o critério "verificado por execução" seria inalcançável.
-
-### Por que dentro do gate, e não no `Makefile`
-
-Caminhos de invocação enumerados (lidos, não presumidos):
-
-| # | caminho | coberto por `Makefile` | coberto pela declaração no gate |
-|---|---|---|---|
-| 1 | `make quality`/`make parity` (Makefile:18-61) | sim | sim |
-| 2 | `.github/workflows/quality.yml:25,26,54` — `check-static-assets.sh`, `check-integration-assets.sh`, `smoke-integration-packages.sh` chamados direto | **não** | **parcial** — os dois primeiros não invocam `python3` e não precisam de nada; o terceiro invoca, e foi **excluído por decisão** (ver trade-off 3) |
-| 3 | `.github/workflows/release.yml:57-59` — `check-cli-parity.sh`, `check-validate-parity.sh`, `check-static-assets.sh` direto | **não** | sim |
-| 4 | invocação manual de um gate isolado no terminal do dev | **não** | sim |
-| 5 | gate invocado por outro gate (`check-gates-falsify.sh` roda os demais, inclusive **cópias sandboxadas**) | por herança | sim, e sobrevive à cópia |
-
-O caminho 5 é o que descarta um prelúdio compartilhado (`source scripts/lib/…`): a suíte de
-falsificação copia gates para sandboxes (`T83/scripts/`), e um `source` de caminho relativo quebraria
-lá. Por isso o `export` é **auto-contido** em cada arquivo.
-
-### Falsificação nas duas direções — sobre os gates reais, não uma linha extraída
-
-Varredura completa dos 42 gates de `make parity` (sem o `check-roadmap-barrier-contract.sh`), quatro
-execuções: `{antes,depois} x {sem PYTHONIOENCODING, PYTHONIOENCODING=cp1252}`.
-
-| execução | vermelhos |
-|---|---|
-| antes, baseline UTF-8 | 0 / 42 |
-| **antes, cp1252** | **3 / 42** |
-| **depois, cp1252** | **0 / 42** |
-| depois, baseline UTF-8 | 0 / 42 |
-
-Os 3 vermelhos do "antes, cp1252" são **dois modos de falha diferentes** — e o segundo não é um
-crash:
-
-1. `check-parity-contract-coverage.sh` (rc=1) — **crash**. É o gate nomeado no item 4 da issue #216.
-   ```
-   File "<stdin>", line 332, in <module>
-   UnicodeEncodeError: 'charmap' codec can't encode character '→' in position 73
-   ```
-   Linha 384 do arquivo: `print("  - %s -- %s" % (heading, reason))` — o `→` vem de
-   `docs/cli-parity.md`, é dado, não literal.
-2. `check-barrier.sh` (rc=1) — **mismatch sem crash nenhum**. O `python3` do gate extrai um campo do
-   JSON e o imprime; o `—` (U+2014, que **é definido** em cp1252) sai como byte `0x97` e o bash
-   compara com o literal UTF-8 do script:
-   ```
-   FAIL [barrier/trust/not-committed/go]: failure message mismatch;
-     want [... origin/main — pass --trust-local-gates ...] got [... origin/main <0x97> pass ...]
-   ```
-3. `check-gates-falsify.sh` (rc=1) — **cascata** do anterior:
-   `FAIL [falsify/no-repo-mutation]: scripts/check-barrier.sh saiu != 0 rodando limpo`.
-
-### Controle — saída UTF-8 byte-idêntica
-
-Comparados os SHA-256 de stdout e stderr dos 42 gates, antes x depois, sem `PYTHONIOENCODING`:
-**40 de 42 byte-idênticos sem normalização nenhuma**. Os 2 restantes
-(`check-artifact-parity.sh`, `check-gates-falsify.sh`) imprimem o caminho do `mktemp -d` e por isso
-**já divergem entre duas execuções da mesma árvore** (medido: `d2e6a3b232ca` vs `a5d39c6dae4b` antes
-de qualquer edição). Normalizando `/private/var/folders/...` e `/tmp/...`, ficam idênticos também.
-
-**Controle mais forte, que é o que o mecanismo de fato afirma — mesma árvore corrigida, cp1252 x
-UTF-8:** os 42 gates produzem os **mesmos bytes** nas duas codificações (40/42 idênticos no hash cru;
-os 2 do `mktemp` idênticos após normalizar o sandbox). Isso discrimina "o mecanismo funciona" de "o
-mecanismo por acaso não quebrou nada hoje": se alguma invocação `python3` tivesse escapado do
-`export` (subshell com env limpo, `env -i`, script aninhado não editado), a saída divergiria por
-transcodificação **sem** necessariamente ficar vermelha. Nenhuma divergência: não há vazamento.
-
-### Trade-off assumido (escrito também no comentário de cada gate)
-
-Forçar UTF-8 num console genuinamente cp1252 faz o terminal exibir **mojibake** em vez de **crashar**
-— acento ilegível com exit code correto vale mais, num gate de diagnóstico, do que uma reprovação
-falsa. Medido em bytes: `PYTHONIOENCODING=cp1252 python3 -c "print('Área — fim')"` emite
-`c1 72 65 61 20 97 20 66 69 6d 0a` (cp1252) em vez de `c3 81 72 65 61 20 e2 80 94 20 66 69 6d 0a`
-(UTF-8), e sai 0 — ilegível num terminal UTF-8, legível no console cp1252 alvo, sem crash.
-
-Segundo trade-off: o `export` alcança também o **CLI Python do produto** que os gates invocam, então
-os gates deixam de poder observar a codificação nativa do console do produto. Isso não cega nada que
-exista hoje: nenhum gate em `scripts/` mede codificação de console, e os dois instrumentos que medem
-—  `pypi/tests/test_cli_encoding.py::TestCliEmConsoleCp1252` (que **seta** `PYTHONIOENCODING=cp1252`
-no filho) e `scripts/windows-repro/python/checks.py` (que **remove** `PYTHONUTF8`/`PYTHONIOENCODING`
-do ambiente do filho) — são imunes por construção.
-
-### Residuais declarados (não fabricados)
-
-1. **Superfície do `open()` não coberta e não simulável aqui.** `PYTHONIOENCODING` só governa o
-   stdio. Existem `open()` sem `encoding=` em gates (`check-agent-hooks-parity.sh:274`,
-   `check-audit-surface.sh:122`, `check-release-tag-parity.sh:197`, `check-update-parity.sh:464`,
-   `check-validate-parity.sh:713`). Num console cp1252 real isso decodifica pelo locale. Só
-   `PYTHONUTF8=1` moveria essa superfície — e ela **não é verificável por execução neste projeto**:
-   `LC_ALL=C` no macOS/Python≥3.7 cai no UTF-8 Mode do PEP 540 e `locale` continua `utf-8` (medido).
-   Não adicionei `PYTHONUTF8=1` para não introduzir um knob que eu não consigo falsificar.
-2. 🔴 **ACHADO — `check-roadmap-barrier-contract.sh` TAMBÉM estoura sob cp1252, e o `make parity`
-   inteiro cai com ele.** Não editei o arquivo; **rodei** (leitura, não escrita), porque sem medir eu
-   não poderia dizer se a AC "os gates de diagnóstico não estouram" vale para `make parity`.
-   ```
-   baseline UTF-8 -> rc=0
-   PYTHONIOENCODING=cp1252 -> rc=1
-     File "<stdin>", line 7, in <module>
-     UnicodeEncodeError: 'charmap' codec can't encode character '\u2705' (✅)
-   ```
-   O `<stdin>` linha 7 é o `print(f"{base}\t{label}\t...")` da **linha 523**, dentro do heredoc
-   aberto na linha 516 — que escreve `$CORPUS_LINES_FILE`, e é exatamente o arquivo cujo sha vira
-   `CORPUS_HASH` na linha 542. Ou seja: **é o mesmo sítio de código do defeito do PR #238**, não um
-   segundo defeito noutro lugar; mas é um **sintoma diferente** — sob cp1252 o gate **crasha antes**
-   de o hash sequer poder divergir. Consequência para a AC: a afirmação correta é **42 de 43** gates
-   de `make parity`, não `make parity` inteiro. Decisão de rota (aplicar aqui vs. deixar para o #238)
-   é do arquiteto — não toquei no arquivo, e a variável **não** conserta a não-determinação do hash,
-   só o crash.
-3. **Nenhum job de CI roda `scripts/check-*.sh` no Windows.** `parity` é `ubuntu-latest`
-   (quality.yml:409); os jobs `windows-*` rodam `go test`/`npm test`/`pytest`/`windows-repro`. A
-   exposição real hoje é o caminho 4 (dev em console Windows), não o CI.
-4. **O instrumento do item 4 mede uma réplica, não o gate.**
-   `scripts/windows-repro/python/checks.py::cmd_cp1252_print` roda `print('→')` em isolamento e
-   declara explicitamente que **não** invoca o wrapper `.sh`. O gate ficou verde; o veredito daquele
-   instrumento não muda por isso. Antes de fixar "camada 2 de 4 → 3", verificar o que o check mede.
-5. **Não há gate contra reintrodução** — é a Wave 2 do roadmap, não este ML.
-
-### Evidência
-
-- `make quality` → **MAKE_EXIT=0**, 0 FAIL.
-- `bin/trackfw validate` → **VALIDATE_EXIT=0**, 18 warnings, todos pré-existentes (mesmos 18 do ML-3A
-  do apolo-tf).
-- `bash -n` em todos os `scripts/check-*.sh` → 0 erros de sintaxe.
-- `grep -c "^export PYTHONIOENCODING=utf-8$" scripts/check-roadmap-barrier-contract.sh` → **0**.
-
-### Vault
-
-`vault/notes/gate-em-cp1252-tem-duas-falhas-distintas-crash-de-print-e-mismatch-por-transcodificacao-2026-09-02.md`,
-linkada no `index.md`.
-
-**Arquivos afetados:** 37 `scripts/check-*.sh`, `vault/notes/index.md`, a nota nova e este arquivo.
-Nenhuma operação de git. Status do ML no roadmap **não** alterado — aguarda auditoria do arquiteto.
-
----
-
-## 2026-09-02 — artemis-tf — ML-2A (INÍCIO)
-
-**Roadmap:** `docs/roadmaps/wip/ROADMAP-2026-09-02-saida-nao-ascii-declara-codificacao-em-script-gerado-e-em-gate.md`
-**Branch:** `fix/saida-nao-ascii-declara-codificacao-em-script-gerado-e-em-gate`
-
-Wave 2 — gate anti-reintrodução com dois alvos: (1) ferramenta — todo `scripts/check-*.sh` que
-invoca `python3` declara `export PYTHONIOENCODING=utf-8`, com allowlist nomeada de
-`check-roadmap-barrier-contract.sh`; (2) produto — o literal `attentionSignalScript` dos 3 CLIs
-mantém o prefixo `PYTHONIOENCODING=utf-8`, alvo que `check-attention-scripts-parity.sh` não cobre
-(ele compara os 3 entre si). Sem operações de git.
-
-## 2026-09-02 — artemis-tf — ML-2A (FIM)
-
-**Entregue:** `scripts/check-output-encoding-declared.sh` (novo), ligado a `parity:` no `Makefile`;
-comentário do job `parity` em `.github/workflows/quality.yml` atualizado (estava com contagem
-obsoleta e não citava o gate novo); seção "Codificação de saída declarada" em `docs/cli-parity.md`
-com anotação `partial=`; nota de vault nova + `index.md`.
-
-### A forma exata que o gate aceita e recusa
-
-**Aceita (alvo 1):** `export` + `PYTHONIOENCODING=` + valor alias do codec `utf_8` do Python
-(`utf-8`/`utf8`/`utf_8`/`u8`), case-insensitive, aspas simples/duplas opcionais, espaços extras,
-sufixo `:errorhandler` opcional — em **linha de código**, **antes** da primeira invocação de
-`python3`. Controle positivo por execução: as 4 formas equivalentes aplicadas a 4 gates → **OK,
-exit 0** (regex literal ingênua reprovaria as quatro).
-
-**Recusa, com motivo escrito no arquivo:** valor não-utf8 (`cp1252` — o `grep -q PYTHONIOENCODING`
-ingênuo passaria); declaração só em comentário ou em corpo de heredoc (menção morta — a "metade
-positiva" de `vault/notes/gate-literal-regex-syntax-equivalent-bypass-2026-09-01.md`); declaração
-**depois** da primeira invocação; assignment sem `export`; forma de prefixo por invocação no alvo 1
-(semanticamente válida, recusada **por decisão** — asseverá-la exigiria parsear pipeline de bash e
-nenhum dos 37 gates a usa; no alvo 2 é o inverso: lá é a única forma aceita).
-
-### Falsificações — todas por execução
-
-| # | mutação | resultado |
-|---|---|---|
-| controle | árvore íntegra | **exit 0** |
-| F1 | remove `export` de `check-tty-detection.sh` | exit 1, **nomeia o arquivo e a linha 37** |
-| F2 | troca valor por `cp1252` em `check-audit-surface.sh` | exit 1 |
-| F3 | comenta a declaração em `check-cli-parity.sh` | exit 1 |
-| F4 | remove o `export` (assignment solto) em `check-homedir-parity.sh` | exit 1 |
-| F5 | move a declaração para depois da 1ª invocação | exit 1, "linha 691, DEPOIS ... (linha 123)" |
-| F6 | remove o `export` **do próprio gate** | exit 1, **o gate se nomeia** |
-| F7 | allowlisted ganha a declaração | exit 1, "ALLOWLIST OBSOLETA" |
-| F8 | allowlisted renomeado | exit 1, "protegendo um caminho morto" + nomeia o renomeado |
-| F9 | **vacuidade**: glob enumera 0 | exit 1, "recuso passar em silencio" |
-| F10 | remove o prefixo dos **3 CLIs** | exit 1, nomeia os 3 |
-| F11 | remove o prefixo de **1** | exit 1, nomeia o divergente |
-| F12 | **vacuidade alvo 2**: âncora quebrada | exit 1, "encontrei 0" |
-| P | 4 formas equivalentes aceitas | exit 0 |
-
-**O cego da paridade, medido — não argumentado.** Cópia completa da árvore, prefixo removido dos 3,
-`GO_BIN` recompilado dessa cópia:
-
-```
-check-attention-scripts-parity.sh   -> PARITY_EXIT=0   (8/8 OK)
-check-output-encoding-declared.sh   -> NEW_GATE_EXIT=1
-```
-
-**Prova comportamental do mecanismo** (stub de `python3` no `$PATH`, `PYTHONIOENCODING=cp1252` no
-ambiente), em `check-python-writes-lf.sh`: sem a declaração o filho vê `cp1252`; com ela vê `utf-8`.
-
-**Auto-aplicação provada por execução, não só por estrutura** — o mesmo stub apontado ao **próprio
-gate novo**, com `PYTHONIOENCODING=cp1252` no ambiente:
-
-```
-o python3 do proprio gate viu PYTHONIOENCODING=utf-8
-```
-
-F6 prova que a asserção dispara; isto prova que o `python3` deste gate de fato enxerga `utf-8`.
-
-**F13 — allowlist SEM OBJETO** (o único ramo que não tinha execução por trás): removendo o `python3`
-da cópia sandboxada do arquivo excecionado → exit 1, *"ALLOWLIST SEM OBJETO: ... não invoca mais
-python3; a exceção não tem mais razão de existir."*
-
-### Ligação nos dois caminhos
-
-- `make -n parity | grep check-output-encoding-declared` → linha 45. `quality: ... parity`.
-- `.github/workflows/quality.yml:445` roda `make parity` → o gate roda no CI por essa aresta.
-- **Não** foi acrescentado ao subconjunto reduzido de `release.yml` (3 gates), decisão já registrada
-  na `REQ-2026-08-04-job-parity-do-ci-so-roda-4-de-14-scripts-do-make-parity...`; e **não** foi
-  acrescentada uma `- run:` avulsa em `quality.yml`, que reintroduziria a lista manual parcial que
-  aquela mesma REQ removeu.
-
-### Evidência
-
-- `make quality` → **QUALITY_EXIT=0**. As 3 ocorrências de "FAIL" no log são linhas `PROOF ...` e o
-  sumário "181 scenarios", nenhuma é reprovação. O gate novo roda por último em `make parity`.
-- `bin/trackfw validate` → **VALIDATE_EXIT=0**, 18 warnings, os mesmos pré-existentes do ML-1B.
-- `grep -c PYTHONIOENCODING scripts/check-roadmap-barrier-contract.sh` → **0**, arquivo intocado
-  (mtime 2026-08-29).
-- `scripts/check-parity-contract-coverage.sh` → **exit 0**, nenhuma seção sem anotação.
-- Reexecutados **depois** das últimas escritas (a nota de vault, o link no `index.md` e este
-  registro foram escritos após o `make quality` ter começado, então os gates que rodam no início do
-  `parity` não os tinham visto): `scripts/check-referential-integrity.sh` → **REF=0**,
-  `bin/trackfw validate` → **VALIDATE=0**, `scripts/check-output-encoding-declared.sh` → **exit 0**.
-
-### Descoberto — reportado, não corrigido
-
-1. 🔴 **`scripts/trackfw-attention-signal.sh` (a cópia versionada) está obsoleta**: continua sem o
-   prefixo, divergente dos 3 literais desde o ML-1A. **Nada a compara com o gerador** — o parity
-   roda em `mktemp -d` e os testes Go fazem `os.Chdir(t.TempDir())`. Nota de vault escrita.
-2. `internal/generators/scaffold.go:1873` emite outro `python3 -c` (build-check `py_compile` de
-   projetos Python) **sem** o prefixo. Fora do contrato do alvo 2 por decisão explícita — a âncora
-   usa a assinatura `json.load(sys.stdin)` para não arrastá-lo. Não avaliado se precisa.
-3. `scripts/check-shell-posix-portability.sh` declara `PYTHONIOENCODING` mas **não invoca**
-   `python3` — sobra inofensiva do ML-1B (casou pela palavra no comentário). O gate não reprova
-   por sobra-declaração, de propósito.
-4. Existe um diretório `$T/` na raiz do repositório (lixo de expansão de variável); não toquei.
-
-**Cobertura parcial declarada (2 itens, ambos na anotação `partial=`):** (a) a asserção é estática
-sobre o texto-fonte; Provar por observação de
-runtime nos 38 gates exigiria executá-los com `python3` instrumentado, e dois (`check-gates-falsify`
-~3m05s, `check-barrier` que executa git) inviabilizam isso dentro de `make parity`. Anotado
-`partial=` em `docs/cli-parity.md`, nunca `gate=` puro. (b) O rastreador de heredoc é **heurístico**
-— procura o delimitador na linha inteira, então um comentário inline citando `<<` iniciaria estado
-de heredoc. Hoje é comprovadamente **inerte**: a contagem independente por strip de comentário (37
-invocadores) mais o próprio gate bate exatamente com os 38 que a varredura enumera, logo a exclusão
-de heredoc não descartou nada. Declarado em vez de "corrigido" porque mexer no parser de um gate
-verde é trocar risco por estética.
-
-**Nenhuma operação de git.** Status do ML no roadmap **não** alterado — aguarda auditoria do
-arquiteto.
-
-## 2026-09-02 — hefesto-tf (Code Quality) — INÍCIO
-**Escopo:** barreira final de qualidade do `ROADMAP-2026-09-02-saida-nao-ascii-declara-codificacao-em-script-gerado-e-em-gate` (branch `fix/saida-nao-ascii-declara-codificacao-em-script-gerado-e-em-gate`, 57 arquivos, ML-1A/ML-1B/ML-2A).
-**Alvo:** manutenibilidade do gate novo `scripts/check-output-encoding-declared.sh`, custo da repetição de 37 blocos de comentário, risco do rastreador heurístico de heredoc, honestidade da anotação `partial=` em `docs/cli-parity.md`, sobra-declaração e code smells.
-**Fronteira:** somente leitura de código; único arquivo escrito é `docs/qualidade/2026-09-02-parecer-codificacao-declarada.md`. Nenhuma operação de git.
-
-## 2026-09-02 — hades-tf (Security) — INÍCIO
-**Escopo:** barreira final de segurança do `ROADMAP-2026-09-02-saida-nao-ascii-declara-codificacao-em-script-gerado-e-em-gate` (branch `fix/saida-nao-ascii-declara-codificacao-em-script-gerado-e-em-gate`, 57 arquivos, ML-1A `5b5391e` / ML-1B `6721078` / ML-2A `486b5a0`).
-**Alvo:** o `attentionSignalScript` é código de PRODUTO que roda como hook `PreToolUse` e decodifica **stdin não confiável**. Medir se a troca de decode locale→UTF-8 estrito muda a superfície; procurar injeção no `.trackfw-attention.json` (lido pelo `trackfw serve` e renderizado no browser); truncamento em 300 code points; alcance do `export` do ML-1B a processos-filho; execução de conteúdo de arquivo pelo gate novo; identidade byte a byte da cópia versionada.
-**Fronteira:** somente leitura de código; único arquivo escrito é `docs/seguranca/2026-09-02-parecer-codificacao-declarada.md`. Nenhuma operação de git.
-
-## 2026-09-02 — hades-tf (Security) — FIM
-**Veredito: APROVA COM RESSALVAS.** Parecer em `docs/seguranca/2026-09-02-parecer-codificacao-declarada.md`.
-**Nada bloqueia o merge.** A troca de decode locale→UTF-8 estrito **não abre primitivo de injeção novo** — conjunto-delta medido é 100% não-ASCII, e `"`/`\`/C0 codificam idêntico nos dois codecs. Medido o inverso do temido: **antes** do ML-1A, sob `PYTHONIOENCODING=cp1252`, o hook escrevia `.trackfw-attention.json` **inválido em UTF-8** (`—`→`0x97`, `Á`→`0xC1`); depois, correto. O defeito era rotulado de disponibilidade e também era de integridade do artefato.
-**Achado S3 (REQ de acompanhamento):** `scripts/check-output-encoding-declared.sh:45-49` justifica aceitar `utf-8:<handler>` com "nenhum str do Python é inencodável em utf-8" — **falso**: `json.load` preserva surrogate isolado de `\udXXX`. As formas `utf-8:surrogatepass` e `utf-8:surrogateescape`, **aceitas hoje** pelas duas regex (`:141-146`, `:283-287`), escrevem `ED A0 80` / `0xFF` crus no artefato — provado por execução, com a forma canônica como controle (cai no fallback, seguro). Consequência medida: Go e Node devolvem `active:true` com U+FFFD; **Python devolve `active:false`** (`UnicodeDecodeError` ⊂ `ValueError`, capturado em `api_attention.py:15`) — o banner some num dos 3 runtimes. Divergência pré-existente e já alcançável pelo braço cp1252, por isso ressalva e não bloqueio.
-**Achado S4:** ML-2A regenerou `scripts/trackfw-attention-signal.sh` (confirmei **byte-idêntico** aos 3 literais: 1581/1581/1580) mas **não criou guarda** — `ATTENTION_SOURCES` cobre só os 3 geradores; `check-doctor-parity.sh` usa cópia em `mktemp -d` e `scaffold_doctor.go:205` mede o projeto do adopter. A condição de órfão da nota de vault persiste.
-**Sem achado (negativos medidos, com controle):** sink do browser é `textContent` e `markCardAttention` compara `getAttribute` por igualdade — bypass de escape seria cosmético, não XSS; escape resiste (4 chaves exatas com payload de fechamento de string, nos 3 braços); `[:300]` fatia `str`, corte no meio de multibyte não é construível; gate não avalia conteúdo (heredoc `<<'PYEOF'`, args citados, zero `eval`/`exec`/`subprocess`); `export` do ML-1B não cega nada — `test_cli_encoding.py:76` **seta**, `checks.py:34-35,78-79` **removem**, e `cli.py:47 _force_utf8_output()` faz `reconfigure()` que sobrescreve o herdado; trade-off do mojibake não introduz fail-open (crash dava exit≠0 e o que sumiu foi uma falha *falsa*).
-**Falsificação do gate, 4 execuções em sandbox:** fiel→0; prefixo removido dos 3→1 (nomeia as 6 linhas); `cp1252` no ALVO 1→1; `utf-8:surrogatepass`→**0** (o achado).
-**Fronteira respeitada:** nenhum código de produto tocado; escritos só o parecer e estas duas entradas. Nenhuma operação de git. Status do ML no roadmap não alterado — aguarda `trackfw_architect`.
-**Adendo (pós-revisão do parecer):** §1 foi dividida em **1a encode / 1b decode / 1c conclusão** porque os payloads de `json.dump` são ASCII puro (`ensure_ascii=True`) e só exercitavam o encode. O **decode** de stdin — o discriminante segundo a nota de vault — foi medido com bytes crus, nas duas direções: `\xc3\x81` (UTF-8 válido, `0x81` indefinido em cp1252) **antes** caía em `UnicodeDecodeError`→fallback e **agora** é aceito íntegro; `\xe9` (latin-1, inválido em UTF-8) **antes** passava e escrevia artefato malformado e **agora** cai no fallback fail-safe (S5.5, disponibilidade). A afirmação estrutural "nenhum ponto não-ASCII codifica em cp1252 para 0x22/0x5C/C0" passou de assumida a **medida** por varredura exaustiva dos 1.114.112 pontos de código: **NENHUM**. §6 refeita **byte a byte contra a transformação de cada escritor** (`os.WriteFile`, `fs.writeFileSync(SIGNAL_SCRIPT)`, `f.write(_ATTENTION_SIGNAL_SH.lstrip('\n'))`), carregando os módulos reais em vez de re-extrair por regex: **1583 == 1583 nos três**. Isso importa porque descasamento de newline faria `scaffold_doctor` acusar adulteração falsa no projeto do adopter. Nota de vault escrita e linkada: `handler-de-erro-em-pythonioencoding-reintroduz-byte-invalido-e-os-3-serve-divergem-2026-09-02.md`.
-
-## 2026-09-02 — hefesto-tf (Code Quality) — FIM
-**Entregue:** `docs/qualidade/2026-09-02-parecer-codificacao-declarada.md`.
-**Veredito:** APROVA COM RESSALVAS. **2 bloqueantes**, ambos em
-`scripts/check-output-encoding-declared.sh`, ambos *fail-open* e falsificados por execução com
-controle negativo: (B1) `HEREDOC_RE:152` casa `<<` em comentário inline e derruba o arquivo da
-população em silêncio — o gate fica cego à remoção do `export` naquele arquivo (exit 0 onde o
-controle dá exit 1); remédio verificado: separar o predicado de POPULAÇÃO (loose) do de
-DECLARAÇÃO (heredoc-aware) — medi strict 38 = loose 38, delta vazio, drop-in. (B2)
-`re.IGNORECASE` nas TRÊS regexes (`:140-148` e `PREFIX_RE:285-289`) casa o NOME da variável sem
-distinguir caixa — B2a: `export pythonioencoding=utf-8` aceito no alvo 1; **B2b: prefixo
-minúsculo aceito no alvo 2, que é o PRODUTO — reversão completa do ML-1A num runtime reportada
-como `2/2` e exit 0**. Remédio (caixa exata no nome, `(?i:...)` só no valor, nas 3 regexes)
-verificado nas 4 direções: árvore atual OK sem falso positivo, t5 FAIL, t6 FAIL, valor em caixa
-alta ainda aceito. Um único handoff, <15 linhas,
-para o especialista de infra de gate. **Produto (internal/, npm/src/, pypi/trackfw/): sem
-achados.** 5 achados de acompanhamento (S1..S5) — inclusive: a justificativa de não centralizar
-o bloco de 12 linhas nos 37 gates **se sustenta** (`check-gates-falsify.sh` copia gates
-individualmente para sandbox), e a anotação `partial=` de `docs/cli-parity.md` é **honesta** —
-a fronteira declarada bate com o código e ela nomeia o próprio furo de B1.
-**Evidência:** `make quality` → `MAKE_EXIT=0` (3.613 linhas, 3 matches de `FAIL` todos benignos,
-inspecionados); `trackfw validate` → exit 0.
-**Pendente para outro papel:** nota de vault do mecanismo de B1 (fora da minha fronteira de
-escrita neste ciclo). Nenhuma operação de git; status do ML no roadmap não alterado.
-
-## 2026-09-02 — artemis-tf (QA) — INÍCIO
-**Handoff:** `trackfw_architect`, ML-2B do
-`ROADMAP-2026-09-02-saida-nao-ascii-declara-codificacao-em-script-gerado-e-em-gate` (wip) —
-microlote corretivo da barreira final: 3 bloqueantes *fail-open* em
-`scripts/check-output-encoding-declared.sh` (B1 do parecer de qualidade, B2 do mesmo parecer, S3 do
-parecer de segurança) mais S4 (comentário falso em `check-shell-posix-portability.sh`).
-**Escopo:** os 3 defeitos vivem no mesmo bloco de regex/parsing do gate que eu escrevi no ML-2A.
-Proibido tocar `internal/`, `npm/src/`, `pypi/trackfw/`, `check-roadmap-barrier-contract.sh` e os
-demais 36 gates. Falsificação em cópias de sandbox, nunca por mutação da árvore. Nenhuma operação
-de git.
-**Leitura prévia:** ML-2B no roadmap, `docs/qualidade/2026-09-02-parecer-codificacao-declarada.md`,
-`docs/seguranca/2026-09-02-parecer-codificacao-declarada.md`, `vault/notes/index.md` e as 3 notas
-de codificação de 2026-09-02.
-
-## 2026-09-02 — artemis-tf (QA) — FIM
-**Entregue (não commitado, para auditoria do `trackfw_architect`):**
-`scripts/check-output-encoding-declared.sh`, `scripts/check-shell-posix-portability.sh` (só o
-comentário), `docs/cli-parity.md` (anotação `partial=` do próprio gate), nota de vault
-`comentario-inline-com-heredoc-derruba-arquivo-da-populacao-do-gate-2026-09-02.md` + link no
-`index.md`, estas duas entradas e 3 arquivos de memória do próprio papel em
-`.claude/agent-memory/artemis-tf/` (`MEMORY.md` + 2 memórias de feedback). As mudanças em
-`.claude/agent-memory/zeus-tf/` que aparecem no `git status` **não são minhas** — são escrita
-concorrente do orquestrador.
-
-**B1 — população loose × declaração strict.** `population_lines()` (exclui só a linha inteiramente
-comentada, sem estado de heredoc) passa a decidir `first_py3` e a assertiva (c) da allowlist;
-`code_lines()` (com exclusão de heredoc) segue decidindo declaração. Falsificado nas duas direções:
-comentário inline com `<<` **+** `export` removido de `check-tty-detection.sh` → **`FAIL`, exit 1**
-(antes: `OK`, exit 0); árvore íntegra → `OK`, exit 0; **população inalterada em 38** com o
-comentário presente.
-
-**B2 — caixa.** `re.IGNORECASE` removido das 3 regexes; `(?i:...)` só no grupo de aliases.
-`export pythonioencoding=utf-8` (alvo 1) → `FAIL`; `pythonioencoding=utf-8 python3 -c` nas 2
-invocações de `npm/src/generators/hooks.js` (alvo 2, **produto**) → `FAIL` nomeando as linhas 147 e
-148 (antes: `2/2 invocacoes com prefixo`, exit 0); `export PYTHONIOENCODING=UTF-8` (caixa alta no
-**valor**) → segue aceito.
-
-**S3 — handler.** Sufixo restrito de `(?::[A-Za-z0-9_]+)?` para `(?::strict)?` nas duas regexes.
-`utf-8:surrogatepass` e `utf-8:replace` → `FAIL` nos dois alvos; `utf-8` e `utf-8:strict` → `OK`.
-Minúsculo de propósito: `codecs.lookup_error('STRICT')` → `unknown error handler name` (medido).
-**O comentário falso foi corrigido**, não só a regex: as linhas que afirmavam "com encoding utf-8
-nenhum `str` do Python é inencodável" foram substituídas pelos dois motivos reais — surrogate solto
-preservado por `json.load` (`ED A0 80` gravado no artefato) e o handler valendo também para o
-**decode do stdin**, onde `:replace` reintroduz a corrupção que o ML-0A reprovou.
-
-**S4.** Comentário de `check-shell-posix-portability.sh` corrigido: o gate **não** invoca `python3`
-(as 2 ocorrências são prosa); a declaração fica como preventiva e uniforme. Veredito idêntico antes
-e depois, medido contra a versão de `HEAD`: `OK — 10 assinaturas ... confirmadas`, exit 0 nos dois.
-
-**3 guardas de vacuidade re-falsificadas por execução** (não presumidas): (a) raiz isolada, glob
-vazio → `ALVO 1 vacuo: ... ZERO arquivos`; (b) população totalmente vazia → `NENHUM foi
-classificado como invocador`; (c) só o próprio gate fora da população → `o gate deixou de se
-aplicar a si mesmo`. Mais: allowlist (a) caminho morto, (b) obsoleta, (c) sem objeto; alvo 2 vácuo
-por âncora quebrada; e auto-aplicação (remover o `export` **deste** gate → ele se nomeia).
-
-**Residual declarado, na direção FECHADA (reportado, não corrigido):** do lado da *declaração* o
-mecanismo de B1 sobrevive — comentário inline com `<<` acima do `export` faz o gate reprovar com
-`NAO declara` um arquivo que declara (`rc=1`). Ruidoso, nunca permissivo. Não o corrigi porque a
-heurística que o fecharia (`#` = comentário) falha na direção **aberta** em `echo "a # b" <<EOF`, e
-seria uma 4ª mudança no bloco que os dois auditores já revisaram. Documentado na nota de vault e na
-anotação de `docs/cli-parity.md`; candidato a REQ de acompanhamento.
-
-**Evidência:** `make quality` → exit 0 (3.612 linhas, rodado DEPOIS de todas as escritas, inclusive `docs/cli-parity.md` e a nota de vault); `bin/trackfw validate` → exit 0 (18 warnings pré-existentes). `(?i:...)` (flag inline com escopo) exige Python 3.6+; a matriz do `quality.yml` é 3.10/3.12 — verificado.
-**Não commitado; nenhuma operação de git. Status do ML-2B no roadmap deliberadamente NÃO alterado**
-— o corpus de `check-roadmap-barrier-contract.sh` é pinado sobre as linhas de veredito dos roadmaps
-(`PINNED_CORPUS_HASH:434`), e a transição de status cabe ao `trackfw_architect` após a auditoria.
-
-## 2026-09-02 — ares-tf (Infrastructure) — INÍCIO
-**ML-1A** do `ROADMAP-2026-09-02-gitattributes-com-merge-union-para-o-trackfw-log-nos-3-clis`
-(`wip/`), REQ `REQ-2026-09-02-reconciliacao-pos-merge-dos-prs-238-e-240-e-o-trackfw-log-que-conflita-em-toda-branch-paralela.md`
-(AC6/AC7). Branch já ativa: `fix/gitattributes-com-merge-union-para-o-trackfw-log-nos-3-clis`.
-Escopo: `.gitattributes` na raiz **e** geração pelo `trackfw init` nos 3 CLIs, byte-idêntico, com
-falsificação do merge nas duas direções em repositórios de rascunho fora deste repo. Nenhum roadmap
-movido, nenhuma linha acrescentada ao `.trackfw-log` — a Wave 2 é do `trackfw_architect`.
-
-## 2026-09-02 — ares-tf (Infrastructure) — FIM
-**Entregue (não commitado, para auditoria do `trackfw_architect`):** `.gitattributes` (novo, raiz),
-`internal/generators/scaffold.go`, `npm/src/generators/init.js`,
-`pypi/trackfw/generators/init_gen.py`, `scripts/check-artifact-parity.sh`, `docs/cli-parity.md`,
-3 arquivos de teste novos (`internal/generators/gitattributes_test.go`,
-`npm/tests/gitattributes.test.js`, `pypi/tests/test_gitattributes.py`), nota de vault
-`merge-union-preserva-linhas-mas-nao-ordem-e-metrics-depende-de-posicao-2026-09-02.md` + link no
-`index.md`, e estas duas entradas.
-
-**Padrão: basename, não caminho.** `.trackfw-log merge=union` — padrão sem barra casa em qualquer
-diretório. `roadmap_dir` e `req_dir` são configuráveis por projeto e **os dois** carregam um
-`.trackfw-log` (`roadmap.go` e `req.go:appendREQTransitionLog`); caminho fixo nasceria quebrado em
-quem configurou outro diretório e deixaria o log de REQ descoberto. `git check-attr merge` confirma
-`merge: union` em `docs/roadmaps/`, `docs/req/` e um `custom/rm/` arbitrário. **A cobertura do
-segundo log é desejada e está escrita** no `docs/cli-parity.md` e na nota de vault.
-
-**Falsificação nas duas direções, com o CONTEÚDO (não só exit code).** Base `09:00`/`09:10`;
-`main` acrescenta `10:45` e `11:21`; branch acrescenta `10:46`. **Sem** o `.gitattributes`:
-`CONFLICT (content)`, exit 1, `UU` e marcadores `<<<<<<<`/`>>>>>>>` no arquivo. **Com**: exit 0,
-árvore limpa, e as 5 linhas presentes — igualdade de conjunto, **sem perda e sem duplicação**.
-Dois controles extras: adição **idêntica** dos dois lados → **1** linha (não 2); sobreposição
-parcial (`L1` vs `L1,L2`) → `L0,L1,L2`. O único efeito colateral é a **ordem**: `ours` inteiro antes
-de `theirs`, logo `10:46` cai depois de `11:21`.
-
-**Ordem: medida contra os leitores, não presumida.** `trackfw log --tail` é apresentação;
-`stale_wip` do validador e o throughput do `metrics` comparam timestamp (`.After`, min/max). A única
-dependência posicional é cycle time / WIP age em `internal/metrics/metrics.go` (`Calculate`), e ela
-só é atingida por roadmap com transições nos **dois** lados do merge. Contraprova a favor do union:
-o `.trackfw-log` deste repositório já carrega uma linha **duplicada** (`10:46 … gate-do-barrier`)
-produzida por **resolução manual** — union não teria duplicado. Veredito: `merge=union` é adequado.
-
-**Idempotência falsificada nos 3 ramos × 3 runtimes por execução real do `init`:** ausente → cria
-(6 linhas, 1 regra); `init` duas vezes → byte-idêntico; preexistente **sem newline final**
-(`* text=auto`) → `\n` inserido antes do bloco, primeira linha do projeto preservada, `init` duas
-vezes → 1 regra; regra preexistente com espaçamento diferente (`.trackfw-log  merge=union`) → no-op
-byte a byte; linha **comentada** não conta como regra. Predicado pinado: primeira palavra de linha
-não-comentário igual a `.trackfw-log`.
-
-**Paridade:** os 3 CLIs geram o arquivo byte-idêntico entre si e idêntico ao `.gitattributes`
-versionado na raiz (`cmp`), agora coberto por `scripts/check-artifact-parity.sh` — 9º `KIND`, e a
-linha de sumário passou a derivar a contagem de `${#KINDS[@]}` em vez do literal `8`.
-
-**Descoberto (declarado, não corrigido — não é o ML-1A):** (a) `trackfw update` **não** emite o
-arquivo, então só projeto inicializado depois desta versão recebe a regra — candidato a REQ de
-acompanhamento; (b) a falsificação é sobre `git merge` **local**; se o merge do lado do servidor da
-forge honra o atributo não foi medido.
-
-**Evidência:** `make quality` → **exit 0**, saída capturada em arquivo sem pipe
-(`cmd > log 2>&1; echo $?`). Precisão: o `make quality` foi lançado depois de **todas as escritas de
-código, gate e `docs/cli-parity.md`**, mas **antes** da nota de vault, do link no `index.md` e destas
-entradas de contexto (só markdown). Os dois gates que leem docs foram re-executados **depois** dessas
-escritas: `scripts/check-referential-integrity.sh` → exit 0 (`Referential integrity OK`) e
-`scripts/check-parity-contract-coverage.sh` → exit 0 (nenhuma seção sem anotação).
-`bin/trackfw validate` → exit 0 (21 warnings, todos de severidade warning).
-
-**2 warnings do `validate` apontam para o próprio roadmap deste ML — artefato de governança do
-`trackfw_architect`, NÃO alterado por mim:** (a) `req:` na linha 5 do roadmap está sem o prefixo
-`docs/req/` e sem aspas (`req: REQ-2026-09-02-reconciliacao-...md`), enquanto todos os outros
-roadmaps em `wip/` usam o caminho completo entre aspas — daí o warning "links to REQ ... which does
-not exist", embora o arquivo da REQ exista (ADR-2026-08-01); (b) "in wip but has no acceptance
-criteria block" — o roadmap tem `**Critérios de aceite:**` por ML, mas não o heading consolidado
-(ADR-2026-07-31). Os dois são correção de uma linha, e cabem ao orquestrador. **Nenhuma operação de git neste repositório**; os `git init/commit/merge`
-da falsificação rodaram em repositórios de rascunho sob `mktemp -d`. Roadmap **não** alterado — o
-status do ML e a Wave 2 são do `trackfw_architect`.

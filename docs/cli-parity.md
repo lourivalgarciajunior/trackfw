@@ -163,6 +163,57 @@ Regra de validação `note_orphan` — notas em `vault/notes/` não referenciada
 | `index.md` | não conta como nota órfã |
 | Detecção de link | aceita `[texto](arquivo.md)` e `[[nome-da-nota]]` |
 
+## Artifact slug contract
+
+<!-- trackfw-contract: gate=scripts/check-artifact-parity.sh partial=a fixture cobre acento mas ainda nao cobre `/` e `+`; o inventario de implementacoes e coberto por scripts/check-slug-inventory.sh -->
+
+Regra dos slugs que viram **nome de arquivo de artefato** — `adr new`, `req new`,
+`roadmap new`, `note new` — e do `artifactId` gerado em `pom.xml`:
+
+1. NFKD, depois descarte das combining marks (dobra acento: `Ação` → `acao`).
+2. Lowercase.
+3. **`[^a-z0-9]+` → um hífen.** Colapso, nunca deleção.
+4. Trim de hífens nas extremidades.
+
+### Por que colapso e não deleção
+
+<!-- trackfw-contract: gate=scripts/check-artifact-parity.sh partial=documenta o motivo da regra; o comportamento em si é coberto pela fixture do gate -->
+
+Deleção junta tokens que o título separava. `C/C++ & Café` vira `cc-cafe` em vez de
+`c-c-cafe`; `AWS+GCP` vira `awsgcp` em vez de `aws-gcp`. O nome de arquivo existe para ser lido
+por gente, e a fronteira de palavra é o que torna ele legível.
+
+O colapso também é o que 9 das 10 implementações já fazem — o `toSlug` compartilhado do Go, as
+quatro cópias do Node e três dos quatro geradores do Python. Alinhar a décima é a mudança menor.
+
+### Este contrato **não** é o de `Agent identity`
+
+<!-- trackfw-contract: gate=scripts/check-artifact-parity.sh partial=a separação entre os dois contratos não é exercitada por gate — nenhum gate compara identidade contra artefato -->
+
+O slug de identidade de agente (seção `Agent identity` → `Slug contract`) **descarta** os
+caracteres fora de `[a-z0-9-]`, em vez de colapsar. Medido:
+
+| Entrada | Identidade | Artefato |
+|---|---|---|
+| `C/C++` | `cc` | `c-c` |
+| `AWS+GCP` | `awsgcp` | `aws-gcp` |
+| `Meu Agente` | `meu-agente` | `meu-agente` |
+
+A divergência é deliberada e os dois contratos são separados de propósito: identidade é um
+identificador curto, validado e sujeito a colisão; artefato é um nome de arquivo legível. **Não
+unifique os dois** — a coincidência no terceiro caso engana.
+
+Foi exatamente essa confusão que produziu o defeito: `pypi/trackfw/generators/adr.py:slugify`
+implementa a regra de identidade onde vai a de artefato.
+
+### Paridade sozinha não é o critério
+
+<!-- trackfw-contract: gate=scripts/check-artifact-parity.sh partial=o gate compara os runtimes entre si; a comparação contra a regra escrita depende de revisão humana -->
+
+Os três runtimes podem convergir num valor errado. Se o `toSlug` do Go perder o NFKD, ele e o
+inline do Node passam a concordar em `caf-app` para `Café App` — gate verde, comportamento pior.
+Todo gate de slug precisa comparar contra **esta regra escrita**, não só os runtimes entre si.
+
 ## `.gitattributes` — `merge=union` para o `.trackfw-log`
 
 <!-- trackfw-contract: gate=scripts/check-artifact-parity.sh partial=o gate compara byte a byte só o caminho de CRIAÇÃO (projeto novo, sem .gitattributes); o caminho de APPEND (projeto que já tem o arquivo), o predicado de idempotência e o arquivo sem newline final são cobertos por teste em cada runtime (internal/generators/gitattributes_test.go, npm/tests/gitattributes.test.js, pypi/tests/test_gitattributes.py), não cross-runtime -->
@@ -692,6 +743,10 @@ produce the same artifact bytes for the same input.
 ### Shared configuration
 
 <!-- trackfw-contract: gate=scripts/check-identity-parity.sh partial=o fallback "sem identity.json" é testado byte a byte nos 3 runtimes (HOME_WITHOUT); schema_version inválido, agents vazio e entrada ausente para um id específico não são exercitados -->
+
+> Este contrato **não** é o de `Artifact slug contract`. Identidade **descarta** o caractere fora
+> de `[a-z0-9-]`; artefato **colapsa** em hífen. `C/C++` vira `cc` aqui e `c-c` lá. Separados de
+> propósito — não unifique.
 
 ```
 ~/.trackfw/identity.json
