@@ -76,3 +76,6 @@ O caso do CMDB (Roadmaps 116, REQs 0) passa sem aviso. Ampliar para disparar tam
 
 - Refatoração de checagens além das listadas acima
 - Suporte a namespacing diferente de `by_agent` e flat
+
+## Linked Roadmap
+Roadmap: docs/roadmaps/claude/done/v2.5.3-req-indexing-by-agent-2026-06-14.md

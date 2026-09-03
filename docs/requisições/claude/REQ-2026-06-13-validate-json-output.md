@@ -54,3 +54,6 @@ Exit code inalterado (comportamento atual mantido).
 
 - Flag `--format` genérica ou outros formatos (CSV, YAML)
 - Streaming de resultados (saída única ao final, como hoje)
+
+## Linked Roadmap
+Roadmap: docs/roadmaps/claude/done/v2.5-discovery-json-traceid-2026-06-13.md

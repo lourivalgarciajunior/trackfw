@@ -83,3 +83,6 @@ _apply_rule("req_has_roadmap", validate_reqs_have_roadmap(cfg),  violations, war
 
 - Outras regras ainda sem `applyRule` (`validateFrontmatterPresence` etc.)
 - Mudança no schema de config além das 3 novas chaves
+
+## Linked Roadmap
+Roadmap: docs/roadmaps/claude/done/v2.6.0-rules-req-configuraveis-2026-06-14.md

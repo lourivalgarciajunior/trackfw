@@ -65,3 +65,6 @@ A lógica de detecção e instalação deve ser implementada nos três CLIs:
 - [ ] Projetos que já têm framework detectado → comportamento atual mantido (idempotente)
 - [ ] Paridade nos 3 CLIs
 - [ ] `make test` verde
+
+## Linked Roadmap
+Roadmap: docs/roadmaps/claude/done/discover-init-hook-autoinstall-2026-06-15.md
