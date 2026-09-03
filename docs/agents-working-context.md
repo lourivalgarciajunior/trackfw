@@ -27543,8 +27543,6 @@ Direções B3 e B4 (que já existiam no gate, sem entrada na tabela) e a nova Di
 **Fronteiras mantidas:** não commitei, não fiz push, não toquei no roadmap nem em nenhum arquivo fora
 da lista permitida.
 
----
-
 ## 2026-08-30 — `trackfw_architect` (Zeus) — REQ da cegueira de namespace: FIM
 
 Reportado por um agente no **cmdb** — projeto consumidor. `roadmap move` falhava com
@@ -27592,3 +27590,159 @@ de segunda mão e ela mediu ser falsa.
 pré-existentes achados no caminho — `status` do Python contando REQs por listagem flat, e
 `context.js:136` sem `await` num `validate()` assíncrono, que quebra o `trackfw context` do Node
 **sempre**.
+
+---
+
+## 2026-09-02 — `claude` — os 5 conjuntos que faltavam portar: FIM
+
+Fecha a lista de divergências locais que ainda não tinham ido ao upstream. Os cinco foram medidos
+antes de classificados, e **dois deles mudaram de classificação por causa da medição**.
+
+### 1 e 2 — slug (juntos): issue #246, PR #247
+
+Achei procurando "Python deleta em vez de colapsar" e encontrei coisa pior. `slugify` está
+**duplicado por gerador**: Go tem uma cópia, Node tem quatro e as quatro concordam, Python tem quatro
+e a do `adr` derivou. O efeito não é entre runtimes — é **dentro do Python**:
+
+```
+$ python -m trackfw req new "C/C++ interop"   → REQ-2026-09-02-c-c-interop.md
+$ python -m trackfw adr new "C/C++ interop"   → ADR-2026-09-02-cc-interop.md
+```
+
+**O que vale guardar é por que nenhum gate viu.** Medi os **três** exemplos da tabela do contrato em
+`docs/cli-parity.md`: os três dão 3/3 iguais **com o defeito presente**, porque neles todo trecho
+não-alfanumérico é adjacente a espaço ou a borda, e ali deletar e colapsar coincidem. A anotação do
+contrato já dizia `partial=só o título acentuado é exercitado` — e a medição mostra algo pior que
+parcial: um gate com os **três** continuaria verde. **Não faltava cobertura, faltava um caso
+discriminante.** O gate passa a usar `"Autenticação C/C++ v1.2"`, e o porquê ficou em comentário no
+próprio script, porque quem for mexer no título precisa saber que ele não é decorativo.
+
+`identity/slugify` também deleta e **ali está correto** — o docstring declara o passo, espelhando
+`internal/identity/slug.go`. Duas regras diferentes de propósito; a confusão entre elas é a
+explicação mais provável do defeito, e por isso está escrita na REQ em vez de deduzida por quem vier.
+
+### 3 — `discover.py`: não era port, era dano nosso
+
+Nossa `main` tinha tirado duas linhas em branco antes de `def _write_ci_workflow`. Ia como
+"correção"; medindo, é o contrário — o upstream está certo. Revertido localmente.
+
+Medi também se `ruff` pegaria: **não pega**, 15 erros dos dois lados, porque E302 exige `preview`.
+O argumento que sustenta o revert é outro e é melhor: são duas linhas de divergência **sem
+propósito**, que conflitariam em toda atualização futura do upstream, para sempre.
+
+### 4 — testes do `roadmap move`: PR #248
+
+161 linhas cobrindo as sete decisões de escopo de `rewriteRoadmapStatus`, que não tinham nenhuma
+prova. Nenhuma linha de produção tocada.
+
+Falsifiquei desligando a sincronia: **5 dos 7 acendem**. Os 2 que ficam verdes são os que afirmam
+*nada muda* — e isso está certo, são as guardas da direção negativa, que acendem contra uma
+substituição global e não contra a remoção da sincronia. **Declarei isso na PR** em vez de deixar
+"7/7 passam" sugerindo que os sete provam a mesma coisa.
+
+### 5 — `package-lock.json` em 6.1.0: PR #249
+
+Aqui eu quase mandei uma consequência falsa. Ia reportar que `npm ci` quebrava. **Medi antes, e não
+quebra** — `npm` só reclama quando as dependências divergem, e as três são idênticas. Procurei quem
+lê a versão do lock: nenhum gate, nenhum workflow, nenhum código.
+
+Então mandei com o enquadramento que a medição sustenta: não há quebra hoje; o que há é que essa é a
+única declaração de versão do projeto que nenhum gate confere, e por isso derivou cinco majors sem
+ninguém notar. Higiene, dito como higiene.
+
+### Achado novo, encontrado no caminho e ainda não reportado
+
+`go test ./...` está **85-vermelho no `upstream/main` limpo, no Windows**. Medi em worktree limpo,
+sem nenhum arquivo meu, justamente para não atribuir a mim o que já estava lá.
+
+Classifiquei antes de chamar de achado, para não inflar contando de novo o que já reportei:
+**16 são a família `PATHEXT`** — `exec: "…\trackfw"` sem extensão — que é o achado 244 defeito 2,
+já aberto e esperando decisão do Kleber. O resto se divide em idiomas de plataforma: classificação de
+symlink, semântica de "diretório ilegível" (que o Windows não produz do mesmo jeito), walk/ENOTDIR, e
+comparação de caminho com barra literal — que é a causa dos 2 de `TestMoveRoadmap_Analyzing*`
+(`findRoadmap` concatena com `"/"` e devolve com `filepath.Join`).
+
+**O que ainda não medi, e por isso não afirmo:** se algum desses vaza `\` para dentro de artefato.
+Procurei em `.md` gerado por `roadmap move` e não achei. O enquadramento que me parece o certo — e
+que preciso confirmar com o Kleber antes de escrever como achado — não é "85 testes quebrados", é que
+**um contribuidor no Windows vê 85 vermelhos e não consegue distinguir a mudança dele do baseline.**
+Vermelho permanente treina gente a ignorar vermelho.
+
+### Estado
+
+`go build ./...`, `go vet ./...`, `check-cli-parity.sh` e `check-artifact-parity.sh` verdes.
+`pytest -k "slug or adr"` tem 6 falhas — **idênticas com e sem minhas mudanças**, pré-existentes no
+`upstream/main`, todas de expansão de `~` no Windows. Medi o baseline com as correções em stash antes
+de dizer isso.
+
+Upstream aberto: #246/#247 (slug), #248 (testes do move), #249 (package-lock), mais #238, #240, #245
+e o achado 244 defeito 2 de antes.
+
+---
+
+## 2026-09-02 (noite) — `claude` — o Kleber mesclou 5 das 6, e corrigiu meu enquadramento duas vezes
+
+### O que voltou
+
+Sete commits do upstream, três deles PRs minhas: #245 (wrapper no lugar do `ln -s`), #248 (testes de
+sincronia do move) e #249 (package-lock em 6.1.0). Com as #238 e #240 de mais cedo, são **cinco
+mescladas neste dia**; só a #247 (slug) segue aberta.
+
+### O que ele viu e eu não
+
+**O `.gitattributes` (#251).** Eu resolvi o conflito do `.trackfw-log` na mão e mandei como resolução
+de conflito. Ele olhou o mesmo evento e viu que não era conflito: é **propriedade do formato** —
+log append-only, toda escrita cai na última linha, duas branches paralelas conflitam **sempre**. E foi
+dois níveis acima do sintoma: o `trackfw init` **nunca gerou `.gitattributes` em nenhum dos 3 CLIs**,
+então todo projeto que adota trackfw herdava um arquivo que conflita quando duas pessoas trabalham em
+paralelo. Casou por basename, não por caminho, porque `roadmap_dir` e `req_dir` são configuráveis e
+os dois carregam um log.
+
+**A duplicata que eu preservei era o defeito.** Ele mediu que adição idêntica dos dois lados dá **1
+linha** sob `union`, enquanto a resolução manual da #240 produziu **2** — e removeu. Eu tinha
+preservado aquela linha com a justificativa "é dele, não é minha para deduplicar". A justificativa
+estava certa e a conclusão errada: eu não devia deduplicar na mão, mas devia ter percebido que
+duplicata exata em log append-only não é dado, é cicatriz de merge.
+
+**O `grep` que pula em silêncio.** Ele anotou que `docs/cli-parity.md` é classificado como binário e
+que **`grep` sem `-a` o ignora sem dizer nada**. Editei esse arquivo na #247 com busca comum. Conferi:
+no estado atual não há byte NUL e `grep` e `grep -a` concordam, então não me pegou. Foi sorte, não
+método — passa a ser `-a`.
+
+### O merge para cá, e a armadilha dele
+
+Onze arquivos em conflito, resolvidos pela ADR-2026-08-29. **O `.trackfw-log` quase me enganou:**
+não era conflito de append, são **dois logs distintos** — o nosso namespaced em `claude/`, o dele
+flat. Mesclar linha a linha teria produzido um log que não descreve nenhum dos dois. Mantido o nosso
+inteiro.
+
+O `agents-working-context.md` trazia **2.605 linhas com 79 sessões** dos agentes dele; fora. Quatro
+roadmaps dele aterrissaram no nosso namespace `claude/` por detecção de rename; fora, mesmo
+precedente do `0ca8079`. Seis notas de vault vieram junto e deixaram 2 warnings órfãos, porque o
+`index.md` é dele e ficou de fora pela mesma regra — removidas em commit separado.
+
+Ficaram os dois lados só onde eram complementares: `.gitattributes` (nosso bloco de EOL + o
+`merge=union` dele) e `docs/cli-parity.md` (nossa seção do contrato de slug + a dele do
+`.gitattributes`). `git check-attr` confirma `union` ativo — o próximo merge desse log não conflita.
+
+### O que eu ia errar, e não errei porque medi
+
+Ia abrir achado dos **85 testes Go vermelhos no Windows**. Fui medir contra a `main` dele e o run
+diz `conclusion: success` com `windows-full-suites` e `windows-defect-reproduction` em `failure`.
+Os dois **nascem vermelhos de propósito** — instrumento de medição governado por ADR, com
+`continue-on-error: true` declarado temporário. O comentário no `quality.yml` diz por quê:
+
+> um job de Windows que nasce verde não prova nada (foi assim que chegamos aqui)
+
+Eu ia reportar como descoberta o que ele instrumentou em 30/08. Mesmo erro das "15 violações" que já
+eram zero. **Não abri.**
+
+Pelo mesmo motivo, avisei na #245 antes que ele mesclasse: no `upstream/main` o gate morre na
+primeira linha (`ln: Permission denied`) e mede **0 cenários**; com a PR ele roda e dá **26 OK / 7
+FAIL**, todos por `forge resolved to "manual"` — o defeito 2 do #244, que é decisão de desenho dele.
+A PR não deixa o gate verde: troca "morre sem medir" por "mede e reprova nomeando o motivo".
+
+### Estado
+
+`main` em `3895303`. `validate`: **0 violações, 0 warnings**. Divergência de produto reduzida a três
+arquivos, todos com dono: `init.js` e `adr.py` são a #247 (aberta); `discover.py` é a PR local #24.
