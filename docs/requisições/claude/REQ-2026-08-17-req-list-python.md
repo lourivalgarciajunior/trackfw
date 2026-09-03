@@ -1,7 +1,7 @@
 ---
 id: REQ-2026-08-17-req-list-python
 title: Comando req list no runtime Python
-status: approved
+status: done
 priority: medium
 type: feature
 created: 2026-08-17

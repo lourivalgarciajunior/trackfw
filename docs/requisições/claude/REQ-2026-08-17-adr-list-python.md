@@ -1,7 +1,7 @@
 ---
 id: REQ-2026-08-17-adr-list-python
 title: Portar adr list para o Python e alinhar o parser de status nos três
-status: approved
+status: done
 priority: medium
 type: feature
 created: 2026-08-17

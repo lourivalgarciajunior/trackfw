@@ -1,7 +1,7 @@
 ---
 id: REQ-2026-08-16-consistencias-template-saida-e-eol
 title: Quatro inconsistências reveladas na sessão de 2026-08-16 — template, header, saída e EOL
-status: approved
+status: done
 priority: medium
 type: chore
 created: 2026-08-16

@@ -1,7 +1,7 @@
 ---
 id: REQ-2026-08-17-gate-paridade-subcomando
 title: Gate de paridade de subcomando entre os três runtimes
-status: approved
+status: done
 priority: high
 type: feature
 created: 2026-08-17

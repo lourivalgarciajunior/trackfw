@@ -1,7 +1,7 @@
 ---
 id: REQ-2026-08-16-adrs-retroativas
 title: Escrever as ADRs retroativas das 5 REQs sem decisão registrada
-status: approved
+status: done
 priority: medium
 type: chore
 created: 2026-08-16

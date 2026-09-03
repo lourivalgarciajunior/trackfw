@@ -1,7 +1,7 @@
 ---
 id: REQ-2026-08-17-resolvedor-req-unificado
 title: Unificar os três resolvedores de REQ
-status: approved
+status: done
 priority: high
 type: bug
 created: 2026-08-17
