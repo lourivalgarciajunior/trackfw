@@ -1,7 +1,7 @@
 ---
 id: REQ-2026-08-16-roadmap-move-sincroniza-status
 title: roadmap move deve sincronizar o campo status do frontmatter nos três runtimes
-status: approved
+status: done
 priority: high
 type: bug
 created: 2026-08-16

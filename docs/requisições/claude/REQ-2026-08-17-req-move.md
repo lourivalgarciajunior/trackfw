@@ -1,7 +1,7 @@
 ---
 id: REQ-2026-08-17-req-move
 title: Comando req move nos três runtimes
-status: approved
+status: done
 priority: medium
 type: feature
 created: 2026-08-17

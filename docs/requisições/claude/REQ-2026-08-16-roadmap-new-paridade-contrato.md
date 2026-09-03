@@ -1,7 +1,7 @@
 ---
 id: REQ-2026-08-16-roadmap-new-paridade-contrato
 title: roadmap new tem contrato diferente em cada runtime
-status: approved
+status: done
 priority: medium
 type: bug
 created: 2026-08-16

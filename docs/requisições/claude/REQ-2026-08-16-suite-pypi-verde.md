@@ -1,7 +1,7 @@
 ---
 id: REQ-2026-08-16-suite-pypi-verde
 title: Suíte pypi precisa fechar verde — pytest declarado e asserção de borda corrigida
-status: approved
+status: done
 priority: high
 type: bug
 created: 2026-08-16

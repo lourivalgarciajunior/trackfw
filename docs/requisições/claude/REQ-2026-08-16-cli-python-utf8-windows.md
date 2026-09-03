@@ -1,7 +1,7 @@
 ---
 id: REQ-2026-08-16-cli-python-utf8-windows
 title: CLI Python quebra com UnicodeEncodeError em console Windows
-status: approved
+status: done
 priority: high
 type: bug
 created: 2026-08-16

@@ -1,7 +1,7 @@
 ---
 id: REQ-2026-08-16-aspas-em-itens-de-lista
 title: Remover aspas de itens de lista em adr_dirs e agents no parser de trackfw.yaml
-status: approved
+status: done
 priority: high
 type: bug
 created: 2026-08-16

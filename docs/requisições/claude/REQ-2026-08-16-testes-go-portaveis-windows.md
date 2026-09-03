@@ -1,7 +1,7 @@
 ---
 id: REQ-2026-08-16-testes-go-portaveis-windows
 title: Testes de internal/generators não podem escrever no home real nem exigir bit POSIX
-status: approved
+status: done
 priority: high
 type: bug
 created: 2026-08-16

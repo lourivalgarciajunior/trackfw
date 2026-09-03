@@ -1,7 +1,7 @@
 ---
 id: REQ-2026-08-29-migrar-para-upstream-7.3.0
 title: Migrar para a base do upstream 7.3.0 e estabelecer sincronização por merge
-status: approved
+status: done
 priority: high
 type: chore
 created: 2026-08-29

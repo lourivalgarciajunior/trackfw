@@ -1,7 +1,7 @@
 ---
 id: REQ-2026-08-16-config-listas-nao-silenciosas
 title: Parser de trackfw.yaml não pode descartar listas em silêncio
-status: approved
+status: done
 priority: high
 type: bug
 created: 2026-08-16
