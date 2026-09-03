@@ -3,7 +3,7 @@ status: Open
 date: 2026-08-29
 author: claude
 adr: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
-roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-08-29-trazer-o-barrier-dialeto-canonico-do-upstream.md
+roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-trazer-o-barrier-dialeto-canonico-do-upstream.md
 ---
 
 # REQ: Trazer o barrier dialeto canonico do upstream
@@ -11,7 +11,7 @@ roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-08-29-trazer-o-barrier-dialeto-ca
 > Date: 2026-08-29 | Status: Open
 
 ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-08-29-trazer-o-barrier-dialeto-canonico-do-upstream.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-trazer-o-barrier-dialeto-canonico-do-upstream.md
 
 ## Motivation
 

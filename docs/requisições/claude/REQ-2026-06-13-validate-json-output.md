@@ -3,7 +3,7 @@ name: REQ-2026-06-13-validate-json-output
 title: "v2.5 — validate --json: saída estruturada para integração CI/CD"
 status: Open
 adr: —
-roadmap: docs/roadmaps/claude/wip/v2.5-discovery-json-traceid-2026-06-13.md
+roadmap: docs/roadmaps/claude/done/v2.5-discovery-json-traceid-2026-06-13.md
 created: 2026-06-13
 author: zeus
 ---

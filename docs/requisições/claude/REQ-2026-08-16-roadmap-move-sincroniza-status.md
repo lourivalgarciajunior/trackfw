@@ -10,7 +10,7 @@ author: claude
 
 # REQ: `roadmap move` e o `status:` do frontmatter
 
-Roadmap: roadmap-move-sincroniza-status-2026-08-16.md
+Roadmap: docs/roadmaps/claude/done/roadmap-move-sincroniza-status-2026-08-16.md
 
 ## Problema
 

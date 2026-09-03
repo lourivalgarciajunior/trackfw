@@ -10,8 +10,8 @@ author: claude
 
 # REQ: Migrar para o upstream 7.3.0
 
-Roadmap: migrar-para-upstream-7.3.0-2026-08-29.md
-ADR: ADR-2026-08-29-adotar-upstream-como-base.md
+Roadmap: docs/roadmaps/claude/done/migrar-para-upstream-7.3.0-2026-08-29.md
+ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
 
 ## Problema
 

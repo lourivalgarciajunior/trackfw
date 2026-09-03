@@ -3,7 +3,7 @@ status: Open
 date: 2026-08-30
 author: claude
 adr: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
-roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-08-30-ruido-de-gofmt-divergindo-do-upstream.md
+roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-30-ruido-de-gofmt-divergindo-do-upstream.md
 ---
 
 # REQ: Ruido de gofmt divergindo do upstream
@@ -11,7 +11,7 @@ roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-08-30-ruido-de-gofmt-divergindo-d
 > Date: 2026-08-30 | Status: Open
 
 ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-08-30-ruido-de-gofmt-divergindo-do-upstream.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-30-ruido-de-gofmt-divergindo-do-upstream.md
 
 ## Motivation
 

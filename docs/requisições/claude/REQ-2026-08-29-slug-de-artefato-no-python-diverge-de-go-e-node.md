@@ -76,4 +76,4 @@ ADR:
 
 ## Linked Roadmap
 
-Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-08-29-slug-de-artefato-no-python-diverge-de-go-e-node.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-slug-de-artefato-no-python-diverge-de-go-e-node.md

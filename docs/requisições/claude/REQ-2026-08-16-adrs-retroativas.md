@@ -10,7 +10,7 @@ author: claude
 
 # REQ: ADRs retroativas
 
-Roadmap: adrs-retroativas-2026-08-16.md
+Roadmap: docs/roadmaps/claude/done/adrs-retroativas-2026-08-16.md
 
 ## Problema
 

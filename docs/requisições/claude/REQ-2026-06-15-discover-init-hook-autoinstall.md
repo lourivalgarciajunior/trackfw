@@ -3,7 +3,7 @@ name: REQ-2026-06-15-discover-init-hook-autoinstall
 title: "feat: discover --init instala hook framework automaticamente quando nenhum é detectado"
 status: Open
 adr: —
-roadmap: docs/roadmaps/claude/wip/discover-init-hook-autoinstall-2026-06-15.md
+roadmap: docs/roadmaps/claude/done/discover-init-hook-autoinstall-2026-06-15.md
 created: 2026-06-15
 author: zeus
 ---

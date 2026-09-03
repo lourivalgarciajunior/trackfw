@@ -10,7 +10,7 @@ author: claude
 
 # REQ: Listas do `trackfw.yaml` descartadas em silêncio
 
-Roadmap: config-listas-nao-silenciosas-2026-08-16.md
+Roadmap: docs/roadmaps/claude/done/config-listas-nao-silenciosas-2026-08-16.md
 
 ## Problema
 

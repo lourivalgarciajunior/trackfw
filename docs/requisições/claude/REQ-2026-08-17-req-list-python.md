@@ -10,7 +10,7 @@ author: claude
 
 # REQ: `req list` no Python
 
-Roadmap: req-list-python-2026-08-17.md
+Roadmap: docs/roadmaps/claude/done/req-list-python-2026-08-17.md
 
 ## Problema
 
