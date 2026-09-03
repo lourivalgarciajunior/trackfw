@@ -92,4 +92,4 @@ ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
 
 ## Linked Roadmap
 
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-08-29-atualizar-para-a-upstream-main-com-o-fix-de-symlink.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-atualizar-para-a-upstream-main-com-o-fix-de-symlink.md

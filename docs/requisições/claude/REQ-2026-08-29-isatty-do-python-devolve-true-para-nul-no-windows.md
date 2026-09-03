@@ -90,4 +90,4 @@ ADR:
 
 ## Linked Roadmap
 
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-08-29-isatty-do-python-devolve-true-para-nul-no-windows.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-isatty-do-python-devolve-true-para-nul-no-windows.md

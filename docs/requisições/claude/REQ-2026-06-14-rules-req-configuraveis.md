@@ -3,7 +3,7 @@ name: REQ-2026-06-14-rules-req-configuraveis
 title: "v2.6.0 — Feat: req_has_adr / req_has_roadmap / blocked_has_req configuráveis via applyRule"
 status: Open
 adr: —
-roadmap: docs/roadmaps/claude/wip/v2.6.0-rules-req-configuraveis-2026-06-14.md
+roadmap: docs/roadmaps/claude/done/v2.6.0-rules-req-configuraveis-2026-06-14.md
 created: 2026-06-14
 author: zeus
 ---

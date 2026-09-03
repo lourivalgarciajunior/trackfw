@@ -3,7 +3,7 @@ name: REQ-2026-06-14-traceid-by-agent-support
 title: "v2.5.2 — Fix: trace_id_field checks não funcionam com roadmap_namespacing: by_agent"
 status: Open
 adr: —
-roadmap: docs/roadmaps/claude/wip/v2.5.2-traceid-by-agent-2026-06-14.md
+roadmap: docs/roadmaps/claude/done/v2.5.2-traceid-by-agent-2026-06-14.md
 created: 2026-06-14
 author: zeus
 ---

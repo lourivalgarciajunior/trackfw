@@ -82,4 +82,4 @@ ADR:
 
 ## Linked Roadmap
 
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-08-29-node-e-python-ignoram-home-no-windows.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-node-e-python-ignoram-home-no-windows.md

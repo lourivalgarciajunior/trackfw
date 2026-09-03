@@ -10,7 +10,7 @@ author: claude
 
 # REQ: Suíte pypi verde
 
-Roadmap: suite-pypi-verde-2026-08-16.md
+Roadmap: docs/roadmaps/claude/done/suite-pypi-verde-2026-08-16.md
 
 ## Problema
 

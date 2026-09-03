@@ -10,7 +10,7 @@ author: claude
 
 # REQ: `adr list` no Python
 
-Roadmap: adr-list-python-2026-08-17.md
+Roadmap: docs/roadmaps/claude/done/adr-list-python-2026-08-17.md
 
 ## Problema
 

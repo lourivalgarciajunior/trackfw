@@ -10,7 +10,7 @@ author: claude
 
 # REQ: Aspas em itens de lista do `trackfw.yaml`
 
-Roadmap: aspas-em-itens-de-lista-2026-08-16.md
+Roadmap: docs/roadmaps/claude/done/aspas-em-itens-de-lista-2026-08-16.md
 
 ## Problema
 

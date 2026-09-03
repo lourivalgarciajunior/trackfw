@@ -10,7 +10,7 @@ author: claude
 
 # REQ: Consistências de template, header, saída e EOL
 
-Roadmap: consistencias-template-saida-e-eol-2026-08-16.md
+Roadmap: docs/roadmaps/claude/done/consistencias-template-saida-e-eol-2026-08-16.md
 
 ## Problema
 

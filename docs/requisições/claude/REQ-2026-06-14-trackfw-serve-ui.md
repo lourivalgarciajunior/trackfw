@@ -3,7 +3,7 @@ name: REQ-2026-06-14-trackfw-serve-ui
 title: "v2.7.0 — Feat: trackfw serve — Dashboard Web com Kanban, Chain View e Métricas"
 status: Open
 adr: —
-roadmap: docs/roadmaps/claude/wip/v2.7.0-trackfw-serve-ui-2026-06-14.md
+roadmap: docs/roadmaps/claude/done/v2.7.0-trackfw-serve-ui-2026-06-14.md
 created: 2026-06-14
 author: zeus
 ---

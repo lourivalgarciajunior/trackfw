@@ -3,7 +3,7 @@ name: REQ-2026-06-14-req-indexing-by-agent
 title: "v2.5.3 — Fix: coleta de REQs não honra roadmap_namespacing: by_agent"
 status: Open
 adr: —
-roadmap: docs/roadmaps/claude/wip/v2.5.3-req-indexing-by-agent-2026-06-14.md
+roadmap: docs/roadmaps/claude/done/v2.5.3-req-indexing-by-agent-2026-06-14.md
 created: 2026-06-14
 author: zeus
 ---

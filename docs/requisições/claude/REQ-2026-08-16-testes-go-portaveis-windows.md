@@ -10,7 +10,7 @@ author: claude
 
 # REQ: Testes de `internal/generators` no Windows
 
-Roadmap: testes-go-portaveis-windows-2026-08-16.md
+Roadmap: docs/roadmaps/claude/done/testes-go-portaveis-windows-2026-08-16.md
 
 ## Problema
 

@@ -10,8 +10,8 @@ author: claude
 
 # REQ: Resolvedor de REQ unificado
 
-Roadmap: resolvedor-req-unificado-2026-08-17.md
-ADR: ADR-2026-08-17-req-move-resolve-as-tres-formas.md
+Roadmap: docs/roadmaps/claude/done/resolvedor-req-unificado-2026-08-17.md
+ADR: docs/adr/ADR-2026-08-17-req-move-resolve-as-tres-formas.md
 
 ## Problema
 

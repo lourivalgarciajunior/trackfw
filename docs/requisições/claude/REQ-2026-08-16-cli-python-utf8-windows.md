@@ -10,7 +10,7 @@ author: claude
 
 # REQ: CLI Python e a saída não-ASCII no Windows
 
-Roadmap: cli-python-utf8-windows-2026-08-16.md
+Roadmap: docs/roadmaps/claude/done/cli-python-utf8-windows-2026-08-16.md
 
 ## Problema
 

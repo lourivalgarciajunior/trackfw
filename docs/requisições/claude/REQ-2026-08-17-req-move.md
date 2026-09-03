@@ -10,8 +10,8 @@ author: claude
 
 # REQ: `req move`
 
-Roadmap: req-move-2026-08-17.md
-ADR: ADR-2026-08-17-req-move-resolve-as-tres-formas.md
+Roadmap: docs/roadmaps/claude/done/req-move-2026-08-17.md
+ADR: docs/adr/ADR-2026-08-17-req-move-resolve-as-tres-formas.md
 
 ## Problema
 

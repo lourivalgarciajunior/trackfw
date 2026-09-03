@@ -10,7 +10,7 @@ author: claude
 
 # REQ: Contrato de `roadmap new` nos três runtimes
 
-Roadmap: roadmap-new-paridade-contrato-2026-08-16.md
+Roadmap: docs/roadmaps/claude/done/roadmap-new-paridade-contrato-2026-08-16.md
 
 ## Problema
 

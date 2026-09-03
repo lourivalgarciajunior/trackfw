@@ -10,7 +10,7 @@ author: claude
 
 # REQ: Gate de paridade de subcomando
 
-Roadmap: gate-paridade-subcomando-2026-08-17.md
+Roadmap: docs/roadmaps/claude/done/gate-paridade-subcomando-2026-08-17.md
 
 ## Problema
 

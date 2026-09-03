@@ -3,7 +3,7 @@ status: Open
 date: 2026-08-29
 author: claude
 adr: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
-roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-08-29-politica-de-conteudo-do-upstream-sem-gate.md
+roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-politica-de-conteudo-do-upstream-sem-gate.md
 ---
 
 # REQ: Politica de conteudo do upstream sem gate
@@ -11,7 +11,7 @@ roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-08-29-politica-de-conteudo-do-ups
 > Date: 2026-08-29 | Status: Open
 
 ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-08-29-politica-de-conteudo-do-upstream-sem-gate.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-politica-de-conteudo-do-upstream-sem-gate.md
 
 ## Motivation
 
