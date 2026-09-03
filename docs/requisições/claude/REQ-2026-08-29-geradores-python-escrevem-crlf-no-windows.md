@@ -1,5 +1,5 @@
 ---
-status: Open
+status: done
 date: 2026-08-29
 author: claude
 adr: ""
