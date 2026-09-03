@@ -27837,3 +27837,72 @@ Corrigi o corpo da #254 para `Closes #253`.
 
 Divergência de produto contra o upstream: os três testes de `gitattributes` (#254, aberta) e os
 três gates locais nossos. O `init.js` e o `adr.py` deixaram de divergir com o merge da #247.
+
+---
+
+## 2026-09-03 (madrugada, fim) — `claude` — achado 16 fechado, e a forma que apareceu duas vezes
+
+### O achado 16, provado em quatro direções
+
+`check-roadmap-barrier-contract.sh` congela 144 roadmaps e verifica pela AC10 que nenhum ML
+reconhecido deixe de ser. O comentário do gate diz que **o veredito vem sempre dos bytes congelados**
+e que o disco só prova existência. Mas quando o basename faltava em `docs/roadmaps/**`, um `continue`
+tirava o arquivo do scan — e o disco passava a **decidir o que entra no corpus congelado**.
+
+| cenário | falhas de corpus | `files/waves/exit2` | `non-reclassification` |
+|---|---|---|---|
+| antes, 1 roadmap apagado | **6** (1 legítima + 5 falsas) | 143 / 426 / 14 | ❌ *"corpus reclassificado"* — falso |
+| depois, mesmo cenário | **1** | 144 / 432 / 14 | ✅ hash fecha |
+| controle, reclassificação **real** | 2, pelos motivos certos | 144 / 432 / 14 | ❌ **corretamente** |
+| **na nossa árvore** | **1** (era 6) | **144 / 432 / 14** | ✅ |
+
+O controle é o que fecha o argumento: plantei **um** ML de `✅ Concluído` para `⬜ Pendente` e a AC10
+acendeu com precisão — exatamente **um** ML migrou de `evidence` para `failure` (639/113 → 638/114),
+com as contagens estruturais intactas. **É a diferença entre reclassificar e truncar**, e agora o
+gate distingue as duas. A correção conserta o contrato em vez de desligá-lo — que era o risco real,
+porque a ordem em vigor é não silenciar este gate regenerando o corpus.
+
+A última linha é a mais eloquente para nós: `docs/roadmaps/` tem **61** arquivos, o snapshot pina
+**144**, e mesmo assim as contagens fecham. A falha que resta é a única honesta que este fork pode
+ter — a tripwire listando os 108 roadmaps do upstream que a ADR-2026-08-29 manda não importar.
+
+### A forma que apareceu duas vezes no mesmo dia
+
+O teste do `.gitattributes` fixa o **arquivo inteiro** da raiz; a tripwire fixa o **corpus** contra a
+árvore viva. Nos dois, uma asserção de auto-consistência assume o conteúdo do repositório que a
+escreveu — e quebra para qualquer fork ou downstream. Escrevi isso nas duas issues, e deixei a
+decisão de desenho (fatal vs. `not-evaluated`, o vocabulário que o `doctor` já usa) com quem mantém.
+
+### O susto que eu mesmo causei
+
+A PR #254 chegou a mostrar ao Kleber **668 arquivos, +10.633/−92.182**, propondo apagar os ADRs e
+roadmaps dele. Usei a **mesma branch** para a PR do upstream e para uma PR local, e mesclei a nossa
+`main` dentro dela — que traz a governança local inteira junto. Reconstruí do `upstream/main` e
+force-push: **5 arquivos, +228/−6**. A API do GitHub não deixa trocar a `head` de uma PR, então o
+force-push na branch antiga é o único caminho. Comentei explicando, porque ele pode ter visto.
+
+Regra que fica, e virou memória: **branch de PR para o upstream nunca recebe merge da `main` do
+fork.** Se o trabalho precisa existir nos dois lugares, são duas branches. E conferir sempre o que o
+mantenedor vai ver — `gh pr view <n> --json changedFiles` —, não o que eu acho que mandei.
+
+### Dois erros de método, também em memória
+
+**Troquei de branch com gate rodando em background.** O processo lê os arquivos do disco; a troca
+mudou os arquivos debaixo dele e invalidou ~10 minutos de medição, sem erro nenhum. Medição longa vai
+para worktree destacado.
+
+**Worktree novo não tem `node_modules`**, e o sintoma engana duas vezes: `node --test` reporta
+`pass 0 / fail 1`, que se lê como teste reprovando e é o **arquivo inteiro falhando ao carregar**; e
+o `json.loads` de saída vazia vira `JSONDecodeError`, que parece defeito de parsing. Me pegou duas
+vezes hoje — uma delas cheguei a atribuir a falha à minha própria edição.
+
+### Estado
+
+Local: PRs **24, 25, 26, 27 e 28** mescladas. `main` em `48c04e0`, `validate` 0 violações.
+
+Upstream: **sete PRs minhas mescladas** (#233, #238, #240, #245, #247, #248, #249). Abertas: **#254**
+(gitattributes, `parity` **passou** no CI dele) e **#257** (achado 16). Issues abertas: #253, #256 e
+a #216.
+
+E uma nota de processo que o Kleber levantou e vale para mim: `Fecha #NNN` **não fecha issue** — o
+GitHub só reconhece palavra-chave em inglês. Corrigi o corpo da #254 para `Closes #253`.
