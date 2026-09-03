@@ -27830,6 +27830,10 @@ eu continuo trabalhando.
 
 ### Estado
 
-PRs **24 e 25 mescladas**. `main` em `c0c0935`, `validate` com 0 violações. A divergência de produto
-contra o upstream é toda de PR aberta lá: `init.js` e `adr.py` (#247), os três testes de
-`gitattributes` (#254), mais os três gates locais nossos.
+PRs **24, 25 e 26 mescladas**. `main` com `validate` em 0 violações. E enquanto eu escrevia isto o
+Kleber mesclou a **#247** (slug) e apontou uma falha de processo que também é minha: `Fecha #NNN`
+não fecha issue — o GitHub só reconhece palavra-chave em **inglês** (`closes`/`fixes`/`resolves`).
+Corrigi o corpo da #254 para `Closes #253`.
+
+Divergência de produto contra o upstream: os três testes de `gitattributes` (#254, aberta) e os
+três gates locais nossos. O `init.js` e o `adr.py` deixaram de divergir com o merge da #247.
