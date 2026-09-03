@@ -66,6 +66,7 @@ ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
 
 ## Linked Roadmap
 
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-30-homedir-so-prefere-home-no-windows.md
 docs/roadmaps/claude/done/ROADMAP-2026-08-30-homedir-so-prefere-home-no-windows.md
 
 ## Escopo declarado como fora

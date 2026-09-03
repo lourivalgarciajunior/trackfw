@@ -1,7 +1,7 @@
 ---
 name: REQ-2026-06-14-req-indexing-by-agent
 title: "v2.5.3 — Fix: coleta de REQs não honra roadmap_namespacing: by_agent"
-status: Open
+status: done
 adr: —
 roadmap: docs/roadmaps/claude/done/v2.5.3-req-indexing-by-agent-2026-06-14.md
 created: 2026-06-14
@@ -76,3 +76,6 @@ O caso do CMDB (Roadmaps 116, REQs 0) passa sem aviso. Ampliar para disparar tam
 
 - Refatoração de checagens além das listadas acima
 - Suporte a namespacing diferente de `by_agent` e flat
+
+## Linked Roadmap
+Roadmap: docs/roadmaps/claude/done/v2.5.3-req-indexing-by-agent-2026-06-14.md

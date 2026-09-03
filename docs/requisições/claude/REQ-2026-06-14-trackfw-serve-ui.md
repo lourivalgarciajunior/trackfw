@@ -101,3 +101,6 @@ Tecnologia: **HTMX + marked.js + Chart.js** — client-side rendering, zero bund
 - Autenticação/autorização
 - Deploy remoto / modo multi-usuário
 - Story points / velocity (o trackfw não tem esse conceito)
+
+## Linked Roadmap
+Roadmap: docs/roadmaps/claude/done/v2.7.0-trackfw-serve-ui-2026-06-14.md

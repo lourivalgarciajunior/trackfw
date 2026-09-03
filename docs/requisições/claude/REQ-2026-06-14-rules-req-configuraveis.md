@@ -1,7 +1,7 @@
 ---
 name: REQ-2026-06-14-rules-req-configuraveis
 title: "v2.6.0 — Feat: req_has_adr / req_has_roadmap / blocked_has_req configuráveis via applyRule"
-status: Open
+status: done
 adr: —
 roadmap: docs/roadmaps/claude/done/v2.6.0-rules-req-configuraveis-2026-06-14.md
 created: 2026-06-14
@@ -83,3 +83,6 @@ _apply_rule("req_has_roadmap", validate_reqs_have_roadmap(cfg),  violations, war
 
 - Outras regras ainda sem `applyRule` (`validateFrontmatterPresence` etc.)
 - Mudança no schema de config além das 3 novas chaves
+
+## Linked Roadmap
+Roadmap: docs/roadmaps/claude/done/v2.6.0-rules-req-configuraveis-2026-06-14.md
