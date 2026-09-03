@@ -52,14 +52,17 @@ mkdir -p "$WORK/go" "$WORK/node" "$WORK/python"
 export HOME="$WORK/home"
 mkdir -p "$HOME"
 
-# O título carrega DUAS classes de caractere de propósito, e as duas precisam estar
-# na mesma fixture (ver ML-0A seção 3, forma 3, do roadmap do slug):
-#   - acento  → pega quem não dobra NFKD
-#   - / + &   → pega quem deleta em vez de colapsar em hífen
-# Com só acento, este gate passava enquanto pypi/trackfw/generators/adr.py
-# produzia "acao-cc-cafe" contra "acao-c-c-cafe" dos outros dois runtimes.
-# Regra em docs/cli-parity.md, seção "Artifact slug contract".
-TITLE="Autenticação e Sessão C/C++ & OAuth+"
+# O titulo precisa DISCRIMINAR entre as duas semanticas possiveis de slug.
+# "Autenticacao e Sessao" sozinho nao discrimina: todo nao-alfanumerico dele e
+# adjacente a espaco ou a borda, e ai DELETAR e COLAPSAR dao o mesmo resultado.
+# Medido: os 3 exemplos da tabela do contrato em docs/cli-parity.md davam 3/3
+# iguais mesmo com o Python deletando. Um gate com qualquer um dos tres ficaria
+# verde com o defeito presente.
+#
+# "C/C++" e "v1.2" tem nao-alfanumerico ENTRE alfanumericos, sem espaco — e ali as
+# duas semanticas divergem: c-c-interop vs cc-interop, v1-2 vs v12. O acento fica
+# no titulo para nao perder a cobertura de NFKD que ele ja dava.
+TITLE="Autenticação C/C++ v1.2"
 FLAG_TITLE="Integração de Pagamentos"
 REQ_FLAG_REL="docs/req/REQ-flag-source.md"
 FROM_REQ_TITLE="Fluxo de Pagamentos"
@@ -154,7 +157,7 @@ if [[ "$DATE_BEFORE" != "$DATE_AFTER" ]]; then
 fi
 
 DATE="$DATE_AFTER"
-SLUG="autenticacao-e-sessao-c-c-oauth"
+SLUG="autenticacao-c-c-v1-2"
 
 # ── Caminhos esperados por tipo ──────────────────────────────────────────────
 # EXPECTED_<KIND> é o caminho relativo dentro de cada WORK/<runtime>/.
