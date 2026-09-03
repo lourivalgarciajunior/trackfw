@@ -27746,3 +27746,90 @@ A PR não deixa o gate verde: troca "morre sem medir" por "mede e reprova nomean
 
 `main` em `3895303`. `validate`: **0 violações, 0 warnings**. Divergência de produto reduzida a três
 arquivos, todos com dono: `init.js` e `adr.py` são a #247 (aberta); `discover.py` é a PR local #24.
+
+---
+
+## 2026-09-03 (madrugada) — `claude` — a PR vermelha que rendeu três defeitos
+
+Comecei para mesclar a PR 24 e ela estava vermelha em `go`, `node` e `python`. **Não era o vermelho
+de propósito do Windows**, então fui atrás — e a investigação rendeu mais que a mescla.
+
+### O que a PR 24 vermelha revelou
+
+Não era dela: era do merge do upstream que eu tinha trazido para a `main`. Ou seja, **eu tinha
+quebrado a `main`** e a PR só herdava. Três causas distintas, e eu descobri uma de cada vez porque
+cada correção revelava a seguinte.
+
+**Causa 1 — o teste do `.gitattributes` (issue #253, PR #254).** O #251 do Kleber trouxe um teste que
+exige o `.gitattributes` da raiz **byte-idêntico** ao bloco que o `init` gera. O nosso tem as regras
+de EOL da REQ-2026-08-16. Antes de largar o nosso bloco, medi se ele ainda ganha o lugar:
+
+```
+bloco do init + nossas regras de EOL   ->    0 de 213 .go com CRLF
+so o bloco do init                     ->  213 de 213 .go com CRLF
+```
+
+O bloco fica. E corrigindo o teste apareceu um **segundo** defeito nele: sem normalizar fim de linha,
+**mesmo arquivo, mesmo teste, três respostas** — Go lê bytes crus e reprova, Node lê `utf8` sem
+tradução e reprova, Python usa `open()` em modo texto, que traduz newline sozinho, e **passa**. O
+Python passava por acidente da stdlib. Um trio de paridade em que um é verde por motivo diferente dos
+outros dois não é paridade.
+
+**Causa 2 — dez REQs órfãs, e essa foi minha.** No merge eu removi os quatro roadmaps do upstream
+mas deixei entrar as dez REQs que os referenciam. O `check-referential-integrity` caiu com quatro
+órfãs. Removidas — nossa governança vive em `docs/requisições/`, e nada nosso as referenciava.
+
+**Causa 3 — bit de execução, e essa é anterior a mim.** Três gates (`check-python-writes-lf.sh`,
+`check-homedir-parity.sh`, `check-tty-detection.sh`) estavam em `100644` no nosso fork contra
+`100755` do upstream, e o `make parity` morria com `Error 127` — comando não encontrado. **Medi o
+critério antes de mexer**, porque isso encosta na ordem de 2026-08-29: `validate` já estava em
+"No violations found" antes e continua depois; `os.Stat` segue em `&0111=0`. Nada ficou verde por
+motivo errado. É o mesmo caso de transporte autorizado em 31/08.
+
+### Achado 16 — o defeito que estava escondido atrás dos outros
+
+Corrigidas as três, o `parity` **avançou** e passou a reprovar no `check-roadmap-barrier-contract`.
+E aí estava o achado de verdade.
+
+O gate congela 144 roadmaps num snapshot e verifica pela AC10 que nenhum ML reconhecido deixe de ser.
+O comentário dele diz que **o veredito vem sempre dos bytes congelados** e que o disco só prova
+existência. Mas quando o basename falta em `docs/roadmaps/**`, o laço faz `continue` — e o arquivo
+**sai do corpus congelado**.
+
+Medido numa árvore limpa do `main`, apagando **um** roadmap:
+
+```
+FAIL [corpus/basename-missing-from-disk]            <- legitima
+FAIL [corpus/files-count]                  143 vs 144
+FAIL [corpus/waves-count]                  426 vs 432
+FAIL [corpus/mls-complete-verdict-counts]  627 vs 639
+FAIL [corpus/acceptance-evidence-verdict-counts] 306 vs 314
+FAIL [corpus/non-reclassification]  "corpus reclassificado: hash mudou"
+```
+
+**Seis falhas, cinco falsas.** A última é a pior: afirma **reclassificação que não houve**. Nada no
+parser mudou — o corpus foi truncado. É um falso positivo na exata asserção que o gate existe para
+fazer, e manda alguém caçar mudança de parser inexistente.
+
+E contradiz a justificativa escrita do próprio snapshot: *"Por que snapshot versionado, não o working
+tree: o corpus cresce a cada roadmap novo mesclado"*. O snapshot existe **para desacoplar** da árvore;
+a política de basename reacopla.
+
+**A mesma forma pela segunda vez no mesmo dia.** O teste do `.gitattributes` fixa o arquivo inteiro
+da raiz; este fixa o corpus contra a árvore viva. Nos dois, uma asserção de auto-consistência assume
+o conteúdo do repositório que a escreveu — e quebra para qualquer fork.
+
+### Um erro meu, registrado porque custou uma medição inteira
+
+Troquei de branch com o gate rodando em background. O processo lê os arquivos do disco, e a troca
+mudou os arquivos debaixo dele — medição inválida, ~10 minutos perdidos. Refeito num **worktree
+dedicado e destacado**, imune a troca de branch na árvore principal.
+
+Regra que fica: medição longa em background vai para worktree próprio, nunca para a árvore em que
+eu continuo trabalhando.
+
+### Estado
+
+PRs **24 e 25 mescladas**. `main` em `c0c0935`, `validate` com 0 violações. A divergência de produto
+contra o upstream é toda de PR aberta lá: `init.js` e `adr.py` (#247), os três testes de
+`gitattributes` (#254), mais os três gates locais nossos.
