@@ -2,7 +2,7 @@
 status: done
 date: 2026-08-29
 author: claude
-adr: ""
+adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
 roadmap: ROADMAP-2026-08-29-isatty-do-python-devolve-true-para-nul-no-windows
 ---
 
@@ -83,7 +83,7 @@ registrado como pendencia da REQ.
 
 ## Linked ADR
 
-ADR: 
+ADR: docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md
 
 ## Blocked by ADRs
 <!-- none -->

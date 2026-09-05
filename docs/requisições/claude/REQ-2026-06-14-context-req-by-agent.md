@@ -2,7 +2,7 @@
 name: REQ-2026-06-14-context-req-by-agent
 title: "v2.5.4 — Fix: context + validateADRsAreReferenced não encontram REQs em layout by_agent"
 status: done
-adr: —
+adr: "docs/adr/ADR-2026-09-03-layout-canonico-de-req-em-by-agent-e-o-invariante-de-que-req-nao-tem-dimensao-de-estado.md"
 roadmap: docs/roadmaps/claude/done/v2.5.4-context-req-by-agent-2026-06-14.md
 created: 2026-06-14
 author: zeus
@@ -72,3 +72,6 @@ de chamar a função para cada subdiretório `req_dir/<agente>/<estado>/`.
 
 ## Linked Roadmap
 Roadmap: docs/roadmaps/claude/done/v2.5.4-context-req-by-agent-2026-06-14.md
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-03-layout-canonico-de-req-em-by-agent-e-o-invariante-de-que-req-nao-tem-dimensao-de-estado.md

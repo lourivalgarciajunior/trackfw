@@ -1,4 +1,5 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md"
 id: REQ-2026-08-17-req-list-python
 title: Comando req list no runtime Python
 status: done
@@ -61,3 +62,6 @@ caminho nova.
 - [x] Diretório vazio produz a mesma mensagem dos outros dois
 - [x] Teste cobrindo agrupamento, fonte do status e caso vazio
 - [x] `pytest tests/` sem falha nova; três gates passam
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md

@@ -2,7 +2,7 @@
 name: REQ-2026-06-14-rules-req-configuraveis
 title: "v2.6.0 — Feat: req_has_adr / req_has_roadmap / blocked_has_req configuráveis via applyRule"
 status: done
-adr: —
+adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
 roadmap: docs/roadmaps/claude/done/v2.6.0-rules-req-configuraveis-2026-06-14.md
 created: 2026-06-14
 author: zeus
@@ -86,3 +86,6 @@ _apply_rule("req_has_roadmap", validate_reqs_have_roadmap(cfg),  violations, war
 
 ## Linked Roadmap
 Roadmap: docs/roadmaps/claude/done/v2.6.0-rules-req-configuraveis-2026-06-14.md
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md

@@ -1,4 +1,5 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
 id: REQ-2026-06-19-analyzing-state-ml-status-rules
 title: Estado "Analyzing" no kanban e regras de marcação de ML
 status: approved
@@ -44,3 +45,6 @@ author: zeus
 - [ ] Frontend renderiza cards na coluna "Analyzing" com styling adequado
 - [ ] Testes unitários cobrem o novo estado
 - [ ] 3 CLIs (Go, Node.js, Python) criam `analyzing/` no init/discover
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md

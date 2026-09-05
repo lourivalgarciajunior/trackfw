@@ -3,7 +3,7 @@ status: Open
 date: 2026-09-05
 author: "claude"
 adr: "docs/adr/ADR-2026-09-03-layout-canonico-de-req-em-by-agent-e-o-invariante-de-que-req-nao-tem-dimensao-de-estado.md"
-roadmap: "docs/roadmaps/claude/backlog/ROADMAP-2026-09-05-divida-de-governanca-do-acervo-42-violacoes-das-quais-32-reqs-sem-adr.md"
+roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-09-05-divida-de-governanca-do-acervo-42-violacoes-das-quais-32-reqs-sem-adr.md"
 ---
 
 # REQ: Dívida de governança do acervo — 42 violações, das quais 32 REQs sem ADR
@@ -73,4 +73,4 @@ ADR: docs/adr/ADR-2026-09-03-layout-canonico-de-req-em-by-agent-e-o-invariante-d
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-09-05-divida-de-governanca-do-acervo-42-violacoes-das-quais-32-reqs-sem-adr.md
+Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-09-05-divida-de-governanca-do-acervo-42-violacoes-das-quais-32-reqs-sem-adr.md

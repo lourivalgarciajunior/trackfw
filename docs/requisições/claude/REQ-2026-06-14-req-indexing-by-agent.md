@@ -2,7 +2,7 @@
 name: REQ-2026-06-14-req-indexing-by-agent
 title: "v2.5.3 — Fix: coleta de REQs não honra roadmap_namespacing: by_agent"
 status: done
-adr: —
+adr: "docs/adr/ADR-2026-09-03-layout-canonico-de-req-em-by-agent-e-o-invariante-de-que-req-nao-tem-dimensao-de-estado.md"
 roadmap: docs/roadmaps/claude/done/v2.5.3-req-indexing-by-agent-2026-06-14.md
 created: 2026-06-14
 author: zeus
@@ -79,3 +79,6 @@ O caso do CMDB (Roadmaps 116, REQs 0) passa sem aviso. Ampliar para disparar tam
 
 ## Linked Roadmap
 Roadmap: docs/roadmaps/claude/done/v2.5.3-req-indexing-by-agent-2026-06-14.md
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-03-layout-canonico-de-req-em-by-agent-e-o-invariante-de-que-req-nao-tem-dimensao-de-estado.md

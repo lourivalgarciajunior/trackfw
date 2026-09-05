@@ -1,4 +1,5 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md"
 id: REQ-2026-08-16-suite-pypi-verde
 title: Suíte pypi precisa fechar verde — pytest declarado e asserção de borda corrigida
 status: done
@@ -83,3 +84,6 @@ asserção sobre `"10 days"` continua valendo, agora sem depender de qual relóg
 - [x] `test_stale_wip_warning_arquivo_antigo` passa 10 execuções seguidas
 - [x] `python -m unittest discover -s tests -t .` segue rodando, sem falha nova
 - [x] `go test ./...` segue com zero falhas e os três gates de paridade passam
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md

@@ -1,4 +1,5 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md"
 id: REQ-2026-08-17-gate-paridade-subcomando
 title: Gate de paridade de subcomando entre os três runtimes
 status: done
@@ -88,3 +89,6 @@ Dizer o comando, o runtime, o subcomando e a direção (faltando ou sobrando).
 - [x] Com as duas divergências atuais declaradas, o gate passa
 - [x] Divergência nova falha — verificado removendo temporariamente uma declaração
 - [x] Documentado no `CLAUDE.md` junto dos outros três gates
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md

@@ -1,4 +1,5 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
 id: REQ-2026-06-19-architect-command-guidelines
 title: Slash command /trackfw:architect — guia de arquitetura para times não técnicos
 status: approved
@@ -53,3 +54,6 @@ Go, Node.js e Python devem instalar o `architect.md` via `generateClaudeCommands
 - [ ] 3 CLIs (Go, Node.js, Python) instalam o comando
 - [ ] `trackfw update` reinjecta o comando atualizado
 - [ ] Build e testes verdes
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md

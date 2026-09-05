@@ -2,7 +2,7 @@
 status: done
 date: 2026-08-29
 author: claude
-adr: ""
+adr: "docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md"
 roadmap: ROADMAP-2026-08-29-slug-de-artefato-no-python-diverge-de-go-e-node
 ---
 
@@ -69,7 +69,7 @@ vetores em `internal/identity/testdata/slug_vectors.json`. Nao e o mesmo slug e 
 
 ## Linked ADR
 
-ADR: 
+ADR: docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md
 
 ## Blocked by ADRs
 <!-- none -->

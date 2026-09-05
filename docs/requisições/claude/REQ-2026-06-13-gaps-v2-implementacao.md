@@ -1,8 +1,9 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md"
 name: REQ-2026-06-13-gaps-v2-implementacao
 title: "Implementação dos Gaps v2.0 — trackfw"
 status: Open
-linked_adr: —
+linked_adr: docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md
 linked_roadmap: docs/roadmaps/claude/backlog/v2.0-gaps-implementacao-2026-06-13.md
 created: 2026-06-13
 author: zeus
@@ -77,3 +78,6 @@ Os gaps P1 resolvem barreiras de adoção em times existentes (brownfield e mono
 - UI web hospedada em SaaS (trackfw serve é sempre local)
 - Suporte a GitLab/Azure DevOps no sync PM (apenas GitHub Actions nesta REQ)
 - Plugin registry com autenticação/publicação (apenas leitura pública)
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md
