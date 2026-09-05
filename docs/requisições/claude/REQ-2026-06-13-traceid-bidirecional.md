@@ -1,12 +1,16 @@
 ---
 name: REQ-2026-06-13-traceid-bidirecional
 title: "v2.5 — req_id: ID de rastreabilidade estável com verificação bidirecional"
-status: Open
+status: Done
 adr: —
 roadmap: docs/roadmaps/claude/done/v2.5-discovery-json-traceid-2026-06-13.md
 created: 2026-06-13
 author: zeus
 ---
+
+> **Status corrigido em 2026-09-05** de `Open` para `Done`. O roadmap vinculado esta em
+> `done/` e a entrega foi verificada por execucao; o `Open` era metadado defasado, nao
+> trabalho pendente. Parte do ML-1A da REQ-2026-09-05-divida-de-governanca-do-acervo.
 
 # REQ — req_id bidirecional
 

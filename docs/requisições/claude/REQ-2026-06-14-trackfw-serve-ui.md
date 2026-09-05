@@ -1,12 +1,16 @@
 ---
 name: REQ-2026-06-14-trackfw-serve-ui
 title: "v2.7.0 — Feat: trackfw serve — Dashboard Web com Kanban, Chain View e Métricas"
-status: Open
+status: Done
 adr: —
 roadmap: docs/roadmaps/claude/done/v2.7.0-trackfw-serve-ui-2026-06-14.md
 created: 2026-06-14
 author: zeus
 ---
+
+> **Status corrigido em 2026-09-05** de `Open` para `Done`. O roadmap vinculado esta em
+> `done/` e a entrega foi verificada por execucao; o `Open` era metadado defasado, nao
+> trabalho pendente. Parte do ML-1A da REQ-2026-09-05-divida-de-governanca-do-acervo.
 
 # REQ — v2.7.0 Feat: trackfw serve — Dashboard Web Interativo
 

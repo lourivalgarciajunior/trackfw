@@ -1,12 +1,16 @@
 ---
 name: REQ-2026-06-13-validate-json-output
 title: "v2.5 — validate --json: saída estruturada para integração CI/CD"
-status: Open
+status: Done
 adr: "docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md"
 roadmap: docs/roadmaps/claude/done/v2.5-discovery-json-traceid-2026-06-13.md
 created: 2026-06-13
 author: zeus
 ---
+
+> **Status corrigido em 2026-09-05** de `Open` para `Done`. O roadmap vinculado esta em
+> `done/` e a entrega foi verificada por execucao; o `Open` era metadado defasado, nao
+> trabalho pendente. Parte do ML-1A da REQ-2026-09-05-divida-de-governanca-do-acervo.
 
 # REQ — validate --json
 

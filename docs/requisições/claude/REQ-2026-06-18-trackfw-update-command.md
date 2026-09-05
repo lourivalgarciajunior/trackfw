@@ -1,11 +1,17 @@
 ---
+roadmap: "docs/roadmaps/claude/done/trackfw-update-command-2026-06-18.md"
 adr: "docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md"
 name: REQ-2026-06-18-trackfw-update-command
 title: "trackfw update — atualizar regras, gates e artefatos gerenciados"
-status: Proposed
+status: Done
 date: 2026-06-18
 author: Zeus (orquestrador)
 ---
+
+> **Status normalizado em 2026-09-05** para `Done`. O valor anterior estava fora do
+> vocabulario `Open/Done/Closed` e caia no bucket `Other` do `status` — invisivel na
+> conta. A entrega foi verificada por execucao. ML-1A da
+> REQ-2026-09-05-divida-de-governanca-do-acervo.
 
 # REQ-2026-06-18: trackfw update
 
@@ -49,3 +55,6 @@ O CLI Python tem `init_gen.py` parcialmente implementado (sem geração de gates
 
 ## Linked ADR
 ADR: docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md
+
+## Linked Roadmap
+Roadmap: docs/roadmaps/claude/done/trackfw-update-command-2026-06-18.md

@@ -27957,3 +27957,68 @@ Anotadas para a onda de contribuição, ainda **não** reportadas ao upstream:
 O `CLAUDE.md` afirma que `_force_utf8_output` é divergência local deliberada. **Não é mais** — o
 upstream absorveu (2 ocorrências em `upstream/main:pypi/trackfw/cli.py`). Está como AC7 da REQ do
 procedimento de merge.
+
+---
+
+## 2026-09-05 — REQ da dívida de governança: fechada
+
+**Claude.** `ROADMAP-2026-09-05-divida-de-governanca-do-acervo` → `done/`. Nenhum produto tocado.
+
+### Resultado
+
+```
+validate            42 violacoes -> 0        (e 5 avisos -> 0)
+governance score    60/100 -> 100/100
+REQs                56  (3 Open · 52 Done · 1 Closed)   <- bucket Other zerado
+ADRs                8 -> 14
+```
+
+### O levantamento mudou o remédio previsto
+
+O AC2 previa "ADR retroativa **ou abandono**" por REQ. Medido: **nenhuma das 32 era candidata a
+abandono**. 26 tinham roadmap em `done/`, e as 6 sem roadmap resolvível também entregaram —
+verificado por execução, não por leitura. A dívida era trabalho entregue que nunca foi ligado a uma
+decisão.
+
+E não eram 32 decisões, eram **6**: paridade tri-runtime (10), três CLIs nativos (7), auto-governança
+do repositório (6), Windows de primeira classe (5), layout `by_agent` (3, ADR já existia), i18n (1).
+Mais uma sexta ADR nova para a REQ do trilho de agentes de IA.
+
+### As nove sem roadmap: o vínculo existia, só não estava escrito
+
+Todas as 9 tinham roadmap em `done/` — 6 com `req:` apontando de volta. Três tinham
+`linked_roadmap:` com caminho defasado (apontava para `wip/` ou `backlog/` de onde o roadmap já saíra),
+e as outras 6 não tinham marcador nenhum.
+
+### Falsificação, porque `✓ No violations found` já foi vacuidade aqui
+
+```
+denominador   56 REQs · 14 ADRs · 66 roadmaps
+plantei       REQ sem ADR  ->  2 violacoes disparam
+removi        ->  volta a 0
+```
+
+O gate placeholder da Wave 0 foi substituído por um que checa **as duas coisas**: `validate` sem
+violação **e** o denominador não ter colapsado.
+
+### Uma nota sobre a ordem do trabalho
+
+O ML-0A (threat model) foi respondido **depois** do ML-1B, não antes, contrariando o roadmap. Está
+registrado no próprio ML em vez de encoberto. O que tornou isso recuperável foi o ML-1B ter sido
+conduzido por medição: a enumeração saiu do `validate --json`, não de lista escrita à mão.
+
+### Terceira lacuna do CLI encontrada ao usar
+
+Além das duas já anotadas (`req new`/`roadmap new` sem seletor de agente; `roadmap new --title`
+ignorado):
+
+- **`roadmap move <x> done` sincroniza o caminho na REQ mas não o `status:`** — deixa a REQ `Open`
+  apontando para roadmap em `done/`, que é exatamente o aviso `req_open_roadmap_done` que o
+  `validate` então reporta. O comando cria o aviso que o gate acusa.
+
+### `ADR-001` e a fronteira do fork
+
+A `REQ-2026-06-13-trackfw-ai-agent-governance-rail` apontava para
+`ADR-001-trackfw-como-trilho-de-governanca-para-agentes-ia.md`, que **existe no upstream** e não aqui.
+Pela ADR-2026-08-29 a governança dele não é importada, então a decisão foi registrada do nosso lado
+numa ADR nova. Residual declarado: as duas podem divergir, e a do upstream não foi lida.

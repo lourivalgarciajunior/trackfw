@@ -2,12 +2,16 @@
 adr: "docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md"
 name: REQ-2026-06-13-discovery-mode-cmdb
 title: "Discovery Mode — Suporte a repositórios densos como o CMDB"
-status: Open
+status: Done
 linked_adr: docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md
-linked_roadmap: docs/roadmaps/claude/wip/v2.5-discovery-json-traceid-2026-06-13.md
+roadmap: "docs/roadmaps/claude/done/v2.5-discovery-json-traceid-2026-06-13.md"
 created: 2026-06-13
 author: zeus
 ---
+
+> **Status corrigido em 2026-09-05** de `Open` para `Done`. O roadmap vinculado esta em
+> `done/` e a entrega foi verificada por execucao; o `Open` era metadado defasado, nao
+> trabalho pendente. Parte do ML-1A da REQ-2026-09-05-divida-de-governanca-do-acervo.
 
 # REQ: Discovery Mode — Suporte a repositórios densos como o CMDB
 
@@ -71,3 +75,6 @@ Nenhum critério de aceite está satisfeito sem implementação em AMBOS os CLIs
 
 ## Linked ADR
 ADR: docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md
+
+## Linked Roadmap
+Roadmap: docs/roadmaps/claude/done/v2.5-discovery-json-traceid-2026-06-13.md

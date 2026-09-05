@@ -2,12 +2,16 @@
 adr: "docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md"
 name: REQ-2026-06-13-gaps-v2-implementacao
 title: "Implementação dos Gaps v2.0 — trackfw"
-status: Open
+status: Done
 linked_adr: docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md
-linked_roadmap: docs/roadmaps/claude/backlog/v2.0-gaps-implementacao-2026-06-13.md
+roadmap: "docs/roadmaps/claude/done/v2.0-gaps-implementacao-2026-06-13.md"
 created: 2026-06-13
 author: zeus
 ---
+
+> **Status corrigido em 2026-09-05** de `Open` para `Done`. O roadmap vinculado esta em
+> `done/` e a entrega foi verificada por execucao; o `Open` era metadado defasado, nao
+> trabalho pendente. Parte do ML-1A da REQ-2026-09-05-divida-de-governanca-do-acervo.
 
 # REQ: Implementação dos Gaps v2.0 — trackfw
 
@@ -81,3 +85,6 @@ Os gaps P1 resolvem barreiras de adoção em times existentes (brownfield e mono
 
 ## Linked ADR
 ADR: docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md
+
+## Linked Roadmap
+Roadmap: docs/roadmaps/claude/done/v2.0-gaps-implementacao-2026-06-13.md
