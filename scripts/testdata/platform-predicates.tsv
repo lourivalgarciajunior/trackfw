@@ -1,0 +1,17 @@
+# Contrato de predicados de plataforma - B1 da REQ-2026-09-05-onda-2.
+# A resposta ESPERADA e a mesma nos 3 runtimes e nos 3 SOs. A coluna nativo_windows
+# registra o que o predicado NATIVO responde de fato - e onde as duas divergem esta
+# o defeito. Formato: familia<TAB>caso<TAB>esperado<TAB>nativo_windows<TAB>nota
+anchored	/opt/foo/guard.sh	true	false	filepath.IsAbs do Go; corrigido na PR #271
+anchored	C:\foo\guard.sh	true	true	letra de unidade
+anchored	\\servidor\share\g.sh	true	true	UNC valido
+anchored	\\	false	true	IsAbs aceita 2 barras nuas
+anchored	\\x	false	true	sem segmento de share
+anchored	scripts/guard.sh	false	false	relativo
+anchored	//servidor/share/g.sh	true	true	forma POSIX de UNC
+direrr	arquivo-lido-como-diretorio	report	swallow	os.IsNotExist(ENOTDIR)=true no Windows
+direrr	caminho-inexistente	suppress	suppress	ENOENT - supressao legitima
+direrr	subdir-dentro-de-arquivo	report	swallow	mesma causa do primeiro
+bash	resolucao-por-nome-nu	absolute	stub-ou-erro	System32\bash.exe vence; PR #267
+execbit	arquivo-0755-em-ntfs	sem-bit	sem-bit	NTFS nao tem a propriedade; supressao NOMEADA
+isatty	NUL-redirecionado	false	true	isatty do Python; REQ-2026-08-29
