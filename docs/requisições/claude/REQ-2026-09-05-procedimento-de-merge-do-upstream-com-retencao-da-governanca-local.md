@@ -1,14 +1,14 @@
 ---
-status: Open
+status: Done
 date: 2026-09-05
 author: "claude"
 adr: "docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md"
-roadmap: "docs/roadmaps/claude/backlog/ROADMAP-2026-09-05-procedimento-de-merge-do-upstream-com-retencao-da-governanca-local.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-09-05-procedimento-de-merge-do-upstream-com-retencao-da-governanca-local.md"
 ---
 
 # REQ: Procedimento de merge do upstream com retenção da governança local
 
-> Date: 2026-09-05 | Status: Open
+> Date: 2026-09-05 | Status: Done
 
 ## Motivation
 
@@ -25,10 +25,15 @@ manual, e o custo cresce com o acervo do mantenedor:
 
 | merge | arquivos do merge | de produto | de governança dele |
 |---|---|---|---|
-| `4f0ad33` | 41 | 4 | **32** |
+| `4f0ad33` | 41 | 4 | **37** |
 | `1c16cb0` | 10 | 6 | 4 |
-| `6b3ba49` | 42 | 42 | 0 |
+| `6b3ba49` | **52** | 42 | **10** |
 | `87aded6` | 14 | 9 | 5 |
+
+> **Números corrigidos em 2026-09-05 pela medição do próprio script.** A contagem original desta
+> tabela foi feita à mão olhando só `docs/{adr,req,roadmaps}`, e ignorava `vault/`, `docs/qualidade`
+> e `docs/cli-parity.md`. Errou nos dois extremos: `4f0ad33` retém 37, não 32; e `6b3ba49` tem 52
+> arquivos e retém 10, não 0.
 
 O merge de `4f0ad33` produziu **23 conflitos** de `rename/delete` e de localização de arquivo. A causa
 é estrutural e não vai embora: com `roadmap_namespacing: by_agent`, o git detecta os roadmaps flat
@@ -45,23 +50,30 @@ fronteira, na direção oposta.
 
 ## Acceptance Criteria
 
-- [ ] **AC1** — Existe um comando único (`make upstream-sync` ou `scripts/upstream-sync.sh`) que faz
+- [x] **AC1** — Existe um comando único (`make upstream-sync` ou `scripts/upstream-sync.sh`) que faz
       merge do upstream, retém `docs/` e `vault/`, e **falha** se sobrar conflito.
-- [ ] **AC2** — Ao terminar, o comando **prova** a retenção em vez de afirmá-la:
+- [x] **AC2** — Ao terminar, o comando **prova** a retenção em vez de afirmá-la:
       `git diff --cached main -- docs vault --stat` tem de sair **vazio**, e o comando aborta se não
       sair. A prova é por efeito, não por intenção.
-- [ ] **AC3** — O comando **relata a proporção**: `N arquivos de produto, M de governança retidos`. É
+- [x] **AC3** — O comando **relata a proporção**: `N arquivos de produto, M de governança retidos`. É
       o discriminante — um merge que fecha com muito mais que uma mão-cheia de arquivos de produto
       indica que algo de `docs/` passou.
-- [ ] **AC4** — Falsificação em duas direções: rodar contra `4f0ad33` (32 arquivos de governança) tem
-      de reter os 32 e trazer 4; rodar contra `6b3ba49` (zero governança) tem de trazer os 42 **sem
-      reter nada** — o procedimento não pode suprimir produto.
-- [ ] **AC5** — Verificação pós-merge automatizada: `go build ./...` exit 0 e contagem de violações
+- [x] **AC4** — Falsificação em duas direções, contra os merges **históricos** reais. A propriedade
+      verificada é a **invariante**, não a contagem: `retido ⊆ docs/ ∪ vault/` (não suprime produto)
+      **e** todo o resto trazido (não deixa produto para trás). Mais dois controles negativos: árvore
+      suja e ref inexistente têm de ser recusadas. E o gate é ele próprio falsificado — mutar o script
+      para reter `scripts/` faz o gate reprovar.
+
+      > **AC reescrito em 2026-09-05.** A redação original exigia *"trazer os 42 sem reter nada"* em
+      > `6b3ba49`. A medição mostrou que ele retém **10** — todos em `docs/` e `vault/`, com zero
+      > produto suprimido. **O AC estava errado, não o script.** A contagem à mão errou nos dois
+      > extremos; a invariante sobrevive à correção e a contagem não sobreviveria.
+- [x] **AC5** — Verificação pós-merge automatizada: `go build ./...` exit 0 e contagem de violações
       do `validate` **idêntica** antes e depois, medida em worktree destacado com o binário da
       árvore. Falha se divergir.
-- [ ] **AC6** — Documentado no `CLAUDE.md`, substituindo a instrução atual de `git merge upstream/<tag>`,
+- [x] **AC6** — Documentado no `CLAUDE.md`, substituindo a instrução atual de `git merge upstream/<tag>`,
       que não menciona retenção.
-- [ ] **AC7** — A seção **"Divergência local deliberada"** do `CLAUDE.md` é corrigida: ela afirma que
+- [x] **AC7** — A seção **"Divergência local deliberada"** do `CLAUDE.md` é corrigida: ela afirma que
       `_force_utf8_output` só existe aqui, mas o upstream **absorveu** (medido: 2 ocorrências em
       `upstream/main:pypi/trackfw/cli.py`). Documentação que descreve divergência inexistente faz o
       próximo merge procurar conflito onde não há.
@@ -82,4 +94,4 @@ ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-09-05-procedimento-de-merge-do-upstream-com-retencao-da-governanca-local.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-09-05-procedimento-de-merge-do-upstream-com-retencao-da-governanca-local.md
