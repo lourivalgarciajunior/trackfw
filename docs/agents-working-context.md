@@ -28307,3 +28307,53 @@ validate    sem violacao · score 100/100 — agora com o denominador conferido 
 REQs        59  (1 Open · 57 Done · 1 Closed)
 passam so por prosa    0
 ```
+
+---
+
+## 2026-09-05 — O residual declarado rendeu: 7 roadmaps invisíveis
+
+**Claude.** `ROADMAP-2026-09-05-sete-roadmaps-do-upstream-orfaos` → `done/`.
+
+Fui medir o marcador `REQ:` — a superfície que eu tinha **declarado não ter verificado** ao fechar a
+REQ da prosa. O achado não foi o marcador; foi o caminho até ele.
+
+```
+kanban:  wip 0
+disco:   docs/roadmaps/wip/  ->  7 roadmaps
+```
+
+Com `by_agent`, `resolveWIPDirs` resolve `docs/roadmaps/<agente>/wip`. O diretório **flat** não entra
+em resolvedor nenhum: 7 arquivos que **nenhuma regra avaliava**, o `status` não contava e o
+`validate` não varria.
+
+São do upstream, entraram por merges de 02–03/09 **antes** do `upstream-sync.sh`, e no repositório
+dele já estão em `done/`. Zero REQs nossas os referenciavam.
+
+**`wip_has_req` tinha denominador zero** — verde sobre nada, duas vezes: os diretórios que resolve
+estavam vazios, e os arquivos que existiam estavam fora do que ele resolve.
+
+### O marcador `REQ:`, que era a pergunta
+
+| categoria | n |
+|---|---|
+| o gate acusaria, se estivessem em `wip/` | 24 |
+| `REQ:` ancorado com valor | 40 |
+| passa **só por prosa** | **12** |
+| passa sem valor nenhum | 0 |
+
+Mesmo defeito do `ADR:`. **Latente, não ativo** — os 12 estão em `done/`, e a regra só olha `wip/`.
+Registrados e não corrigidos, com o motivo no AC4.
+
+### Estado
+
+```
+validate    sem violacao · score 100/100
+REQs        60  (1 Open · 58 Done · 1 Closed)
+Roadmaps    76 -> 70
+estados flat com arquivo    nenhum
+```
+
+### Próxima superfície da mesma família
+
+`AcceptanceMarkers` usa o mesmo `contentHasMarker` (`validator.go:1678`) e **não foi medido em nenhum
+dos dois acervos**.
