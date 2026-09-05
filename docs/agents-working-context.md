@@ -28078,3 +28078,59 @@ validate    sem violacao · score 100/100
 divergencia de produto    0
 REQs restantes em backlog/  1  (onda 1 de contribuicao ao upstream)
 ```
+
+---
+
+## 2026-09-05 — Onda 1 de contribuição ao upstream: fechada
+
+**Claude.** `ROADMAP-2026-09-05-onda-1-de-contribuicao-ao-upstream` → `done/`. Nenhum código nosso;
+os quatro itens pousam em `kgsaran/trackfw`.
+
+| item | desfecho | issue |
+|---|---|---|
+| F2 `branch_has_wip_roadmap` | **correção de escopo** da REQ dele de 20/08 | [#273](https://github.com/kgsaran/trackfw/issues/273) |
+| A2 suíte não carregou | report novo | [#274](https://github.com/kgsaran/trackfw/issues/274) |
+| A3 ratchet por nome | report novo | [#275](https://github.com/kgsaran/trackfw/issues/275) |
+| C2 `sync` e `req_dir` | já entregue em 04/09 | [#268](https://github.com/kgsaran/trackfw/issues/268) |
+
+### O AC2 pegou metade da onda
+
+A varredura do acervo dele antes de escrever mostrou que **2 dos 4 já estavam registrados**. Sem
+ela, metade sairia como duplicata.
+
+### O achado que mudou a REQ dele
+
+A `REQ-2026-08-20` dele trata o `branch_has_wip_roadmap` como frouxo demais — `done/` só cresce, slug
+curto casa com tudo. Medi as **duas** direções e a regra também é **restrita demais**: bati nisso
+ontem, com uma branch legitimamente governada sendo reprovada.
+
+E a medição derruba o candidato 1 dele:
+
+```
+                      Contains   fronteira   tokens>=2
+falso-negativo (3)        0/3        0/3        2/3
+req (slug curto)            9          8          0
+python                      8          8          0
+windows                     6          6          0
+```
+
+Fronteira é **estritamente mais restrita** que `Contains`, então não pode corrigir falso-negativo —
+só criar mais. E quase não move o falso-positivo.
+
+### Uma correção minha, antes de reportar
+
+A primeira contagem deu **62%** de branches rejeitadas. Estava errada: incluía `chore/`, que a regra
+não governa (`validator.go:2598`). O número honesto é **9%** — 2 de 22. Reportar 62% teria feito ele
+priorizar errado.
+
+### Estado
+
+```
+validate    sem violacao · score 100/100
+REQs        56  (1 Open · 54 Done · 1 Closed)
+kanban      backlog 0 · analyzing 0 · wip 0
+divergencia de produto    0
+```
+
+Todas as REQs abertas em 2026-09-05 estão fechadas. A única `Open` restante é
+`REQ-2026-06-13-validator-improvements`, herdada.
