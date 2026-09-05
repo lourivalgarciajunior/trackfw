@@ -1,12 +1,18 @@
 ---
 name: REQ-2026-06-13-validator-improvements
 title: "Melhorias no validador — adr_dirs recursivo, stale por git log, existência de refs, coerência pasta×status, unicidade de filename"
-status: Open
-linked_adr: —
-linked_roadmap: docs/roadmaps/claude/wip/v2.3-validator-improvements-2026-06-13.md
+status: Done
+linked_adr: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md
+linked_roadmap: docs/roadmaps/claude/done/v2.3-validator-improvements-2026-06-13.md
 created: 2026-06-13
 author: zeus
 ---
+
+> **Corrigida em 2026-09-05.** Esta REQ passava `req_has_adr` e `req_has_roadmap` **por
+> acidente**: as palavras `ADR:` e `Roadmap:` apareciam na prosa do texto, e o
+> `contentHasMarker` casa o marcador em qualquer posição do arquivo. Não havia link nenhum.
+> O marcador agora está ancorado em início de linha, com valor. Ver
+> REQ-2026-09-05-reqs-que-passam-so-por-prosa e kgsaran/trackfw#278.
 
 # REQ: Melhorias no validador trackfw validate
 
@@ -93,3 +99,9 @@ Copiar em vez de mover um roadmap resulta em dois arquivos com o mesmo nome em p
 - R8 (evidência em done) — polêmico, backlog
 - `--json` output — backlog
 - R2 (`docs/roadmap/` singular) — específico do CMDB
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md
+
+## Linked Roadmap
+Roadmap: docs/roadmaps/claude/done/v2.3-validator-improvements-2026-06-13.md

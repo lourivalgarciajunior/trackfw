@@ -2,11 +2,17 @@
 name: REQ-2026-06-13-traceid-bidirecional
 title: "v2.5 — req_id: ID de rastreabilidade estável com verificação bidirecional"
 status: Done
-adr: —
+adr: docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md
 roadmap: docs/roadmaps/claude/done/v2.5-discovery-json-traceid-2026-06-13.md
 created: 2026-06-13
 author: zeus
 ---
+
+> **Corrigida em 2026-09-05.** Esta REQ passava `req_has_adr` e `req_has_roadmap` **por
+> acidente**: as palavras `ADR:` e `Roadmap:` apareciam na prosa do texto, e o
+> `contentHasMarker` casa o marcador em qualquer posição do arquivo. Não havia link nenhum.
+> O marcador agora está ancorado em início de linha, com valor. Ver
+> REQ-2026-09-05-reqs-que-passam-so-por-prosa e kgsaran/trackfw#278.
 
 > **Status corrigido em 2026-09-05** de `Open` para `Done`. O roadmap vinculado esta em
 > `done/` e a entrega foi verificada por execucao; o `Open` era metadado defasado, nao
@@ -66,3 +72,9 @@ Projetos sem `trace_id_field` permanecem idênticos — retrocompatível total.
 - Verificação de ADRs pelo `req_id` (somente REQ↔Roadmap nesta versão)
 - Geração automática de `req_id` (campo manual no frontmatter)
 - Migração de arquivos existentes
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md
+
+## Linked Roadmap
+Roadmap: docs/roadmaps/claude/done/v2.5-discovery-json-traceid-2026-06-13.md

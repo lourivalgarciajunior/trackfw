@@ -2,11 +2,15 @@
 name: REQ-2026-06-14-trackfw-serve-ui
 title: "v2.7.0 — Feat: trackfw serve — Dashboard Web com Kanban, Chain View e Métricas"
 status: Done
-adr: —
+adr: docs/adr/ADR-2026-06-14-handlers-do-serve-testados-sem-servidor.md
 roadmap: docs/roadmaps/claude/done/v2.7.0-trackfw-serve-ui-2026-06-14.md
 created: 2026-06-14
 author: zeus
 ---
+
+> **Corrigida em 2026-09-05.** Passava `req_has_adr` **por acidente** — `ADR:` aparecia na
+> prosa e o `contentHasMarker` casa o marcador em qualquer posição do arquivo. Não havia
+> link de ADR. Ver REQ-2026-09-05-reqs-que-passam-so-por-prosa e kgsaran/trackfw#278.
 
 > **Status corrigido em 2026-09-05** de `Open` para `Done`. O roadmap vinculado esta em
 > `done/` e a entrega foi verificada por execucao; o `Open` era metadado defasado, nao
@@ -108,3 +112,6 @@ Tecnologia: **HTMX + marked.js + Chart.js** — client-side rendering, zero bund
 
 ## Linked Roadmap
 Roadmap: docs/roadmaps/claude/done/v2.7.0-trackfw-serve-ui-2026-06-14.md
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-06-14-handlers-do-serve-testados-sem-servidor.md

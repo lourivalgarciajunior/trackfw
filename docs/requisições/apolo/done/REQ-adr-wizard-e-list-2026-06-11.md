@@ -1,4 +1,5 @@
 ---
+adr: docs/adr/ADR-2026-06-11-wizard-no-command-layer.md
 id: REQ-adr-wizard-e-list-2026-06-11
 title: ADR — wizard interativo nas seções e adr list
 status: done
@@ -7,6 +8,10 @@ type: feature
 created: 2026-06-11
 author: apolo
 ---
+
+> **Corrigida em 2026-09-05.** Passava `req_has_adr` **por acidente** — `ADR:` aparecia na
+> prosa e o `contentHasMarker` casa o marcador em qualquer posição do arquivo. Não havia
+> link de ADR. Ver REQ-2026-09-05-reqs-que-passam-so-por-prosa e kgsaran/trackfw#278.
 
 # REQ: ADR — Wizard Interativo nas Seções e adr list
 
@@ -88,3 +93,6 @@ func NewADR(content ADRContent) error
 
 ## Roadmap
 Roadmap: roadmap-adr-wizard-e-list-2026-06-11
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-06-11-wizard-no-command-layer.md

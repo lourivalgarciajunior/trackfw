@@ -1,4 +1,5 @@
 ---
+adr: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md
 id: REQ-2026-08-16-adrs-retroativas
 title: Escrever as ADRs retroativas das 5 REQs sem decisão registrada
 status: done
@@ -7,6 +8,10 @@ type: chore
 created: 2026-08-16
 author: claude
 ---
+
+> **Corrigida em 2026-09-05.** Passava `req_has_adr` **por acidente** — `ADR:` aparecia na
+> prosa e o `contentHasMarker` casa o marcador em qualquer posição do arquivo. Não havia
+> link de ADR. Ver REQ-2026-09-05-reqs-que-passam-so-por-prosa e kgsaran/trackfw#278.
 
 # REQ: ADRs retroativas
 
@@ -81,3 +86,6 @@ de saída, não por discordância da regra.
 - [x] `req_has_adr` de volta a `error` no `trackfw.yaml`
 - [x] `trackfw validate` com zero violações **e** zero avisos
 - [x] `go test ./...` zero falhas; suítes npm e pypi verdes; três gates passam
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md

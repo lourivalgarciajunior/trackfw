@@ -28256,3 +28256,54 @@ issues abertas com ele    9
 
 O plano de 18 oportunidades está **percorrido inteiro**: ondas 1 e 2 entregues integralmente, ondas
 3 e 4 trabalhadas com 2 entregas e 6 recusas justificadas.
+
+---
+
+## 2026-09-05 — O verde de 100/100 era parcialmente vacuoso
+
+**Claude.** `ROADMAP-2026-09-05-reqs-que-passam-so-por-prosa` → `done/`.
+
+Fechamos a dívida e o `validate` passou a dizer `✓ No violations found`, score 100/100. Fui olhar a
+única REQ que sobrou `Open` e o verde não se sustentava.
+
+`REQ-2026-06-13-validator-improvements` passava `req_has_adr` e `req_has_roadmap` **porque as
+palavras `ADR:` e `Roadmap:` apareciam na prosa** — numa frase que lista nomes de regra. Não havia
+link nenhum (`linked_adr: —`), e o `linked_roadmap:` apontava para `wip/`, onde o arquivo não estava.
+
+**Eram 7, não 1.** A primeira varredura deu 3, com um critério frouxo que exigia os dois marcadores
+desancorados. O critério correto — cada marcador separadamente — deu mais 4.
+
+### A sonda é o achado
+
+```
+REQ com NADA alem de: "O texto menciona `ADR:` e `Roadmap:` no meio da frase, e mais nada."
+
+  meu script:  acha 1
+  validate:    ✓ No violations found · 0 violacoes contra a sonda
+```
+
+Uma REQ sem frontmatter de link, sem marcador, sem nada — só prosa — **passa as duas regras**. É
+reprodução mínima e mais limpa que a que levei ao [#278](https://github.com/kgsaran/trackfw/issues/278).
+
+### A classificação completa do acervo dele
+
+```
+ACUSADAS pelo gate                   11
+passam com ADR ancorado (legitimo)  116
+passam com "ADR:" so em PROSA         8
+passam sem valor nenhum              58
+                                    ---
+                                    193
+
+REQs sem link real de ADR            77     o gate acusa 11 — 14% da divida real
+```
+
+No #278 eu tinha escrito *"vale medir essa diferença sobre as 193; eu não medi"*. Agora está medido.
+
+### Estado
+
+```
+validate    sem violacao · score 100/100 — agora com o denominador conferido por fora
+REQs        59  (1 Open · 57 Done · 1 Closed)
+passam so por prosa    0
+```
