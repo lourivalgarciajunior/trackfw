@@ -28357,3 +28357,53 @@ estados flat com arquivo    nenhum
 
 `AcceptanceMarkers` usa o mesmo `contentHasMarker` (`validator.go:1678`) e **não foi medido em nenhum
 dos dois acervos**.
+
+---
+
+## 2026-09-05 — Regressão minha: o `parity` do CI está vermelho desde a PR #50
+
+**Claude.** `ROADMAP-2026-09-05-residuo-de-docs-req-do-upstream` → `done/`.
+
+Ao remover os 7 roadmaps órfãos, quebrei duas referências. Medido nos runs do nosso CI, mesmo branch:
+
+```
+17:23  parity  erros de integridade referencial: 0
+17:34  parity  erros de integridade referencial: 2   <- o merge da PR #50
+19:49  parity  erros de integridade referencial: 2
+```
+
+### Por que a minha falsificação não pegou
+
+O AC1 exigia *"zero REQs deste acervo os referenciam"* e eu varri **`docs/requisições/`** — o nosso
+`req_dir`. Não varri **`docs/req/`**, que tinha 5 REQs resíduo do upstream e não é `req_dir` de
+ninguém aqui. Duas delas apontavam para dois dos 7.
+
+**E o `validate` local diz `✓ No violations found`**, porque o resolvedor não olha `docs/req/`. O
+verde era sobre denominador que excluía os arquivos que quebraram — a vacuidade que passei o dia
+reportando, agora na minha própria verificação.
+
+O `check-referential-integrity.sh` pegou porque varre `docs/req/*.md` **chumbado**, ignorando
+`req_dir`. Mesma família do `sync` que reportei no #268: o gate e o resolvedor olham lugares
+diferentes.
+
+### O que mudou no método
+
+A varredura de referência agora é da **árvore inteira**, e antes de agir eu **leio o gate** em vez de
+supor o que ele checa. Foi lendo o `:10` do script que a causa apareceu.
+
+### O que isso destrava
+
+O job `parity` morria nesses 2 erros e **não chegava ao gate do barrier** — então a pergunta do
+[#277](https://github.com/kgsaran/trackfw/issues/277) (*"o acoplamento está te bloqueando agora?"*)
+não era respondível. Com a correção, o run pós-merge diz.
+
+### Estado
+
+```
+check-referential-integrity.sh   "Referential integrity OK"
+validate                          sem violacao · score 100/100
+REQs 61 · Roadmaps 71             docs/req/ removido inteiro
+```
+
+Residual: a referência quebrada em `docs/cli-parity.md` existe e **nenhum gate a lê** — registrada,
+não corrigida.
