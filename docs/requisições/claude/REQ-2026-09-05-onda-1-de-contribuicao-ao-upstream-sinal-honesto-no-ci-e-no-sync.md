@@ -1,14 +1,14 @@
 ---
-status: Open
+status: Done
 date: 2026-09-05
 author: "claude"
 adr: "docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md"
-roadmap: "docs/roadmaps/claude/backlog/ROADMAP-2026-09-05-onda-1-de-contribuicao-ao-upstream-sinal-honesto-no-ci-e-no-sync.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-09-05-onda-1-de-contribuicao-ao-upstream-sinal-honesto-no-ci-e-no-sync.md"
 ---
 
 # REQ: Onda 1 de contribuição ao upstream — sinal honesto no CI e no `sync`
 
-> Date: 2026-09-05 | Status: Open
+> Date: 2026-09-05 | Status: Done
 
 ## Motivation
 
@@ -55,20 +55,20 @@ três sítios após a medição.
 
 ## Acceptance Criteria
 
-- [ ] **AC1** — Cada um dos 4 itens tem issue no `kgsaran/trackfw` com: defeito medido, controle na
+- [x] **AC1** — Cada um dos 4 itens tem issue no `kgsaran/trackfw` com: defeito medido, controle na
       direção oposta, e proposta de remédio. Issue sem medição não conta.
-- [ ] **AC2** — Antes de abrir, cada item é conferido contra o acervo dele (REQ, issue, ADR
+- [x] **AC2** — Antes de abrir, cada item é conferido contra o acervo dele (REQ, issue, ADR
       existentes). Se já houver registro, o entregável é **correção de escopo**, não report novo — foi
       o que aconteceu na `#268`, onde a REQ dele já existia e o valor esteve em mostrar que o AC1
       podia ser satisfeito **sem corrigir o defeito**.
-- [ ] **AC3** — Onde ele pedir PR, a implementação sai em branch `upstream-pr/*` criada **a partir de
+- [x] **AC3** — Onde ele pedir PR, a implementação sai em branch `upstream-pr/*` criada **a partir de
       `upstream/main`**, nunca da nossa `main`. Falsificação obrigatória antes de abrir:
       `git diff --stat upstream/main...<branch>` bate com a mudança real.
-- [ ] **AC4** — Cada item é medido **nesta máquina Windows** antes de sair, e a evidência entra na
+- [x] **AC4** — Cada item é medido **nesta máquina Windows** antes de sair, e a evidência entra na
       issue com a ressalva do que ela **não** prova.
-- [ ] **AC5** — Nenhum dos 4 é mesclado na nossa `main` por fora. Volta só pelo merge do upstream.
+- [x] **AC5** — Nenhum dos 4 é mesclado na nossa `main` por fora. Volta só pelo merge do upstream.
       Falsificação: a divergência de produto continua **vazia** ao fim da onda.
-- [ ] **AC6** — Cada ML fecha com desfecho registrado — mesclado, recusado, ou assumido por ele.
+- [x] **AC6** — Cada ML fecha com desfecho registrado — mesclado, recusado, ou assumido por ele.
       **Recusa é desfecho legítimo** e fecha o ML; o que não pode é ficar aberto sem resposta.
 
 ## Negative Scope
@@ -87,4 +87,19 @@ ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-09-05-onda-1-de-contribuicao-ao-upstream-sinal-honesto-no-ci-e-no-sync.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-09-05-onda-1-de-contribuicao-ao-upstream-sinal-honesto-no-ci-e-no-sync.md
+
+## Desfecho (2026-09-05)
+
+| item | desfecho | issue |
+|---|---|---|
+| F2 `branch_has_wip_roadmap` | correção de escopo da `REQ-2026-08-20` dele | [#273](https://github.com/kgsaran/trackfw/issues/273) |
+| A2 suíte não carregou | report novo | [#274](https://github.com/kgsaran/trackfw/issues/274) |
+| A3 ratchet por nome | report novo | [#275](https://github.com/kgsaran/trackfw/issues/275) |
+| C2 `sync` e `req_dir` | já entregue em 04/09; ele assumiu | [#268](https://github.com/kgsaran/trackfw/issues/268) |
+
+**AC2 pegou 2 dos 4**: o F2 já tinha REQ dele desde 20/08, e o C2 já tinha issue minha. Sem a
+varredura do acervo, metade da onda teria saído como duplicata.
+
+**Nenhum PR foi necessário** — os quatro são dele por decisão dele ("é nosso, não precisa mandar
+PR"), então o AC3 não foi exercitado. Registrado como não-aplicável, não como cumprido.
