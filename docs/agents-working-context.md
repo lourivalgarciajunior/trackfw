@@ -28199,3 +28199,60 @@ divergencia de produto    0
 
 Das 18 oportunidades do plano, as ondas **1 e 2 saíram inteiras**. Restam as ondas 3 e 4 em
 `docs/analises/`.
+
+---
+
+## 2026-09-05 — Ondas 3 e 4: fechadas, com 2 de 8 entregues
+
+**Claude.** `ROADMAP-2026-09-05-ondas-3-e-4` → `done/`. Nenhum código nosso.
+
+| entregue | onde |
+|---|---|
+| detecção de marcador vazio por literal | [#278](https://github.com/kgsaran/trackfw/issues/278) |
+| 9 `t.Skip` de plataforma que sobraram do ML-4A | [#279](https://github.com/kgsaran/trackfw/issues/279) |
+
+### O item que virou defeito ao ser medido
+
+O A1 era **proposta**: acrescentar o denominador à saída do `validate`. Ao medir para justificá-la, o
+defeito apareceu — e é maior que a proposta.
+
+O `contentHasMarker` detecta marcador vazio comparando com **uma literal**: `marcador + um espaço +
+newline`. Plantei sete grafias de vazio; **cinco passam**. Idêntico nos três runtimes — paridade
+perfeita do comportamento errado, e a docstring do Python **enuncia** a definição estreita sem notar
+o que ela deixa passar.
+
+Executado contra o acervo dele (193 REQs, config default, binário da árvore):
+
+```
+req_has_adr ACUSA                 11
+passam COM valor real            124
+passam SEM valor nenhum           58   <- vacuidade
+                                 ---
+                                 193
+```
+
+**O gate enxerga 11 de 69.** Reporta 16% da dívida real. Conferi três à mão: `adr: ""` no frontmatter
+e `ADR:` sozinho no corpo, sem espaço.
+
+### A restrição que governou a onda
+
+Havia **5 issues abertas com ele, nenhuma respondida**. Abrir mais oito converteria contribuição em
+ruído — a falha que o escopo negativo da onda 1 previu. A regra aplicada foi: **sem achado medido,
+não vira issue**.
+
+Seis itens ficaram, cada um com o motivo registrado na REQ: F3 e G1 são ferramenta sem defeito; G3 é
+observação factual e decisão dele; D1 exigiria medir no CI dele e número local não transfere (lição
+do 62% × 9%); F1 está bloqueado pelo corpus acoplado do #277; D2 não é issue — é o arranjo que já
+existe, porque este fork **é** o Windows dele há três dias.
+
+### Estado
+
+```
+validate    sem violacao · score 100/100
+kanban      vazio
+divergencia de produto    0
+issues abertas com ele    9
+```
+
+O plano de 18 oportunidades está **percorrido inteiro**: ondas 1 e 2 entregues integralmente, ondas
+3 e 4 trabalhadas com 2 entregas e 6 recusas justificadas.
