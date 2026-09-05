@@ -1,13 +1,19 @@
 ---
+roadmap: "docs/roadmaps/claude/done/consolidar-arvores-governanca-2026-08-16.md"
 adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
 id: REQ-2026-08-16-consolidar-arvores-governanca
 title: Consolidar as três árvores de artefato de governança em uma só
-status: approved
+status: Done
 priority: high
 type: chore
 created: 2026-08-16
 author: claude
 ---
+
+> **Status normalizado em 2026-09-05** para `Done`. O valor anterior estava fora do
+> vocabulario `Open/Done/Closed` e caia no bucket `Other` do `status` — invisivel na
+> conta. A entrega foi verificada por execucao. ML-1A da
+> REQ-2026-09-05-divida-de-governanca-do-acervo.
 
 # REQ: Consolidar as três árvores de artefato de governança
 
@@ -84,3 +90,6 @@ Mover os dois primeiros para `done/`; o `trackfw-update-command` em `wip/` é du
 
 ## Linked ADR
 ADR: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md
+
+## Linked Roadmap
+Roadmap: docs/roadmaps/claude/done/consolidar-arvores-governanca-2026-08-16.md

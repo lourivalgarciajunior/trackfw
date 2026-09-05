@@ -1,14 +1,14 @@
 ---
-status: Open
+status: Done
 date: 2026-09-05
 author: "claude"
 adr: "docs/adr/ADR-2026-09-03-layout-canonico-de-req-em-by-agent-e-o-invariante-de-que-req-nao-tem-dimensao-de-estado.md"
-roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-09-05-divida-de-governanca-do-acervo-42-violacoes-das-quais-32-reqs-sem-adr.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-09-05-divida-de-governanca-do-acervo-42-violacoes-das-quais-32-reqs-sem-adr.md"
 ---
 
 # REQ: Dívida de governança do acervo — 42 violações, das quais 32 REQs sem ADR
 
-> Date: 2026-09-05 | Status: Open
+> Date: 2026-09-05 | Status: Done
 
 ## Motivation
 
@@ -44,18 +44,18 @@ sinal invertido — um vermelho permanente também não informa.
 
 ## Acceptance Criteria
 
-- [ ] **AC1** — Os 4 blocos mecanizáveis (roadmap em `done/`, frontmatter ausente, ADR órfã, status
+- [x] **AC1** — Os 4 blocos mecanizáveis (roadmap em `done/`, frontmatter ausente, ADR órfã, status
       fora do vocabulário) estão em **zero**. Falsificação: `trackfw validate` antes e depois, com o
       binário da árvore, e a diferença de contagem bate exatamente com a soma dos blocos tratados.
-- [ ] **AC2** — Cada uma das **32 REQs sem ADR** recebeu um dos dois desfechos, com o motivo
+- [x] **AC2** — Cada uma das **32 REQs sem ADR** recebeu um dos dois desfechos, com o motivo
       registrado: ADR retroativa vinculada, ou `status: abandoned`. **Nenhuma fica sem decisão.**
-- [ ] **AC3** — `trackfw validate` sai com **exit 0** nesta árvore.
-- [ ] **AC4** — Falsificação em duas direções: além de o gate passar, uma violação **plantada** de
+- [x] **AC3** — `trackfw validate` sai com **exit 0** nesta árvore.
+- [x] **AC4** — Falsificação em duas direções: além de o gate passar, uma violação **plantada** de
       propósito (REQ nova sem ADR) tem de reprovar. Um gate que passa porque parou de olhar é o
       defeito que originou esta REQ.
-- [ ] **AC5** — O `governance score` do `trackfw context` sai do patamar de **60/100** e o novo valor
+- [x] **AC5** — O `governance score` do `trackfw context` sai do patamar de **60/100** e o novo valor
       fica registrado no `docs/agents-working-context.md`.
-- [ ] **AC6** — Nenhum arquivo de produto tocado. Falsificação:
+- [x] **AC6** — Nenhum arquivo de produto tocado. Falsificação:
       `git diff --name-only main upstream/main -- internal npm/src pypi/trackfw cmd .github Makefile`
       continua **vazio** (divergência de produto zero, medida em `a958b57`).
 
@@ -73,4 +73,4 @@ ADR: docs/adr/ADR-2026-09-03-layout-canonico-de-req-em-by-agent-e-o-invariante-d
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-09-05-divida-de-governanca-do-acervo-42-violacoes-das-quais-32-reqs-sem-adr.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-09-05-divida-de-governanca-do-acervo-42-violacoes-das-quais-32-reqs-sem-adr.md

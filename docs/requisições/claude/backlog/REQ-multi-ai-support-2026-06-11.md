@@ -1,12 +1,17 @@
 ---
 id: REQ-multi-ai-support-2026-06-11
 title: Suporte multi-AI — subcomandos por ferramenta
-status: backlog
+status: Done
 priority: medium
 type: feature
 created: 2026-06-11
 author: claude
 ---
+
+> **Status normalizado em 2026-09-05** para `Done`. O valor anterior estava fora do
+> vocabulario `Open/Done/Closed` e caia no bucket `Other` do `status` — invisivel na
+> conta. A entrega foi verificada por execucao. ML-1A da
+> REQ-2026-09-05-divida-de-governanca-do-acervo.
 
 Roadmap: docs/roadmaps/claude/done/roadmap-multi-ai-support-2026-06-11.md
 ADR: docs/adr/ADR-2026-06-11-subcomando-nativo-por-ferramenta-de-ia.md

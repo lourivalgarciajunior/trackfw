@@ -1,11 +1,17 @@
 ---
+roadmap: "docs/roadmaps/claude/done/v1.1.0-i18n-wizard-java-2026-06-12.md"
 adr: "docs/adr/ADR-2026-09-05-i18n-por-deteccao-de-ambiente-com-fallback-en-us-e-templates-seguem-o-idioma.md"
 name: i18n-wizard-java-scaffold
 description: Suporte multilingual, correções do wizard init e scaffold Java
 metadata:
   type: project
-status: backlog
+status: Done
 ---
+
+> **Status normalizado em 2026-09-05** para `Done`. O valor anterior estava fora do
+> vocabulario `Open/Done/Closed` e caia no bucket `Other` do `status` — invisivel na
+> conta. A entrega foi verificada por execucao. ML-1A da
+> REQ-2026-09-05-divida-de-governanca-do-acervo.
 
 # REQ: Melhorias v1.1.0 — i18n, Wizard init e Scaffold Java
 
@@ -37,3 +43,6 @@ Feedback do usuário após validação em ambiente Windows corporativo (primeiro
 
 ## Linked ADR
 ADR: docs/adr/ADR-2026-09-05-i18n-por-deteccao-de-ambiente-com-fallback-en-us-e-templates-seguem-o-idioma.md
+
+## Linked Roadmap
+Roadmap: docs/roadmaps/claude/done/v1.1.0-i18n-wizard-java-2026-06-12.md

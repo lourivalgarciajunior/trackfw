@@ -2,12 +2,16 @@
 adr: "docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md"
 name: REQ-2026-06-13-python-cli-nativo
 title: "Python CLI Nativo — Reimplementação em Python Puro (paridade com Node.js)"
-status: Open
+status: Done
 linked_adr: docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md
-linked_roadmap: docs/roadmaps/claude/backlog/v2.2-python-cli-nativo-2026-06-13.md
+roadmap: "docs/roadmaps/claude/done/v2.2-python-cli-nativo-2026-06-13.md"
 created: 2026-06-13
 author: zeus
 ---
+
+> **Status corrigido em 2026-09-05** de `Open` para `Done`. O roadmap vinculado esta em
+> `done/` e a entrega foi verificada por execucao; o `Open` era metadado defasado, nao
+> trabalho pendente. Parte do ML-1A da REQ-2026-09-05-divida-de-governanca-do-acervo.
 
 # REQ: Python CLI Nativo — Reimplementação em Python Puro
 
@@ -86,3 +90,6 @@ A partir desta REQ, toda feature implementada no Go CLI ou Node.js CLI **DEVE te
 
 ## Linked ADR
 ADR: docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md
+
+## Linked Roadmap
+Roadmap: docs/roadmaps/claude/done/v2.2-python-cli-nativo-2026-06-13.md

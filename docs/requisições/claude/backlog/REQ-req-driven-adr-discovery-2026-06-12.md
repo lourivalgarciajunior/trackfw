@@ -1,12 +1,17 @@
 ---
 id: REQ-req-driven-adr-discovery-2026-06-12
 title: REQ-driven ADR discovery
-status: backlog
+status: Done
 priority: medium
 type: feature
 created: 2026-06-12
 author: claude
 ---
+
+> **Status normalizado em 2026-09-05** para `Done`. O valor anterior estava fora do
+> vocabulario `Open/Done/Closed` e caia no bucket `Other` do `status` — invisivel na
+> conta. A entrega foi verificada por execucao. ML-1A da
+> REQ-2026-09-05-divida-de-governanca-do-acervo.
 
 Roadmap: docs/roadmaps/claude/done/roadmap-req-driven-adr-discovery-2026-06-12.md
 ADR: docs/adr/ADR-2026-06-12-descoberta-de-adr-guiada-pela-req.md

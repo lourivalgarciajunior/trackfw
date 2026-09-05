@@ -1,12 +1,16 @@
 ---
 id: REQ-roadmap-ai-generation-2026-06-11
 title: Geração de roadmap por IA
-status: abandoned
+status: Closed
 priority: medium
 type: feature
 created: 2026-06-11
 author: apolo
 ---
+
+> **Status normalizado em 2026-09-05** para `Closed` (encerrada sem entrega), preservando
+> o sentido do `abandoned` original, que ficava fora do vocabulario e caia em `Other`.
+> ML-1A da REQ-2026-09-05-divida-de-governanca-do-acervo.
 
 Roadmap: docs/roadmaps/claude/abandoned/roadmap-roadmap-ai-generation-2026-06-11.md
 ADR: docs/adr/ADR-2026-06-11-roadmap-derivado-sem-llm.md
@@ -108,7 +112,7 @@ Você é um assistente de engenharia de software. Com base na REQ abaixo, gere u
 > Dependências: Independente
 
 ### ML-1A — <título>
-**Status:** ⬜ Pendente
+**Status:** Closed
 **Arquivos afetados:** lista
 **Ações:** lista detalhada
 **Critérios de aceite:**

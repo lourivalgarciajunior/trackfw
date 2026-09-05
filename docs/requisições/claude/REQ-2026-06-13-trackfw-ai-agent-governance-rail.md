@@ -1,10 +1,25 @@
+---
+status: Done
+date: 2026-06-13
+author: "Zeus"
+adr: "docs/adr/ADR-2026-09-05-trackfw-e-o-trilho-de-governanca-para-agentes-de-ia-e-o-artefato-e-a-interface.md"
+roadmap: "docs/roadmaps/claude/done/trackfw-ai-agent-rail-2026-06-13.md"
+---
+
+> **Frontmatter acrescentado em 2026-09-05.** Esta REQ nasceu com os metadados em markdown em
+> negrito, nunca em bloco YAML — ironia registrada, porque e ela que **propos** o frontmatter
+> estruturado. O `**ADR:**` original apontava para `ADR-001-...`, que existe no upstream e NAO
+> neste repositorio (ADR-2026-08-29: a governanca do upstream nao e importada); a decisao foi
+> registrada do nosso lado. Status corrigido de `Open` para `Done` — o roadmap esta em `done/`
+> e as 4 capabilities existem no produto.
+
 # REQ — trackfw como trilho de governança para agentes de IA
 
-**Status:** Open  
+**Status:** Done  
 **Data:** 2026-06-13  
 **Autor:** Zeus  
-**ADR:** ADR-001-trackfw-como-trilho-de-governanca-para-agentes-ia.md  
-**Roadmap:** trackfw-ai-agent-rail-2026-06-13.md
+**ADR:** docs/adr/ADR-2026-09-05-trackfw-e-o-trilho-de-governanca-para-agentes-de-ia-e-o-artefato-e-a-interface.md  
+**Roadmap:** docs/roadmaps/claude/done/trackfw-ai-agent-rail-2026-06-13.md
 
 ---
 
@@ -39,3 +54,9 @@ Evoluir o trackfw para ser o **framework de referência de governança para dese
 ## Blocked by ADRs
 
 - ADR-001-trackfw-como-trilho-de-governanca-para-agentes-ia.md
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-trackfw-e-o-trilho-de-governanca-para-agentes-de-ia-e-o-artefato-e-a-interface.md
+
+## Linked Roadmap
+Roadmap: docs/roadmaps/claude/done/trackfw-ai-agent-rail-2026-06-13.md
