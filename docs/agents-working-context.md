@@ -28134,3 +28134,68 @@ divergencia de produto    0
 
 Todas as REQs abertas em 2026-09-05 estão fechadas. A única `Open` restante é
 `REQ-2026-06-13-validator-improvements`, herdada.
+
+---
+
+## 2026-09-05 — Onda 2 de contribuição ao upstream: fechada
+
+**Claude.** `ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream` → `done/`.
+
+A onda 1 reportou **casos**. Esta reportou as **classes**, e a varredura produziu achado que a
+inspeção caso-a-caso não tinha produzido em uma semana de campanha.
+
+| item | desfecho | onde |
+|---|---|---|
+| B1 + B2 predicados de plataforma | **achado novo** | [#276](https://github.com/kgsaran/trackfw/issues/276) |
+| C1 ponto único de leitura | varredura completa, **zero sítio novo** | [comentário no #268](https://github.com/kgsaran/trackfw/issues/268#issuecomment-5553347715) |
+| E2 corpus do barrier | acoplamento persiste pós-#257 | [#277](https://github.com/kgsaran/trackfw/issues/277) |
+
+### O sexto sítio
+
+Cinco predicados de plataforma foram corrigidos na campanha, cada um achado por acidente. Varri por
+primitiva — 84 usos de predicado de SO, 49 sítios de enumeração — e achei o **sexto** da classe
+`ENOTDIR`: `internal/integrations/manager.go:477`, **fora de `internal/validator/`**, onde toda a
+atenção esteve. Cinco dos seis já estavam na #269.
+
+E o `validator.go:2451` tem o comentário que nomeia o próprio defeito:
+
+```go
+// qualquer outro erro (ENOTDIR, EPERM…) deve ser reportado.
+if !os.IsNotExist(err) {
+```
+
+O comentário nomeia `ENOTDIR` como o que deve ser reportado, e é exatamente ele que o predicado
+engole no Windows.
+
+### O C1 não achou nada, e isso foi o entregável
+
+A varredura de ponto único de leitura acusou **exatamente os 4 sítios já conhecidos** e não acusou o
+resolvedor. Reportado como **"a lista está completa"** — o AC5 previa isso, e o valor do gate passa a
+ser impedir o quinto em vez de achar o quinto.
+
+Descartei uma hipótese no caminho: violação do D4 por **duplicação** do resolvedor, que grep de
+enumeração não pega. O candidato (`generators/roadmap.py:535`) **chama** o resolvedor na linha
+seguinte — falso positivo, registrado na issue porque a docstring induz ao erro.
+
+### A tabela de contrato
+
+`scripts/testdata/platform-predicates.tsv` — 13 casos, 5 famílias. Rodada em Windows real:
+
+```
+predicado NOVO   7/7
+predicado ANTIGO 5/7   <- a falsificacao
+```
+
+Fica aqui como **artefato de medição**, não como gate do produto. Se ele adotar, volta pelo merge.
+
+### Estado
+
+```
+validate    sem violacao · score 100/100
+REQs        57  (1 Open · 55 Done · 1 Closed)
+kanban      vazio
+divergencia de produto    0
+```
+
+Das 18 oportunidades do plano, as ondas **1 e 2 saíram inteiras**. Restam as ondas 3 e 4 em
+`docs/analises/`.
