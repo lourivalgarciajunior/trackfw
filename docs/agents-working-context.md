@@ -27906,3 +27906,54 @@ a #216.
 
 E uma nota de processo que o Kleber levantou e vale para mim: `Fecha #NNN` **não fecha issue** — o
 GitHub só reconhece palavra-chave em inglês. Corrigi o corpo da #254 para `Closes #253`.
+
+---
+
+## 2026-09-05 — Análise do projeto e abertura da governança do fork
+
+**Claude.** Ciclo de análise, sem tocar produto.
+
+### O que foi feito
+
+Análise das oportunidades de evolução do trackfw, medida contra `a958b57`, gravada em
+[`docs/analises/2026-09-05-oportunidades-de-evolucao.md`](analises/2026-09-05-oportunidades-de-evolucao.md):
+18 oportunidades em 4 ondas, cada uma com evidência, proposta e critério de falsificação.
+
+Das 18, **apenas 3 viraram REQ**. O resto fica no documento até chegar a vez — REQ que espera decisão
+de terceiro apodrece em `backlog/`, que é literalmente a dívida de junho que a primeira REQ trata.
+
+| REQ (todas `Open`, roadmap em `backlog/`) | MLs | dono do código |
+|---|---|---|
+| Dívida de governança do acervo — 42 violações | 7 | **nosso** |
+| Procedimento de merge do upstream com retenção | 8 | **nosso** |
+| Onda 1 de contribuição ao upstream | 7 | **upstream** |
+
+A terceira governa **nossa decisão de investir**, não o código: os 4 itens pousam em
+`kgsaran/trackfw` por issue ou PR e voltam pelo merge, como já aconteceu com a `#263`. A `main` deste
+fork nunca os recebe direto.
+
+### Estado medido
+
+```
+divergencia de produto com upstream   ZERO arquivos
+validate                              42 violacoes (inalterado pelos 3 artefatos novos)
+governance score                      60/100
+REQs                                  56 (11 Open · 36 Done · 9 Other)
+Roadmaps                              66 (3 novos em backlog)
+```
+
+### Duas lacunas do CLI encontradas ao usar
+
+Anotadas para a onda de contribuição, ainda **não** reportadas ao upstream:
+
+- **`req new` e `roadmap new` não têm seletor de agente** em `roadmap_namespacing: by_agent`.
+  Ambos gravam em `agents[0]` (`apolo`), enquanto o acervo inteiro vive em `claude/` (46 REQs, 61
+  roadmaps). Os 6 artefatos precisaram ser movidos à mão.
+- **`roadmap new --title` é ignorado**: o nome do arquivo sai do título da REQ. Só se percebe depois,
+  ao ver que os caminhos escritos no frontmatter da REQ não batem com o que foi gerado.
+
+### Correção pendente na documentação
+
+O `CLAUDE.md` afirma que `_force_utf8_output` é divergência local deliberada. **Não é mais** — o
+upstream absorveu (2 ocorrências em `upstream/main:pypi/trackfw/cli.py`). Está como AC7 da REQ do
+procedimento de merge.
