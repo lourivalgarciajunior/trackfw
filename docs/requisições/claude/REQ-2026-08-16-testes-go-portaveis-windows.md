@@ -1,4 +1,5 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
 id: REQ-2026-08-16-testes-go-portaveis-windows
 title: Testes de internal/generators não podem escrever no home real nem exigir bit POSIX
 status: done
@@ -77,3 +78,6 @@ do teste (conteúdo do hook, caminho, idempotência) continua rodando no Windows
 - [x] Comportamento de produção inalterado: `userHomeDir` continua sendo `os.UserHomeDir`
 - [x] A asserção de bit de execução continua ativa fora do Windows
 - [x] `check-cli-parity.sh`, `check-validate-parity.sh` e `check-static-assets.sh` passam
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md

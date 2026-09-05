@@ -1,4 +1,5 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-i18n-por-deteccao-de-ambiente-com-fallback-en-us-e-templates-seguem-o-idioma.md"
 name: i18n-wizard-java-scaffold
 description: Suporte multilingual, correções do wizard init e scaffold Java
 metadata:
@@ -33,3 +34,6 @@ Feedback do usuário após validação em ambiente Windows corporativo (primeiro
 - [ ] Projeto tipo `backend` pergunta linguagem → depois framework da linguagem
 - [ ] Projeto Java com `trackfw init` gera `pom.xml` válido com Spring Boot
 - [ ] Paridade entre binário Go e pacote npm para todos os itens acima
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-i18n-por-deteccao-de-ambiente-com-fallback-en-us-e-templates-seguem-o-idioma.md

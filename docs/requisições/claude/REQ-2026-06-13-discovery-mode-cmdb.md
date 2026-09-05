@@ -1,8 +1,9 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md"
 name: REQ-2026-06-13-discovery-mode-cmdb
 title: "Discovery Mode — Suporte a repositórios densos como o CMDB"
 status: Open
-linked_adr: —
+linked_adr: docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md
 linked_roadmap: docs/roadmaps/claude/wip/v2.5-discovery-json-traceid-2026-06-13.md
 created: 2026-06-13
 author: zeus
@@ -67,3 +68,6 @@ Nenhum critério de aceite está satisfeito sem implementação em AMBOS os CLIs
 ## Fora de Escopo
 - Migração automática de arquivos (discover apenas lê, nunca move)
 - Suporte a múltiplos `roadmap_dir` (uma raiz apenas, com subdirs por agente)
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md

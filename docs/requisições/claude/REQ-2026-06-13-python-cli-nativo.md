@@ -1,8 +1,9 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md"
 name: REQ-2026-06-13-python-cli-nativo
 title: "Python CLI Nativo — Reimplementação em Python Puro (paridade com Node.js)"
 status: Open
-linked_adr: —
+linked_adr: docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md
 linked_roadmap: docs/roadmaps/claude/backlog/v2.2-python-cli-nativo-2026-06-13.md
 created: 2026-06-13
 author: zeus
@@ -82,3 +83,6 @@ A partir desta REQ, toda feature implementada no Go CLI ou Node.js CLI **DEVE te
 - `trackfw serve` — exclusivo do CLI Go (HTTP server)
 - Migração automática do wrapper antigo para usuários existentes
 - Publicação no PyPI (tarefa operacional separada)
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md

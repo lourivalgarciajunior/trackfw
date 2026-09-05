@@ -1,4 +1,5 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md"
 id: REQ-2026-08-16-roadmap-move-sincroniza-status
 title: roadmap move deve sincronizar o campo status do frontmatter nos três runtimes
 status: done
@@ -80,3 +81,6 @@ arquivo sem frontmatter, que deve sair byte a byte idêntico.
 - [x] `go build ./...` verde; nenhuma falha de teste nova além das 10 pré-existentes de ambiente
 - [x] `check-cli-parity.sh`, `check-validate-parity.sh` e `check-static-assets.sh` passam
 - [x] Verificação de ponta a ponta: mover um roadmap e rodar `validate` não gera `folder_status`
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md

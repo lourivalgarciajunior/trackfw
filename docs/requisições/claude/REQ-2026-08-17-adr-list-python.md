@@ -1,4 +1,5 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md"
 id: REQ-2026-08-17-adr-list-python
 title: Portar adr list para o Python e alinhar o parser de status nos três
 status: done
@@ -82,3 +83,6 @@ ADRs são planas.
 - [x] `adr:python:list:faltando` removida do allowlist e o gate passa
 - [x] Teste por runtime cobrindo a fonte do status e o caso do corpo
 - [x] Quatro gates passam; suítes dos três sem falha nova
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md

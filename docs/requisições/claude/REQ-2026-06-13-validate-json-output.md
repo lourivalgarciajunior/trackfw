@@ -2,7 +2,7 @@
 name: REQ-2026-06-13-validate-json-output
 title: "v2.5 — validate --json: saída estruturada para integração CI/CD"
 status: Open
-adr: —
+adr: "docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md"
 roadmap: docs/roadmaps/claude/done/v2.5-discovery-json-traceid-2026-06-13.md
 created: 2026-06-13
 author: zeus
@@ -57,3 +57,6 @@ Exit code inalterado (comportamento atual mantido).
 
 ## Linked Roadmap
 Roadmap: docs/roadmaps/claude/done/v2.5-discovery-json-traceid-2026-06-13.md
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md

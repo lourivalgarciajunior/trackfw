@@ -1,4 +1,5 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md"
 name: REQ-2026-06-18-trackfw-update-command
 title: "trackfw update — atualizar regras, gates e artefatos gerenciados"
 status: Proposed
@@ -45,3 +46,6 @@ Precisamos de um comando `trackfw update` que re-aplique todos os templates atua
 ## Restrição Python
 
 O CLI Python tem `init_gen.py` parcialmente implementado (sem geração de gates/hooks completa). O `trackfw update` Python faz apenas: inject de regras de agente + avisa que gates e commands precisam do CLI Go/Node.
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md

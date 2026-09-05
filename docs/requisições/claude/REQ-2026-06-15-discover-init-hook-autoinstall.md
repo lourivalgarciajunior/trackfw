@@ -2,7 +2,7 @@
 name: REQ-2026-06-15-discover-init-hook-autoinstall
 title: "feat: discover --init instala hook framework automaticamente quando nenhum é detectado"
 status: Open
-adr: —
+adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
 roadmap: docs/roadmaps/claude/done/discover-init-hook-autoinstall-2026-06-15.md
 created: 2026-06-15
 author: zeus
@@ -68,3 +68,6 @@ A lógica de detecção e instalação deve ser implementada nos três CLIs:
 
 ## Linked Roadmap
 Roadmap: docs/roadmaps/claude/done/discover-init-hook-autoinstall-2026-06-15.md
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md

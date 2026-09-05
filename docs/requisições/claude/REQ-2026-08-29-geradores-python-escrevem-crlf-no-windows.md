@@ -2,7 +2,7 @@
 status: done
 date: 2026-08-29
 author: claude
-adr: ""
+adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
 roadmap: ROADMAP-2026-08-29-geradores-python-escrevem-crlf-no-windows
 ---
 
@@ -34,7 +34,8 @@ byte a byte para a mesma entrada.
 Entre os 23 arquivos estao os cinco `scripts/*.sh` que o `trackfw init` gera. O shebang sai assim:
 
 ```
-py     b'#!/usr/bin/env bash'
+py     b'#!/usr/bin/env bash
+'
 go     b'#!/usr/bin/env sh'
 node   b'#!/usr/bin/env sh'
 ```
@@ -77,7 +78,7 @@ alcanca.
 
 ## Linked ADR
 
-ADR: 
+ADR: docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md
 
 ## Blocked by ADRs
 <!-- none -->

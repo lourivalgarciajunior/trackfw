@@ -1,4 +1,5 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md"
 id: REQ-2026-08-16-aspas-em-itens-de-lista
 title: Remover aspas de itens de lista em adr_dirs e agents no parser de trackfw.yaml
 status: done
@@ -79,3 +80,6 @@ duplas) e assevera que os valores chegam limpos. Sem esse teste o bug volta.
       usa unittest da stdlib)
 - [x] `bash scripts/check-cli-parity.sh` e `bash scripts/check-validate-parity.sh` passam
 - [x] `trackfw validate` acha o mesmo número de itens com e sem aspas no `agents:`
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md

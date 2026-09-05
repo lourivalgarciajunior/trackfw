@@ -1,4 +1,5 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md"
 id: REQ-2026-08-16-consistencias-template-saida-e-eol
 title: Quatro inconsistências reveladas na sessão de 2026-08-16 — template, header, saída e EOL
 status: done
@@ -89,3 +90,6 @@ atual.
 - [x] `.gitattributes` existe e `gofmt -l internal/ cmd/` devolve zero
 - [x] `go test ./...` com zero falhas; suíte pypi na baseline de 6 errors + 1 failure
 - [x] Os três gates de paridade passam sem prefixo de ambiente
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md

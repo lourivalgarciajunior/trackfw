@@ -1,4 +1,5 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
 id: REQ-2026-06-20-attention-hooks-agent-clis
 title: Attention hooks — banner de atenção no board quando o agente precisa do usuário
 status: done
@@ -74,3 +75,6 @@ Os critérios foram marcados em 2026-08-16 por **inspeção do entregável**, n�
 `hooks.go`/`hooks_test.go`/`codex.go` em `internal/generators/`, `hooks.js`/`codex.js` em
 `npm/src/generators/` e `hooks.py`/`codex.py` em `pypi/trackfw/generators/`. Não houve conferência
 critério a critério.
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md

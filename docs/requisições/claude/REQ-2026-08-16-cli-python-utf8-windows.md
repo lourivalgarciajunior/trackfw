@@ -1,4 +1,5 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
 id: REQ-2026-08-16-cli-python-utf8-windows
 title: CLI Python quebra com UnicodeEncodeError em console Windows
 status: done
@@ -74,3 +75,6 @@ exemplo). A reconfiguração precisa ser condicional e silenciosa nesses casos.
 - [x] Suíte pypi sem falha nova: baseline atual é 6 errors + 1 failure pré-existentes
 - [x] `go test ./...` segue com zero falhas
 - [x] Teste cobrindo o caso de `sys.stdout` sem `reconfigure`
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md

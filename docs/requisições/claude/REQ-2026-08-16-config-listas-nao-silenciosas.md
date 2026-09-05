@@ -1,4 +1,5 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md"
 id: REQ-2026-08-16-config-listas-nao-silenciosas
 title: Parser de trackfw.yaml não pode descartar listas em silêncio
 status: done
@@ -99,3 +100,6 @@ Trocar o exemplo inline pela forma de bloco em `README.md:199`.
 - [x] `README.md` não documenta mais a forma inline
 - [x] `go test ./...` zero falhas, `pytest tests/` zero falhas, testes npm verdes
 - [x] Os três gates de paridade passam
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md

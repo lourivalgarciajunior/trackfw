@@ -1,4 +1,5 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md"
 id: REQ-2026-08-16-roadmap-new-paridade-contrato
 title: roadmap new tem contrato diferente em cada runtime
 status: done
@@ -83,3 +84,6 @@ Registrado como divergência conhecida, fora do escopo.
 - [x] Teste por runtime cobrindo: com `--req`, sem REQ, e `--from-req`
 - [x] `go test ./...` zero falhas; `pytest tests/` zero falhas; testes npm verdes
 - [x] Os três gates de paridade passam
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md

@@ -1,5 +1,5 @@
 ---
-status: backlog
+status: wip
 date: 2026-09-05
 req: "docs/requisições/claude/REQ-2026-09-05-divida-de-governanca-do-acervo-42-violacoes-das-quais-32-reqs-sem-adr.md"
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: Dívida de governança do acervo — 42 violações, das quais 32 REQs sem ADR
 
-> Created: 2026-09-05 | Status: backlog
+> Created: 2026-09-05 | Status: wip
 
 ## Context
 <!-- Derived from REQ: REQ-2026-09-05-divida-de-governanca-do-acervo-42-violacoes-das-quais-32-reqs-sem-adr.md -->
@@ -51,7 +51,7 @@ exit 1  # placeholder gate fails closed until ML-0A replaces it — see docs/cli
 > Dependencies: none
 
 ### ML-1A — **AC1** — Os 4 blocos mecanizáveis (roadmap em `done/`, frontmatter ausente, ADR órfã, status…
-**Status:** ⬜ Pendente
+**Status:** 🔄 Em andamento
 **Files affected:**
 **Actions:**
 **Acceptance criteria:**
@@ -60,7 +60,7 @@ exit 1  # placeholder gate fails closed until ML-0A replaces it — see docs/cli
 - [ ] tests green
 
 ### ML-1B — **AC2** — Cada uma das **32 REQs sem ADR** recebeu um dos dois desfechos, com o motivo…
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:**
 **Actions:**
 **Acceptance criteria:**

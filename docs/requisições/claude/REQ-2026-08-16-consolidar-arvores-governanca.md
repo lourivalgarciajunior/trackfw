@@ -1,4 +1,5 @@
 ---
+adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
 id: REQ-2026-08-16-consolidar-arvores-governanca
 title: Consolidar as três árvores de artefato de governança em uma só
 status: approved
@@ -80,3 +81,6 @@ Mover os dois primeiros para `done/`; o `trackfw-update-command` em `wip/` é du
 - [x] `go build ./...` verde e nenhuma mudança de código do produto foi necessária
 - [ ] `go test ./...` verde — **não atingido**: 10 falhas em `internal/generators`, pré-existentes
       e específicas de Windows, confirmadamente independentes deste trabalho. Ver Residual.
+
+## Linked ADR
+ADR: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md
