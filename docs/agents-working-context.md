@@ -28022,3 +28022,59 @@ A `REQ-2026-06-13-trackfw-ai-agent-governance-rail` apontava para
 `ADR-001-trackfw-como-trilho-de-governanca-para-agentes-ia.md`, que **existe no upstream** e não aqui.
 Pela ADR-2026-08-29 a governança dele não é importada, então a decisão foi registrada do nosso lado
 numa ADR nova. Residual declarado: as duas podem divergir, e a do upstream não foi lida.
+
+---
+
+## 2026-09-05 — Procedimento de merge do upstream: fechado
+
+**Claude.** `ROADMAP-2026-09-05-procedimento-de-merge-do-upstream-com-retencao` → `done/`.
+
+### Entregue
+
+- **`scripts/upstream-sync.sh`** — mescla, retém `docs/` e `vault/`, **prova a retenção por efeito**
+  (`git diff --cached -- docs vault` tem de sair vazio, senão aborta e devolve a árvore), reporta a
+  proporção produto/governança, e verifica `go build` + paridade da contagem do `validate`. Não
+  commita nem faz push por padrão.
+- **`scripts/check-upstream-sync-falsify.sh`** — o gate, contra dois merges **históricos** reais mais
+  dois controles negativos.
+- **`CLAUDE.md`** — instrução de atualizar reescrita; seção de divergência corrigida.
+
+### A medição derrubou dois números meus
+
+A tabela da REQ e o AC4 vinham de contagem à mão que só olhava `docs/{adr,req,roadmaps}` e ignorava
+`vault/`, `docs/qualidade` e `docs/cli-parity.md`:
+
+```
+4f0ad33   retem 37, nao 32
+6b3ba49   tem 52 arquivos e retem 10, nao 0
+```
+
+O AC4 exigia *"trazer os 42 sem reter nada"*. **O AC estava errado, não o script** — os 10 retidos
+são todos `docs/` e `vault/`, com zero produto suprimido. Reescrevi o AC para verificar a
+**invariante** em vez da contagem:
+
+```
+retido   ⊆  docs/ ∪ vault/          (nao suprime produto)
+trazido  =  tudo que nao e docs/ nem vault/   (nao deixa produto para tras)
+```
+
+A invariante sobrevive à correção; a contagem não sobreviveria.
+
+### O gate foi falsificado, não só executado
+
+Mutei o `upstream-sync.sh` para reter `scripts/` (que é produto) e confirmei que o gate **reprova nas
+duas invariantes, nos dois casos**. Depois restaurei e conferi que volta a passar.
+
+### Uma decisão de escopo
+
+**Não há alvo no `Makefile`, de propósito.** O `Makefile` é compartilhado com o upstream, e
+modificá-lo criaria divergência de produto que todo merge futuro pagaria. Arquivo **novo** em
+`scripts/` não cria divergência — é o precedente dos outros três scripts só nossos.
+
+### Estado
+
+```
+validate    sem violacao · score 100/100
+divergencia de produto    0
+REQs restantes em backlog/  1  (onda 1 de contribuicao ao upstream)
+```

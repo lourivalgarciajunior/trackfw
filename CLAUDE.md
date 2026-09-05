@@ -214,19 +214,40 @@ Delete the file when resolved. Visible as a live banner in `trackfw serve`.
 O produto vem de `kgsaran/trackfw`, adicionado como remote `upstream`. Este repo **consome** o
 trackfw e o usa para governar a si mesmo; ele não é a linha principal do produto.
 
-**Atualizar:**
+**Atualizar — use o script, não o `git merge` cru:**
 
 ```bash
 git fetch upstream
-git merge upstream/<tag>     # ex.: upstream/v7.4.0
+./bin/trackfw branch new chore/<slug>
+scripts/upstream-sync.sh
 ```
 
-Funciona porque `ADR-2026-08-29-adotar-upstream-como-base` estabeleceu a ancestralidade com um merge
-de históricos. Antes disso o repo era cópia por ZIP, sem ancestral comum, e `git merge` se recusava
-a rodar — o que deixou este repo cinco majors atrás sem ninguém perceber.
+O `upstream-sync.sh` mescla, **retém `docs/` e `vault/`**, prova a retenção por efeito, reporta a
+proporção produto/governança e verifica que o `validate` não mexeu. Não commita nem faz push por
+padrão: o commit carrega a medição, e quem mede é quem escreve. Aborta e devolve a árvore se sobrar
+conflito de produto ou se a retenção não puder ser provada.
 
-Conflito ao atualizar é esperado e é o sinal de onde vocês divergem. A política é a da ADR: produto
-vem do upstream; `docs/`, `trackfw.yaml` e `.gitattributes` são locais.
+**Por que não `git merge` direto.** Com `roadmap_namespacing: by_agent`, o git detecta os roadmaps
+flat do upstream (`docs/roadmaps/wip/`) como **renomeação** dos nossos (`docs/roadmaps/claude/done/`)
+e produz uma enxurrada de `rename/delete` — **23 conflitos** no merge de `4f0ad33`. Resolver um a um
+é caro e erra fácil, e a `ADR-2026-08-29` já decidiu o resultado: não há julgamento a fazer.
+
+A ancestralidade que torna o merge possível veio daquela ADR, com um merge de históricos. Antes
+disso o repo era cópia por ZIP, sem ancestral comum, e `git merge` se recusava a rodar — o que
+deixou este repo cinco majors atrás sem ninguém perceber.
+
+**A proporção é o discriminante.** Um merge que fecha com muito mais que uma mão-cheia de arquivos
+de produto indica que algo de `docs/` passou. Medido nos merges reais: `4f0ad33` trouxe 4 de produto
+e reteve 37; `6b3ba49` trouxe 42 e reteve 10.
+
+**Falsificação:** `scripts/check-upstream-sync-falsify.sh` exercita o script contra esses dois
+merges históricos mais dois controles negativos. A propriedade verificada é a **invariante** —
+retido ⊆ `docs/` ∪ `vault/`, e todo o resto trazido —, não a contagem: a contagem à mão errou nos
+dois casos.
+
+**Não há alvo no `Makefile` de propósito.** O `Makefile` é arquivo compartilhado com o upstream, e
+modificá-lo criaria divergência de produto que todo merge futuro pagaria. Acrescentar arquivo novo
+em `scripts/` não cria divergência — é o mesmo precedente dos outros três scripts só nossos.
 
 **Governança local** (o `trackfw.yaml` daqui sobrescreve dois defaults do produto):
 
@@ -237,6 +258,21 @@ vem do upstream; `docs/`, `trackfw.yaml` e `.gitattributes` são locais.
 A governança do upstream **não** é importada: as 52 ADRs, 140 REQs e 142 roadmaps dele cairiam
 dentro de `docs/adr/` e `docs/roadmaps/`, que é onde vive a governança daqui.
 
-**Divergência local deliberada:** `pypi/trackfw/cli.py` tem `_force_utf8_output`, que não existe no
-upstream. Sem ele, `--help`, `status` e `validate` morrem com `UnicodeEncodeError` em console
-Windows cp1252. Ver `REQ-2026-08-16-cli-python-utf8-windows`.
+**Divergência local de produto: NENHUMA.** Medido em 2026-09-05:
+
+```bash
+git diff --name-only main upstream/main -- internal npm/src pypi/trackfw cmd .github Makefile
+# (vazio)
+```
+
+Os únicos arquivos só nossos são adições que o upstream não tem — `scripts/check-slug-inventory.sh`,
+`scripts/check-subcommand-parity.sh`, `scripts/check-upstream-content.sh`, `scripts/upstream-sync.sh`
+e `scripts/check-upstream-sync-falsify.sh`. Adição não é divergência: nenhum arquivo compartilhado
+difere.
+
+> **Correção de 2026-09-05.** Esta seção afirmava que `_force_utf8_output` em `pypi/trackfw/cli.py`
+> era divergência local deliberada. **Não é mais** — o upstream absorveu (2 ocorrências em
+> `upstream/main:pypi/trackfw/cli.py`). A `REQ-2026-08-16-cli-python-utf8-windows` continua válida
+> como registro do defeito e da correção; o que caducou foi a afirmação de que ela só existe aqui.
+> Documentação que descreve divergência inexistente faz o próximo merge procurar conflito onde não
+> há.
