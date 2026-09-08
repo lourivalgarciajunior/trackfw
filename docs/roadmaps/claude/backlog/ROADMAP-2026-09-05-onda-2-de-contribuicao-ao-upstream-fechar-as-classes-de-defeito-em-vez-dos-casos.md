@@ -1,5 +1,5 @@
 ---
-status: done
+status: backlog
 date: 2026-09-05
 req: "docs/requisições/claude/REQ-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md"
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: Onda 2 de contribuição ao upstream — fechar as classes de defeito em vez dos casos
 
-> Created: 2026-09-05 | Status: done
+> Created: 2026-09-05 | Status: backlog
 
 ## Context
 <!-- Derived from REQ: REQ-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md -->

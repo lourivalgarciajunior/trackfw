@@ -1,9 +1,9 @@
 ---
-status: Done
+status: Open
 date: 2026-09-05
 author: "claude"
 adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
-roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md"
+roadmap: "docs/roadmaps/claude/backlog/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md"
 ---
 
 # REQ: Onda 2 de contribuição ao upstream — fechar as classes de defeito em vez dos casos
@@ -49,22 +49,62 @@ são do produto.
 
 ## Acceptance Criteria
 
-- [ ] **AC1 — B1: tabela de contrato de predicados de plataforma.** Uma tabela declarativa
+- [x] **AC1 — B1: tabela de contrato de predicados de plataforma.** Uma tabela declarativa
       (`caso · predicado · esperado`) consumida pelos 3 runtimes, cobrindo os 5 predicados acima.
       Falsificação: rodar contra os predicados **antigos** tem de reprovar; contra os novos, passar.
       Medido em Windows real, não por mutação.
-- [ ] **AC2 — B2: lint contra predicado de SO em sítio de classificação.** Gate que reprova
+
+      > **Entregue pela metade, e a outra metade migrou.** A tabela existe —
+      > `scripts/testdata/platform-predicates.tsv`, 13 casos em 5 famílias. O que **não** existe é o
+      > consumo: medido em 2026-09-08, o arquivo é referenciado por **três documentos e nenhum
+      > script**. A parte que falta virou
+      > `REQ-2026-09-08-corpus-de-predicados-de-plataforma-nao-e-lido-por-gate-nenhum`, com 7 ACs —
+      > inclusive a falsificação que este AC pedia e a guarda de integridade de vetor, que este não
+      > previa.
+- [ ] 🔴 **AC2 — B2: lint contra predicado de SO em sítio de classificação.** — **O ÚNICO EM ABERTO.** Gate que reprova
       `filepath.IsAbs`, `os.IsNotExist`, `os.path.isabs`, `path.isAbsolute`, `process.platform`,
       `os.name` em sítios de **classificação**. Sítios de **travessia** de sistema de arquivos ficam
       fora, por decisão do D2 da `ADR-2026-09-04`. A lista de exceções é explícita e cada uma tem
       motivo escrito.
-- [ ] **AC3 — C1: gate de ponto único de leitura.** Acusa enumeração de `req_dir`/`roadmap_dir` fora
+
+      > **Não entregue, e não abandonado — porque a superfície é grande e viva.** Medida em
+      > 2026-09-08 na árvore atual:
+      >
+      > | predicado | sítios |
+      > |---|---|
+      > | `os.IsNotExist` | 61 |
+      > | `filepath.IsAbs` | 19 |
+      > | `os.path.isabs` | 10 |
+      > | `process.platform` | 7 |
+      > | `path.isAbsolute` | 5 |
+      > | `os.name` | 3 |
+      > | **total** | **105** |
+      >
+      > Considerei abandonar com motivo medido, pelo critério do mantenedor — *"ML que ninguém vai
+      > fazer é o mesmo passivo das REQs órfãs, só mais bem escondido"*. **A medição desautoriza o
+      > abandono:** 105 sítios não é dívida morta. E o `internal/pathanchor`, criado por ele em
+      > 2026-09-08, cobre só a família de ancoragem — é consumido por 3 arquivos, não pelos 105.
+- [x] **AC3 — C1: gate de ponto único de leitura.** Acusa enumeração de `req_dir`/`roadmap_dir` fora
       do resolvedor canônico. Falsificação: tem de acusar os sítios **já conhecidos**
       (`status.py:57`, `sync.go:43`, `sync.js:237`, `sync.py:197`) e **não** acusar o próprio
       resolvedor.
-- [ ] **AC4 — E2: corpus do `barrier-contract` desacoplado da governança.** Medir o custo real para
+
+      > **Alcançado por outra via: o achado saiu, o instrumento não.** O
+      > [#268](https://github.com/kgsaran/trackfw/issues/268) cita os **quatro** sítios nominais
+      > deste AC — `status.py:57`, `status.py:58`, `sync.go:43`, `sync.js:237`, `sync.py:197` —,
+      > medidos e reportados. Ele está na fila de execução do mantenedor, posição 7.
+      >
+      > O gate local que este AC descrevia como método **não foi construído**: os sítios foram
+      > achados por varredura direta. Fica declarado assim, e não como se o instrumento existisse.
+- [x] **AC4 — E2: corpus do `barrier-contract` desacoplado da governança.** Medir o custo real para
       um consumidor e propor a separação: fixtures próprias em `scripts/testdata/` para o parser, e
       um segundo gate — só no upstream — conferindo que `docs/roadmaps` ainda parseia.
+
+      > **Cumprido.** Virou o [#277](https://github.com/kgsaran/trackfw/issues/277) — *108 de 144
+      > basenames ausentes num consumidor* —, com o custo real medido depois (`918 OK · 1 FAIL`,
+      > `18m12s`). O mantenedor aceitou a proposta de interruptor (`TRACKFW_SELF_GOVERNED=1`) em vez
+      > da separação por fixtures, e disse por quê: *"sem a sua medição eu teria proposto sintetizar
+      > 144 arquivos — trabalho grande para o problema errado."* Está na fila dele, posição 10.
 - [x] **AC5** — Cada item vira issue no `kgsaran/trackfw` com o achado **medido**, o controle na
       direção oposta, e a ressalva do que a medição **não** prova. Item cujo gate não produzir achado
       novo é reportado **como isso mesmo** — gate sem achado é resultado, não fracasso.
@@ -89,7 +129,7 @@ ADR: docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md
+Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md
 
 ## Desfecho (2026-09-05)
 

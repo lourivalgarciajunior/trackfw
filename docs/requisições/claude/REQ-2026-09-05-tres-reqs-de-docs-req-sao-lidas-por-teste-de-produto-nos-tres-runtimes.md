@@ -71,8 +71,18 @@ decisão do mantenedor. Vai como issue.
 - [x] **AC2** — Os dois gates passam **ao mesmo tempo**: `check-referential-integrity.sh` diz
       `Referential integrity OK` **e** o teste dos três runtimes passa. Medido local antes do PR.
 - [x] **AC3** — `validate` sem violação e denominador conferido.
-- [ ] **AC4** — O acoplamento vira issue no upstream, com a medição — é instância mais forte do #277
+- [x] **AC4** — O acoplamento vira issue no upstream, com a medição — é instância mais forte do #277
       e deve ser reportada como tal, não como bug isolado.
+
+      > **Resolvido de outra forma, por decisão do mantenedor.** Ofereci abrir issue separada; ele
+      > recusou no [#277](https://github.com/kgsaran/trackfw/issues/277), citando a regra dura do
+      > projeto dele: *"Descobertas novas, se forem do mesmo sintoma ou mesma causa, devem ser
+      > fechadas dentro do mesmo roadmap."* E classificou: *"os dois casos são a mesma causa —
+      > fixture acoplada a propriedade acidental da árvore — e vão para o mesmo lugar. **O seu
+      > achado é o mais grave dos dois.**"*
+      >
+      > O AC pedia uma issue; a resposta correta foi **não abrir uma**. Marcado como atendido com o
+      > desvio escrito, em vez de deixado em aberto fingindo pendência.
 - [x] **AC5** — Nenhum arquivo de produto tocado aqui.
 
 ## Negative Scope
