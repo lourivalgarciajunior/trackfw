@@ -65,8 +65,14 @@ a minha regressão mascara o resultado.
       não de um diretório escolhido — é o erro que produziu esta REQ.
 - [x] **AC2** — O `parity` deixa de reportar erro de integridade referencial. Verificado **no CI**,
       não localmente: o `validate` local não enxerga `docs/req/` e por isso não serve de prova aqui.
-- [ ] **AC3** — Com o `parity` passando dessa etapa, medir **se o gate do barrier reprova** — e com
+- [x] **AC3** — Com o `parity` passando dessa etapa, medir **se o gate do barrier reprova** — e com
       isso responder a pergunta do #277 com dado, não com suposição.
+
+      > **Marcado em 2026-09-08, com atraso.** Foi cumprido em 2026-09-06: medido `918 OK · 1 FAIL`
+      > (`corpus/basename-missing-from-disk`) em `18m12s`, e levado ao
+      > [#277](https://github.com/kgsaran/trackfw/issues/277). O mantenedor respondeu que o número
+      > decidiu a forma da correção — *"1 FAIL em 919 não justifica reescrever o corpus; justifica
+      > um interruptor"*. O que faltou foi marcar o quadrado.
 - [x] **AC4** — Nenhum arquivo de produto tocado.
 
 ## Negative Scope
