@@ -1,17 +1,28 @@
-# Contrato de predicados de plataforma - B1 da REQ-2026-09-05-onda-2.
-# A resposta ESPERADA e a mesma nos 3 runtimes e nos 3 SOs. A coluna nativo_windows
-# registra o que o predicado NATIVO responde de fato - e onde as duas divergem esta
-# o defeito. Formato: familia<TAB>caso<TAB>esperado<TAB>nativo_windows<TAB>nota
-anchored	/opt/foo/guard.sh	true	false	filepath.IsAbs do Go; corrigido na PR #271
-anchored	C:\foo\guard.sh	true	true	letra de unidade
-anchored	\\servidor\share\g.sh	true	true	UNC valido
-anchored	\\	false	true	IsAbs aceita 2 barras nuas
-anchored	\\x	false	true	sem segmento de share
-anchored	scripts/guard.sh	false	false	relativo
-anchored	//servidor/share/g.sh	true	true	forma POSIX de UNC
-direrr	arquivo-lido-como-diretorio	report	swallow	os.IsNotExist(ENOTDIR)=true no Windows
-direrr	caminho-inexistente	suppress	suppress	ENOENT - supressao legitima
-direrr	subdir-dentro-de-arquivo	report	swallow	mesma causa do primeiro
-bash	resolucao-por-nome-nu	absolute	stub-ou-erro	System32\bash.exe vence; PR #267
-execbit	arquivo-0755-em-ntfs	sem-bit	sem-bit	NTFS nao tem a propriedade; supressao NOMEADA
-isatty	NUL-redirecionado	false	true	isatty do Python; REQ-2026-08-29
+# Contrato de predicados de plataforma - B1 da REQ-2026-09-05-onda-2.
+# A resposta ESPERADA e a mesma nos 3 runtimes e nos 3 SOs. A coluna nativo_windows
+# registra o que o predicado NATIVO responde de fato - e onde as duas divergem esta
+# familia<TAB>caso<TAB>bytes<TAB>esperado<TAB>nativo_windows<TAB>nota. A coluna BYTES e o
+# comprimento em bytes UTF-8 do campo CASO, e existe para que uma barra invertida perdida
+# na LEITURA reprove o gate em vez de virar comparacao entre dois valores errados.
+anchored	/opt/foo/guard.sh	17	true	false	filepath.IsAbs do Go; corrigido na PR #271
+anchored	C:\foo\guard.sh	15	true	true	letra de unidade
+anchored	\\servidor\share\g.sh	21	true	true	UNC valido
+anchored	\\	2	false	true	IsAbs aceita 2 barras nuas
+anchored	\\x	3	false	true	sem segmento de share
+anchored	scripts/guard.sh	16	false	false	relativo
+anchored	//servidor/share/g.sh	21	true	true	forma POSIX de UNC
+# --- 7 vetores medidos em 2026-09-08 (x64, Git Bash). Todos IsAbs=true e IsAnchored=false,
+# --- e nenhum e defeito: sao rejeicoes DELIBERADAS do predicado ancorado. Ver REQ-2026-09-08.
+anchored	\\.\x	5	false	true	servidor '.' nao e hostname valido - rejeicao deliberada
+anchored	\\srv	5	false	true	sem separador de share
+anchored	\\srv\	6	false	true	share vazio
+anchored	\\\a\b	6	false	true	barra dupla no meio produz share vazio
+anchored	\\..\evil	9	false	true	servidor '..' nao e hostname valido - ressalva do parecer hades
+anchored	\\.\pipe\x	10	false	true	device path, nao UNC de arquivo
+anchored	1:\x	4	false	true	'1' nao e letra de unidade ASCII - isASCIIDriveLetter recusa
+direrr	arquivo-lido-como-diretorio	27	report	swallow	os.IsNotExist(ENOTDIR)=true no Windows
+direrr	caminho-inexistente	19	suppress	suppress	ENOENT - supressao legitima
+direrr	subdir-dentro-de-arquivo	24	report	swallow	mesma causa do primeiro
+bash	resolucao-por-nome-nu	21	absolute	stub-ou-erro	System32\bash.exe vence; PR #267
+execbit	arquivo-0755-em-ntfs	20	sem-bit	sem-bit	NTFS nao tem a propriedade; supressao NOMEADA. ATENCAO: esperado=sem-bit e fato de NTFS, nao expectativa cross-SO -- em POSIX chmod 0755 ACENDE o bit e esta linha reprovaria. Ver ML-1D.
+isatty	NUL-redirecionado	17	false	true	isatty do Python; REQ-2026-08-29

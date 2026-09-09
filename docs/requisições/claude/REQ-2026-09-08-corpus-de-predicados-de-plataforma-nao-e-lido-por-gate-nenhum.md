@@ -1,14 +1,14 @@
 ---
-status: Open
+status: Done
 date: 2026-09-08
 author: "claude"
 adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
-roadmap: "docs/roadmaps/claude/backlog/ROADMAP-2026-09-08-corpus-de-predicados-de-plataforma-nao-e-lido-por-gate-nenhum.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-09-08-corpus-de-predicados-de-plataforma-nao-e-lido-por-gate-nenhum.md"
 ---
 
 # REQ: corpus de predicados de plataforma não é lido por gate nenhum
 
-> Date: 2026-09-08 | Status: Open
+> Date: 2026-09-08 | Status: Done
 
 ## Motivation
 
@@ -60,25 +60,25 @@ está escrito**.
 
 ## Acceptance Criteria
 
-- [ ] **AC1** — Existe um gate que lê `scripts/testdata/platform-predicates.tsv` e executa cada
+- [x] **AC1** — Existe um gate que lê `scripts/testdata/platform-predicates.tsv` e executa cada
       caso contra o predicado real do runtime, comparando com a coluna correta para o SO corrente
       (`esperado` em POSIX, `nativo_windows` no Windows).
-- [ ] **AC2** — 🔴 **Guarda de integridade do vetor**, antes de qualquer comparação: o gate afirma o
+- [x] **AC2** — 🔴 **Guarda de integridade do vetor**, antes de qualquer comparação: o gate afirma o
       **comprimento em bytes** de cada vetor lido e falha se divergir do declarado. Sem isso, uma
       barra perdida na leitura vira verde. Falsificação obrigatória: corromper um vetor no arquivo
       tem de reprovar o gate.
-- [ ] **AC3** — **Guarda de vacuidade**: o gate falha se o corpus tiver zero linhas, se nenhuma
+- [x] **AC3** — **Guarda de vacuidade**: o gate falha se o corpus tiver zero linhas, se nenhuma
       família for exercitada, ou se o número de casos executados for menor que o número de linhas
       não-comentário. Verde sobre denominador zero não conta.
-- [ ] **AC4** — Falsificação nas duas direções, por família: mutar o predicado (ou o valor esperado)
+- [x] **AC4** — Falsificação nas duas direções, por família: mutar o predicado (ou o valor esperado)
       faz o gate reprovar, **e** o gate passa na árvore intacta. Só uma das duas não é prova.
-- [ ] **AC5** — O corpus é estendido com os 7 vetores medidos hoje que ele não cobre, cada um com a
+- [x] **AC5** — O corpus é estendido com os 7 vetores medidos hoje que ele não cobre, cada um com a
       nota do **porquê** a rejeição é deliberada — não como defeito.
-- [ ] **AC6** — Decisão escrita sobre **onde o gate roda**. O nosso CI de `parity` roda em
+- [x] **AC6** — Decisão escrita sobre **onde o gate roda**. O nosso CI de `parity` roda em
       `ubuntu-latest`, onde metade do corpus é vacuamente satisfeita (`os.sep` já é `/`,
       `filepath.IsAbs` já concorda). 🔴 "Só roda no Windows local" é decisão válida — mas fica
       **escrito** que a cobertura depende disso, em vez de silenciosamente.
-- [ ] **AC7** — `trackfw validate` sem violação e com denominador conferido, medido com o binário da
+- [x] **AC7** — `trackfw validate` sem violação e com denominador conferido, medido com o binário da
       árvore reconstruído.
 
 ## Negative Scope
@@ -91,6 +91,22 @@ está escrito**.
 - **Não** propor o gate ao upstream nesta REQ. Se ele se provar útil aqui, isso é issue própria,
   depois de medido.
 
+## Residual declarado
+
+- **`bash/resolucao-por-nome-nu` não foi exercitado**: `System32ash.exe` não existe nesta máquina
+  (sem WSL). Declarado N/A com a razão, e a declaração é falsificável — numa máquina com WSL o
+  caso volta a ser comparado.
+- **O cabeçalho do corpus está errado para uma linha.** Ele afirma *"a resposta ESPERADA é a mesma
+  nos 3 runtimes e nos 3 SOs"*, e o `execbit` viola isso: `sem-bit` é fato de NTFS. A nota da linha
+  foi qualificada; **corrigir o cabeçalho fica para quem rodar em POSIX** e puder medir, em vez de
+  reescrever por dedução.
+- **Não rodei em Linux.** A previsão de que o `execbit` reprovaria lá vem de leitura de `chmod` e
+  `os.stat`, não de execução. Está marcada como previsão.
+- **Cobertura tri-runtime parcial em `anchored`**: o executor usa o predicado **Go**
+  (`pathanchor.IsAnchored`). Node não tem equivalente exportado; Python tem
+  `_path_is_anchored_for_hook_config`, privado por convenção. Ampliar é trabalho próprio, não
+  ajuste deste gate.
+
 ## Linked ADR
 ADR: docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md
 
@@ -98,4 +114,4 @@ ADR: docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-09-08-corpus-de-predicados-de-plataforma-nao-e-lido-por-gate-nenhum.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-09-08-corpus-de-predicados-de-plataforma-nao-e-lido-por-gate-nenhum.md

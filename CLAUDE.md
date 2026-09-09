@@ -375,6 +375,35 @@ merges históricos mais dois controles negativos. A propriedade verificada é a 
 retido ⊆ `docs/` ∪ `vault/`, e todo o resto trazido —, não a contagem: a contagem à mão errou nos
 dois casos.
 
+## Gate de predicados de plataforma (`scripts/check-platform-predicates.sh`)
+
+O `scripts/testdata/platform-predicates.tsv` deixou de ser tabela decorativa: o gate executa cada
+caso contra o predicado **real** do runtime. 20 casos, 5 famílias.
+
+```bash
+bash scripts/check-platform-predicates.sh
+```
+
+**Roda no Windows, local, e NÃO entra no CI — decisão medida, não preferência.** 14 das 20 linhas
+divergem entre `esperado` e `nativo_windows`, ou seja, só dizem algo no Windows; em `ubuntu-latest`
+o gate consultaria a coluna `esperado` e passaria descrevendo o que já se sabe. Pior: a linha do
+`execbit` reprovaria lá, porque `sem-bit` é fato de NTFS e não expectativa cross-SO.
+
+**Três guardas, cada uma por um modo de falha medido:**
+
+1. **Integridade do vetor** — cada linha declara o comprimento em bytes do campo `caso`, e o gate
+   confere **antes** de comparar qualquer predicado. Existe porque em 2026-09-08 um heredoc comeu
+   metade das barras invertidas de uma sonda e quase inverteu a conclusão. Num corpus de caminhos,
+   barra perdida vira verde falso.
+2. **Despacho por família** — a coluna `caso` não é homogênea: em `anchored` é string de entrada,
+   nas outras é nome de cenário. Leitor uniforme daria verde por coincidência de tipo.
+3. **Vacuidade** — casos executados têm de igualar as linhas não-comentário.
+
+Família que não pode ser exercitada **declara-se N/A com a razão** (hoje: `bash`, porque
+`System32ash.exe` não existe sem WSL), nunca em silêncio.
+
+Como o `upstream-sync.sh`, ele é **nosso** e não tem alvo no `Makefile`, pelo mesmo motivo abaixo.
+
 **Não há alvo no `Makefile` de propósito.** O `Makefile` é arquivo compartilhado com o upstream, e
 modificá-lo criaria divergência de produto que todo merge futuro pagaria. Acrescentar arquivo novo
 em `scripts/` não cria divergência — é o mesmo precedente dos outros três scripts só nossos.
