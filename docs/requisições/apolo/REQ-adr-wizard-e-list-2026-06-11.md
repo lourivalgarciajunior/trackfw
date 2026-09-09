@@ -2,7 +2,7 @@
 adr: docs/adr/ADR-2026-06-11-wizard-no-command-layer.md
 id: REQ-adr-wizard-e-list-2026-06-11
 title: ADR — wizard interativo nas seções e adr list
-status: done
+status: Done
 priority: medium
 type: feature
 created: 2026-06-11

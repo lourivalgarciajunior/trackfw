@@ -1,7 +1,7 @@
 ---
 id: REQ-2026-06-14-serve-api-tests-nodejs
 title: Testes da API do serve em Node.js
-status: done
+status: Done
 priority: medium
 type: feature
 created: 2026-06-14
