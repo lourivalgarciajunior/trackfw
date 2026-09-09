@@ -3,7 +3,7 @@ status: Open
 date: 2026-09-08
 author: "claude"
 adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
-roadmap: "docs/roadmaps/claude/backlog/ROADMAP-2026-09-08-corpus-de-predicados-de-plataforma-nao-e-lido-por-gate-nenhum.md"
+roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-09-08-corpus-de-predicados-de-plataforma-nao-e-lido-por-gate-nenhum.md"
 ---
 
 # REQ: corpus de predicados de plataforma não é lido por gate nenhum
@@ -98,4 +98,4 @@ ADR: docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-09-08-corpus-de-predicados-de-plataforma-nao-e-lido-por-gate-nenhum.md
+Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-09-08-corpus-de-predicados-de-plataforma-nao-e-lido-por-gate-nenhum.md
