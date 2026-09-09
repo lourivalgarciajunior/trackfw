@@ -375,6 +375,27 @@ merges históricos mais dois controles negativos. A propriedade verificada é a 
 retido ⊆ `docs/` ∪ `vault/`, e todo o resto trazido —, não a contagem: a contagem à mão errou nos
 dois casos.
 
+## Gate de layout de REQ (`scripts/check-req-layout.sh`)
+
+A `ADR-2026-09-03` D1 decide que **REQ não tem dimensão de estado** — `backlog`/`wip`/`done` são
+conceito de roadmap; REQ tem `status` no frontmatter. O layout canônico em `by_agent` é
+`req_dir/<agente>/*.md`, **um nível**.
+
+```bash
+bash scripts/check-req-layout.sh
+```
+
+Lê `req_dir` do `trackfw.yaml` (nunca chumbado), varre **recursivamente**, imprime o denominador e
+falha se varrer zero.
+
+🔴 **`docs/req/` fica fora por decisão escrita.** Não é o nosso `req_dir`, e três daqueles arquivos
+são **fixture de teste do produto**, lidas por caminho literal nos 3 runtimes — removê-las quebra
+`go`, `node` e `python`, medido em 2026-09-05.
+
+O gate existe porque a ADR foi aceita e, cinco dias depois, **7 REQs estavam em pasta de estado** com
+o `validate` dizendo `✓ No violations found`. E o custo não era a desarrumação: aquele nível a mais
+produziu um **ponto cego de medição** que fez um número publicado sair errado.
+
 ## Gate de predicados de plataforma (`scripts/check-platform-predicates.sh`)
 
 O `scripts/testdata/platform-predicates.tsv` deixou de ser tabela decorativa: o gate executa cada

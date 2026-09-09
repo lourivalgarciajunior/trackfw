@@ -1,7 +1,7 @@
 # Roadmap: Suporte Multi-AI — Subcomandos por Ferramenta
 
 > Criado em: 2026-06-11 | Status: ✅ Done
-> REQ: `docs/requisições/claude/backlog/REQ-multi-ai-support-2026-06-11.md`
+> REQ: `docs/requisições/claude/REQ-multi-ai-support-2026-06-11.md`
 
 ## Diagnóstico / Contexto
 

@@ -1,14 +1,14 @@
 ---
-status: Open
+status: Done
 date: 2026-09-08
 author: "claude"
 adr: "docs/adr/ADR-2026-09-03-layout-canonico-de-req-em-by-agent-e-o-invariante-de-que-req-nao-tem-dimensao-de-estado.md"
-roadmap: "docs/roadmaps/claude/backlog/ROADMAP-2026-09-08-sete-reqs-vivem-em-subdiretorio-de-estado-e-o-validate-nao-acusa.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-09-08-sete-reqs-vivem-em-subdiretorio-de-estado-e-o-validate-nao-acusa.md"
 ---
 
 # REQ: sete REQs vivem em subdiretório de estado, e o `validate` não acusa
 
-> Date: 2026-09-08 | Status: Open
+> Date: 2026-09-08 | Status: Done
 
 ## Motivation
 
@@ -71,20 +71,20 @@ virar descoberta separada depois.
 
 ## Acceptance Criteria
 
-- [ ] **AC1** — Existe um gate que acusa REQ fora do layout canônico `req_dir/<agente>/*.md`, isto é,
+- [x] **AC1** — Existe um gate que acusa REQ fora do layout canônico `req_dir/<agente>/*.md`, isto é,
       qualquer `.md` de REQ com profundidade maior que um nível abaixo de `req_dir`.
-- [ ] **AC2** — **Falsificação nas duas direções.** Plantar uma REQ em `req_dir/<agente>/wip/`
+- [x] **AC2** — **Falsificação nas duas direções.** Plantar uma REQ em `req_dir/<agente>/wip/`
       reprova o gate nomeando o arquivo; a árvore corrigida passa. Só uma das duas não é prova.
-- [ ] **AC3** — 🔴 **Guarda de vacuidade com denominador escrito**: o gate imprime quantas REQs
+- [x] **AC3** — 🔴 **Guarda de vacuidade com denominador escrito**: o gate imprime quantas REQs
       varreu, e falha se varrer zero. Verde sobre acervo vazio não conta — é o defeito que esta REQ
       existe para fechar, e o gate não pode nascer com ele.
-- [ ] **AC4** — As 7 REQs saem das pastas de estado, e o `status` de cada uma é reconciliado com o
+- [x] **AC4** — As 7 REQs saem das pastas de estado, e o `status` de cada uma é reconciliado com o
       par declarado pela ADR. 🔴 O `status` que vale é o do frontmatter — mover o arquivo **não**
       pode mudar o significado, e a reconciliação tem de ser justificada arquivo a arquivo, não em
       massa.
-- [ ] **AC5** — A varredura de "REQ `Done` com AC aberto" é **refeita com glob recursivo** e o número
+- [x] **AC5** — A varredura de "REQ `Done` com AC aberto" é **refeita com glob recursivo** e o número
       corrigido publicado. A PR #65 já recebeu a correção em comentário; o valor final vive aqui.
-- [ ] **AC6** — `trackfw validate` sem violação e com denominador conferido, medido com o binário da
+- [x] **AC6** — `trackfw validate` sem violação e com denominador conferido, medido com o binário da
       árvore reconstruído.
 
 ## Negative Scope
@@ -96,6 +96,19 @@ virar descoberta separada depois.
 - **Não** decidir o destino dos ACs abertos das 8 REQs de junho. Isso é decisão do usuário, já
   registrada como pendente na PR #65 — aqui só o **número** é corrigido.
 
+## Residual declarado
+
+- **O snapshot congelado do barrier segue apontando para o caminho antigo**, de propósito
+  (`scripts/testdata/roadmap-barrier-corpus-snapshot/roadmap-multi-ai-support-...`). Corrigi-lo para
+  acompanhar o move seria regenerar o snapshot — que é exatamente o que não se faz. É mais uma
+  instância do acoplamento reportado no [#277](https://github.com/kgsaran/trackfw/issues/277), e
+  aparece aqui como consequência, não como defeito novo.
+- **O gate cobre layout, não grafia de `status`.** A normalização de `done`→`Done` foi feita à mão,
+  arquivo a arquivo. Um gate que verifique o par declarado pela ADR é trabalho próprio — e só vale
+  se vier com a lista de estados que o CLI de fato aceita, medida, não deduzida.
+- **O destino dos 70 ACs abertos continua com o usuário.** Esta REQ corrigiu o **número**, não a
+  decisão. As 8 REQs são de junho de 2026, anteriores à adoção do upstream.
+
 ## Linked ADR
 ADR: docs/adr/ADR-2026-09-03-layout-canonico-de-req-em-by-agent-e-o-invariante-de-que-req-nao-tem-dimensao-de-estado.md
 
@@ -103,4 +116,4 @@ ADR: docs/adr/ADR-2026-09-03-layout-canonico-de-req-em-by-agent-e-o-invariante-d
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-09-08-sete-reqs-vivem-em-subdiretorio-de-estado-e-o-validate-nao-acusa.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-09-08-sete-reqs-vivem-em-subdiretorio-de-estado-e-o-validate-nao-acusa.md
