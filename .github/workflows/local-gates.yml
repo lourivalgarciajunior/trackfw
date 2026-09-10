@@ -44,6 +44,20 @@ jobs:
           git remote add upstream https://github.com/kgsaran/trackfw.git || true
           git fetch --no-tags upstream main
 
+      - name: Identidade do git
+        # 🔴 OBRIGATORIO. O check-upstream-sync-falsify exercita o
+        # upstream-sync.sh, que faz `git merge --no-commit --no-ff`. Mesmo SEM
+        # commitar, o git exige identidade e falha com "Committer identity
+        # unknown". O runner nao traz uma; a maquina de desenvolvimento traz, e
+        # por isso o gate passava local e reprovava aqui.
+        #
+        # Levou QUATRO camadas de stderr descartado para esta mensagem aparecer:
+        # o worktree cravado em /c, o merge que ignorava o exit code, o sync que
+        # descartava a saida, e o gate que descartava a do sync.
+        run: |
+          git config user.email "ci@localhost"
+          git config user.name "CI"
+
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
