@@ -1,5 +1,5 @@
 ---
-status: wip
+status: blocked
 date: 2026-09-05
 req: "docs/requisições/claude/REQ-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md"
 squad: ""
@@ -7,7 +7,37 @@ squad: ""
 
 # Roadmap: Onda 2 de contribuição ao upstream — fechar as classes de defeito em vez dos casos
 
-> Created: 2026-09-05 | Status: wip
+> Created: 2026-09-05 | Status: blocked
+
+## 🔴 Por que este roadmap esta em `blocked/` — 2026-09-10
+
+**Nao esta bloqueado por dependencia externa.** A dependencia que o travava — o discriminante
+classificacao x travessia, que o AC2 delegava ao D2 de uma ADR do upstream — **foi removida** pela
+`ADR-2026-09-09-predicado-de-so-em-sitio-de-classificacao-o-discriminante-e-a-origem-do-argumento-nao-a-intencao-do-autor`,
+escrita a partir da nossa propria medicao.
+
+O que falta e **trabalho**: escrever o lint. Nada impede de faze-lo hoje.
+
+**Esta em `blocked/` por PRIORIZACAO explicita**, e o mecanismo e a regra 3 do fluxo — um roadmap em
+`wip/` por vez. O slot foi liberado para a auditoria dos ACs abertos do nosso proprio acervo:
+
+```
+12 REQs NOSSAS com 58 checkbox(es) aberto(s)
+57 dos 58 sob bloco de criterio -- criterio real, nao placeholder
+10 delas marcadas `done`/`Done`
+```
+
+Aquilo **mente todo dia que passa**: dez REQs afirmam entrega concluida com criterio substantivo em
+aberto, e sao verificaveis executando o produto de hoje, sem depender de ninguem. Este roadmap nao
+mente — ele apenas espera.
+
+🔴 **Registro do risco de estar aqui.** O criterio do mantenedor, adotado neste projeto: *"ML que
+ninguem vai fazer e o mesmo passivo das REQs orfas, so mais bem escondido"*. `blocked/` sem causa
+nomeada e exatamente esse esconderijo. Por isso a causa esta escrita, e ela e **prioridade**, nao
+impedimento — o que significa que a saida daqui nao depende de evento externo nenhum.
+
+**Condicao de retorno a `wip/`:** a auditoria dos 58 ACs fechar, ou decisao explicita de inverter a
+ordem.
 
 ## Context
 <!-- Derived from REQ: REQ-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md -->
