@@ -3,7 +3,7 @@ status: Open
 date: 2026-09-10
 author: "claude"
 adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
-roadmap: "docs/roadmaps/claude/backlog/ROADMAP-2026-09-10-onze-reqs-nossas-afirmam-done-com-58-criterios-de-aceite-em-aberto.md"
+roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-09-10-onze-reqs-nossas-afirmam-done-com-58-criterios-de-aceite-em-aberto.md"
 ---
 
 # REQ: onze REQs **nossas** afirmam `done` com 58 critérios de aceite em aberto
@@ -134,4 +134,4 @@ ADR: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-t
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-09-10-onze-reqs-nossas-afirmam-done-com-58-criterios-de-aceite-em-aberto.md
+Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-09-10-onze-reqs-nossas-afirmam-done-com-58-criterios-de-aceite-em-aberto.md

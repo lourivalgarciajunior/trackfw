@@ -1,5 +1,5 @@
 ---
-status: backlog
+status: wip
 date: 2026-09-10
 req: "docs/requisições/claude/REQ-2026-09-10-onze-reqs-nossas-afirmam-done-com-58-criterios-de-aceite-em-aberto.md"
 squad: "claude"
@@ -7,7 +7,7 @@ squad: "claude"
 
 # Roadmap: onze REQs **nossas** afirmam `done` com 58 critérios de aceite em aberto
 
-> Created: 2026-09-10 | Status: backlog
+> Created: 2026-09-10 | Status: wip
 
 ## Context
 
@@ -38,7 +38,7 @@ são placeholder — 57 dos 58 estão sob bloco de critério, com discriminante 
 > Dependencies: none. **Bloqueia toda a implementação.**
 
 ### ML-0A — Enumeração, ameaça e falsificação
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:** —
 **Actions:**
 
@@ -65,8 +65,98 @@ são placeholder — 57 dos 58 estão sob bloco de critério, com discriminante 
 4. **Residual declarado.** O que este desenho aceita não cobrir.
 
 **Acceptance criteria:**
-- [ ] As quatro seções respondidas com evidência, não com asserção de uma linha
-- [ ] Nenhuma linha de implementação escrita neste ML
+- [x] As quatro seções respondidas com evidência, não com asserção de uma linha
+- [x] Nenhuma linha de implementação escrita neste ML
+
+---
+
+## 1. Enumeração derivada — e o discriminante que faltava
+
+```
+varridas                                67
+herdadas (fora pela ADR-2026-08-29)     28
+nossas, status NAO-done, com AC aberto   2   <- legitimo, nao e contradicao
+ALVO: `done` COM AC aberto              10 REQs · 56 ACs
+```
+
+🔴 **A primeira derivação deu 64 ACs e estava errada** — incluía REQs `Open`, e uma REQ `Open` com
+critério em aberto **não é contradição nenhuma**. As duas que ela pegava indevidamente:
+
+```
+Open   1 AC   REQ-2026-09-05-onda-2               (o AC2, em blocked/ por priorizacao)
+Open   7 AC   REQ-2026-09-10-onze-reqs...         (esta propria REQ)
+```
+
+O discriminante correto é **`status` minúsculo igual a `done` E checkbox aberto sob bloco de
+critério**. Sem ele, o alvo incluiria a própria REQ que o define.
+
+**Reconciliação com o número publicado na REQ (11 · 57):** batem.
+`10 + 1 = 11` e `56 + 1 = 57` — a diferença é a `REQ-2026-09-05-reqs-que-passam-so-por-prosa`, cujo
+único AC está **fora** de bloco de critério e por isso não entra nesta contagem. Ela é o **ML-2B**.
+
+## 2. Modelo de ameaça — respondido
+
+| forma | está fechada por |
+|---|---|
+| marcar os 56 em massa | ML-2A exige veredito por AC **com sítio nomeado**; sem sítio, não marca |
+| reescrever o AC até ser satisfeito | escopo negativo da REQ; e o diff do PR expõe qualquer reescrita |
+| verificador cego marcando tudo | §3 abaixo: controle positivo **e** negativo por família, executados |
+| contar por arquivo e declarar "10 resolvidas" | denominador em **ACs**, e a lista sai por nome |
+| tratar a `prosa` junto das dez | ela nem entra na derivação — o discriminante a exclui por construção |
+| **incluir REQ `Open` e inflar o alvo** | 🔴 **não estava previsto, e aconteceu.** Fechado pelo discriminante de `status` |
+
+A última linha é o resultado real desta wave: o modelo de ameaça previu cinco formas e a medição
+encontrou **uma sexta**, cometida por mim na primeira tentativa.
+
+## 3. Falsificação do método — sete famílias, controle nas duas direções
+
+Os 56 ACs se agrupam em sete famílias por **como se verifica**, não por assunto:
+
+| # | família | controle positivo | controle negativo |
+|---|---|---|---|
+| **F1** | comando executável (`go build`, `validate`, gates, `version`) | `go build ./...` → `exit 0` | `go build ./inexistente` → `exit 1` |
+| **F2** | presença/ausência no fonte | `GetConsoleMode` em `pypi/trackfw/tty.py` → **5** | string inventada → **0 arquivos** |
+| **F3** | estado do repositório | ADRs em `docs/adr` → **15** | ADRs em `docs/adr-fake` → **0** |
+| **F4** | não-vacuidade de gate | gate intacto → `exit 0` | gate mutado → `exit 1` |
+| **F5** | regressão contra **corrida anterior** | — | — |
+| **F6** | comportamento em **Linux/macOS** | — | — |
+| **F7** | AC que **se auto-declara** não atingido | — | — |
+
+**F1 a F4 têm as duas direções verdes, medidas.** Um verificador cego marcaria 56 ACs por engano, e é
+por isso que estes controles vêm antes de qualquer veredito.
+
+**F5 e F6 não têm controle possível aqui, e o motivo é medido:**
+
+- **F5** — os ACs falam de *"sem regressão por lista nomeada contra 95 / 105 / 198 falhas"*. A busca
+  por essas listas no acervo versionado devolve **só** o `os-predicate-sites-baseline.txt`, que é de
+  outra REQ e de ontem. **As listas de agosto não foram versionadas** — então a comparação por nome
+  que o próprio AC exige é impossível de refazer. Veredito **(d)**, e a razão é essa.
+- **F6** — esta máquina é Windows/MSYS. AC que afirma *"em Linux e macOS continua sendo `isatty()`
+  puro"* não é verificável daqui. Veredito **(d)**.
+
+🔴 **F7 é achado, não família de verificação.** Dois dos 56 ACs **escrevem no próprio texto** que não
+foram atingidos:
+
+```
+- [ ] `trackfw validate` com zero violations — **não atingido**: 20 → 5
+- [ ] `go test ./...` verde — **não atingido**: 10 falhas em internal/generators
+```
+
+E a REQ que os contém está com **`status: Done`**. Não é ambiguidade de leitura nem defeito de
+ferramenta: o artefato afirma `Done` e, três linhas abaixo, escreve que o critério não foi atingido.
+Veredito **(b)** sem necessidade de verificação — a evidência é o próprio texto.
+
+## 4. Residual declarado
+
+- **Este ML não julga nenhum AC.** Ele estabelece o alvo, o método e os controles.
+- **A família F4 exige mutar gates**, e mutação é cara. Se algum gate não puder ser mutado sem tocar
+  produto, o AC correspondente cai em **(d)** com essa razão escrita — não em **(a)** por
+  conveniência.
+- **O veredito `(c) caducou` é o mais perigoso** e não tem controle mecânico: é sempre julgamento.
+  Cada uso dele no ML-2A escreve o que mudou no mundo, não só que mudou.
+- **A derivação usa `status` minúsculo `done`.** Uma REQ com `status: Concluído` ou outra grafia fora
+  do par da `ADR-2026-09-03` escaparia do alvo sem que nada acusasse. Medido: hoje não existe nenhuma
+  assim, mas o gate do ML-3A precisa cobrir isso ou declarar que não cobre.
 
 ## Wave 1 — Medir antes de julgar
 

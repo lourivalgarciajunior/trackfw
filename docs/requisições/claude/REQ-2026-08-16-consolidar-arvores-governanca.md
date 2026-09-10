@@ -3,7 +3,7 @@ roadmap: "docs/roadmaps/claude/done/consolidar-arvores-governanca-2026-08-16.md"
 adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
 id: REQ-2026-08-16-consolidar-arvores-governanca
 title: Consolidar as três árvores de artefato de governança em uma só
-status: Done
+status: Open
 priority: high
 type: chore
 created: 2026-08-16
@@ -81,12 +81,35 @@ Mover os dois primeiros para `done/`; o `trackfw-update-command` em `wip/` é du
 - [x] `REQ-2026-06-20-attention-hooks-agent-clis.md` existe e o warning de link quebrado sumiu
 - [x] `trackfw status` reporta exatamente 1 roadmap em WIP (o desta REQ)
 - [x] `trackfw validate` com **zero warnings** (10 → 0)
-- [ ] `trackfw validate` com zero violations — **não atingido**: 20 → 5. As 5 restantes são
-      `req_has_adr` e exigem ADRs que não existem no repositório. Ver Residual no roadmap.
+- [x] `trackfw validate` com zero violations — ~~**não atingido**: 20 → 5~~
+      → **(a) ENTREGUE**, verificado em 2026-09-10 por execução: `trackfw validate` → `✓ No
+      violations found.` As 5 violações de `req_has_adr` foram fechadas depois, pelo trabalho de
+      2026-09-05 (`REQ-2026-09-05-divida-de-governanca-do-acervo`). 🔴 **Não foi esta REQ que as
+      fechou** — o critério está atendido hoje, e a autoria é de outra.
 - [x] `CLAUDE.md` descreve os caminhos reais
 - [x] `go build ./...` verde e nenhuma mudança de código do produto foi necessária
 - [ ] `go test ./...` verde — **não atingido**: 10 falhas em `internal/generators`, pré-existentes
       e específicas de Windows, confirmadamente independentes deste trabalho. Ver Residual.
+      → **(b) NÃO ENTREGUE**, e **piorou**. Medido em 2026-09-10: `go test ./...` sai `exit 1` com
+      **11 pacotes em FAIL** — `internal/commands`, `internal/discover`, `internal/generators` e
+      `internal/identity` — contra 10 falhas em um único pacote em agosto. 10 pacotes passam.
+      🔴 **Este AC mantém a REQ fora de `done`.**
+
+## Veredito da auditoria — 2026-09-10
+
+`REQ-2026-09-10-onze-reqs-nossas-afirmam-done-com-58-criterios-de-aceite-em-aberto`, ML-2A.
+
+| AC | veredito | evidência |
+|---|---|---|
+| `validate` zero violations | **(a) entregue** | execução: `✓ No violations found` — fechado por outra REQ, não por esta |
+| `go test ./...` verde | **(b) não entregue** | execução: `exit 1`, **11 pacotes em FAIL** |
+
+🔴 **`status` rebaixado de `Done` para `Open`.** A REQ afirmava entrega concluída com um critério que
+ela própria escrevia como *"não atingido"* — e que, medido hoje, **piorou**: de 10 falhas num pacote
+para 11 pacotes em falha.
+
+A saída fácil seria apagar o AC ou reescrevê-lo para caber no estado atual. O escopo negativo da REQ
+de auditoria proíbe as duas: abaixar o critério para manter o `done` é fabricar histórico.
 
 ## Linked ADR
 ADR: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md

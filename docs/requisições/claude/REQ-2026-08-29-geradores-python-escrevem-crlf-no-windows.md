@@ -1,5 +1,5 @@
 ---
-status: done
+status: Open
 date: 2026-08-29
 author: claude
 adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
@@ -62,12 +62,46 @@ E o quinto bloqueio estrutural de Windows da 7.3.0, junto com o UTF-8 do CLI, o 
 
 ## Acceptance Criteria
 
-- [ ] O CLI Python grava LF em todo arquivo que produz, no Windows, medido por varredura de bytes
+- [x] O CLI Python grava LF em todo arquivo que produz, no Windows, medido por varredura de bytes
       do resultado de `init` + os quatro `new` — nao por contagem de call site
+      → **(a) ENTREGUE.** 2026-09-10: `trackfw init` do Python num diretório limpo produziu **20
+      arquivos**, varridos byte a byte: **0 com CR**.
 - [ ] `scripts/*.sh` gerados saem com o mesmo shebang nos tres runtimes
-- [ ] `check-artifact-parity.sh` deixa de acusar os 8 drifts `go vs python`
+      → 🔴 **(b) NAO ENTREGUE.** Medido em 2026-09-10 comparando **por arquivo**, não por conjunto:
+      ```
+      trackfw-attention-cleanup.sh   go=bash  node=bash  py=bash   ok
+      trackfw-attention-signal.sh    go=bash  node=bash  py=bash   ok
+      trackfw-credential-guard.sh    go=bash  node=bash  py=bash   ok
+      trackfw-git-branch-guard.sh    go=bash  node=bash  py=bash   ok
+      trackfw-validate.sh            go=sh    node=sh    py=bash   DIVERGE
+      ```
+      Os nomes de arquivo batem nos três; o **shebang de `trackfw-validate.sh` não**. É violação da
+      Regra Dura de Paridade, e é **produto do upstream** → vai como issue, não correção local.
+- [x] `check-artifact-parity.sh` deixa de acusar os 8 drifts `go vs python`
+      → **(a) ENTREGUE.** `bash scripts/check-artifact-parity.sh` → `exit 0`,
+      `Artifact parity checks passed (9 artifact types × 3 runtimes)`.
 - [ ] O gate **falha** com o CRLF reintroduzido — nao-vacuidade verificada, nao assumida
+      → 🔴 **(b) NAO ENTREGUE — e o AC afirma exatamente o que não acontece.** Falsificado nas duas
+      formas em 2026-09-10, mutando `pypi/trackfw/generators/adr.py`:
+      ```
+      M1  remover  newline=          -> check-python-writes-lf  exit=1   pega
+      M2  trocar para newline="
+"  -> check-python-writes-lf  exit=0   NAO PEGA
+      ```
+      O gate verifica se o argumento `newline` **está presente** (`if 'newline' in call: continue`),
+      não o seu valor. **CRLF explícito passa.** São **79 sítios** com `newline="
+"` em
+      `pypi/trackfw`, e qualquer um deles virando `"
+"` não seria acusado.
+      🔴 A primeira tentativa de falsificação **não aplicou a mutação** (`0 aplicadas`) e o `exit 0`
+      pareceu cegueira do gate. Só a segunda, construindo o alvo com `chr(92)`, mediu de verdade.
+      O gate é **produto do upstream**, byte a byte idêntico ao dele → issue, não correção local.
 - [ ] Nenhuma regressao na suite pypi contra a medicao de 2026-08-29 (198 failed / 1294 passed)
+      → **(d) NAO VERIFICAVEL AQUI.** O próprio AC exige comparação contra uma **lista nomeada**, e
+      a lista de 2026-08-29 **não foi versionada** — a busca no acervo devolve apenas o
+      `os-predicate-sites-baseline.txt`, de outra REQ e de 2026-09-09. Rodar a suite hoje daria um
+      número, e comparar número com número é exatamente o que o AC proíbe.
+      **O que faltaria:** a lista de falhas por nome daquela corrida. Ela não existe.
 
 ## Nao faz parte
 
