@@ -126,9 +126,36 @@ if [ ! -f "$BASELINE" ]; then
   exit 0
 fi
 
-novos=$(comm -13 <(sort -u "$BASELINE") "$TMP/com.txt" | grep -c . || true)
-sumidos=$(comm -23 <(sort -u "$BASELINE") "$TMP/com.txt" | grep -c . || true)
-base_n=$(grep -c . < "$BASELINE" || true)
+# NORMALIZACAO DE FIM DE LINHA — obrigatoria, nao cosmetica.
+#
+# Medido em 2026-09-09, logo depois de mesclar este script: o baseline foi
+# gravado com LF, o git o devolveu com CRLF no checkout seguinte, e a comparacao
+# acusou `novos 196 · sumidos 196` -- o acervo INTEIRO como mudado, quando nada
+# mudou. O `.gitattributes` deste repo e arquivo COMPARTILHADO com o upstream, e
+# mexer nele criaria divergencia de produto que todo merge futuro pagaria. Entao
+# a normalizacao mora aqui, no lado que le.
+#
+# A guarda funcionou -- gritou em vez de passar em silencio --, mas um alarme que
+# dispara sozinho a cada checkout treina quem le a ignora-lo.
+BASE_NORM="$TMP/baseline-normalizado.txt"
+tr -d '\r' < "$BASELINE" | sort -u | grep . > "$BASE_NORM" || true
+
+base_n=$(grep -c . < "$BASE_NORM" || true)
+
+# GUARDA: baseline existente mas VAZIO nao e "tudo novo" -- e o baseline ter sido
+# truncado. Medido em 2026-09-09: com o arquivo zerado, a comparacao devolvia
+# `novos: 196 · sumidos: 0` e `exit 0`, ou seja, o acervo inteiro reportado como
+# mudanca legitima. Um baseline que se apaga sozinho passaria despercebido como
+# "grande refatoracao".
+if [ "$base_n" -eq 0 ]; then
+  echo "measure-os-predicate-sites: GUARDA — o baseline existe mas esta VAZIO ($BASELINE)." >&2
+  echo "  Isso nao e 'tudo novo': e o baseline truncado. Regrave com --gravar-baseline" >&2
+  echo "  SO se voce souber que o acervo de fato mudou." >&2
+  exit 1
+fi
+
+novos=$(comm -13 "$BASE_NORM" "$TMP/com.txt" | grep -c . || true)
+sumidos=$(comm -23 "$BASE_NORM" "$TMP/com.txt" | grep -c . || true)
 
 echo ""
 echo "  CONTRA O BASELINE (${base_n} sítios) — comparado por NOME, nos dois sentidos"
@@ -138,11 +165,11 @@ printf '    sumidos : %s\n' "$sumidos"
 
 if [ "$novos" -gt 0 ]; then
   echo "    ── novos ──"
-  comm -13 <(sort -u "$BASELINE") "$TMP/com.txt" | sed 's/^/      + /'
+  comm -13 "$BASE_NORM" "$TMP/com.txt" | sed 's/^/      + /'
 fi
 if [ "$sumidos" -gt 0 ]; then
   echo "    ── sumidos ──"
-  comm -23 <(sort -u "$BASELINE") "$TMP/com.txt" | sed 's/^/      - /'
+  comm -23 "$BASE_NORM" "$TMP/com.txt" | sed 's/^/      - /'
 fi
 
 # 🔴 O saldo zero NÃO é sinônimo de conjunto igual. Se novos == sumidos, a
