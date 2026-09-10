@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-2026-06-19-architect-command-guidelines.md"
 roadmap: "docs/roadmaps/claude/done/architect-command-guidelines-2026-06-19.md"
 adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
 id: REQ-2026-06-19-architect-command-guidelines

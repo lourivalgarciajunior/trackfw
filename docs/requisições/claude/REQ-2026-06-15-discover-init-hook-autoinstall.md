@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-2026-06-15-discover-init-hook-autoinstall.md"
 name: REQ-2026-06-15-discover-init-hook-autoinstall
 title: "feat: discover --init instala hook framework automaticamente quando nenhum é detectado"
 status: Done

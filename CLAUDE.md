@@ -429,6 +429,17 @@ Hoje o resíduo declarado é **2 checkboxes** em `REQ-roadmap-ai-generation-2026
 um template de roadmap embutido na REQ. São placeholder, não critério — e o gate não adivinha isso,
 ele aponta.
 
+**Ele também exige a PROCEDÊNCIA no frontmatter de cada uma das 28** —
+`upstream_origin: "kgsaran/trackfw:docs/req/<basename>"`. É a decisão do ML-2A da mesma REQ, tomada
+depois que a medição fechou as saídas: remover está vetado em 28 de 28 (26 pelo snapshot congelado do
+barrier, 2 por ADR nossa), e mover está proibido pelo escopo negativo. Sobrou declarar — e a
+declaração tem gate, senão alguém apaga a linha e nada acusa.
+
+🔴 **A declaração vive só no frontmatter, e isso foi medido.** O `req list` dos três runtimes lê o
+status de uma linha do **corpo** (`> Date: … | Status: <status>`), não do frontmatter — então uma
+nota em blockquote abaixo do H1 poderia virar o "status" da REQ. Falsificado por efeito: `req list`
+antes e depois das 28 edições é byte a byte idêntico, 66 linhas de cada lado.
+
 Como os outros, é **nosso**, e **não tem alvo no `Makefile`**, pelo mesmo motivo da seção abaixo.
 
 ## Gate de predicados de plataforma (`scripts/check-platform-predicates.sh`)

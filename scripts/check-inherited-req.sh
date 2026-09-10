@@ -150,6 +150,7 @@ censo_criterio() {  # censo_criterio <arquivo>
 varridas=0
 herdadas=0
 nao_declaradas=0
+sem_procedencia=0
 sem_heading=0
 tot_sob=0
 tot_total=0
@@ -167,6 +168,31 @@ while IFS= read -r f; do
   if ! is_baseline "$b"; then
     echo "  ✗ NÃO DECLARADA: '${b}' é governança do upstream e entrou depois do baseline" >&2
     nao_declaradas=$((nao_declaradas + 1))
+  fi
+
+  # PROCEDÊNCIA NO PRÓPRIO ARQUIVO (ML-2A).
+  #
+  # A decisão da Wave 2 foi UMA, aplicada às 28: elas ficam onde estão e a
+  # procedência é declarada no frontmatter. O AC2 mediu que remover é impossível
+  # (26 vetadas pelo snapshot congelado do barrier, 2 por ADR nossa) e o escopo
+  # negativo já proibia mover.
+  #
+  # A declaração vive só no FRONTMATTER, de propósito: medido em 2026-09-09, o
+  # `req list` dos três runtimes lê o status de uma linha do CORPO
+  # (`> Date: … | Status: <status>`), não do frontmatter. Uma nota em blockquote
+  # logo abaixo do H1 poderia ser capturada por aquele extrator. Falsificado por
+  # efeito: `req list` antes e depois das 28 edições é byte a byte idêntico.
+  #
+  # Sem esta checagem, a decisão seria decorativa -- alguém apaga a linha e nada
+  # acusa.
+  esperado="kgsaran/trackfw:${UPSTREAM_REQ_DIR}/${b}"
+  declarado=$(sed -n 's/^upstream_origin:[[:space:]]*//p' "$f" | head -1 | tr -d '"' | tr -d "'" | tr -d '\r')
+  if [ -z "$declarado" ]; then
+    echo "  ✗ SEM PROCEDÊNCIA: '${b}' é herdada e não declara 'upstream_origin' no frontmatter" >&2
+    sem_procedencia=$((sem_procedencia + 1))
+  elif [ "$declarado" != "$esperado" ]; then
+    echo "  ✗ PROCEDÊNCIA ERRADA: '${b}' declara '${declarado}', esperado '${esperado}'" >&2
+    sem_procedencia=$((sem_procedencia + 1))
   fi
 
   read -r sob total < <(censo_criterio "$f")
@@ -210,6 +236,14 @@ for k in "${baseline[@]}"; do
     obsoletas=$((obsoletas + 1))
   fi
 done
+
+if [ "$sem_procedencia" -gt 0 ]; then
+  echo "" >&2
+  echo "${sem_procedencia} REQ(s) herdada(s) sem a declaracao de procedencia correta." >&2
+  echo "A decisao do ML-2A e que as 28 ficam onde estao COM a procedencia escrita no" >&2
+  echo "frontmatter. Apagar a linha nao 'limpa' nada -- so torna a heranca invisivel." >&2
+  exit 1
+fi
 
 if [ "$nao_declaradas" -gt 0 ]; then
   echo "" >&2

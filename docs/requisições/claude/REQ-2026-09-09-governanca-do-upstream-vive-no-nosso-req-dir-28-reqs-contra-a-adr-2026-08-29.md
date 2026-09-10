@@ -1,14 +1,14 @@
 ---
-status: Open
+status: Done
 date: 2026-09-09
 author: "claude"
 adr: "docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md"
-roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-09-09-governanca-do-upstream-vive-no-nosso-req-dir-28-reqs-contra-a-adr-2026-08-29.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-09-09-governanca-do-upstream-vive-no-nosso-req-dir-28-reqs-contra-a-adr-2026-08-29.md"
 ---
 
 # REQ: governança do upstream vive no nosso `req_dir` — 28 REQs contra a `ADR-2026-08-29`
 
-> Date: 2026-09-09 | Status: Open
+> Date: 2026-09-09 | Status: Done
 
 ## Motivation
 
@@ -118,6 +118,37 @@ existir.
       positivo dispara: as três fixtures conhecidas dão `produto=3` cada, uma por runtime — sem isso
       o "nenhuma" seria vácuo com cara de resultado.
 
+- [x] **AC4** — Denominador conferido antes e depois: `status` reporta 65 REQs hoje. Se cair, o
+      número novo é medido e escrito, e `validate` continua sem violação.
+      → **66 em `main` · 66 agora**, comparado **por nome**: 0 só em `main`, 0 só agora. Nenhuma
+      removida, nenhuma acrescentada. `validate` sem violação.
+      🔴 A primeira leitura deu **0** e era artefato: `git ls-tree` escapa caminho não-ASCII
+      (`docs/requisiÃ§Ãµes`) e o `grep` não casou. Com `-c core.quotepath=false`, 66.
+      Um `0` publicado ali teria virado "removemos todas as REQs".
+- [x] **AC5** — Vínculo vivo tratado explicitamente: roadmap **nosso** que aponte para REQ dele é
+      identificado e a decisão sobre ele é escrita, arquivo a arquivo.
+      → **Nenhum.** `76 roadmaps · 56 resolvem · 19 sem req · 1 irresolvível`, e o único irresolvível
+      (`ROADMAP-2026-06-20-gate-pre-trabalho-...`) **existe em `upstream/main:docs/roadmaps/done/`**:
+      é roadmap **dele** apontando para REQ **dele**, não nosso.
+      🔴 A primeira varredura acusou **30** irresolvíveis e era erro meu: testei com `[ -f "$req" ]`,
+      mas o campo `req:` aceita **nome**, não só caminho — o produto resolve por nome dentro do
+      `req_dir`. Trinta "pendências" eram resolvíveis. Mesma varredura estreita, outro campo.
+- [x] **AC6** — O `status` minúsculo (`done`) das seis restantes é reconciliado **ou** declarado fora
+      de escopo com motivo — não fica no meio.
+      → **Fora de escopo, com motivo medido.** São **7**, não seis. E a grafia **não tem efeito no
+      produto**: medido com duas fixtures de controle, `req list` lê o status de uma linha do
+      **corpo** (`> Date: … | Status: <status>`) e ignora o frontmatter — `status: Done` maiúsculo
+      também rende `unknown`. Normalizar as 7 não mudaria nada e editaria governança que o ML-2A
+      acaba de declarar como dele. O `Closed` de `REQ-roadmap-ai-generation` **já estava decidido**
+      por nota escrita em 2026-09-05.
+- [x] **AC7** — `trackfw validate`, `check-req-layout.sh`, `check-referential-integrity.sh` e
+      `check-subcommand-parity.sh` verdes ao fim, medidos com o binário da árvore reconstruído.
+      → `validate ✓` · `check-req-layout 66 · 0 fora` · `Referential integrity OK` ·
+      `check-subcommand-parity 8 comandos · 24 subcomandos` · `check-inherited-req exit 0`.
+      **Divergência de produto: 1 arquivo, e não é nossa** — o `upstream/main` andou 2 commits
+      durante o trabalho (PRs #304 e #305 dele). Provado por efeito: o diff de produto entre o
+      `merge-base` e o `HEAD` é **vazio**.
+
 ### 🔴 O que o AC2 decidiu, e que a Wave 2 herda
 
 **Nenhuma das 28 pode ser removida.** Por dois mecanismos, sem sobra:
@@ -134,14 +165,43 @@ viável: **elas ficam onde estão, e a procedência passa a ser declarada no pr�
 Isso não é derrota do AC2: é o AC2 **funcionando**. Ele existe porque as duas remoções anteriores
 desta mesma classe quebraram gate, e desta vez o veto apareceu **antes** de alguém apagar 28
 arquivos.
-- [ ] **AC4** — Denominador conferido antes e depois: `status` reporta 65 REQs hoje. Se cair, o
-      número novo é medido e escrito, e `validate` continua sem violação.
-- [ ] **AC5** — Vínculo vivo tratado explicitamente: roadmap **nosso** que aponte para REQ dele é
-      identificado e a decisão sobre ele é escrita, arquivo a arquivo.
-- [ ] **AC6** — O `status` minúsculo (`done`) das seis restantes é reconciliado **ou** declarado fora
-      de escopo com motivo — não fica no meio.
-- [ ] **AC7** — `trackfw validate`, `check-req-layout.sh`, `check-referential-integrity.sh` e
-      `check-subcommand-parity.sh` verdes ao fim, medidos com o binário da árvore reconstruído.
+
+## Resultado
+
+**A decisão foi uma, aplicada às 28: elas ficam onde estão, e a procedência passa a ser declarada no
+frontmatter** — `upstream_origin: "kgsaran/trackfw:docs/req/<basename>"`.
+
+Não houve julgamento por arquivo porque a Wave 1 não deixou espaço para julgar: remover está vetado
+em 28 de 28, e mover está proibido pelo escopo negativo. O que restou é a única forma que respeita as
+duas restrições ao mesmo tempo — **elas não são nossas, e isso passa a estar escrito no arquivo.**
+
+**O gate exige a declaração.** Decisão sem gate é decoração: apagar a linha reprova
+`check-inherited-req.sh`, e apontar para outra REQ também.
+
+### Cinco erros meus, todos pegos por guarda e nenhum publicado
+
+| # | o que eu ia reportar | o que era | o que pegou |
+|---|---|---|---|
+| 1 | `0 sob bloco de critério` em 23 arquivos | detector cego: `### Bloco A` zerava o estado, `[eé]` não casa UTF-8 no awk | guarda de reconciliação |
+| 2 | "o método lê arquivo binário" | procurei `prune`, que não está no arquivo; depois o alvo saiu **vazio** e `git grep -F ""` casa com tudo | conferir a linha, não o exit |
+| 3 | `exit 1` como prova da guarda de baseline | script copiado para o scratchpad não achou o `trackfw.yaml` — exit certo, motivo errado | ler a mensagem |
+| 4 | **30 roadmaps com vínculo quebrado** | `req:` aceita **nome**; `[ -f ]` reprova nome válido | validar o resolvedor antes de usá-lo |
+| 5 | **0 REQs em `main`** | `git ls-tree` escapa caminho não-ASCII | comparar por nome, e estranhar o zero |
+
+Os cinco são a mesma família do erro que originou esta REQ — **varredura mais estreita que o alvo** —
+e é por isso que o entregável é um script, não um número.
+
+### O defeito que a medição revelou, e que não é desta REQ
+
+`trackfw req list` reporta um status que **contradiz o frontmatter**, idêntico nos 3 runtimes:
+
+| fixture | frontmatter | corpo | reportado |
+|---|---|---|---|
+| controle A | `status: Done` | sem linha de status | `unknown` |
+| controle B | `status: Done` | `> Date: … \| Status: WIP` | `WIP` |
+
+E em dois arquivos do acervo ele imprime **prosa do corpo** no lugar do status. Causa diferente, REQ
+diferente: vai como issue para o upstream.
 
 ## Negative Scope
 
@@ -161,4 +221,4 @@ ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-09-09-governanca-do-upstream-vive-no-nosso-req-dir-28-reqs-contra-a-adr-2026-08-29.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-09-09-governanca-do-upstream-vive-no-nosso-req-dir-28-reqs-contra-a-adr-2026-08-29.md

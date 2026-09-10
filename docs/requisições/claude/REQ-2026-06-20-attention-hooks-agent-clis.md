@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-2026-06-20-attention-hooks-agent-clis.md"
 roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-06-20-codex-agent-integrations.md"
 adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
 id: REQ-2026-06-20-attention-hooks-agent-clis

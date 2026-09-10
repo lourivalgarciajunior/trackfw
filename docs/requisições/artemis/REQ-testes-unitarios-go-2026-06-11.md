@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-testes-unitarios-go-2026-06-11.md"
 adr: docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md
 id: REQ-testes-unitarios-go-2026-06-11
 title: Testes unitários Go — validator e generators

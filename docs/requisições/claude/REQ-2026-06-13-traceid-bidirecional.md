@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-2026-06-13-traceid-bidirecional.md"
 name: REQ-2026-06-13-traceid-bidirecional
 title: "v2.5 — req_id: ID de rastreabilidade estável com verificação bidirecional"
 status: Done

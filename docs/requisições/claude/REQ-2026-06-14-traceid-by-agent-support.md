@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-2026-06-14-traceid-by-agent-support.md"
 name: REQ-2026-06-14-traceid-by-agent-support
 title: "v2.5.2 — Fix: trace_id_field checks não funcionam com roadmap_namespacing: by_agent"
 status: done

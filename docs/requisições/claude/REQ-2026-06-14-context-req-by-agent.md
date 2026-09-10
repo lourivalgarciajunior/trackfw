@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-2026-06-14-context-req-by-agent.md"
 name: REQ-2026-06-14-context-req-by-agent
 title: "v2.5.4 — Fix: context + validateADRsAreReferenced não encontram REQs em layout by_agent"
 status: done

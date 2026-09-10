@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-req-driven-adr-discovery-2026-06-12.md"
 id: REQ-req-driven-adr-discovery-2026-06-12
 title: REQ-driven ADR discovery
 status: Done

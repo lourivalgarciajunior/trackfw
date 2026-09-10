@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-2026-06-18-trackfw-update-command.md"
 roadmap: "docs/roadmaps/claude/done/trackfw-update-command-2026-06-18.md"
 adr: "docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md"
 name: REQ-2026-06-18-trackfw-update-command

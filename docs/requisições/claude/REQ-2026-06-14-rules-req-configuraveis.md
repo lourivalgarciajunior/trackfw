@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-2026-06-14-rules-req-configuraveis.md"
 name: REQ-2026-06-14-rules-req-configuraveis
 title: "v2.6.0 — Feat: req_has_adr / req_has_roadmap / blocked_has_req configuráveis via applyRule"
 status: done

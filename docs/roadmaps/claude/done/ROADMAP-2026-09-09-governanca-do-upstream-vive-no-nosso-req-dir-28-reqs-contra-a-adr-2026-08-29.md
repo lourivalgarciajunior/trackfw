@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-09-09
 req: "docs/requisições/claude/REQ-2026-09-09-governanca-do-upstream-vive-no-nosso-req-dir-28-reqs-contra-a-adr-2026-08-29.md"
 squad: "claude"
@@ -7,7 +7,7 @@ squad: "claude"
 
 # Roadmap: governança do upstream vive no nosso `req_dir` — 28 REQs contra a `ADR-2026-08-29`
 
-> Created: 2026-09-09 | Status: wip
+> Created: 2026-09-09 | Status: done
 
 ## Context
 
@@ -28,10 +28,10 @@ e **as duas remoções quebraram gate**. É por isso que a Wave 0 bloqueia tudo 
 
 ## Acceptance Criteria
 
-- [ ] As 28 herdadas são identificadas por derivação, com denominador impresso.
-- [ ] Falsificação prévia na árvore inteira antes de tocar em qualquer arquivo.
-- [ ] Fixture de teste do produto fica, com o motivo escrito.
-- [ ] Gates verdes ao fim, com denominador conferido.
+- [x] As 28 herdadas são identificadas por derivação, com denominador impresso.
+- [x] Falsificação prévia na árvore inteira antes de tocar em qualquer arquivo.
+- [x] Fixture de teste do produto fica, com o motivo escrito.
+- [x] Gates verdes ao fim, com denominador conferido.
 
 ## Status Legend
 ⬜ Pendente · 🔄 Em andamento · ✅ Concluído · ❌ Bloqueado
@@ -201,30 +201,137 @@ do produto, não o nosso. As 28 vivem em `docs/requisições`, e é por isso que
 ## Wave 2 — A decisão, e só então a ação
 
 ### ML-2A — Decisão por classe, não por arquivo
-**Status:** ⬜ Pendente
-**Files affected:** `docs/requisições/**`
+**Status:** ✅ Concluído
+**Files affected:** `docs/requisições/**` (28), `scripts/check-inherited-req.sh`
 **Acceptance criteria:**
-- [ ] A decisão é **uma**, aplicada às 28 — não 28 julgamentos
-- [ ] As que a Wave 1 vetar ficam, cada uma com o motivo
-- [ ] Denominador antes e depois; `validate` sem violação
+- [x] A decisão é **uma**, aplicada às 28 — não 28 julgamentos
+- [x] As que a Wave 1 vetar ficam, cada uma com o motivo
+- [x] Denominador antes e depois; `validate` sem violação
+
+## A decisão
+
+> **As 28 ficam onde estão, e a procedência passa a ser declarada no frontmatter de cada uma:**
+> `upstream_origin: "kgsaran/trackfw:docs/req/<basename>"`.
+
+Uma decisão, 28 arquivos, zero julgamento por arquivo — porque a Wave 1 não deixou espaço para
+julgar. Remover: vetado em 28 de 28 (26 pelo snapshot congelado do barrier, 2 por ADR nossa). Mover:
+proibido pelo escopo negativo, que é onde a `ADR-2026-08-29` recusa a adoção pela porta dos fundos.
+O que sobra não é preferência — é a única forma que respeita as duas restrições ao mesmo tempo:
+**elas não são nossas, e isso passa a estar escrito no arquivo em vez de num documento à parte.**
+
+**A declaração vive só no frontmatter, e isso foi medido, não escolhido por gosto.** O `req list` dos
+três runtimes lê o status de uma linha do **corpo** — `> Date: … | Status: <status>` —, então uma nota
+em blockquote logo abaixo do H1 poderia ser capturada por aquele extrator e virar o "status" da REQ.
+
+**Falsificação por efeito, não por leitura:** `trackfw req list` capturado **antes** e **depois** das
+28 edições, comparado com `diff`. **Byte a byte idêntico**, 66 linhas de cada lado — e o denominador
+está aí de propósito, porque dois arquivos vazios também dão `diff` limpo.
+
+**O gate passa a exigir a declaração** (`check-inherited-req.sh`). Decisão sem gate é decoração:
+alguém apaga a linha e nada acusa. Falsificado nas duas direções:
+
+| # | mutação | esperado | medido |
+|---|---|---|---|
+| G | apagar `upstream_origin` de uma | reprova | `exit 1`, nomeada |
+| H | apontar para outra REQ | reprova | `exit 1`, com declarado × esperado |
+| I | árvore intacta | passa | `exit 0` |
+
+**Denominador (AC4), comparado por NOME e não por contagem:**
+
+```
+REQs em main   66      so em main   0
+REQs agora     66      so agora     0
+```
+
+🔴 **A primeira leitura deste denominador deu `0` e era artefato meu:** `git ls-tree` escapa caminho
+não-ASCII (`docs/requisi\303\247\303\265es`), e o `grep` não casou. Com `-c core.quotepath=false`,
+66. Um `0` publicado ali teria virado "removemos todas as REQs".
 
 ### ML-2B — Vínculo vivo e `status` minúsculo
-**Status:** ⬜ Pendente
-**Files affected:** `docs/roadmaps/**`, `docs/requisições/**`
-**Acceptance criteria:**
-- [ ] Roadmap **nosso** apontando para REQ dele: identificado e decidido, arquivo a arquivo
-- [ ] Os seis `status: done` minúsculos: reconciliados **ou** declarados fora de escopo com motivo
-
-### ML-2C — Gates
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:** —
 **Acceptance criteria:**
-- [ ] `validate`, `check-req-layout.sh`, `check-referential-integrity.sh` e
+- [x] Roadmap **nosso** apontando para REQ dele: identificado e decidido, arquivo a arquivo
+- [x] Os seis `status: done` minúsculos: reconciliados **ou** declarados fora de escopo com motivo
+
+**Vínculo vivo (AC5) — o resolvedor por nome muda a resposta.**
+
+```
+76 roadmaps · 56 resolvem · 19 sem req · 1 irresolvivel
+```
+
+🔴 **A primeira varredura acusou 30 irresolvíveis, e era erro meu.** Testei com `[ -f "$req" ]`, mas o
+campo `req:` aceita **nome**, não só caminho — o produto resolve por nome dentro do `req_dir`. Trinta
+"pendências" eram REQs perfeitamente resolvíveis. É a mesma varredura estreita da terceira medição do
+número, agora aplicada a outro campo.
+
+O único irresolvível de verdade:
+`ROADMAP-2026-06-20-gate-pre-trabalho-branch-wip-roadmap-e-fallback-husky-node.md`.
+
+**E ele não é nosso.** Conferido: existe em `upstream/main:docs/roadmaps/done/`. É roadmap **dele**,
+apontando para REQ **dele** que nunca foi importada. Então o AC5 se responde sozinho: **nenhum
+roadmap nosso aponta para REQ dele.** O caso restante é governança dele inteira — mesma classe das
+28, mesma decisão, e fica fora do escopo desta REQ porque roadmap não é REQ.
+
+**Grafia de `status` (AC6) — declarado FORA DE ESCOPO, com motivo medido.**
+
+São **7** entre as 28 com `done` minúsculo, não seis — e a diferença importa menos que o motivo.
+Antes de decidir, medi qual é o efeito real da grafia:
+
+| fixture | frontmatter | corpo | `req list` reporta |
+|---|---|---|---|
+| controle A | `status: Done` | sem linha de status | `unknown` |
+| controle B | `status: Done` | `> Date: … \| Status: WIP` | `WIP` |
+
+🔴 **A grafia não é o discriminante.** `Done` maiúsculo também dá `unknown`; o que manda é a linha do
+corpo. Minha hipótese inicial — "minúsculo → `unknown`" — foi **falsificada** por `status: Done` em
+`discovery-mode-cmdb` aparecendo como `unknown`.
+
+Então normalizar as 7 **não mudaria nada no produto**, e mudaria conteúdo de governança que a decisão
+do ML-2A acabou de declarar como dele. Fica fora de escopo, e o motivo é esse.
+
+O `Closed` de `REQ-roadmap-ai-generation-2026-06-11.md` **já estava decidido**: nota escrita no
+arquivo em 2026-09-05 explicando a normalização a partir de `abandoned`. Não fica no meio.
+
+O que **não** fica fora de escopo é o defeito que a medição revelou — `req list` contradiz o
+frontmatter nos 3 runtimes. Causa diferente, REQ diferente: vai como issue para o upstream.
+
+### ML-2C — Gates
+**Status:** ✅ Concluído
+**Files affected:** —
+**Acceptance criteria:**
+- [x] `validate`, `check-req-layout.sh`, `check-referential-integrity.sh` e
       `check-subcommand-parity.sh` verdes, com o binário da árvore reconstruído
+
+Medido com `bin/trackfw` reconstruído por `go build`:
+
+```
+validate                     ✓ No violations found
+check-req-layout             66 REQ(s) varrida(s) · 0 fora do layout canonico
+check-referential-integrity  Referential integrity OK
+check-subcommand-parity      8 comando(s) derivado(s) · 24 subcomando(s)
+check-inherited-req          66 varridas · 28 herdadas · 28 declaradas · exit 0
+```
+
+**Divergência de produto: 1 arquivo — e não é nossa.** `.github/workflows/windows-probe.yml`
+aparece porque o `upstream/main` andou **2 commits** durante este ML (os PRs #304 e #305 dele).
+Provado por efeito: `git diff $(git merge-base HEAD upstream/main) HEAD -- internal npm pypi cmd
+.github Makefile` devolve **vazio** — nós não tocamos em produto. Trazer esses 2 commits é trabalho
+próprio, com medição própria.
 
 ## Residual declarado
 
 - **Esta REQ não decide o estado de entrega das 28.** O trabalho foi entregue — verificado
   executando o produto. O que se decide aqui é **onde a governança dele mora**.
-- **Os 109 ACs abertos não são marcados nem desmarcados.** Marcar afirmaria autoria nossa sobre
-  entrega dele.
+- **Os 227 ACs abertos não são marcados nem desmarcados.** Marcar afirmaria autoria nossa sobre
+  entrega dele. (Eram "109" quando este roadmap foi escrito; o número derivado é 227.)
+- **A derivação compara por basename.** Uma das 28 renomeada aqui dentro deixa de ser detectada e o
+  gate a contaria como nossa — e a guarda de vacuidade **não** dispara, porque `herdadas` continua
+  maior que zero. Comparar por conteúdo cobriria; não foi feito.
+- **A grafia `done` minúsculo em 7 das 28 fica.** Medido: não muda nada no produto — o `req list`
+  ignora o frontmatter. O que fica é o risco para varredura **nossa** case-sensitive, que já errou
+  uma vez; o remédio escolhido foi comparar por `tolower()` nos gates, não editar governança dele.
+- **`scripts/check-gates-falsify.sh:1822` escreve um arquivo com o nome de uma das 28** em diretório
+  temporário. Não lê a nossa, então não veta a decisão — mas o nome está acoplado.
+- **O defeito do `req list` não é corrigido aqui.** Causa diferente, REQ diferente: vai como issue
+  para o upstream, com as duas fixtures de controle e a medição nos 3 runtimes.
