@@ -81,6 +81,23 @@ jobs:
         # eram zero.
         run: go build -o bin/trackfw ./cmd/trackfw
 
+      - name: "Diagnostico temporario: por que o worktree falha no runner"
+        # O check-upstream-sync-falsify descarta o stderr do `git worktree add`
+        # (`2>/dev/null`), entao o log so diz "FAIL: worktree em bfeea12". Aqui a
+        # mesma chamada roda com o erro VISIVEL. Passo temporario -- sai assim que
+        # a causa estiver medida.
+        continue-on-error: true
+        run: |
+          echo "git version: $(git --version)"
+          echo "commits alcancaveis:"
+          for c in bfeea12 01086b5 4f0ad33; do
+            if git cat-file -e "$c^{commit}" 2>/dev/null; then echo "  $c existe"; else echo "  $c AUSENTE"; fi
+          done
+          echo "is-shallow: $(git rev-parse --is-shallow-repository)"
+          echo "--- worktree add, com o erro visivel ---"
+          git worktree add --detach /tmp/wt-diag bfeea12 || echo "exit=$?"
+          git worktree remove --force /tmp/wt-diag || true
+
       - name: Gates locais do fork
         run: bash scripts/run-local-gates.sh
 
