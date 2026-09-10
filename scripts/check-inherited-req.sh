@@ -119,6 +119,12 @@ fi
 # ---------------------------------------------------------------------------
 censo_criterio() {  # censo_criterio <arquivo>
   awk '
+    # CERCA DE CODIGO: `- [ ]` dentro de ``` e CITACAO, nao criterio. Medido em
+    # 2026-09-10: sao 3 no acervo -- um trecho de outra REQ citado como prova, e
+    # dois de um template de roadmap embutido. Conta-los inventa criterio que
+    # ninguem escreveu, e foi o que fez este inventario acusar um caso que nao
+    # existe.
+    /^```/ { cerca = !cerca; next }
     # O bloco de critério ABRE num heading e só FECHA num heading de nível igual
     # ou mais raso. `## Critérios de Aceite` seguido de `### Bloco A` continua
     # dentro do bloco -- medido: `REQ-2026-06-13-python-cli-nativo.md` põe os 26
@@ -137,6 +143,7 @@ censo_criterio() {  # censo_criterio <arquivo>
       next
     }
     /^-[ ]\[[ ]\]/ {
+      if (cerca) next
       total++
       if (dentro) sob++
     }

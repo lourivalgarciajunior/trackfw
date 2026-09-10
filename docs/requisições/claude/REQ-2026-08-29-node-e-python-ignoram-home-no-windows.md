@@ -1,5 +1,5 @@
 ---
-status: done
+status: Open
 date: 2026-08-29
 author: claude
 adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
@@ -57,15 +57,31 @@ tambem resolve pelo `USERPROFILE` hoje.
 
 ## Acceptance Criteria
 
-- [ ] Com `HOME` apontado para um diretorio temporario, os tres runtimes resolvem a home **para
+- [x] Com `HOME` apontado para um diretorio temporario, os tres runtimes resolvem a home **para
       ele**, verificado em execucao real e nao so em teste unitario
-- [ ] `expandPath` / expansao de `~` em caminho de config honra `$HOME` nos tres
-- [ ] `check-artifact-parity.sh` passa no Windows, desbloqueando o ML-2A do roadmap do slug
+      → **(a) ENTREGUE.** `scripts/check-homedir-parity.sh` → `exit 0`:
+      *"Paridade de home: os 3 runtimes honram `$HOME`, e nenhum resolve para outro lugar"*. O gate
+      exercita os três executando, não lendo fonte.
+- [x] `expandPath` / expansao de `~` em caminho de config honra `$HOME` nos tres
+      → **(a) ENTREGUE.** Existem `npm/src/homedir.js` e `pypi/trackfw/homedir.py` — o ponto único
+      por runtime que a ADR pede —, e o `check-homedir-parity.sh` cobre a expansão nos três.
+- [x] `check-artifact-parity.sh` passa no Windows, desbloqueando o ML-2A do roadmap do slug
+      → **(a) ENTREGUE.** `exit 0` nesta máquina Windows — `9 artifact types × 3 runtimes`.
 - [ ] Gate impede regressao, e **falha** com um site restaurado para a forma antiga —
       nao-vacuidade verificada, nao assumida
+      → **(d) NAO VERIFICAVEL SEM MUTAR PRODUTO.** Restaurar "a forma antiga" exige editar
+      `homedir.js` e `homedir.py`, que são **produto do upstream**. O escopo negativo desta auditoria
+      proíbe tocar produto, e uma mutação temporária num arquivo compartilhado é risco que esta REQ
+      não autoriza.
+      🔴 **Declarado, não presumido:** não afirmo que o gate é cego — afirmo que **não medi**. O
+      precedente do `check-tty-detection` mostra que gates desta família **são** não-vacuos quando o
+      sítio certo é mutado, mas isso é evidência sobre outro gate.
 - [ ] Sem regressao nas suites npm e pypi, medido por **lista nomeada** contra a corrida anterior
       (npm 297 falhas; pypi 199 falhas), nunca so por contagem — a suite pypi tem teste instavel
       de skew de relogio que move o total sozinho
+      → **(d) NAO VERIFICAVEL AQUI.** As listas nomeadas de 297 e 199 falhas **não foram
+      versionadas**. E o próprio AC explica por que contagem não serve: há teste instável que move o
+      total sozinho — então até o número de hoje seria ruído.
 
 ## Nao faz parte
 
@@ -82,4 +98,4 @@ ADR: docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito
 
 ## Linked Roadmap
 
-Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-node-e-python-ignoram-home-no-windows.md
+Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-08-29-node-e-python-ignoram-home-no-windows.md

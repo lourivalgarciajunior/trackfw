@@ -1,14 +1,14 @@
 ---
-status: Open
+status: Done
 date: 2026-09-10
 author: "claude"
 adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
-roadmap: "docs/roadmaps/claude/backlog/ROADMAP-2026-09-10-onze-reqs-nossas-afirmam-done-com-58-criterios-de-aceite-em-aberto.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-09-10-onze-reqs-nossas-afirmam-done-com-58-criterios-de-aceite-em-aberto.md"
 ---
 
 # REQ: onze REQs **nossas** afirmam `done` com 58 critérios de aceite em aberto
 
-> Date: 2026-09-10 | Status: Open
+> Date: 2026-09-10 | Status: Done
 
 ## Motivation
 
@@ -89,31 +89,69 @@ em massa com as outras dez.
 
 ## Acceptance Criteria
 
-- [ ] **AC1** — A lista das 11 é **derivada por script**, com denominador impresso, nunca digitada.
+- [x] **AC1** — A lista das 11 é **derivada por script**, com denominador impresso, nunca digitada.
       🔴 O número desta classe já saiu errado **três vezes** neste repositório em quatro dias, e as
       três por varredura mais estreita que o alvo. O entregável é o método, não o par de números.
-- [ ] **AC2** — **Um veredito por AC, com evidência de execução ou de leitura de fonte** — nunca em
+- [x] **AC2** — **Um veredito por AC, com evidência de execução ou de leitura de fonte** — nunca em
       massa. O veredito é um destes quatro, e cada um exige coisa diferente:
       **(a) entregue** → marca `[x]` com o sítio no produto que o comprova;
       **(b) não entregue** → fica `[ ]`, e a REQ perde o `done`;
       **(c) caducou** → o critério não se aplica mais, e o **porquê** é escrito;
       **(d) não verificável aqui** → declarado, com o que faltaria para verificar.
-- [ ] **AC3** — 🔴 **Falsificação do método de verificação, antes de usá-lo.** Para cada família de
+- [x] **AC3** — 🔴 **Falsificação do método de verificação, antes de usá-lo.** Para cada família de
       AC, um **controle positivo** — algo que sabidamente está no produto tem de ser detectado — e um
       **controle negativo** — algo que sabidamente não está **não** pode ser. Verde sobre método cego
       marcaria 57 ACs por engano, e essa é a forma mais cara de errar aqui.
-- [ ] **AC4** — O `status` de cada uma das 11 é **reconciliado com o resultado**: REQ que sobrar com
+- [x] **AC4** — O `status` de cada uma das 11 é **reconciliado com o resultado**: REQ que sobrar com
       AC aberto **deixa de ser `done`**. 🔴 Não vale o inverso — abaixar o critério para manter o
       `done` é o defeito que esta REQ existe para fechar.
-- [ ] **AC5** — A grafia minúscula (`done`) é normalizada **nestas 11**, que são **nossas**. Isso é
+- [x] **AC5** — A grafia minúscula (`done`) é normalizada **nestas 11**, que são **nossas**. Isso é
       deliberadamente o oposto da decisão da `REQ-2026-09-09-governanca`, onde as 7 minúsculas
       **ficaram** por serem governança dele — e a diferença fica escrita para não parecer incoerência.
-- [ ] **AC6** — **Gate que impede a reincidência**: REQ com `status: Done` e checkbox aberto sob bloco
+- [x] **AC6** — **Gate que impede a reincidência**: REQ com `status: Done` e checkbox aberto sob bloco
       de critério reprova. Falsificação nas duas direções, denominador impresso, e falha se varrer
       zero.
-- [ ] **AC7** — `trackfw validate`, `check-req-layout.sh`, `check-referential-integrity.sh`,
+- [x] **AC7** — `trackfw validate`, `check-req-layout.sh`, `check-referential-integrity.sh`,
       `check-inherited-req.sh` e o gate novo verdes ao fim, com o binário da árvore reconstruído, e
       divergência de produto **zero**.
+
+## Resultado
+
+**56 ACs julgados, um por um.** `(a) 35 · (b) 9 · (c) 1 · (d) 11`.
+
+As dez REQs perderam o `done`; os dez roadmaps saíram de `done/` para `backlog/`. O gate
+`check-req-done-com-criterio-aberto.sh`, que reprovava com `10 REQs · 56 ACs`, sai `exit 0`.
+
+🔴 **O achado estrutural está nos `(d)`.** A maioria dos 11 tem a mesma causa: o AC exige comparação
+contra **lista nomeada** de uma corrida de agosto — 95, 105, 198, 199, 297 falhas — e **nenhuma
+dessas listas foi versionada**. O próprio AC proíbe comparar por contagem, que é a única coisa
+reproduzível hoje.
+
+**Uma REQ cujo critério depende de artefato não versionado é inauditável por construção.** Não é
+falta de esforço: é desenho. E explica por que dez REQs puderam ficar `done` com critério aberto sem
+que ninguém percebesse — parte delas nunca teve como ser conferida.
+
+### Três achados de produto → issue no upstream
+
+1. `check-python-writes-lf` **não pega CRLF explícito** — testa presença de `newline`, não o valor.
+   **79 sítios** expostos.
+2. `trackfw-validate.sh` gerado **diverge**: `go=sh · node=sh · python=bash`.
+3. `init` do Python cria **um ADR a mais** que Go e Node.
+
+### Um achado nosso, de outra causa
+
+`check-upstream-content.sh` está **vermelho** com 7 arquivos de governança do upstream em `docs/`,
+incluindo a `ADR-2026-09-03`, que **5 REQs nossas citam como se fosse nossa**. Mesma causa da
+`REQ-2026-09-09-governanca`. **Trabalho próprio** — não foi corrigido aqui.
+
+### Sete medições minhas erradas, nenhuma publicada como veredito
+
+64 ACs no alvo · "o Go não usa `GetConsoleMode`" · "o gate de tty é cego" · "o gate falha sem a ref"
+· "o slug do Python diverge" · "1 checkbox fora de critério" · e um `rm -f` que apagou
+`docs/agents-working-context.md`, restaurado.
+
+Sete, num trabalho cujo objeto é exatamente **artefato que afirma mais do que mediu**. Estão todas
+escritas no roadmap, com o que cada uma teria custado.
 
 ## Negative Scope
 
@@ -134,4 +172,4 @@ ADR: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-t
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-09-10-onze-reqs-nossas-afirmam-done-com-58-criterios-de-aceite-em-aberto.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-09-10-onze-reqs-nossas-afirmam-done-com-58-criterios-de-aceite-em-aberto.md

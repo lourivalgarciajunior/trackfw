@@ -1,9 +1,9 @@
 ---
-status: done
+status: Open
 date: 2026-08-29
 author: claude
 adr: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
-roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-trazer-o-barrier-dialeto-canonico-do-upstream.md
+roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-08-29-trazer-o-barrier-dialeto-canonico-do-upstream.md
 ---
 
 # REQ: Trazer o barrier dialeto canonico do upstream
@@ -11,7 +11,7 @@ roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-trazer-o-barrier-dialeto-c
 > Date: 2026-08-29 | Status: Open
 
 ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
-Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-trazer-o-barrier-dialeto-canonico-do-upstream.md
+Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-08-29-trazer-o-barrier-dialeto-canonico-do-upstream.md
 
 ## Motivation
 
@@ -29,9 +29,23 @@ interessa e `pypi/trackfw/generators/roadmap.py` — arquivo que este repo patch
 
 ## Acceptance Criteria
 
-- [ ] Merge sem marcador de conflito
+- [x] Merge sem marcador de conflito
+      → **(a) ENTREGUE.** `git grep '^<<<<<<<'` na árvore versionada: **0 ocorrências**.
 - [ ] Os **sete** gates verdes; para cada perda, o gate que a acusou registrado
-- [ ] `check-upstream-content.sh` barra o `vault/notes/index.md` que vem no diff — **primeira
+      → 🔴 **(b) NAO ENTREGUE.** Seis dos sete saem `exit 0`; o **`check-upstream-content.sh` está
+      vermelho** com 7 arquivos de governança do upstream em `docs/`.
+      ```
+      slug-inventory 0 · python-writes-lf 0 · homedir-parity 0 · artifact-parity 0
+      tty-detection 0 · barrier 0 · subcommand-parity 0 · upstream-content 1  <- VERMELHO
+      ```
+      A segunda metade do AC — *"para cada perda, o gate que a acusou registrado"* — é **(d)**: não
+      há registro contemporâneo daquele merge para conferir.
+- [x] `check-upstream-content.sh` barra o `vault/notes/index.md` que vem no diff — **primeira
       prova de fogo dele**
-- [ ] `go build ./...` verde
+      → **(a) ENTREGUE**, e continua barrando: o gate acusa hoje, e `vault/notes/index.md` **não**
+      está na nossa árvore. O mecanismo que este AC estreou é o mesmo que hoje acusa os 7 arquivos —
+      ele funciona; o que falta é alguém olhar para ele.
+- [x] `go build ./...` verde
+      → **(a) ENTREGUE.** `exit 0`.
 - [ ] Suite pypi sem regressao por lista nomeada contra 95 falhas
+      → **(d) NAO VERIFICAVEL AQUI.** A lista das 95 não foi versionada.

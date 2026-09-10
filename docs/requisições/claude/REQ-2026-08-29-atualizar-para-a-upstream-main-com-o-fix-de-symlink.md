@@ -1,5 +1,5 @@
 ---
-status: done
+status: Open
 date: 2026-08-29
 author: claude
 adr: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
@@ -67,15 +67,39 @@ sem gate reprovar, o gate e que esta errado.
 
 ## Acceptance Criteria
 
-- [ ] `git merge upstream/main` concluido, sem marcador de conflito em arquivo versionado
-- [ ] Os **seis** gates verdes: `slug-inventory`, `python-writes-lf`, `homedir-parity`,
+- [x] `git merge upstream/main` concluido, sem marcador de conflito em arquivo versionado
+      → **(a) ENTREGUE.** `git grep '^<<<<<<<'` na árvore versionada: **0 ocorrências**. E a
+      ancestralidade segue viva: `git merge-base main upstream/main` → `97543eef979a`.
+- [x] Os **seis** gates verdes: `slug-inventory`, `python-writes-lf`, `homedir-parity`,
       `tty-detection`, `artifact-parity`, `subcommand-parity`
+      → **(a) ENTREGUE.** Os **seis nomeados** saem `exit 0` em 2026-09-10.
+      ```
+      slug-inventory 0 · python-writes-lf 0 · homedir-parity 0 · artifact-parity 0
+      tty-detection 0 · barrier 0 · subcommand-parity 0 · upstream-content 1  <- VERMELHO
+      ```
+      🔴 O `upstream-content` está vermelho, mas **não é um dos seis deste AC** — ele pertence à
+      `REQ-2026-08-29-politica-de-conteudo-do-upstream-sem-gate`, onde recebeu veredito **(b)**.
 - [ ] Para cada fix local que o merge derrubar, registrar **qual gate acusou** — ou, se nenhum
       acusou, tratar como buraco de cobertura e dizer isso
-- [ ] `go build ./...` verde
+      → **(d) NAO VERIFICAVEL AQUI.** O AC é sobre o **processo daquele merge**, não sobre um estado
+      do repositório. Não há artefato que registre quais fixes o merge de agosto derrubou nem qual
+      gate acusou cada um; sem isso, não dá para dizer se foi feito.
+      **O que faltaria:** o registro contemporâneo. Ele não existe.
+- [x] `go build ./...` verde
+      → **(a) ENTREGUE.** `exit 0`.
 - [ ] Suite pypi sem regressao por **lista nomeada** contra 95 falhas, nunca so por contagem
+      → **(d) NAO VERIFICAVEL AQUI.** A lista nomeada das 95 falhas **não foi versionada**. O próprio
+      AC proíbe comparar por contagem, que é a única coisa que eu conseguiria produzir hoje.
 - [ ] A vulnerabilidade de symlink verificada como corrigida em execucao real, nos tres runtimes
+      → **(d) NAO VERIFICAVEL AQUI.** Verificar correção de symlink exige **criar** symlink, e nesta
+      máquina o `ln -s` do Git Bash **degrada para cópia** (`MSYS=disable_pcon`, sem `winsymlinks`) —
+      medido em 2026-09-10 e registrado no `CLAUDE.md`. Um teste que não consegue criar o vetor não
+      prova que ele está fechado.
+      **O que faltaria:** Developer Mode ou execução como administrador, ou uma máquina POSIX.
 - [ ] Governanca do upstream continua fora, conforme a ADR
+      → 🔴 **(b) NAO ENTREGUE.** `check-upstream-content.sh` acusa **7 arquivos** de governança do
+      upstream em `docs/`, incluindo a `ADR-2026-09-03`. E a `REQ-2026-09-09-governanca` mediu
+      **28 REQs** dele no nosso `req_dir`. A governança dele **não** continuou fora.
 
 ## Nao faz parte
 
@@ -92,4 +116,4 @@ ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
 
 ## Linked Roadmap
 
-Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-atualizar-para-a-upstream-main-com-o-fix-de-symlink.md
+Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-08-29-atualizar-para-a-upstream-main-com-o-fix-de-symlink.md

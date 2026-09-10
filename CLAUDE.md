@@ -446,6 +446,41 @@ cenário vacuo. O ponto cego é real, mas nunca vira verde falso.
   — **exit code certo pelo motivo errado**. Aconteceu três vezes em 2026-09-09. Rode de dentro de
   `scripts/`.
 
+## Gate de REQ `done` com critério aberto (`scripts/check-req-done-com-criterio-aberto.sh`)
+
+Acusa REQ **nossa** marcada `done` que ainda tem critério de aceite em aberto.
+
+```bash
+git fetch upstream && bash scripts/check-req-done-com-criterio-aberto.sh
+```
+
+**Medido em 2026-09-10: eram dez, com 56 critérios substantivos em aberto.** Duas delas escreviam no
+**próprio texto do critério** que ele *"não foi atingido"* — com a REQ em `status: Done`. É a Regra
+Dura de Reconciliação aplicada ao acervo em vez de ao microlote.
+
+**Três discriminantes, cada um por um erro medido:**
+
+1. **Herdada fica fora por construção**, não por allowlist — mesma derivação do
+   `check-inherited-req.sh`. Acusar as 28 dele seria pedir que marcássemos entrega que não é nossa.
+2. **Só `status: done` entra no alvo.** REQ `Open` com critério aberto é trabalho em curso, não
+   contradição. 🔴 A primeira derivação deu 64 ACs por não ter isto — e incluía a própria REQ que
+   define o alvo.
+3. **Só checkbox sob bloco de critério**, e **fora de cerca de código**. 🔴 `- [ ]` dentro de
+   ``` é citação: são 3 no acervo, e contá-los inventa critério que ninguém escreveu.
+
+O gate oferece **duas saídas e recusa a terceira**: marque nomeando o sítio que comprova, ou a REQ
+deixa de ser `done`. Reescrever o critério para caber no estado atual não é saída — é fabricar
+histórico.
+
+**Vereditos possíveis, e o que cada um exige:** `(a) entregue` nomeia o sítio no produto;
+`(b) não entregue` reabre a REQ; `(c) caducou` escreve o que mudou no mundo; `(d) não verificável
+aqui` declara o que faltaria. 🔴 **`(d)` é resultado, não desculpa** — dos 56, **11** caíram nele, e
+a maioria por um motivo só: os ACs exigiam comparação contra **lista nomeada** de corridas de agosto
+que **nunca foram versionadas**. Uma REQ cujo critério depende de artefato não versionado é
+inauditável por construção.
+
+Como os outros, é **nosso**, e **não tem alvo no `Makefile`** pelo mesmo motivo.
+
 ## Gate de REQ herdada do upstream (`scripts/check-inherited-req.sh`)
 
 A `ADR-2026-08-29` decide que **a governança do upstream não é importada**. Vinte e oito REQs do

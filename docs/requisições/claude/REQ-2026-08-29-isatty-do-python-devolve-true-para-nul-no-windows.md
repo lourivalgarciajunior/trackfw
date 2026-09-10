@@ -1,5 +1,5 @@
 ---
-status: done
+status: Open
 date: 2026-08-29
 author: claude
 adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
@@ -60,16 +60,50 @@ pela terceira parede: primeiro o CRLF, depois a home, agora esta.
 
 ## Acceptance Criteria
 
-- [ ] Com stdin nao interativo, `trackfw init` do Python **conclui** em vez de promptar, verificado
+- [x] Com stdin nao interativo, `trackfw init` do Python **conclui** em vez de promptar, verificado
       em execucao real
-- [ ] O comportamento casa com o do Go **por construcao**: mesma chamada de sistema
+      → **(a) ENTREGUE.** 2026-09-10, execução real: `python3 -m trackfw init < /dev/null` →
+      `exit 0`, **21 arquivos** produzidos. Não promptou.
+- [x] O comportamento casa com o do Go **por construcao**: mesma chamada de sistema
       (`GetConsoleMode`), nao uma heuristica paralela
-- [ ] `sys.stdout.isatty()` de `validate.py` recebe o mesmo tratamento — hoje ele emitiria cor para
+      → **(a) ENTREGUE.** O Go chega ao `GetConsoleMode` por
+      `cbterm.IsTerminal(uintptr(os.Stdin.Fd()))`, e o próprio `pypi/trackfw/tty.py:10` documenta a
+      cadeia: `Go cbterm.IsTerminal -> windows.GetConsoleMode(handle, &st) == nil`.
+      🔴 **Quase reportei o contrário.** Meu primeiro teste foi `git grep GetConsoleMode -- internal`,
+      que devolve **zero** — porque no Go a chamada está **dentro da biblioteca**, não no nosso
+      código. Grep literal por nome de syscall não mede uso de syscall.
+- [x] `sys.stdout.isatty()` de `validate.py` recebe o mesmo tratamento — hoje ele emitiria cor para
       dentro de arquivo redirecionado
-- [ ] O caminho POSIX nao muda: em Linux e macOS continua sendo `isatty()` puro
-- [ ] Gate impede regressao e **falha** com um site restaurado — nao-vacuidade verificada
-- [ ] `check-artifact-parity.sh` passa, desbloqueando o ML-2A do slug
+      → **(a) ENTREGUE.** `pypi/trackfw/commands/validate.py:25`:
+      `return hasattr(sys.stdout, "isatty") and stdout_is_interactive()` — consulta o helper, não o
+      `isatty()` cru.
+- [x] O caminho POSIX nao muda: em Linux e macOS continua sendo `isatty()` puro
+      → **(a) ENTREGUE por leitura de fonte**, `pypi/trackfw/tty.py:53-58`:
+      ```python
+      if not stream.isatty(): return False
+      if sys.platform == "win32": return _windows_is_console(stream)
+      return True
+      ```
+      O estreitamento é guardado por `sys.platform == "win32"`; fora dele o resultado é o `isatty()`.
+      🔴 **Limite declarado:** isto é leitura de fonte, **não execução em Linux ou macOS** — esta
+      máquina é Windows. A construção é inequívoca, mas a medição naquelas plataformas não existe.
+- [x] Gate impede regressao e **falha** com um site restaurado — nao-vacuidade verificada
+      → **(a) ENTREGUE.** Falsificado em 2026-09-10 restaurando o sítio (`return True` no lugar de
+      `return _windows_is_console(stream)`): `check-tty-detection.sh` → `exit 1`, com a mensagem
+      `isatty() mente (True) e stdin_is_interactive() repetiu a mentira (True)`. Árvore intacta →
+      `exit 0`.
+      🔴 **Três mutações anteriores minhas não valeram, e cada uma por um motivo diferente:** a 1ª
+      atingiu um comentário, a 2ª um docstring, e a 3ª — na chamada real — mudava o retorno para
+      `False`, que é **a resposta certa para `NUL`**. Só a mutação que restaura o comportamento
+      **antigo** exercita o discriminante. Chamar o gate de cego em qualquer uma das três teria sido
+      um falso achado publicado.
+- [x] `check-artifact-parity.sh` passa, desbloqueando o ML-2A do slug
+      → **(a) ENTREGUE.** `exit 0` — `9 artifact types × 3 runtimes`.
 - [ ] Sem regressao na suite pypi por lista nomeada contra 105 falhas
+      → **(d) NAO VERIFICAVEL AQUI.** O AC exige comparação contra **lista nomeada**, e a lista das
+      105 falhas de 2026-08-29 **não foi versionada**. Rodar a suite hoje daria um número, e comparar
+      número com número é o que o próprio AC recusa.
+      **O que faltaria:** a lista de falhas por nome daquela corrida.
 
 ## Risco declarado
 
@@ -90,4 +124,4 @@ ADR: docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito
 
 ## Linked Roadmap
 
-Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-isatty-do-python-devolve-true-para-nul-no-windows.md
+Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-08-29-isatty-do-python-devolve-true-para-nul-no-windows.md

@@ -1,5 +1,5 @@
 ---
-status: done
+status: backlog
 date: 2026-08-30
 req: docs/requisições/claude/REQ-2026-08-30-ruido-de-gofmt-divergindo-do-upstream.md
 ---
