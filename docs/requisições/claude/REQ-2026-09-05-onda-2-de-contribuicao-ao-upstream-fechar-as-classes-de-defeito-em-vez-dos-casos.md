@@ -122,6 +122,30 @@ são do produto.
       >
       > **O roadmap dizia o contrário disto.** O ML-1B estava marcado ✅ Concluído com o corpo em
       > branco do template. Corrigido para ⬜ Pendente no mesmo PR, com o motivo escrito.
+      >
+      > ### Atualização — a dependência foi removida, não esperada
+      >
+      > **`ADR-2026-09-09-predicado-de-so-em-sitio-de-classificacao-o-discriminante-e-a-origem-do-argumento-nao-a-intencao-do-autor`**
+      >
+      > O discriminante passa a ser a **origem do argumento**, não a intenção do autor:
+      >
+      > | | regra | efeito |
+      > |---|---|---|
+      > | **D1** | argumento é **erro de chamada de sistema** → travessia, fora de escopo | os 57 sítios de código de `os.IsNotExist` saem de uma vez |
+      > | **D2** | argumento é **string autorada** (config, frontmatter, argv, template) → classificação, em escopo | `filepath.IsAbs(destination)` entra |
+      > | **D3** | predicado de plataforma lido **uma vez** para constante nomeada é a costura, não a violação | `_platform`, `isWindows` — com allowlist e motivo |
+      > | **D4** | o ônus é de quem quer excluir, e a exclusão é escrita | sem julgamento silencioso |
+      > | **D5** | com teste (196) e sem teste (110) são reportados **separados** | misturá-los falseou este denominador três vezes |
+      >
+      > **Medido:** classificados linha a linha, os 61 sítios de `os.IsNotExist` são **57 código +
+      > 4 comentários + 0 outros**, e os 57 recebem todos um valor de erro. **Zero recebe outra
+      > coisa** — é regra sem exceção, não regra com maioria.
+      >
+      > 🔴 A primeira redação da ADR dizia "59 de 61" porque contei ocorrências do padrão **dentro
+      > das linhas** em vez de classificar **linha a linha**. Corrigido, e o erro fica escrito.
+      >
+      > **O AC2 volta a ser executável aqui.** O que falta agora é o lint em si — trabalho, não
+      > dependência.
 - [x] **AC3 — C1: gate de ponto único de leitura.** Acusa enumeração de `req_dir`/`roadmap_dir` fora
       do resolvedor canônico. Falsificação: tem de acusar os sítios **já conhecidos**
       (`status.py:57`, `sync.go:43`, `sync.js:237`, `sync.py:197`) e **não** acusar o próprio
@@ -162,6 +186,7 @@ são do produto.
 
 ## Linked ADR
 ADR: docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md
+ADR: docs/adr/ADR-2026-09-09-predicado-de-so-em-sitio-de-classificacao-o-discriminante-e-a-origem-do-argumento-nao-a-intencao-do-autor.md
 
 ## Blocked by ADRs
 <!-- none -->
