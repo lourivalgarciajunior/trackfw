@@ -396,6 +396,41 @@ O gate existe porque a ADR foi aceita e, cinco dias depois, **7 REQs estavam em 
 o `validate` dizendo `✓ No violations found`. E o custo não era a desarrumação: aquele nível a mais
 produziu um **ponto cego de medição** que fez um número publicado sair errado.
 
+## Gate de REQ herdada do upstream (`scripts/check-inherited-req.sh`)
+
+A `ADR-2026-08-29` decide que **a governança do upstream não é importada**. Vinte e oito REQs do
+`kgsaran/trackfw` já estão no nosso `req_dir` — entraram em 2026-06-28, quando este repo era cópia
+por ZIP, antes daquela decisão.
+
+```bash
+git fetch upstream && bash scripts/check-inherited-req.sh
+```
+
+Deriva por `git cat-file -e upstream/main:docs/req/<basename>`, lê o `req_dir` do `trackfw.yaml`,
+varre recursivamente e **congela o conjunto**: uma 29ª herdada reprova. Não resolve as 28 — a
+`REQ-2026-09-09-governanca-do-upstream` trata o destino delas —, impede que o próximo merge
+acrescente ao problema enquanto ela está aberta.
+
+**Não faz `git fetch` sozinho, de propósito.** Um gate que muda o estado que ele mede deixa de ser
+gate. Sem a ref ele **falha dizendo o motivo**, em vez de derivar zero e passar.
+
+**O número que este gate existe para produzir já foi publicado errado três vezes** — 6·54, 8·70,
+14·109 —, cada vez por uma varredura digitada na hora e mais estreita que o alvo. O valor derivado é
+**23 REQs · 227 ACs**. A tabela das quatro medições, com o que estava estreito em cada uma, está na
+REQ.
+
+**A guarda de reconciliação é o que separa este gate de um relatório.** Ele conta checkbox aberto de
+duas formas — sob bloco de critério, e no arquivo inteiro — e **nomeia a diferença** em vez de
+escolher um número. Foi ela que pegou um defeito no próprio detector: `## Critérios de Aceite`
+seguido de `### Bloco A` zerava o estado, e `[eé]` numa classe de caractere não casa UTF-8 no awk
+desta máquina. As duas somadas davam `0 sob critério` — verde de aparência limpa.
+
+Hoje o resíduo declarado é **2 checkboxes** em `REQ-roadmap-ai-generation-2026-06-11.md`, dentro de
+um template de roadmap embutido na REQ. São placeholder, não critério — e o gate não adivinha isso,
+ele aponta.
+
+Como os outros, é **nosso**, e **não tem alvo no `Makefile`**, pelo mesmo motivo da seção abaixo.
+
 ## Gate de predicados de plataforma (`scripts/check-platform-predicates.sh`)
 
 O `scripts/testdata/platform-predicates.tsv` deixou de ser tabela decorativa: o gate executa cada

@@ -3,7 +3,7 @@ status: Open
 date: 2026-09-09
 author: "claude"
 adr: "docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md"
-roadmap: "docs/roadmaps/claude/backlog/ROADMAP-2026-09-09-governanca-do-upstream-vive-no-nosso-req-dir-28-reqs-contra-a-adr-2026-08-29.md"
+roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-09-09-governanca-do-upstream-vive-no-nosso-req-dir-28-reqs-contra-a-adr-2026-08-29.md"
 ---
 
 # REQ: governança do upstream vive no nosso `req_dir` — 28 REQs contra a `ADR-2026-08-29`
@@ -44,24 +44,43 @@ E abandonar também não serve: diria que o trabalho não foi feito, e foi.
 ### 3. O tamanho real: não são 8, são 28
 
 ```
-REQs no nosso acervo         65
+REQs no nosso acervo         66   (65 + esta)
 que existem no upstream      28   <- governanca DELE
-so nossas                    37
+so nossas                    38
 
-das 28:  14 com AC aberto (109 ACs)  ·  14 sem
+das 28:  23 com criterio aberto (227 ACs)  ·  5 sem
 ```
 
-🔴 **Este número foi corrigido duas vezes, e as duas por varredura minha mais estreita que o alvo:**
+🔴 **Este número foi corrigido TRÊS vezes, e as três por varredura minha mais estreita que o alvo:**
 
 | medição | resultado | o que estava estreito |
 |---|---|---|
 | PR #65 | 6 REQs · 54 ACs | glob de **um nível** — não descia em `<agente>/backlog/` |
 | comentário na #65 | 8 REQs · 70 ACs | comparação `= "Done"` — perdeu seis com `status: done` **minúsculo** |
-| aqui | **14 REQs · 109 ACs** | — |
+| primeira versão desta REQ | 14 REQs · 109 ACs | 🔴 **não reproduzível.** Em 2026-09-09 testei quatro varreduras candidatas — qualquer checkbox, só sob heading inglês, `status` exato, `status` case-insensitive — e **nenhuma** chega nesse par. O número foi escrito à mão |
+| derivado por `scripts/check-inherited-req.sh` | **23 REQs · 227 ACs** | — |
 
-A segunda é especialmente instrutiva: eu **normalizei** quatro `done`→`Done` na
-`REQ-2026-09-08-sete-reqs`, e não percebi que existiam mais seis, porque a mesma comparação
-case-sensitive que criou o problema foi a que usei para medi-lo.
+A segunda é instrutiva: eu **normalizei** quatro `done`→`Done` na `REQ-2026-09-08-sete-reqs`, e não
+percebi que existiam mais seis, porque a mesma comparação case-sensitive que criou o problema foi a
+que usei para medi-lo.
+
+E a terceira produziu a quarta armadilha **na própria conferência**: ao checar de onde vinha o
+14/109, meu primeiro grep de heading procurou `Critérios de Aceite` com **A maiúsculo** e devolveu 18
+arquivos "sem bloco de critério". São 13 que escrevem `Critérios de aceite` com **a minúsculo**.
+Mesma classe de erro, mesmo dia, dentro do ato de corrigi-la.
+
+**Por isso o AC1 não pede um número: pede um script.** Enquanto a medição for um grep digitado na
+hora, ela erra do mesmo jeito toda vez, e erra em silêncio.
+
+### Os 2 checkboxes que NÃO são AC
+
+227 sob bloco de critério, **229 no total**. Os dois de diferença estão em
+`REQ-roadmap-ai-generation-2026-06-11.md`, dentro de um **template de roadmap embutido** na própria
+REQ (`### ML-1A — <título>`, `- [ ] build sem erros`). São placeholder de exemplo, não critério.
+
+O gate **não adivinha isso** — ele nomeia o resíduo e deixa a leitura para quem lê. Absorver os dois
+no total daria 229 sem dizer de onde vieram; descartá-los daria 227 pelo mesmo silêncio. As duas
+formas de errar já aconteceram neste acervo.
 
 ### 4. É a mesma classe que já tratamos duas vezes
 
@@ -74,9 +93,16 @@ existir.
 
 ## Acceptance Criteria
 
-- [ ] **AC1** — A lista das REQs herdadas é **derivada por comparação com o upstream**
+- [x] **AC1** — A lista das REQs herdadas é **derivada por comparação com o upstream**
       (`git cat-file -e upstream/main:docs/req/<basename>`), nunca escrita à mão. O denominador —
       quantas varridas, quantas herdadas — é impresso.
+      → `scripts/check-inherited-req.sh`, 2026-09-09. Saída:
+      `66 REQ(s) varrida(s) em 'docs/requisições' · 28 herdada(s) do upstream · 28 declarada(s)` ·
+      `23 REQ(s) herdada(s) · 227 sob bloco de critério · 229 checkbox(es) no total`.
+      O `req_dir` vem do `trackfw.yaml`, nunca chumbado; a varredura é recursiva; o `UPSTREAM_REQ_DIR`
+      é parametrizado porque um rename lá dentro tornaria toda REQ "só nossa" em silêncio.
+      🔴 O gate **congela** o conjunto: uma 29ª herdada reprova. Não fecha a REQ — impede que o
+      próximo merge acrescente ao problema enquanto ela está aberta.
 - [ ] **AC2** — 🔴 **Falsificação prévia obrigatória, na árvore inteira.** Para cada candidata:
       varredura de referência com `grep -r` em **todo** o repositório, não num diretório escolhido.
       É o erro exato que produziu a `REQ-2026-09-05-residuo-de-docs-req` — lá varri
@@ -112,4 +138,4 @@ ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-09-09-governanca-do-upstream-vive-no-nosso-req-dir-28-reqs-contra-a-adr-2026-08-29.md
+Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-09-09-governanca-do-upstream-vive-no-nosso-req-dir-28-reqs-contra-a-adr-2026-08-29.md

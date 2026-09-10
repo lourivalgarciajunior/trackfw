@@ -1,5 +1,5 @@
 ---
-status: backlog
+status: wip
 date: 2026-09-09
 req: "docs/requisições/claude/REQ-2026-09-09-governanca-do-upstream-vive-no-nosso-req-dir-28-reqs-contra-a-adr-2026-08-29.md"
 squad: "claude"
@@ -7,7 +7,7 @@ squad: "claude"
 
 # Roadmap: governança do upstream vive no nosso `req_dir` — 28 REQs contra a `ADR-2026-08-29`
 
-> Created: 2026-09-09 | Status: backlog
+> Created: 2026-09-09 | Status: wip
 
 ## Context
 
@@ -41,7 +41,7 @@ e **as duas remoções quebraram gate**. É por isso que a Wave 0 bloqueia tudo 
 > remoções anteriores desta mesma classe quebraram gate.
 
 ### ML-0A — Enumeração, ameaça e falsificação
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:** —
 **Actions:**
 1. **Enumeração derivada.** `git cat-file -e upstream/main:docs/req/<basename>` para cada REQ do
@@ -62,17 +62,55 @@ e **as duas remoções quebraram gate**. É por isso que a Wave 0 bloqueia tudo 
 4. **Residual declarado.** O que este desenho aceita não cobrir.
 
 **Acceptance criteria:**
-- [ ] As quatro seções respondidas com evidência, não com asserção de uma linha
-- [ ] Nenhuma linha de implementação escrita neste ML
+- [x] As quatro seções respondidas com evidência, não com asserção de uma linha
+- [x] Nenhuma linha de implementação escrita neste ML
+
+**Falsificação executada em 2026-09-09 — seis direções, não duas:**
+
+| # | o que foi plantado / mutado | esperado | medido |
+|---|---|---|---|
+| A | REQ herdada real (`REQ-2026-06-19-architect-command-guidelines-ML-1B.md`) fora do baseline | reprova | `exit 1`, nomeada |
+| B | REQ só nossa, nome inexistente no upstream | passa, não conta | `exit 0`, herdadas seguem 28 |
+| C | `UPSTREAM_REQ_DIR` apontando para diretório inexistente | reprova | `exit 1` com a razão |
+| D | `UPSTREAM_REF` inexistente | reprova | `exit 1` com a razão |
+| E | baseline esvaziado no lugar de derivar | reprova | `exit 1`, 28 nomeadas |
+| F | detector de bloco de critério cegado (`if (0)`) | resíduo visível | `0 sob · 229 total`, 23 avisos |
+
+🔴 **A direção E não valeu na primeira tentativa.** Copiei o script mutado para o scratchpad; ele
+calcula `ROOT_DIR` a partir do próprio caminho, não achou o `trackfw.yaml` e saiu 1 — **o exit code
+certo pelo motivo errado**. Só apareceu porque conferi a linha de saída em vez do código. Refeito
+dentro de `scripts/`, deu `exit 1` com as 28 nomeadas.
+
+**Residual declarado deste ML:** a derivação compara por **basename**. Uma REQ herdada renomeada aqui
+dentro deixa de ser detectada, e o gate a contaria como nossa. Comparar por conteúdo (hash da seção
+de critério, digamos) cobriria isso; não foi feito, e o custo é conhecido: uma renomeação silenciosa
+esvazia o baseline sem que a guarda de vacuidade dispare, porque `herdadas` continuaria > 0.
 
 ## Wave 1 — Medir antes de tocar
 
 ### ML-1A — Lista derivada, com denominador
-**Status:** ⬜ Pendente
-**Files affected:** —
+**Status:** ✅ Concluído
+**Files affected:** `scripts/check-inherited-req.sh`
 **Acceptance criteria:**
-- [ ] `N varridas · M herdadas` impresso; falha se `M == 0`
-- [ ] A lista bate com a medição desta REQ (65 varridas · 28 herdadas) **ou** a diferença é explicada
+- [x] `N varridas · M herdadas` impresso; falha se `M == 0`
+- [x] A lista bate com a medição desta REQ (65 varridas · 28 herdadas) **ou** a diferença é explicada
+
+**Resultado:** `66 varridas · 28 herdadas · 28 declaradas`. A diferença de 65 → 66 é **esta própria
+REQ**, criada depois daquela medição; as herdadas não mudaram.
+
+🔴 **E o censo de critério aberto NÃO bateu: 23 REQs · 227 ACs, contra as 14 · 109 publicadas.**
+Nenhuma das quatro varreduras candidatas testadas reproduz o par publicado — ele foi escrito à mão.
+A correção está na REQ, com a tabela das quatro medições.
+
+**Defeito encontrado pela própria guarda de reconciliação, durante este ML.** A primeira versão do
+detector devolveu `0 sob bloco de critério` para 23 arquivos que têm o bloco. Duas causas somadas:
+
+1. `## Critérios de Aceite` seguido de `### Bloco A` — o subheading zerava o estado. Medido em
+   `REQ-2026-06-13-python-cli-nativo.md`, que põe 26 checkboxes sob seis subheadings.
+2. `[eé]` numa classe de caractere não casa UTF-8 no awk desta máquina.
+
+Sem a reconciliação, isso teria saído como `verde, nada sob critério` — um número menor, com aparência
+de resultado. É o motivo de a guarda existir.
 
 ### ML-1B — Varredura de referência na árvore inteira
 **Status:** ⬜ Pendente
