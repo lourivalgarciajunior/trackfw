@@ -56,8 +56,16 @@ while IFS=$'\t' read -r BASE REF LABEL; do
 	cleanup
 	git worktree add --detach -q "$WT" "$BASE" 2>/dev/null || { echo "  FAIL: worktree em $BASE"; FAILED=1; continue; }
 
-	( cd "$WT" && bash "$SYNC" --ref "$REF" --skip-verify ) >/dev/null 2>&1 || {
-		echo "  FAIL: upstream-sync abortou"; FAILED=1; continue; }
+	# 🔴 A saida do sync e CAPTURADA, nao descartada. A versao anterior fazia
+	# `>/dev/null 2>&1` e imprimia so "upstream-sync abortou" -- que nao diz por
+	# que. Medido em 2026-09-10: em ubuntu-latest o merge falhava e a mensagem
+	# do git era a unica coisa capaz de dizer a causa. Quinto caso da mesma
+	# familia nesta semana.
+	SYNC_OUT="$( cd "$WT" && bash "$SYNC" --ref "$REF" --skip-verify 2>&1 )" || {
+		echo "  FAIL: upstream-sync abortou. Saida:"
+		printf '%s
+' "$SYNC_OUT" | sed 's/^/      /'
+		FAILED=1; continue; }
 
 	BROUGHT="$(cd "$WT" && git diff --cached --name-only "$BASE" | sort)"
 	ALL="$(cd "$WT" && git diff --name-only "$BASE...$REF" | sort)"
