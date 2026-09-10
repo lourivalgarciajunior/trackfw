@@ -57,6 +57,17 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Dependencias do Node e do Python
+        # 🔴 OBRIGATORIO, e medido: sem elas o `check-subcommand-parity` morre em
+        # SILENCIO. Ele invoca `node npm/bin/trackfw --help 2>/dev/null`; sem os
+        # modulos o node falha, o stderr e descartado, e `set -euo pipefail` mata
+        # o script com exit 1 e ZERO saida. Foi o que a primeira corrida deste
+        # workflow mostrou -- e e o motivo de o AC3 exigir falsificacao em CI.
+        run: |
+          npm ci --ignore-scripts
+          python -m pip install --upgrade pip
+          python -m pip install pypi/
+
       - name: Compilar o binário da árvore
         # O gate mede com o binário DESTA árvore, nunca com o do PATH — um
         # `trackfw` instalado é outra instalação, e já reportou 15 violações que

@@ -109,6 +109,30 @@ if [ "$nao_listados" -gt 0 ]; then
 fi
 
 # ---------------------------------------------------------------------------
+# PRE-CONDICAO DOS RUNTIMES — converte morte silenciosa em falha NOMEADA.
+#
+# Medido na primeira corrida em CI (2026-09-10): sem `npm ci`, o
+# check-subcommand-parity saiu exit 1 com ZERO linhas de saida. Ele invoca
+# `node npm/bin/trackfw --help 2>/dev/null`; sem os modulos o node falha, o
+# stderr e descartado, e `set -euo pipefail` mata o script sem dizer nada.
+#
+# Um gate que morre calado e indistinguivel de um gate que reprovou. Esta guarda
+# faz a diferenca aparecer ANTES, com o nome do runtime que falta.
+# ---------------------------------------------------------------------------
+faltando=""
+node "$ROOT_DIR/npm/bin/trackfw" --version >/dev/null 2>&1 || faltando="$faltando node(npm/bin/trackfw)"
+PYTHONPATH="$ROOT_DIR/pypi" python3 -m trackfw --version >/dev/null 2>&1 || faltando="$faltando python3(-m trackfw)"
+[ -x "$ROOT_DIR/bin/trackfw" ] || faltando="$faltando bin/trackfw"
+
+if [ -n "$faltando" ]; then
+  echo "run-local-gates: FALHA — runtime(s) indisponivel(is):$faltando" >&2
+  echo "  Varios gates comparam os 3 CLIs e DESCARTAM o stderr deles. Sem o runtime," >&2
+  echo "  eles morrem com exit 1 e nenhuma mensagem -- indistinguivel de reprovacao." >&2
+  echo "  Rode 'npm ci --ignore-scripts', 'pip install pypi/' e 'go build -o bin/trackfw ./cmd/trackfw'." >&2
+  exit 1
+fi
+
+# ---------------------------------------------------------------------------
 # Execucao
 # ---------------------------------------------------------------------------
 echo "run-local-gates: ${n_so_nossos} script(s) so nosso(s) derivado(s) de $(ls scripts/*.sh | wc -l | tr -d ' ') em scripts/"
