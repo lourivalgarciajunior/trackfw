@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-2026-06-13-validate-json-output.md"
 name: REQ-2026-06-13-validate-json-output
 title: "v2.5 — validate --json: saída estruturada para integração CI/CD"
 status: Done

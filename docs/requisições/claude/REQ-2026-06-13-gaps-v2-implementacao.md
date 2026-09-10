@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-2026-06-13-gaps-v2-implementacao.md"
 adr: "docs/adr/ADR-2026-09-05-tres-clis-nativos-em-vez-de-um-nucleo-com-wrappers.md"
 name: REQ-2026-06-13-gaps-v2-implementacao
 title: "Implementação dos Gaps v2.0 — trackfw"

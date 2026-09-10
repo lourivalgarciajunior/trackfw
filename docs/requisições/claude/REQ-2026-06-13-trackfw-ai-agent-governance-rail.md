@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-2026-06-13-trackfw-ai-agent-governance-rail.md"
 status: Done
 date: 2026-06-13
 author: "Zeus"

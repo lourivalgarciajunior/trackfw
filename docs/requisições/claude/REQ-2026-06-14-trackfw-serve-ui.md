@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-2026-06-14-trackfw-serve-ui.md"
 name: REQ-2026-06-14-trackfw-serve-ui
 title: "v2.7.0 — Feat: trackfw serve — Dashboard Web com Kanban, Chain View e Métricas"
 status: Done

@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-2026-06-12-i18n-wizard-java-scaffold.md"
 roadmap: "docs/roadmaps/claude/done/v1.1.0-i18n-wizard-java-2026-06-12.md"
 adr: "docs/adr/ADR-2026-09-05-i18n-por-deteccao-de-ambiente-com-fallback-en-us-e-templates-seguem-o-idioma.md"
 name: i18n-wizard-java-scaffold

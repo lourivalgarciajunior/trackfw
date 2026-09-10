@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-multi-ai-support-2026-06-11.md"
 id: REQ-multi-ai-support-2026-06-11
 title: Suporte multi-AI — subcomandos por ferramenta
 status: Done

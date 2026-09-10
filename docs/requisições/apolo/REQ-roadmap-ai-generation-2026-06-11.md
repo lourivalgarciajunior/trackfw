@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-roadmap-ai-generation-2026-06-11.md"
 id: REQ-roadmap-ai-generation-2026-06-11
 title: Geração de roadmap por IA
 status: Closed

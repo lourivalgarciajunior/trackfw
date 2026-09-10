@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-2026-06-13-validator-improvements.md"
 name: REQ-2026-06-13-validator-improvements
 title: "Melhorias no validador — adr_dirs recursivo, stale por git log, existência de refs, coerência pasta×status, unicidade de filename"
 status: Done

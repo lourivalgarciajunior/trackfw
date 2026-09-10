@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-2026-06-14-req-indexing-by-agent.md"
 name: REQ-2026-06-14-req-indexing-by-agent
 title: "v2.5.3 — Fix: coleta de REQs não honra roadmap_namespacing: by_agent"
 status: done

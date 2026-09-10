@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/req/REQ-req-wizard-e-list-2026-06-11.md"
 id: REQ-req-wizard-e-list-2026-06-11
 title: REQ — wizard interativo nas seções e req list
 status: Done
