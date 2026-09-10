@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+#
+# Mede os sítios de predicado de SO no produto, de forma REPRODUZÍVEL, e compara
+# com um baseline POR NOME.
+#
+# Isto NÃO é o lint do AC2 da REQ-2026-09-05-onda-2. É o pré-requisito dele: o
+# AC2 não pôde ser decidido porque o tamanho da superfície mudava de valor
+# conforme quem digitava o grep.
+#
+#   publicado em 2026-09-08     105 sítios
+#   redigitado em 2026-09-09    196, 110, 45 ou 30 — as QUATRO leituras plausíveis
+#                               (ocorrências ou arquivos) x (com ou sem teste)
+#
+# Nenhuma das quatro reproduz 105, e o método de 08/09 não ficou escrito. Por
+# isso o entregável aqui é o método, não o número: as quatro leituras saem
+# nomeadas, e o inventário sai como `arquivo:linha:predicado` para que a próxima
+# comparação seja de CONJUNTO, não de contagem.
+#
+# 🔴 Por que comparar por nome: em 2026-09-08 uma queda de 33 para 32 escondia
+# uma regressão — dois sítios sumiram e um apareceu. Contagem igual não é
+# conjunto igual, e contagem diferente não diz QUEM mudou.
+#
+# ATENÇÃO ao critério de exclusão do AC2. Ele diz que sítios de TRAVESSIA ficam
+# fora "por decisão do D2 da ADR-2026-09-04". Essa ADR é do UPSTREAM — três
+# arquivos com aquela data em `upstream/main:docs/adr/`, e a `ADR-2026-08-29`
+# decide que a governança dele não é importada. Este script portanto NÃO separa
+# classificação de travessia: ele mede a superfície inteira e diz isso. Separar
+# exige decidir antes qual ADR governa aqui.
+#
+# Ver REQ-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.
+set -euo pipefail
+
+ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$ROOT_DIR"
+
+BASELINE="${BASELINE:-$ROOT_DIR/scripts/testdata/os-predicate-sites-baseline.txt}"
+ESCOPO=(internal npm/src pypi/trackfw cmd)
+
+# Predicados, exatamente os seis que a REQ nomeia. Lista literal DE PROPÓSITO:
+# ela é o contrato do AC2, não uma heurística a derivar. Acrescentar um aqui é
+# mudar o escopo da REQ, e tem de ser deliberado.
+PREDICADOS='os\.IsNotExist|filepath\.IsAbs|os\.path\.isabs|process\.platform|path\.isAbsolute|os\.name'
+
+eh_teste() {  # eh_teste <caminho>
+  case "$1" in
+    *_test.go|*.test.js|*test_*.py|*/tests/*|*/test/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# ---------------------------------------------------------------------------
+# Inventário: arquivo:linha:predicado — a unidade que se compara por nome.
+# ---------------------------------------------------------------------------
+inventario() {  # inventario <incluir_teste: sim|nao>
+  local incluir="$1" f l pred
+  # `|| true` obrigatório: `git grep` sai 1 quando não casa nada, e sob
+  # `set -euo pipefail` isso mata o script AQUI — antes da guarda de vacuidade
+  # conseguir dizer o que houve. Medido em 2026-09-09: a falsificação da guarda
+  # dava `exit 1` sem mensagem nenhuma, ou seja, o código certo pelo motivo
+  # errado, e a guarda seguia sem nunca ter sido exercitada.
+  { git grep -a -n -o -E "$PREDICADOS" -- "${ESCOPO[@]}" 2>/dev/null || true; } \
+  | while IFS=: read -r f l pred; do
+    if [ "$incluir" = "nao" ] && eh_teste "$f"; then continue; fi
+    printf '%s:%s:%s\n' "$f" "$l" "$pred"
+  done | sort -u
+}
+
+TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
+inventario sim > "$TMP/com.txt"
+inventario nao > "$TMP/sem.txt"
+
+varridos=$(git ls-files -- "${ESCOPO[@]}" | wc -l | tr -d ' ')
+ocorr_com=$(grep -c . < "$TMP/com.txt" || true)
+ocorr_sem=$(grep -c . < "$TMP/sem.txt" || true)
+arq_com=$(cut -d: -f1 < "$TMP/com.txt" | sort -u | grep -c . || true)
+arq_sem=$(cut -d: -f1 < "$TMP/sem.txt" | sort -u | grep -c . || true)
+
+# ---------------------------------------------------------------------------
+# Guardas de vacuidade — verde sobre zero não é evidência.
+# ---------------------------------------------------------------------------
+if [ "$varridos" -eq 0 ]; then
+  echo "measure-os-predicate-sites: GUARDA — zero arquivos varridos em ${ESCOPO[*]}" >&2
+  exit 1
+fi
+if [ "$ocorr_com" -eq 0 ]; then
+  echo "measure-os-predicate-sites: GUARDA — zero sítios encontrados em ${varridos} arquivos." >&2
+  echo "  Não é 'limpamos tudo': seis predicados desaparecerem de uma vez é a busca ter quebrado." >&2
+  exit 1
+fi
+
+echo "measure-os-predicate-sites: ${varridos} arquivo(s) de produto varrido(s) em ${ESCOPO[*]}"
+echo ""
+echo "  AS QUATRO LEITURAS — nomeadas, porque a ambiguidade entre elas foi o defeito"
+echo "  ────────────────────────────────────────────────────────────────────────────"
+printf '    ocorrencias, com teste : %s\n' "$ocorr_com"
+printf '    ocorrencias, SEM teste : %s\n' "$ocorr_sem"
+printf '    arquivos,    com teste : %s\n' "$arq_com"
+printf '    arquivos,    SEM teste : %s\n' "$arq_sem"
+echo ""
+echo "  POR PREDICADO (ocorrências, com teste · sem teste)"
+echo "  ──────────────────────────────────────────────────"
+for p in 'os\.IsNotExist' 'filepath\.IsAbs' 'os\.path\.isabs' 'process\.platform' 'path\.isAbsolute' 'os\.name'; do
+  nome=$(printf '%s' "$p" | sed 's/\\//g')
+  c=$(grep -c ":${nome}$" "$TMP/com.txt" 2>/dev/null || true)
+  s=$(grep -c ":${nome}$" "$TMP/sem.txt" 2>/dev/null || true)
+  printf '    %-18s %4s · %4s\n' "$nome" "${c:-0}" "${s:-0}"
+done
+
+# ---------------------------------------------------------------------------
+# Comparação com o baseline — POR NOME, nos dois sentidos.
+# ---------------------------------------------------------------------------
+# A gravação vem ANTES da checagem de ausência, senão `--gravar-baseline` nunca
+# alcança o código que grava — defeito cometido e pego na primeira execução.
+if [ "${1:-}" = "--gravar-baseline" ]; then
+  mkdir -p "$(dirname "$BASELINE")"
+  cp "$TMP/com.txt" "$BASELINE"
+  echo ""
+  echo "  baseline gravado: $(grep -c . < "$BASELINE") sítio(s) em $BASELINE"
+  exit 0
+fi
+
+if [ ! -f "$BASELINE" ]; then
+  echo ""
+  echo "  BASELINE AUSENTE em $BASELINE"
+  echo "  Gere com: bash scripts/measure-os-predicate-sites.sh --gravar-baseline"
+  exit 0
+fi
+
+novos=$(comm -13 <(sort -u "$BASELINE") "$TMP/com.txt" | grep -c . || true)
+sumidos=$(comm -23 <(sort -u "$BASELINE") "$TMP/com.txt" | grep -c . || true)
+base_n=$(grep -c . < "$BASELINE" || true)
+
+echo ""
+echo "  CONTRA O BASELINE (${base_n} sítios) — comparado por NOME, nos dois sentidos"
+echo "  ────────────────────────────────────────────────────────────────────────────"
+printf '    novos   : %s\n' "$novos"
+printf '    sumidos : %s\n' "$sumidos"
+
+if [ "$novos" -gt 0 ]; then
+  echo "    ── novos ──"
+  comm -13 <(sort -u "$BASELINE") "$TMP/com.txt" | sed 's/^/      + /'
+fi
+if [ "$sumidos" -gt 0 ]; then
+  echo "    ── sumidos ──"
+  comm -23 <(sort -u "$BASELINE") "$TMP/com.txt" | sed 's/^/      - /'
+fi
+
+# 🔴 O saldo zero NÃO é sinônimo de conjunto igual. Se novos == sumidos, a
+# contagem não muda e o conjunto mudou — é o caso medido em 2026-09-08.
+if [ "$novos" -gt 0 ] || [ "$sumidos" -gt 0 ]; then
+  echo ""
+  echo "    A superfície MUDOU. Saldo (${novos} - ${sumidos}) não é o dado: os nomes acima são."
+  echo "    Atualize o baseline com --gravar-baseline SÓ depois de decidir o que cada mudança significa."
+fi
+
+echo ""
+echo "Medicao concluida."
