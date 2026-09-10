@@ -171,9 +171,32 @@ acervo.** Medido: há **três** arquivos com aquela data em `upstream/main:docs/
 config, tolerância a CRLF no frontmatter, e separador POSIX em artefato —, e a `ADR-2026-08-29`
 decide que a governança dele não é importada.
 
-Então o AC2, como está escrito, **não é executável aqui**: separar classificação de travessia depende
-de uma decisão que não mora neste repositório. Isso é decisão do usuário, não medição minha, e é o
-que o ML-1B espera.
+~~Então o AC2, como está escrito, **não é executável aqui**~~ — **resolvido em 2026-09-09.**
+
+### A dependência foi REMOVIDA, não esperada
+
+`ADR-2026-09-09-predicado-de-so-em-sitio-de-classificacao-o-discriminante-e-a-origem-do-argumento-nao-a-intencao-do-autor`,
+escrita a partir da nossa medição em vez de importada da dele.
+
+| | regra | efeito medido |
+|---|---|---|
+| **D1** | argumento é **erro de chamada de sistema** → travessia, fora de escopo | os **57** sítios de código de `os.IsNotExist` saem de uma vez |
+| **D2** | argumento é **string autorada** → classificação, em escopo | `filepath.IsAbs(destination)` entra |
+| **D3** | predicado de plataforma lido **uma vez** para constante nomeada é a costura | `_platform`, `isWindows`, com allowlist e motivo |
+| **D4** | o ônus é de quem quer excluir, e a exclusão é escrita | sem julgamento silencioso |
+| **D5** | com teste (196) e sem teste (110) reportados **separados** | misturá-los falseou este denominador três vezes |
+
+**O achado que decidiu:** classificados **linha a linha**, os 61 sítios de `os.IsNotExist` são
+**57 código + 4 comentários + 0 outros**, e os 57 recebem **todos** um valor de erro. Zero recebe
+outra coisa — regra sem exceção, não regra com maioria. Mais de metade da superfície fica decidida
+por leitura do argumento, sem julgar intenção.
+
+🔴 **A primeira redação da ADR dizia "59 de 61" e estava errada:** contei ocorrências do padrão
+*dentro* das linhas com `grep -oE` em vez de classificar *linha a linha*. A correção **fortalece** a
+decisão, mas fica escrita — contagem por ocorrência já falseou o denominador deste trabalho três
+vezes.
+
+**O que falta para o AC2 agora é o lint em si — trabalho, não dependência.**
 
 ### ML-1C — **AC3 — C1: gate de ponto único de leitura.** Acusa enumeração de req_dir/roadmap_dir fora
 **Status:** ✅ Concluído
