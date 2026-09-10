@@ -1,5 +1,5 @@
 ---
-status: backlog
+status: wip
 date: 2026-09-05
 req: "docs/requisições/claude/REQ-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md"
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: Onda 2 de contribuição ao upstream — fechar as classes de defeito em vez dos casos
 
-> Created: 2026-09-05 | Status: backlog
+> Created: 2026-09-05 | Status: wip
 
 ## Context
 <!-- Derived from REQ: REQ-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md -->
@@ -99,14 +99,81 @@ test -s scripts/testdata/platform-predicates.tsv || { echo "tabela de contrato a
 - [x] build passes
 - [x] tests green
 
-### ML-1B — **AC2 — B2: lint contra predicado de SO em sítio de classificação.** Gate que reprova
-**Status:** ✅ Concluído
-**Files affected:**
-**Actions:**
+### ML-1B — AC2: lint contra predicado de SO em sítio de classificação
+**Status:** ⬜ Pendente
+**Files affected:** `scripts/measure-os-predicate-sites.sh` (pré-requisito), lint ainda não escrito
 **Acceptance criteria:**
-- [x] **AC2 — B2: lint contra predicado de SO em sítio de classificação.** Gate que reprova
-- [x] build passes
-- [x] tests green
+- [ ] Gate que reprova os seis predicados em sítios de **classificação**
+- [x] **Pré-requisito: a superfície é mensurável de forma reproduzível**
+
+🔴 **Este ML estava marcado ✅ Concluído e não estava.** A REQ, no mesmo dia, descrevia o AC2 como
+*"O ÚNICO EM ABERTO — não entregue, e não abandonado"*. Roadmap e REQ afirmavam o contrário um do
+outro, e o roadmap é que estava errado.
+
+O corpo denuncia como aconteceu: `Files affected:` vazio, `Actions:` vazio, e o critério era o
+genérico `build passes` / `tests green` do template do `roadmap new --from-req`. **Nada disso foi
+verificado; foi marcado.** O título ainda está truncado no meio da frase — o mesmo defeito de
+truncamento de AC multilinha que registrei ao gerar o roadmap da `REQ-2026-09-09-governanca-do-upstream`.
+
+É a Regra Dura de Reconciliação aplicada ao nosso próprio acervo: **artefato afirmando o contrário da
+conclusão do mesmo trabalho.** A regra existe porque isso já custou uma auditoria externa em
+2026-09-05; desta vez pegou uma varredura nossa, quatro dias depois.
+
+**O que de fato foi entregue neste ML:** `scripts/measure-os-predicate-sites.sh`, que é o
+pré-requisito — não o lint. Ver ML-1B-a.
+
+### ML-1B-a — Tornar a superfície mensurável antes de decidir o lint
+**Status:** ✅ Concluído
+**Files affected:** `scripts/measure-os-predicate-sites.sh`, `scripts/testdata/os-predicate-sites-baseline.txt`
+**Acceptance criteria:**
+- [x] As leituras plausíveis são **nomeadas**, não escolhidas em silêncio
+- [x] Comparação com baseline **por nome**, nos dois sentidos
+- [x] Guardas de vacuidade, falsificadas
+
+**Por que este ML existe.** O AC2 não pôde ser decidido porque o tamanho da superfície mudava de
+valor conforme quem digitava o grep:
+
+```
+publicado em 2026-09-08     105 sitios
+redigitado em 2026-09-09    196  ocorrencias, com teste
+                            110  ocorrencias, SEM teste
+                             45  arquivos,    com teste
+                             30  arquivos,    SEM teste
+```
+
+🔴 **Nenhuma das quatro reproduz 105, e o método de 08/09 não ficou escrito.** A mais próxima é
+`110 ocorrências sem teste`, o que sugere variação de ~5 e não de 91 — mas *sugere* não é *mede*, e
+os PRs #304/#305 do upstream tocaram **0 arquivos** de `internal/npm/pypi/cmd`, então não foram eles.
+
+Por isso o entregável é o **método**, não o número. O inventário sai como `arquivo:linha:predicado` e
+a comparação é de conjunto.
+
+**Falsificação — quatro direções:**
+
+| # | mutação | esperado | medido |
+|---|---|---|---|
+| A | plantar um `filepath.IsAbs` novo | nomeia o sítio | `+ internal/commands/help.go:427:filepath.IsAbs` |
+| B | baseline com **saldo zero** e conjunto diferente | acusa | `novos 1 · sumidos 1` + `A superfície MUDOU` |
+| C | predicado que não casa nada | reprova | `exit 1`, `GUARDA — zero sítios em 507 arquivos` |
+| D | escopo inexistente | reprova | `exit 1`, `GUARDA — zero arquivos varridos` |
+
+🔴 **C e D não valeram na primeira tentativa: `exit 1` sem mensagem nenhuma.** O `git grep` sai 1
+quando não casa nada e, sob `set -euo pipefail`, matava o script **antes** da guarda falar. Código
+certo, motivo errado — a guarda seguia sem nunca ter sido exercitada. Corrigido com `|| true` dentro
+da substituição, e a razão ficou escrita no script.
+
+🔴 **E o `--gravar-baseline` nasceu inalcançável:** a checagem de baseline ausente saía antes do
+código que grava. Pego na primeira execução.
+
+**O que este ML NÃO resolve, e é o que trava o AC2.** O critério de exclusão do AC2 diz que sítios de
+**travessia** ficam fora *"por decisão do D2 da `ADR-2026-09-04`"*. **Essa ADR não existe no nosso
+acervo.** Medido: há **três** arquivos com aquela data em `upstream/main:docs/adr/` — âncora POSIX em
+config, tolerância a CRLF no frontmatter, e separador POSIX em artefato —, e a `ADR-2026-08-29`
+decide que a governança dele não é importada.
+
+Então o AC2, como está escrito, **não é executável aqui**: separar classificação de travessia depende
+de uma decisão que não mora neste repositório. Isso é decisão do usuário, não medição minha, e é o
+que o ML-1B espera.
 
 ### ML-1C — **AC3 — C1: gate de ponto único de leitura.** Acusa enumeração de req_dir/roadmap_dir fora
 **Status:** ✅ Concluído

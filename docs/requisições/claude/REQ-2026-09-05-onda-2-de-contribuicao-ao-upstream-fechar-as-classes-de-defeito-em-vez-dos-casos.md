@@ -3,7 +3,7 @@ status: Open
 date: 2026-09-05
 author: "claude"
 adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
-roadmap: "docs/roadmaps/claude/backlog/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md"
+roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md"
 ---
 
 # REQ: Onda 2 de contribuição ao upstream — fechar as classes de defeito em vez dos casos
@@ -84,6 +84,44 @@ são do produto.
       > fazer é o mesmo passivo das REQs órfãs, só mais bem escondido"*. **A medição desautoriza o
       > abandono:** 105 sítios não é dívida morta. E o `internal/pathanchor`, criado por ele em
       > 2026-09-08, cobre só a família de ancoragem — é consumido por 3 arquivos, não pelos 105.
+
+      > ### Atualização de 2026-09-09 — o número não era reproduzível, e agora é
+      >
+      > Ao remedir para decidir este AC, as **quatro** leituras plausíveis deram valores diferentes,
+      > e **nenhuma reproduz 105**:
+      >
+      > ```
+      > ocorrencias, com teste   196
+      > ocorrencias, SEM teste   110   <- a mais proxima de 105
+      > arquivos,    com teste    45
+      > arquivos,    SEM teste    30
+      > ```
+      >
+      > O método de 08/09 não ficou escrito, então não dá para dizer se a superfície cresceu ou se eu
+      > apenas contei diferente. O que **é** medido: os PRs #304 e #305 do upstream tocaram **0
+      > arquivos** de `internal/npm/pypi/cmd`, então não foram eles.
+      >
+      > **Entregue no lugar do número: `scripts/measure-os-predicate-sites.sh`.** Ele nomeia as
+      > quatro leituras, emite o inventário como `arquivo:linha:predicado` e compara com baseline
+      > **por nome, nos dois sentidos** — porque saldo zero não é conjunto igual. Falsificado em
+      > quatro direções, e duas delas só valeram na segunda tentativa (`git grep` sai 1 sem casar
+      > nada e, sob `pipefail`, matava o script antes da guarda falar).
+      >
+      > ### 🔴 E apareceu o que de fato trava este AC
+      >
+      > O critério de exclusão acima diz que travessia fica fora *"por decisão do D2 da
+      > `ADR-2026-09-04`"*. **Essa ADR não existe no nosso acervo.** Há **três** arquivos com aquela
+      > data em `upstream/main:docs/adr/`, e a `ADR-2026-08-29` decide que a governança dele não é
+      > importada.
+      >
+      > Ou seja: este AC, como está escrito, **não é executável aqui** — separar classificação de
+      > travessia depende de uma decisão que não mora neste repositório. Não é falta de esforço nem
+      > de medição; é uma dependência de governança que o AC não declarou. **A decisão é do
+      > usuário**, e as opções são escrever ADR nossa com o discriminante, ou reescrever o AC sem
+      > depender da dele.
+      >
+      > **O roadmap dizia o contrário disto.** O ML-1B estava marcado ✅ Concluído com o corpo em
+      > branco do template. Corrigido para ⬜ Pendente no mesmo PR, com o motivo escrito.
 - [x] **AC3 — C1: gate de ponto único de leitura.** Acusa enumeração de `req_dir`/`roadmap_dir` fora
       do resolvedor canônico. Falsificação: tem de acusar os sítios **já conhecidos**
       (`status.py:57`, `sync.go:43`, `sync.js:237`, `sync.py:197`) e **não** acusar o próprio
@@ -129,7 +167,7 @@ ADR: docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md
+Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md
 
 ## Desfecho (2026-09-05)
 
