@@ -1,14 +1,14 @@
 ---
-status: Open
+status: Done
 date: 2026-09-10
 author: "claude"
 adr: "docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md"
-roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-09-10-o-check-upstream-content-nao-roda-em-lugar-nenhum-e-ficou-vermelho-por-semanas.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-09-10-o-check-upstream-content-nao-roda-em-lugar-nenhum-e-ficou-vermelho-por-semanas.md"
 ---
 
 # REQ: o `check-upstream-content` não roda em lugar nenhum, e ficou vermelho por semanas
 
-> Date: 2026-09-10 | Status: Open
+> Date: 2026-09-10 | Status: Done
 
 ## Motivation
 
@@ -85,23 +85,59 @@ Adição não é divergência.
 
 ## Acceptance Criteria
 
-- [ ] **AC1** — Existe **um** ponto de entrada que executa os gates só nossos, e ele é **arquivo só
+- [x] **AC1** — Existe **um** ponto de entrada que executa os gates só nossos, e ele é **arquivo só
       nosso**. Divergência de produto ao fim: **zero**, medida por arquivo compartilhado que difere,
       não por contagem de arquivos.
-- [ ] **AC2** — O ponto de entrada roda **em CI, em push e em PR** — não por `workflow_dispatch`. 🔴
+- [x] **AC2** — O ponto de entrada roda **em CI, em push e em PR** — não por `workflow_dispatch`. 🔴
       Disparo manual é o que esta REQ existe para eliminar: os dois workflows de Windows são
       `workflow_dispatch` e é por isso que o ramo Windows dos gates de PATH curado nunca foi
       exercitado.
-- [ ] **AC3** — **Falsificação nas duas direções, em CI**: com um vazamento plantado o job **reprova**;
+- [x] **AC3** — **Falsificação nas duas direções, em CI**: com um vazamento plantado o job **reprova**;
       com a árvore limpa ele passa. Não vale só a segunda.
-- [ ] **AC4** — 🔴 **A lista de gates executados é derivada ou tem guarda de completude.** Um gate
+- [x] **AC4** — 🔴 **A lista de gates executados é derivada ou tem guarda de completude.** Um gate
       novo em `scripts/` que ninguém acrescentar à lista voltaria a não rodar — que é exatamente o
       defeito desta REQ, reintroduzido pela correção dela.
-- [ ] **AC5** — Gate que **não pode** rodar em CI (Linux) é **declarado com o motivo**, não omitido em
+- [x] **AC5** — Gate que **não pode** rodar em CI (Linux) é **declarado com o motivo**, não omitido em
       silêncio. Hoje há um: `check-platform-predicates.sh`, cujo motivo já está escrito no `CLAUDE.md`.
-- [ ] **AC6** — Existe entrada por `make` **sem tocar no `Makefile` compartilhado**.
-- [ ] **AC7** — `validate` e os seis gates verdes ao fim, com o binário da árvore reconstruído, e
+- [x] **AC6** — Existe entrada por `make` **sem tocar no `Makefile` compartilhado**.
+- [x] **AC7** — `validate` e os seis gates verdes ao fim, com o binário da árvore reconstruído, e
       divergência de produto **zero**.
+
+## Resultado
+
+**Três arquivos, todos adições. Divergência de produto: zero.** O CI roda em `push` e `pull_request`,
+e as duas direções do AC3 foram observadas **lá**, não deduzidas daqui.
+
+```
+arvore limpa       success   9 executados · 0 falhas · 0 compartilhados diferindo
+vazamento          failure   FAIL check-upstream-content  docs/analise-cmdb/README.md
+revertido          success
+```
+
+**A enumeração corrigiu o número:** são **11** scripts só nossos de 72, e **nenhum** era invocado por
+automação nenhuma. A primeira redação desta REQ dizia *"6"*, herdado de uma frase do `CLAUDE.md` que
+envelheceu.
+
+### 🔴 Pôr o gate no CI descobriu quatro defeitos que estavam invisíveis
+
+O job reprovou **seis vezes** antes de passar, e a causa raiz é uma linha de configuração:
+**`Committer identity unknown`** — o runner não tem `user.email`, e `git merge --no-commit` exige
+identidade mesmo sem commitar.
+
+Entre o sintoma e a causa havia **quatro camadas de stderr descartado**, e cada uma parecia um achado
+diferente. Uma delas chegou a ser escrita no roadmap como *"o `upstream-sync` suprime produto em
+Linux"*. **Não era.**
+
+As três correções de diagnóstico ficam — elas não eram o defeito, eram o que impedia enxergá-lo:
+
+| script | mudança |
+|---|---|
+| `check-upstream-sync-falsify.sh` | caminho do worktree portátil; captura a saída do sync |
+| `upstream-sync.sh` | 🔴 **o `git merge` passa a falhar alto** — antes, falha sem conflito produzia `0 de produto trazidos` como se fosse medição |
+| `run-local-gates.sh` | pré-condição dos runtimes: morte silenciosa vira falha nomeada |
+
+A do `upstream-sync.sh` é a mais séria: **o script que governa todo merge do upstream neste fork
+podia reportar "trouxe zero" quando o merge nem tinha acontecido.**
 
 ## Negative Scope
 
@@ -122,4 +158,4 @@ ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-09-10-o-check-upstream-content-nao-roda-em-lugar-nenhum-e-ficou-vermelho-por-semanas.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-09-10-o-check-upstream-content-nao-roda-em-lugar-nenhum-e-ficou-vermelho-por-semanas.md
