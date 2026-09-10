@@ -1,5 +1,5 @@
 ---
-status: done
+status: backlog
 date: 2026-08-29
 req: REQ-2026-08-29-node-e-python-ignoram-home-no-windows
 squad: ""

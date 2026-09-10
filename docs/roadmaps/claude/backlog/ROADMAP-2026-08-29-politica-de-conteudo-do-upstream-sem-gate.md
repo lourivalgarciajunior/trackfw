@@ -1,5 +1,5 @@
 ---
-status: done
+status: backlog
 date: 2026-08-29
 req: docs/requisições/claude/REQ-2026-08-29-politica-de-conteudo-do-upstream-sem-gate.md
 ---

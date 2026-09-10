@@ -1,5 +1,5 @@
 ---
-status: done
+status: backlog
 date: 2026-08-29
 req: REQ-2026-08-29-isatty-do-python-devolve-true-para-nul-no-windows
 squad: ""

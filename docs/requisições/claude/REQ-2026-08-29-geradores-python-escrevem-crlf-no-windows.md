@@ -119,4 +119,4 @@ ADR: docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito
 
 ## Linked Roadmap
 
-Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-geradores-python-escrevem-crlf-no-windows.md
+Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-08-29-geradores-python-escrevem-crlf-no-windows.md

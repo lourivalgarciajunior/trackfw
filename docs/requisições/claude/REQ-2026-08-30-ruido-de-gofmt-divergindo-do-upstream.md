@@ -1,9 +1,9 @@
 ---
-status: done
+status: Open
 date: 2026-08-30
 author: claude
 adr: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
-roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-30-ruido-de-gofmt-divergindo-do-upstream.md
+roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-08-30-ruido-de-gofmt-divergindo-do-upstream.md
 ---
 
 # REQ: Ruido de gofmt divergindo do upstream
@@ -11,7 +11,7 @@ roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-30-ruido-de-gofmt-divergindo-
 > Date: 2026-08-30 | Status: Open
 
 ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
-Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-30-ruido-de-gofmt-divergindo-do-upstream.md
+Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-08-30-ruido-de-gofmt-divergindo-do-upstream.md
 
 ## Motivation
 
@@ -57,12 +57,33 @@ manual confirmou que tambem sao formatacao:
 
 ## Acceptance Criteria
 
-- [ ] Os 20 arquivos voltam a formatacao do upstream, byte a byte
+- [x] Os 20 arquivos voltam a formatacao do upstream, byte a byte
+      → **(a) ENTREGUE, e além.** `git diff --name-only HEAD upstream/main -- '*.go'` devolve
+      **0 arquivos**. Não são os 20 que voltaram: **nenhum** arquivo `.go` difere do upstream hoje.
 - [ ] **Nenhuma divergencia deliberada perdida** — verificado por marcador, nao por confianca
-- [ ] `go build ./...` e `go vet ./...` verdes
+      → **(d) NAO VERIFICAVEL AQUI.** O AC exige verificação **por marcador**, e não há registro de
+      quais eram os marcadores nem de quais divergências eram deliberadas.
+      🔴 **E hoje a pergunta mudou de forma:** a divergência de código é **zero**, então ou nenhuma
+      divergência deliberada existia, ou **todas foram perdidas**. As duas leituras cabem no mesmo
+      número, e é exatamente por isso que o AC pedia marcador em vez de contagem.
+      **O que faltaria:** a lista dos marcadores.
+- [x] `go build ./...` e `go vet ./...` verdes
+      → **(a) ENTREGUE.** Os dois `exit 0`.
 - [ ] Os sete gates verdes
-- [ ] A divergencia de codigo cai de 80 para 60 arquivos
-- [ ] Registrado que `gofmt -w` amplo e proibido neste fork enquanto o upstream estiver noutro Go
+      → 🔴 **(b) NAO ENTREGUE.** `check-upstream-content.sh` vermelho.
+      ```
+      slug-inventory 0 · python-writes-lf 0 · homedir-parity 0 · artifact-parity 0
+      tty-detection 0 · barrier 0 · subcommand-parity 0 · upstream-content 1  <- VERMELHO
+      ```
+- [x] A divergencia de codigo cai de 80 para 60 arquivos
+      → **(a) ENTREGUE, e ultrapassado.** Medido em 2026-09-10:
+      `git diff --name-only HEAD upstream/main -- internal npm pypi cmd` → **0 arquivos**.
+      O alvo era 60; o estado é 0. 🔴 Ver o AC anterior: este mesmo zero é o que impede verificar se
+      alguma divergência deliberada sobreviveu.
+- [x] Registrado que `gofmt -w` amplo e proibido neste fork enquanto o upstream estiver noutro Go
+      → **(a) ENTREGUE.** Registrado nesta própria REQ, que é artefato versionado e é onde a próxima
+      pessoa procura. 🔴 **Não** está no `CLAUDE.md`, que é o arquivo lido a cada sessão — a
+      proibição sobrevive por leitura de acervo, não por leitura de instrução.
 
 ## Nao faz parte
 

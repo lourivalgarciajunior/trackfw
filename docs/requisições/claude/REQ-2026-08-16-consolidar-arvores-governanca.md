@@ -1,5 +1,5 @@
 ---
-roadmap: "docs/roadmaps/claude/done/consolidar-arvores-governanca-2026-08-16.md"
+roadmap: "docs/roadmaps/claude/backlog/consolidar-arvores-governanca-2026-08-16.md"
 adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
 id: REQ-2026-08-16-consolidar-arvores-governanca
 title: Consolidar as três árvores de artefato de governança em uma só
@@ -115,4 +115,4 @@ de auditoria proíbe as duas: abaixar o critério para manter o `done` é fabric
 ADR: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/done/consolidar-arvores-governanca-2026-08-16.md
+Roadmap: docs/roadmaps/claude/backlog/consolidar-arvores-governanca-2026-08-16.md

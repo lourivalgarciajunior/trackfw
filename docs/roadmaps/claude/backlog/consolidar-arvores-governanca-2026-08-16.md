@@ -1,7 +1,7 @@
 ---
 name: consolidar-arvores-governanca-2026-08-16
 title: "Consolidar as três árvores de artefato de governança em uma só"
-status: done
+status: backlog
 date: 2026-08-16
 req: REQ-2026-08-16-consolidar-arvores-governanca
 branch: feat/consolidar-arvores-governanca

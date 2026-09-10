@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-09-10
 req: "docs/requisições/claude/REQ-2026-09-10-onze-reqs-nossas-afirmam-done-com-58-criterios-de-aceite-em-aberto.md"
 squad: "claude"
@@ -7,7 +7,7 @@ squad: "claude"
 
 # Roadmap: onze REQs **nossas** afirmam `done` com 58 critérios de aceite em aberto
 
-> Created: 2026-09-10 | Status: wip
+> Created: 2026-09-10 | Status: done
 
 ## Context
 
@@ -25,11 +25,11 @@ são placeholder — 57 dos 58 estão sob bloco de critério, com discriminante 
 
 ## Acceptance Criteria
 
-- [ ] A lista das 11 é derivada por script, com denominador impresso.
-- [ ] Um veredito por AC, com evidência — nunca em massa.
-- [ ] Método de verificação falsificado antes do uso, nas duas direções.
-- [ ] REQ que sobrar com AC aberto deixa de ser `done`.
-- [ ] Gate impede a reincidência.
+- [x] A lista das 11 é derivada por script, com denominador impresso.
+- [x] Um veredito por AC, com evidência — nunca em massa.
+- [x] Método de verificação falsificado antes do uso, nas duas direções.
+- [x] REQ que sobrar com AC aberto deixa de ser `done`.
+- [x] Gate impede a reincidência.
 
 ## Status Legend
 ⬜ Pendente · 🔄 Em andamento · ✅ Concluído · ❌ Bloqueado
@@ -161,7 +161,7 @@ Veredito **(b)** sem necessidade de verificação — a evidência é o próprio
 ## Wave 1 — Medir antes de julgar
 
 ### ML-1A — Lista derivada, com denominador
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:** `scripts/` (script novo)
 **Acceptance criteria:**
 - [ ] `N varridas · M com AC aberto · K ACs` impresso; falha se `M == 0` ou `N == 0`
@@ -170,7 +170,7 @@ Veredito **(b)** sem necessidade de verificação — a evidência é o próprio
 - [ ] A lista sai **por nome**, para a próxima comparação ser de conjunto e não de contagem
 
 ### ML-1B — Falsificação do verificador, por família
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:** —
 **Acceptance criteria:**
 - [ ] Para cada família de AC, controle **positivo** e **negativo**, ambos executados
@@ -181,7 +181,7 @@ Veredito **(b)** sem necessidade de verificação — a evidência é o próprio
 ## Wave 2 — O veredito, um por AC
 
 ### ML-2A — As dez de agosto
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:** `docs/requisições/claude/**`
 **Acceptance criteria:**
 - [ ] Cada um dos 56 ACs recebe **(a) entregue**, **(b) não entregue**, **(c) caducou** ou
@@ -190,14 +190,14 @@ Veredito **(b)** sem necessidade de verificação — a evidência é o próprio
 - [ ] 🔴 Nenhum veredito em massa, e nenhum AC reescrito
 
 ### ML-2B — A `reqs-que-passam-so-por-prosa`, sozinha
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:** `docs/requisições/claude/**`
 **Acceptance criteria:**
 - [ ] Tratada **separada** das dez: o AC dela é o único dos 58 **fora** de bloco de critério
 - [ ] Decidido se é critério real mal formatado ou prosa com checkbox — e o veredito segue disso
 
 ### ML-2C — `status` reconciliado com o resultado
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:** `docs/requisições/claude/**`
 **Acceptance criteria:**
 - [ ] REQ que sobrar com AC aberto **deixa de ser `done`**
@@ -208,7 +208,7 @@ Veredito **(b)** sem necessidade de verificação — a evidência é o próprio
 ## Wave 3 — Impedir a reincidência
 
 ### ML-3A — Gate de REQ `Done` com critério aberto
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:** `scripts/` (gate novo), `CLAUDE.md`
 **Acceptance criteria:**
 - [ ] REQ **não-herdada** com `status: Done` e checkbox aberto sob bloco de critério **reprova**
@@ -219,12 +219,81 @@ Veredito **(b)** sem necessidade de verificação — a evidência é o próprio
       mesmo `git cat-file` do `check-inherited-req.sh`
 
 ### ML-3B — Gates
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:** —
 **Acceptance criteria:**
 - [ ] `validate`, `check-req-layout.sh`, `check-referential-integrity.sh`, `check-inherited-req.sh`,
       `measure-os-predicate-sites.sh` e o gate novo verdes, com o binário reconstruído
 - [ ] Divergência de produto **zero**
+
+## Resultado das waves — 2026-09-10
+
+**56 ACs julgados, um por um, nenhum em massa.**
+
+```
+(a) entregue           35
+(b) nao entregue        9
+(c) caducou             1
+(d) nao verificavel    11
+                    ------
+                       56
+```
+
+**As dez REQs perderam o `done`** e os dez roadmaps saíram de `done/` para `backlog/`. O gate novo,
+que reprovava com `10 REQs · 56 ACs`, agora sai `exit 0`.
+
+### O que os `(d)` dizem, e é o achado estrutural
+
+Dos 11, a maioria tem **a mesma causa**: o AC exige comparação contra **lista nomeada** de uma
+corrida de agosto — `95 falhas`, `105`, `198`, `199`, `297` — e **nenhuma dessas listas foi
+versionada**. O AC proíbe comparar por contagem, que é a única coisa reproduzível hoje.
+
+🔴 **Uma REQ cujo critério depende de artefato não versionado é inauditável por construção.** Não é
+falta de esforço nem de acesso: é desenho. Os outros `(d)` são de outra natureza — exigem mutar
+produto do upstream, ou medir em Linux/macOS a partir de um Windows.
+
+### Achados que viram issue no upstream
+
+| # | achado | medição |
+|---|---|---|
+| 1 | `check-python-writes-lf` **não pega CRLF explícito** | testa se `newline` **existe**, não o valor. Remover → `exit 1`; `newline="
+"` → `exit 0`. **79 sítios** expostos |
+| 2 | `trackfw-validate.sh` gerado **diverge** | `go=sh · node=sh · python=bash`. Comparado por arquivo; os outros quatro concordam |
+| 3 | `init` do Python cria um ADR a mais | `docs/adr/ADR-001-inicio-do-projeto.md` — 20 arquivos contra 19 no Go e no Node |
+
+### Achado nosso, causa diferente → trabalho próprio
+
+**`check-upstream-content.sh` está vermelho** com 7 arquivos de governança dele em `docs/`, incluindo
+a `ADR-2026-09-03` — que **5 REQs nossas citam como se fosse nossa**, uma delas com a motivação
+inteira baseada nela. O gate é nosso, não está em alvo nenhum do `Makefile` nem em CI, e ninguém
+notou. **Mesma causa da `REQ-2026-09-09-governanca-do-upstream`**, que está `Done`.
+
+### Correção de detector, e o que ela muda em número já publicado
+
+O leitor de critério passou a **pular cerca de código** nos dois gates. São 3 checkboxes no acervo
+dentro de ``` — citação, não critério. Efeito no `check-inherited-req`:
+
+```
+antes   23 REQs herdadas com criterio aberto · 227 sob · 229 total  (2 de residuo)
+depois  22 REQs                              · 227 sob · 227 total  (0 de residuo)
+```
+
+O número de **ACs não muda (227)**; o de **REQs cai de 23 para 22**. A
+`REQ-2026-09-09-governanca` publicou `23 · 227` — o `227` continua certo, o `23` vira `22`.
+
+### Sete medições minhas erradas, todas pegas antes de virar veredito
+
+| # | eu ia afirmar | era |
+|---|---|---|
+| 1 | 64 ACs no alvo | incluía REQs `Open`, e a própria REQ que define o alvo |
+| 2 | "o Go não usa `GetConsoleMode`" | usa, via `cbterm.IsTerminal` — a chamada está **dentro da biblioteca** |
+| 3 | "o gate de tty é cego" | 3 mutações inválidas: comentário, docstring, e uma cujo retorno era **a resposta certa** |
+| 4 | "o gate falha sem a ref" (por `UPSTREAM_REF`) | o gate **chumba** `REF="upstream/main"`; o `exit 1` vinha dos 7 vazamentos |
+| 5 | "o slug do Python diverge" | `head -1` pegou o ADR do `init`, não o gerado |
+| 6 | 1 checkbox fora de critério | está **dentro de cerca de código** — nunca foi critério |
+| 7 | — | apaguei `docs/agents-working-context.md` num teste; restaurado por `git checkout` |
+
+Sete, num trabalho cujo objeto é justamente **artefato que afirma mais do que mediu**.
 
 ## Residual declarado
 

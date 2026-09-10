@@ -1,5 +1,5 @@
 ---
-status: done
+status: Open
 date: 2026-08-29
 author: claude
 adr: "docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md"
@@ -51,16 +51,39 @@ descoberto ao verificar se elas ainda faziam sentido.
 
 ## Acceptance Criteria
 
-- [ ] `adr new` produz o mesmo nome nos tres runtimes, verificado em execucao real do CLI (nao so
+- [x] `adr new` produz o mesmo nome nos tres runtimes, verificado em execucao real do CLI (nao so
       em teste unitario da funcao)
+      → **(a) ENTREGUE.** Execução real em 2026-09-10, título com **as duas classes** (`/`, `+` e
+      acento): `"ADR de teste: paridade/slug + acentuação"`.
+      ```
+      go    ADR-2026-09-10-adr-de-teste-paridade-slug-acentuacao.md
+      node  ADR-2026-09-10-adr-de-teste-paridade-slug-acentuacao.md
+      py    ADR-2026-09-10-adr-de-teste-paridade-slug-acentuacao.md
+      ```
+      🔴 **A primeira leitura acusou divergência no Python** e era artefato meu: o `head -1` pegou o
+      `ADR-001-inicio-do-projeto.md` que o `init` cria, não o ADR gerado. Comparar **por nome**, não
+      pelo primeiro da lista.
 - [ ] O `artifactId` do `pom.xml` concorda entre Go e Node (o Python nao tem esse gerador)
-- [ ] A regra escolhida esta documentada em `docs/cli-parity.md` — colapso por hifen ou delecao,
+      → **(d) NAO VERIFICAVEL SEM SCAFFOLD JAVA.** Gerar o `pom.xml` exige `init` com stack Java, que
+      não foi exercitado nesta auditoria. Não medi — e o `check-artifact-parity.sh` verde cobre
+      **9 tipos de artefato**, sem que eu tenha confirmado que o `pom.xml` é um deles.
+      **O que faltaria:** rodar o scaffold Java nos dois runtimes e comparar o `artifactId`.
+- [x] A regra escolhida esta documentada em `docs/cli-parity.md` — colapso por hifen ou delecao,
       com o motivo. Paridade sozinha nao basta: os tres podem concordar num valor errado
-- [ ] A fixture de `scripts/check-artifact-parity.sh` inclui `/`, `+` **e acento** — as duas classes
+      → **(a) ENTREGUE.** `docs/cli-parity.md` existe e é o documento de contrato citado pelos gates.
+      A regra observada na execução é **colapso por hífen**: `paridade/slug + acentuação` →
+      `paridade-slug-acentuacao`, com o `/` e o `+` virando separador e o acento sendo dobrado.
+- [x] A fixture de `scripts/check-artifact-parity.sh` inclui `/`, `+` **e acento** — as duas classes
       na mesma fixture, ou o gate cobre uma divergencia e perde a outra
+      → **(a) ENTREGUE**, verificado por leitura da fixture no script, e confirmado por efeito: o
+      título que usei na execução real contém as duas classes e os três runtimes concordaram.
 - [ ] O gate **falha** com cada uma das duas divergencias reintroduzida separadamente
       (nao-vacuidade verificada, nao assumida)
-- [ ] `scripts/check-slug-inventory.sh` segue verde
+      → **(d) NAO VERIFICAVEL SEM MUTAR PRODUTO.** Reintroduzir cada divergência exige editar o
+      gerador de slug do Python — produto do upstream. Escopo negativo desta auditoria.
+      🔴 **Não afirmo cegueira**, afirmo que não medi.
+- [x] `scripts/check-slug-inventory.sh` segue verde
+      → **(a) ENTREGUE.** `exit 0` — *"Wave 0: inventario de slug fechado — 9 implementacoes"*.
 
 ## Nao faz parte
 
@@ -76,4 +99,4 @@ ADR: docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudan
 
 ## Linked Roadmap
 
-Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-slug-de-artefato-no-python-diverge-de-go-e-node.md
+Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-08-29-slug-de-artefato-no-python-diverge-de-go-e-node.md

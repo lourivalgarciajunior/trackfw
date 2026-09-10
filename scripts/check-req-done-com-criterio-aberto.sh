@@ -74,6 +74,12 @@ fi
 # ---------------------------------------------------------------------------
 censo() {
   awk '
+    # CERCA DE CODIGO: `- [ ]` dentro de ``` e CITACAO, nao criterio. Medido em
+    # 2026-09-10: sao 3 no acervo -- um trecho de outra REQ citado como prova, e
+    # dois de um template de roadmap embutido. Conta-los inventa criterio que
+    # ninguem escreveu, e foi o que fez este inventario acusar um caso que nao
+    # existe.
+    /^```/ { cerca = !cerca; next }
     /^#+[ ]/ {
       lvl = index($0, " ") - 1
       h = tolower($0)
@@ -82,7 +88,7 @@ censo() {
       else if (dentro && lvl <= base) { dentro = 0 }
       next
     }
-    /^-[ ]\[[ ]\]/ { total++; if (dentro) sob++ }
+    /^-[ ]\[[ ]\]/ { if (cerca) next; total++; if (dentro) sob++ }
     END { printf "%d %d\n", sob+0, total+0 }
   ' "$1"
 }
