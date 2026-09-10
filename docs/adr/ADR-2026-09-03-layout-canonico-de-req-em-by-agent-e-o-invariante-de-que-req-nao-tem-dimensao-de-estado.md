@@ -1,4 +1,5 @@
 ---
+upstream_origin: "kgsaran/trackfw:docs/adr/ADR-2026-09-03-layout-canonico-de-req-em-by-agent-e-o-invariante-de-que-req-nao-tem-dimensao-de-estado.md"
 status: Accepted
 date: 2026-09-03
 author: "trackfw_architect (Zeus)"
