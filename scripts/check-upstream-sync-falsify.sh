@@ -27,7 +27,21 @@ set -euo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 SYNC="$ROOT/scripts/upstream-sync.sh"
-WT="/c/tfwfalsify"   # curto de proposito: o snapshot do barrier estoura o limite de nome no Windows
+# WT precisa ser CURTO: o snapshot do barrier estoura o limite de nome no
+# Windows (MAX_PATH). `/c/tfwfalsify` resolve isso la -- e NAO EXISTE em Linux.
+#
+# 🔴 Medido em 2026-09-10, na primeira corrida deste gate em CI: o caminho
+# cravado fazia `git worktree add` falhar em ubuntu-latest, e o gate reportava
+# "FAIL: worktree em bfeea12" -- mensagem que aponta para o commit, quando a
+# causa era o DESTINO. O `2>/dev/null` da linha do worktree escondia o
+# `fatal:` que teria dito isso na hora.
+#
+# A raiz curta so se aplica onde ela existe. Em POSIX, TMPDIR ja e curto.
+if [ -d /c ]; then
+	WT="${WT_FALSIFY:-/c/tfwfalsify}"
+else
+	WT="${WT_FALSIFY:-${TMPDIR:-/tmp}/tfwfalsify}"
+fi
 FAILED=0
 
 # base<TAB>ref<TAB>rotulo
