@@ -1,9 +1,9 @@
 ---
-status: Open
+status: Done
 date: 2026-09-05
 author: "claude"
 adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
-roadmap: "docs/roadmaps/claude/blocked/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md"
 ---
 
 # REQ: Onda 2 de contribuição ao upstream — fechar as classes de defeito em vez dos casos
@@ -61,7 +61,7 @@ são do produto.
       > `REQ-2026-09-08-corpus-de-predicados-de-plataforma-nao-e-lido-por-gate-nenhum`, com 7 ACs —
       > inclusive a falsificação que este AC pedia e a guarda de integridade de vetor, que este não
       > previa.
-- [ ] 🔴 **AC2 — B2: lint contra predicado de SO em sítio de classificação.** — **O ÚNICO EM ABERTO.** Gate que reprova
+- [x] 🔴 **AC2 — B2: lint contra predicado de SO em sítio de classificação.** — ~~**O ÚNICO EM ABERTO.**~~ **ENTREGUE em 2026-09-10:** `scripts/check-os-predicate-classification.sh`. Gate que reprova
       `filepath.IsAbs`, `os.IsNotExist`, `os.path.isabs`, `path.isAbsolute`, `process.platform`,
       `os.name` em sítios de **classificação**. Sítios de **travessia** de sistema de arquivos ficam
       fora, por decisão do D2 da `ADR-2026-09-04`. A lista de exceções é explícita e cada uma tem
@@ -192,7 +192,7 @@ ADR: docs/adr/ADR-2026-09-09-predicado-de-so-em-sitio-de-classificacao-o-discrim
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/blocked/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md
 
 ## Desfecho (2026-09-05)
 

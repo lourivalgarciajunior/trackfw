@@ -34,6 +34,7 @@ check-req-layout
 check-referential-integrity
 check-inherited-req
 check-req-done-com-criterio-aberto
+check-os-predicate-classification
 check-slug-inventory
 check-subcommand-parity
 check-upstream-sync-falsify
