@@ -83,9 +83,31 @@ fi
 
 # ── Merge ────────────────────────────────────────────────────────────────────────
 say "upstream-sync: mesclando $REF ($REF_SHORT) sobre $BASE_SHORT…"
+# 🔴 O merge PODE falhar por motivo que nao e conflito -- historias nao
+# relacionadas, identidade ausente, ref irresolvivel, worktree em estado ruim. A
+# versao anterior descartava o stderr E ignorava o codigo de saida, e o efeito
+# era o pior possivel: o script SEGUIA, `git diff --cached` saia VAZIO, e ele
+# reportava "0 arquivos de produto trazidos" como se fosse resultado.
+#
+# Medido em 2026-09-10: em ubuntu-latest o gate de falsificacao acusou 4 arquivos
+# de produto "suprimidos" -- e a supressao era o merge nao ter acontecido. No
+# Windows o mesmo caso passa. Silencio no stderr transformou falha de merge em
+# medicao plausivel.
+#
+# Conflito continua sendo esperado e tratado adiante (--diff-filter=U). O que
+# esta guarda pega e falha SEM conflito: nao ha o que resolver, e prosseguir
+# produziria numero mentiroso.
 set +e
-git merge --no-commit --no-ff "$REF" >/dev/null 2>&1
+MERGE_OUT="$(git merge --no-commit --no-ff "$REF" 2>&1)"
+MERGE_RC=$?
 set -e
+
+if [ "$MERGE_RC" -ne 0 ] && [ -z "$(git diff --name-only --diff-filter=U)" ]; then
+	printf '%s
+' "$MERGE_OUT" >&2
+	git merge --abort 2>/dev/null || git reset --hard "$BASE" >/dev/null 2>&1
+	die "git merge falhou (exit $MERGE_RC) e NAO ha conflito para resolver. Mensagem acima. Arvore devolvida."
+fi
 
 # ── Retenção: docs/ e vault/ voltam a ser EXATAMENTE os nossos ───────────────────
 # Não se resolve conflito a conflito. A ADR já decidiu o resultado.

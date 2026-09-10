@@ -27,7 +27,21 @@ set -euo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 SYNC="$ROOT/scripts/upstream-sync.sh"
-WT="/c/tfwfalsify"   # curto de proposito: o snapshot do barrier estoura o limite de nome no Windows
+# WT precisa ser CURTO: o snapshot do barrier estoura o limite de nome no
+# Windows (MAX_PATH). `/c/tfwfalsify` resolve isso la -- e NAO EXISTE em Linux.
+#
+# 🔴 Medido em 2026-09-10, na primeira corrida deste gate em CI: o caminho
+# cravado fazia `git worktree add` falhar em ubuntu-latest, e o gate reportava
+# "FAIL: worktree em bfeea12" -- mensagem que aponta para o commit, quando a
+# causa era o DESTINO. O `2>/dev/null` da linha do worktree escondia o
+# `fatal:` que teria dito isso na hora.
+#
+# A raiz curta so se aplica onde ela existe. Em POSIX, TMPDIR ja e curto.
+if [ -d /c ]; then
+	WT="${WT_FALSIFY:-/c/tfwfalsify}"
+else
+	WT="${WT_FALSIFY:-${TMPDIR:-/tmp}/tfwfalsify}"
+fi
 FAILED=0
 
 # base<TAB>ref<TAB>rotulo
@@ -42,8 +56,16 @@ while IFS=$'\t' read -r BASE REF LABEL; do
 	cleanup
 	git worktree add --detach -q "$WT" "$BASE" 2>/dev/null || { echo "  FAIL: worktree em $BASE"; FAILED=1; continue; }
 
-	( cd "$WT" && bash "$SYNC" --ref "$REF" --skip-verify ) >/dev/null 2>&1 || {
-		echo "  FAIL: upstream-sync abortou"; FAILED=1; continue; }
+	# 🔴 A saida do sync e CAPTURADA, nao descartada. A versao anterior fazia
+	# `>/dev/null 2>&1` e imprimia so "upstream-sync abortou" -- que nao diz por
+	# que. Medido em 2026-09-10: em ubuntu-latest o merge falhava e a mensagem
+	# do git era a unica coisa capaz de dizer a causa. Quinto caso da mesma
+	# familia nesta semana.
+	SYNC_OUT="$( cd "$WT" && bash "$SYNC" --ref "$REF" --skip-verify 2>&1 )" || {
+		echo "  FAIL: upstream-sync abortou. Saida:"
+		printf '%s
+' "$SYNC_OUT" | sed 's/^/      /'
+		FAILED=1; continue; }
 
 	BROUGHT="$(cd "$WT" && git diff --cached --name-only "$BASE" | sort)"
 	ALL="$(cd "$WT" && git diff --name-only "$BASE...$REF" | sort)"
