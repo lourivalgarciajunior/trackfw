@@ -158,6 +158,60 @@ ninguém executa"*, isso seria a ironia exata.
 **O ML-2B fica pendente**, e ele só fecha depois do primeiro push: o job precisa aparecer verde com a
 árvore limpa, e vermelho com vazamento plantado.
 
+### ML-2B — Falsificação em CI
+**Status:** 🔄 Em andamento — **uma direção fechada, a outra bloqueada por achado novo**
+
+**Direção "árvore limpa passa": 8 dos 9 gates verdes em CI.** Levou **quatro** corridas, e cada
+falha foi um defeito real que só o CI mostrava:
+
+| # | sintoma | causa medida |
+|---|---|---|
+| 1 | `check-subcommand-parity` `exit=1`, **zero linhas de saída** | job sem `npm ci`. O gate faz `node ... 2>/dev/null`; sem os módulos o node falha, o stderr some, e `set -euo pipefail` mata sem mensagem |
+| 2 | `npm ci` → `EUSAGE` | o `package-lock.json` mora em `npm/`; copiei o comando dele e não o `working-directory` |
+| 3 | `check-upstream-sync-falsify` `exit=128`, *"FAIL: worktree em bfeea12"* | 🔴 **a mensagem apontava para o commit, e a causa era o destino**: `WT="/c/tfwfalsify"` é caminho cravado do Windows, e `/c` não existe em `ubuntu-latest`. O `2>/dev/null` escondia o `fatal:` |
+| 4 | o mesmo gate, agora `exit=1` | **achado novo, abaixo** |
+
+🔴 **A #3 é o terceiro caso da mesma família nesta semana.** Guarda que descarta o stderr do próprio
+comando produz diagnóstico errado: o *"git does not resolve"* que era o `python3`, o *"gate cego"*
+que era mutação inválida, e agora *"worktree em bfeea12"* — com o commit perfeito, provado por um
+passo que fez o **mesmo** `worktree add` com sucesso no **mesmo** runner.
+
+### 🔴 Achado novo: o `upstream-sync` suprime produto em Linux, e não no Windows
+
+Com o caminho corrigido, o gate **rodou pela primeira vez em Linux** — e reprovou por lógica própria:
+
+```
+── caso: governanca pesada (41 arquivos, 4 de produto)
+  FAIL: PRODUTO suprimido / produto NAO trazido:
+      .claude/agent-memory/artemis-tf/MEMORY.md
+      .claude/agent-memory/artemis-tf/feedback_assinatura_de_saida_antes_de_hipotese.md
+      .github/workflows/quality.yml
+      scripts/windows-repro/run.ps1
+  ok  docs/ e vault/ identicos a base
+
+── caso: produto puro (52 arquivos, 42 de produto)
+  FAIL: PRODUTO suprimido:
+      .github/workflows/quality.yml
+      internal/commands/execbit_probe_test.go
+```
+
+**O mesmo gate passa no Windows.** Medido sobre os arquivos citados:
+
+- os quatro **mudaram de verdade** entre base e ref — blobs diferentes, não são falso positivo;
+- o modo é `100644` nos dois lados — **não é bit de execução**;
+- `core.fileMode` é `false` aqui e `true` no runner, mas os modos coincidem, então isso não explica.
+
+**Não sei a causa, e não vou chutar.** O que é seguro afirmar: o `upstream-sync.sh` — o script que
+governa **todo** merge do upstream neste fork — tem comportamento **dependente de plataforma** que
+nunca foi exercitado, porque o gate que o falsifica só rodava no Windows.
+
+**Decisão explícita: o gate NÃO é declarado FORA.** Silenciá-lo agora seria exatamente o ato que esta
+REQ existe para impedir — e seria pior que o original, porque agora há um achado medido por trás do
+vermelho. **O CI fica vermelho até a causa ser medida**, e isso é informação, não incômodo.
+
+**Fica aberto:** falsificação da direção "vazamento plantado reprova" — ela não pôde ser exercitada
+porque o job já está vermelho por outro motivo, e um vermelho sobre vermelho não distingue nada.
+
 ## Residual declarado
 
 - **O `check-platform-predicates.sh` fica fora, e o motivo já está escrito** no `CLAUDE.md`: 14 das
