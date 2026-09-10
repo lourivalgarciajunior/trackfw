@@ -319,6 +319,73 @@ Provado por efeito: `git diff $(git merge-base HEAD upstream/main) HEAD -- inter
 .github Makefile` devolve **vazio** — nós não tocamos em produto. Trazer esses 2 commits é trabalho
 próprio, com medição própria.
 
+## Wave 3 — reaberta em 2026-09-10: a governança dele também estava em `docs/`, fora do `req_dir`
+
+> **Por que esta wave existe, e por que aqui e não em REQ nova.** A auditoria da
+> `REQ-2026-09-10-onze-reqs` rodou o `check-upstream-content.sh` e o encontrou **vermelho**: 7
+> arquivos de governança do upstream em `docs/`, **fora** do `req_dir` que esta REQ varreu.
+>
+> **Mesma causa** — governança dele vivendo na nossa árvore —, então é ML aqui, não REQ nova. A
+> Regra Dura de Causa Raiz manda mover o roadmap de volta para `wip/`, e foi o que foi feito.
+>
+> 🔴 **O AC1 desta REQ era estreito.** Ele derivava por `git cat-file -e upstream/main:docs/req/<b>`
+> — só o `req_dir`. Nada em `docs/adr/`, `docs/qualidade/`, `docs/seguranca/` ou
+> `docs/portabilidade/` seria alcançado. O gate que pegou é outro, e existia desde agosto: estava
+> **vermelho e ninguém olhava**, porque não está em alvo nenhum do `Makefile` nem em CI.
+
+### ML-3A — Os 7 de `docs/`, decididos por dependência
+**Status:** ✅ Concluído
+**Files affected:** `docs/portabilidade/**`, `docs/qualidade/**`, `docs/seguranca/**`, `docs/adr/**`, `scripts/check-upstream-content.sh`
+
+**Medição — os 7 são importação pura:**
+
+```
+todos os 7   byte a byte IDENTICOS ao upstream, no MESMO caminho
+```
+
+Nada nosso dentro deles. Não há trabalho a perder.
+
+**O discriminante não é "tem referência" — é o TIPO de referência.** Todos os 7 são citados por
+artefatos nossos, entre 2 e 5 vezes cada. Mas citar não é depender:
+
+| | referência | decisão |
+|---|---|---|
+| `ADR-2026-09-03-layout-canonico-...` | **dependência dura**: 5 REQs a citam no campo `adr:` do frontmatter, e o `req_has_adr` do `validate` cobra | **FICA** |
+| os outros 6 | **menção em prosa**: aparecem em listas dentro de duas REQs que documentam o próprio vazamento | **SAEM** |
+
+🔴 **Se eu tivesse parado em "tem referência, logo está vetado"** — o critério que usei para as 28 —
+os 7 ficariam, e 6 deles ficariam por engano. A pergunta certa é *"o que quebra se eu remover?"*, e a
+resposta é diferente para a ADR e para os pareceres.
+
+**O que foi feito:**
+
+1. **Seis removidos** — `docs/portabilidade/` e `docs/qualidade/` ficaram vazios; `docs/seguranca/`
+   manteve o `2026-08-15-skills-de-terceiro-via-url.md`, que **já estava no `KEEP`** com o motivo
+   escrito (*"lido por internal/thirdparty; teste quebra sem ele"*).
+2. **A ADR fica, com procedência declarada** no frontmatter —
+   `upstream_origin: "kgsaran/trackfw:docs/adr/..."` —, o mesmo mecanismo das 28.
+3. **E declarada no `KEEP` do gate, com o motivo**, que é a saída que o próprio gate oferece.
+
+**Falsificação — gates antes e depois:**
+
+| gate | antes | depois |
+|---|---|---|
+| `check-upstream-content` | **1** | **0** |
+| `check-req-layout` | 0 | 0 |
+| `check-referential-integrity` | 0 | 0 |
+| `check-inherited-req` | 0 | 0 |
+| `check-req-done-com-criterio-aberto` | 0 | 0 |
+| `check-subcommand-parity` | 0 | 0 |
+| `validate` | 0 | 0 |
+
+**As duas remoções anteriores desta classe quebraram gate.** Esta não quebrou nenhum — e a diferença
+é que a varredura de referência veio **antes**, com o tipo de dependência medido por arquivo.
+
+**Residual deste ML:** o `AC1` desta REQ continua estreito por construção — ele deriva só sobre o
+`req_dir`. Um vazamento novo em `docs/` seria pego pelo `check-upstream-content.sh`, **se alguém o
+rodar**. Ele não está no `Makefile` nem em CI, e ficou vermelho por semanas sem ninguém notar. Pôr
+esse gate onde ele seja executado é trabalho próprio, e não foi feito aqui.
+
 ## Residual declarado
 
 - **Esta REQ não decide o estado de entrega das 28.** O trabalho foi entregue — verificado

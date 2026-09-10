@@ -34,6 +34,7 @@ fi
 # evapora sem ninguem decidir nada.
 KEEP=$(cat <<'LIST'
 docs/agents-working-context.md                          # handoff entre sessoes; escrevemos nele
+docs/adr/ADR-2026-09-03-layout-canonico-de-req-em-by-agent-e-o-invariante-de-que-req-nao-tem-dimensao-de-estado.md  # DELE, e FICA: 5 REQs nossas a citam no campo `adr:` do frontmatter, e o `req_has_adr` do validate cobra. Remover quebraria o validate em 5 pontos. Procedencia declarada no frontmatter dela (upstream_origin), como as 28 REQs herdadas. Ver REQ-2026-09-09-governanca-do-upstream, ML-3A.
 docs/cli-parity.md                                      # doc de produto
 docs/gate-design-principles.md                          # doc de produto
 docs/demo.gif                                           # doc de produto
