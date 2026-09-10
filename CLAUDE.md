@@ -446,6 +446,43 @@ cenário vacuo. O ponto cego é real, mas nunca vira verde falso.
   — **exit code certo pelo motivo errado**. Aconteceu três vezes em 2026-09-09. Rode de dentro de
   `scripts/`.
 
+## Lint de predicado de SO em sítio de classificação (`scripts/check-os-predicate-classification.sh`)
+
+Implementa o **AC2** da `REQ-2026-09-05-onda-2`, com o discriminante da
+`ADR-2026-09-09-predicado-de-so-em-sitio-de-classificacao`: **a origem do argumento**, não a intenção
+do autor.
+
+```bash
+bash scripts/check-os-predicate-classification.sh
+```
+
+```
+196 sitios varridos
+ 86 com arquivo de teste   (D5: reportado a parte, nunca somado)
+ 57 D1 travessia           (o predicado recebe um valor de ERRO)
+  4 D3 costura             (plataforma lida uma vez para constante nomeada)
+ 30 comentario
+ 19 D2 CLASSIFICACAO       em 8 arquivos declarados
+```
+
+Os cinco somam 196 exatamente — o denominador reconcilia, não sobra resto.
+
+🔴 **É um RATCHET, não uma varredura de limpeza.** Os 19 sítios de classificação estão **todos em
+produto do upstream**; corrigi-los aqui criaria divergência, que hoje é zero. O escopo negativo da
+REQ decide: achado vira **issue**, não correção local. O gate congela os conhecidos **com motivo por
+arquivo** e reprova o próximo.
+
+**Granularidade de arquivo, não de linha** — número de linha muda a cada merge do upstream e o
+baseline viraria ruído.
+
+**Duas guardas de vacuidade**, e a segunda é a que importa: se **zero** sítios saírem por D1, o
+classificador parou de casar e **tudo** viraria classificação. O `os.IsNotExist` recebe `err` em
+todos os sítios de código medidos — zero ali é derivação quebrada, não limpeza.
+
+🔴 **O gate só vê conteúdo rastreado** (`git grep`). Um sítio novo em arquivo não commitado passa —
+medido em 2026-09-10, quando a primeira falsificação deu `exit 0` por eu ter plantado sem `git add`.
+Em CI isso não é limitação, porque lá tudo chega commitado.
+
 ## Gate de REQ `done` com critério aberto (`scripts/check-req-done-com-criterio-aberto.sh`)
 
 Acusa REQ **nossa** marcada `done` que ainda tem critério de aceite em aberto.

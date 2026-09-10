@@ -1,5 +1,5 @@
 ---
-status: blocked
+status: done
 date: 2026-09-05
 req: "docs/requisições/claude/REQ-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md"
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: Onda 2 de contribuição ao upstream — fechar as classes de defeito em vez dos casos
 
-> Created: 2026-09-05 | Status: blocked
+> Created: 2026-09-05 | Status: done
 
 ## 🔴 Por que este roadmap esta em `blocked/` — 2026-09-10
 
@@ -130,10 +130,10 @@ test -s scripts/testdata/platform-predicates.tsv || { echo "tabela de contrato a
 - [x] tests green
 
 ### ML-1B — AC2: lint contra predicado de SO em sítio de classificação
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:** `scripts/measure-os-predicate-sites.sh` (pré-requisito), lint ainda não escrito
 **Acceptance criteria:**
-- [ ] Gate que reprova os seis predicados em sítios de **classificação**
+- [x] Gate que reprova os seis predicados em sítios de **classificação**
 - [x] **Pré-requisito: a superfície é mensurável de forma reproduzível**
 
 🔴 **Este ML estava marcado ✅ Concluído e não estava.** A REQ, no mesmo dia, descrevia o AC2 como
@@ -226,7 +226,43 @@ por leitura do argumento, sem julgar intenção.
 decisão, mas fica escrita — contagem por ocorrência já falseou o denominador deste trabalho três
 vezes.
 
-**O que falta para o AC2 agora é o lint em si — trabalho, não dependência.**
+~~**O que falta para o AC2 agora é o lint em si.**~~ **Entregue em 2026-09-10:**
+`scripts/check-os-predicate-classification.sh`.
+
+```
+196 sitios varridos
+ 86 com arquivo de teste   (D5: a parte, nunca somado)
+ 57 D1 travessia
+  4 D3 costura
+ 30 comentario
+ 19 D2 CLASSIFICACAO       em 8 arquivos declarados
+```
+
+Os cinco somam **196 exatamente** — o denominador reconcilia, não sobra resto. Cada linha do gate
+implementa uma decisão da ADR, e nenhuma é heurística inventada na hora.
+
+🔴 **É um RATCHET, e essa foi a decisão de desenho.** Os 19 sítios de classificação estão **todos em
+produto do upstream**. Corrigi-los aqui criaria divergência, que hoje é zero — e o escopo negativo
+desta REQ decide: achado vira **issue**, não correção local. O gate congela os conhecidos **com
+motivo por arquivo** e reprova o próximo.
+
+**Falsificação — quatro direções:**
+
+| # | mutação | esperado | medido |
+|---|---|---|---|
+| A | sítio de classificação em arquivo **novo e rastreado** | reprova | `exit 1`, nomeando `internal/commands/zz_probe.go:5` |
+| B | o mesmo sítio, em **arquivo de teste** | passa (D5 separa) | `exit 0` |
+| C | classificador D1 cegado | reprova | `exit 1`, `GUARDA — zero sitios classificados como D1` |
+| D | escopo inexistente | reprova | `exit 1`, guarda de vacuidade |
+
+🔴 **A direção A não valeu na primeira tentativa.** Plantei o arquivo e **não fiz `git add`** — o gate
+usa `git grep`, que só vê conteúdo **rastreado**, e devolveu `exit 0`. Pareceu gate cego; era teste
+mal montado. Fica escrito no `CLAUDE.md` como limite do gate.
+
+🔴 **E o baseline nasceu com uma entrada obsoleta.** Escrevi `validator_git_branch_guard.go` a partir
+de uma classificação ad-hoc **diferente** da que o gate implementa; o aviso de declaração obsoleta a
+pegou na primeira execução. Removida. É o mesmo mecanismo do `check-subcommand-parity`, e serviu para
+o mesmo fim: baseline escrito à mão diverge do derivado.
 
 ### ML-1C — **AC3 — C1: gate de ponto único de leitura.** Acusa enumeração de req_dir/roadmap_dir fora
 **Status:** ✅ Concluído
