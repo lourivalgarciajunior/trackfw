@@ -396,6 +396,56 @@ O gate existe porque a ADR foi aceita e, cinco dias depois, **7 REQs estavam em 
 o `validate` dizendo `✓ No violations found`. E o custo não era a desarrumação: aquele nível a mais
 produziu um **ponto cego de medição** que fez um número publicado sair errado.
 
+## Ponto cego local: os 3 gates de PATH curado não rodam nesta máquina
+
+`check-ship-force-parity.sh`, `check-push-force-parity.sh` e `check-release-tag-parity.sh` **não
+verificam nada no Windows daqui.** Não é "alguns cenários falham": é **zero cenário executado**.
+
+```
+gate                        linhas  asserts grep -qF  runtimes         executados
+check-ship-force-parity        626              11    go8 node8 py6         0
+check-push-force-parity        646              11    go8 node8 py6         0
+check-release-tag-parity      1557              34    go8 node20 py9        0
+                                                 56 afirmacoes  ·  0 rodam
+```
+
+🔴 **Não leia o `exit 1` deles como regressão.** Medido em 2026-09-09 com controle nas duas direções:
+falham igual **antes e depois** de qualquer merge. A causa é ambiente, e são **dois** bloqueios
+empilhados — descobrir o segundo exigiu destravar o primeiro:
+
+1. **`ln -s` degrada para cópia** no Git Bash sem `winsymlinks`. O link do `node` passa (vira cópia);
+   o do `python3` morre com `Permission denied`, porque aqui `python3` resolve para o *app execution
+   alias* da Windows Store, que é ele próprio um symlink. Morre no setup, linha ~126.
+2. Com um `python3` real, a **guarda de vacuidade** reprova dizendo `git does not resolve`. Não é o
+   git: é o `python3` **copiado** que não carrega a `python312.dll`, porque o `NO_FORGE_PATH` exclui
+   de propósito o diretório de instalação do Python. Mesmo mecanismo que o comentário do próprio
+   script documenta para o `git.exe`.
+
+**O ramo Windows desses gates não tem cobertura em CI nenhum** — `Makefile:58,60,61` os põe em
+`parity-rest`, e `quality.yml:624` roda `make parity-rest` no job `parity-other-gates`, que é
+`runs-on: ubuntu-latest`. Em POSIX o `ln -s` é symlink de verdade e o ramo é outro.
+
+Reportado no upstream: [#307](https://github.com/kgsaran/trackfw/issues/307). Mesma causa do
+[#304](https://github.com/kgsaran/trackfw/pull/304) — wrapper dependente de DLL no Windows —, outra
+superfície, então é ML na `REQ-2026-09-03` dele, não REQ nova.
+
+**O que fica sem cobertura local** são 56 afirmações, e as caras são as de segurança do
+`release-tag`: `Scenario 11` (ataque ao ref derivado de symref), `15` (object-absent), `16`
+(content-from-commit-provenance), `17` (refs-replace-bypass). Essas só rodam no CI dele.
+
+**Mérito do gate, que é por que isto é nota e não alarme:** a guarda **recusa** em vez de rodar
+cenário vacuo. O ponto cego é real, mas nunca vira verde falso.
+
+🔴 **Duas armadilhas de medição, para não serem repetidas:**
+
+- **Controle contaminado pelo PATH ambiente.** A primeira medição disse "a cópia do `python3`
+  inicia" — e iniciava, porque o PATH ainda tinha o diretório do Python e o Windows achou a DLL por
+  ali. Só isolando o PATH a falha aparece.
+- **Script copiado para o scratchpad não vale como controle.** Estes scripts calculam `ROOT_DIR` a
+  partir do próprio caminho; rodados de fora da árvore eles saem `1` por não achar o `trackfw.yaml`
+  — **exit code certo pelo motivo errado**. Aconteceu três vezes em 2026-09-09. Rode de dentro de
+  `scripts/`.
+
 ## Gate de REQ herdada do upstream (`scripts/check-inherited-req.sh`)
 
 A `ADR-2026-08-29` decide que **a governança do upstream não é importada**. Vinte e oito REQs do
