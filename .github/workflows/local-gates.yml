@@ -1,0 +1,88 @@
+name: Gates locais do fork
+
+# 🔴 ARQUIVO NOVO, SÓ NOSSO — de propósito.
+#
+# Os 7 workflows existentes são COMPARTILHADOS com o upstream (derivado por
+# `git ls-tree`, não por `git cat-file`: o MSYS converte `ref:.caminho` quando o
+# caminho começa com ponto, e a checagem devolve "só nosso" para arquivo que é
+# dele). Acrescentar um job a qualquer um deles criaria divergência de produto
+# que todo merge futuro pagaria — hoje ela é ZERO. Adição não é divergência.
+#
+# POR QUE `push` E `pull_request`, e nunca `workflow_dispatch`: disparo manual é
+# exatamente o defeito que este workflow existe para fechar. Medido em
+# 2026-09-10: 10 scripts em `scripts/` são só nossos e NENHUM era invocado por
+# automação nenhuma. O `check-upstream-content.sh` ficou vermelho por semanas com
+# 7 arquivos de governança do upstream em `docs/`, e só apareceu porque alguém o
+# rodou à mão numa auditoria de outra REQ.
+#
+# Ver REQ-2026-09-10-o-check-upstream-content-nao-roda-em-lugar-nenhum.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  gates-locais:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # 🔴 Histórico completo: dois dos gates derivam por comparação com o
+          # upstream. Com clone raso a ref não resolve — e eles falham FECHADOS,
+          # que é o comportamento certo, mas transformaria este job num vermelho
+          # permanente por motivo errado.
+          fetch-depth: 0
+
+      - name: Buscar o upstream
+        # Sem isto, `upstream/main` não existe no runner e os gates que dependem
+        # dela reprovam dizendo isso. Falham fechados de propósito: verde por não
+        # conseguir checar seria pior.
+        run: |
+          git remote add upstream https://github.com/kgsaran/trackfw.git || true
+          git fetch --no-tags upstream main
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compilar o binário da árvore
+        # O gate mede com o binário DESTA árvore, nunca com o do PATH — um
+        # `trackfw` instalado é outra instalação, e já reportou 15 violações que
+        # eram zero.
+        run: go build -o bin/trackfw ./cmd/trackfw
+
+      - name: Gates locais do fork
+        run: bash scripts/run-local-gates.sh
+
+      - name: trackfw validate
+        run: ./bin/trackfw validate
+
+      - name: Divergência de produto tem de ser ZERO
+        # O invariante do fork: arquivo COMPARTILHADO que difere. Adição não
+        # conta — os 11 scripts só nossos não são divergência.
+        run: |
+          set -euo pipefail
+          div=0
+          for f in $(git diff --name-only HEAD upstream/main -- internal npm pypi cmd .github Makefile); do
+            if git cat-file -e "HEAD:$f" 2>/dev/null && git cat-file -e "upstream/main:$f" 2>/dev/null; then
+              echo "  DIVERGE (compartilhado): $f"
+              div=$((div + 1))
+            fi
+          done
+          echo "arquivos compartilhados que diferem: $div"
+          if [ "$div" -gt 0 ]; then
+            echo "::error::divergencia de produto deixou de ser zero"
+            exit 1
+          fi

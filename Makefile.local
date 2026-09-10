@@ -1,0 +1,20 @@
+# Makefile.local — entrada por `make` para os gates SÓ NOSSOS.
+#
+# 🔴 Arquivo SEPARADO de propósito. O `Makefile` da raiz é COMPARTILHADO com o
+# upstream (derivado por `git ls-tree`), e acrescentar um alvo lá criaria
+# divergência de produto que todo merge futuro pagaria — hoje ela é ZERO.
+# Este arquivo é uma ADIÇÃO, e adição não é divergência.
+#
+# Uso:
+#   make -f Makefile.local gates
+#
+# Ver REQ-2026-09-10-o-check-upstream-content-nao-roda-em-lugar-nenhum.
+
+.PHONY: gates gates-list
+
+gates:
+	@bash scripts/run-local-gates.sh
+
+# Só lista o que seria executado, sem executar — útil para revisar a cobertura.
+gates-list:
+	@sed -n '/^EXECUTAR="/,/^"/p' scripts/run-local-gates.sh | sed '1d;$$d'
