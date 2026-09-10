@@ -103,14 +103,37 @@ existir.
       é parametrizado porque um rename lá dentro tornaria toda REQ "só nossa" em silêncio.
       🔴 O gate **congela** o conjunto: uma 29ª herdada reprova. Não fecha a REQ — impede que o
       próximo merge acrescente ao problema enquanto ela está aberta.
-- [ ] **AC2** — 🔴 **Falsificação prévia obrigatória, na árvore inteira.** Para cada candidata:
+- [x] **AC2** — 🔴 **Falsificação prévia obrigatória, na árvore inteira.** Para cada candidata:
       varredura de referência com `grep -r` em **todo** o repositório, não num diretório escolhido.
       É o erro exato que produziu a `REQ-2026-09-05-residuo-de-docs-req` — lá varri
       `docs/requisições/` e não varri `docs/req/`, e o `parity` quebrou.
-- [ ] **AC3** — 🔴 **Nenhuma REQ que seja fixture de teste do produto é tocada.** Três de
+      → 2026-09-09, `git grep -a -l -F` por basename **e** slug sobre os 1187 arquivos rastreados.
+      Método falsificado antes do uso (alvo conhecido acha 11; controle negativo acha 0).
+      **Resultado: 28 de 28 têm referência, 0 sem.** 82 arquivos distintos referenciam alguma delas.
+- [x] **AC3** — 🔴 **Nenhuma REQ que seja fixture de teste do produto é tocada.** Três de
       `docs/req/` são lidas por caminho literal nos 3 runtimes
       (`REQ-2026-09-05-tres-reqs-de-docs-req`); a checagem tem de cobrir também as 28, e o resultado
       fica escrito mesmo se for "nenhuma".
+      → **Nenhuma.** Zero das 28 é citada em `internal/`, `npm/`, `pypi/` ou `cmd/`. O controle
+      positivo dispara: as três fixtures conhecidas dão `produto=3` cada, uma por runtime — sem isso
+      o "nenhuma" seria vácuo com cara de resultado.
+
+### 🔴 O que o AC2 decidiu, e que a Wave 2 herda
+
+**Nenhuma das 28 pode ser removida.** Por dois mecanismos, sem sobra:
+
+| | quantas | vetadas por |
+|---|---|---|
+| referenciadas no **snapshot congelado do barrier** | **26** | ML-1B: referência no snapshot veta a remoção e **não** autoriza regenerar o snapshot |
+| `REQ-roadmap-ai-generation` e `REQ-req-driven-adr-discovery` | **2** | **ADR nossa** apontando para cada uma (`ADR-2026-06-11-roadmap-derivado-sem-llm`, `ADR-2026-06-12-descoberta-de-adr-guiada-pela-req`), mais roadmaps nossos |
+
+Somado ao escopo negativo — que já proíbe **mover** as 28 para outro diretório nosso, porque adotar
+pela porta dos fundos é o que a ADR recusa —, a decisão da Wave 2 fica reduzida a **uma** opção
+viável: **elas ficam onde estão, e a procedência passa a ser declarada no próprio arquivo.**
+
+Isso não é derrota do AC2: é o AC2 **funcionando**. Ele existe porque as duas remoções anteriores
+desta mesma classe quebraram gate, e desta vez o veto apareceu **antes** de alguém apagar 28
+arquivos.
 - [ ] **AC4** — Denominador conferido antes e depois: `status` reporta 65 REQs hoje. Se cair, o
       número novo é medido e escrito, e `validate` continua sem violação.
 - [ ] **AC5** — Vínculo vivo tratado explicitamente: roadmap **nosso** que aponte para REQ dele é

@@ -113,20 +113,90 @@ Sem a reconciliação, isso teria saído como `verde, nada sob critério` — um
 de resultado. É o motivo de a guarda existir.
 
 ### ML-1B — Varredura de referência na árvore inteira
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:** —
 **Acceptance criteria:**
-- [ ] Para cada uma das 28: `grep -r` em **todo** o repositório, incluindo `scripts/testdata/`,
+- [x] Para cada uma das 28: `grep -r` em **todo** o repositório, incluindo `scripts/testdata/`,
       `docs/roadmaps/`, `vault/` e o snapshot congelado do barrier
-- [ ] 🔴 Referência no **snapshot congelado** não autoriza edição do snapshot — ela **veta a
+- [x] 🔴 Referência no **snapshot congelado** não autoriza edição do snapshot — ela **veta a
       remoção** da REQ, ou exige decisão escrita. Regenerar o snapshot é o que não se faz
 
+**Método.** `git grep -a -l -F` por **basename e por slug**, sobre os **1187 arquivos rastreados**,
+excluindo a própria REQ. `git grep` em vez de `grep -r` de propósito: o conteúdo rastreado **é** o
+repositório, e assim `node_modules/` fica fora sem que eu precise inventar um `--exclude-dir` que
+depois viraria a varredura estreita da próxima vez.
+
+**O método foi falsificado antes de ser usado** — porque um alvo que não casa devolve "sem
+referência", que é indistinguível de "seguro para remover":
+
+| # | alvo | esperado | medido |
+|---|---|---|---|
+| A | `multi-ai-support`, que sabidamente aparece no snapshot | acha | 11 arquivos |
+| B | `REQ-INEXISTENTE-CONTROLE-2026` | 0 | 0 |
+| C | `npm/src/validator/index.js`, o arquivo que o `grep` comum pula | lê | lê, com e sem `-a` |
+
+🔴 **A direção C não valeu na primeira tentativa, duas vezes seguidas.** Primeiro procurei `prune`,
+que não está no arquivo — vazio não prova leitura. Depois a extração do alvo falhou e devolveu
+string **vazia**, e `git grep -F -- ""` casa com tudo: os dois "achados: 1" eram vácuo. Só com
+`require(` (len=8) a checagem disse alguma coisa. Medido de passagem: o arquivo é `text: auto` e não
+tem NUL nos primeiros 8000 bytes, então a armadilha documentada do `grep` binário **não se aplica ao
+`git grep`** aqui.
+
+**Resultado — decisivo:**
+
+```
+28 herdadas varridas · 28 com referencia · 0 sem
+82 arquivos distintos referenciam alguma das 28
+
+   30  nosso roadmap
+   30  SNAPSHOT CONGELADO do barrier
+    9  nossa ADR
+    7  nossa REQ
+    3  outro docs/
+    3  raiz (CLAUDE.md, check-gates-falsify.sh, check-inherited-req.sh)
+```
+
+🔴 **26 das 28 são referenciadas pelo snapshot congelado do barrier.** Pelo critério escrito acima,
+isso **veta a remoção** delas — e não autoriza tocar no snapshot.
+
+**As outras 2 também estão vetadas, por mecanismo diferente:**
+
+| REQ | vetada por |
+|---|---|
+| `REQ-roadmap-ai-generation-2026-06-11.md` | `docs/adr/ADR-2026-06-11-roadmap-derivado-sem-llm.md` — **ADR nossa** — mais um roadmap nosso em `abandoned/` e três em `done/` |
+| `REQ-req-driven-adr-discovery-2026-06-12.md` | `docs/adr/ADR-2026-06-12-descoberta-de-adr-guiada-pela-req.md` — **ADR nossa** — mais dois roadmaps nossos |
+
+**Então: nenhuma das 28 pode ser removida.** Não é conclusão de opinião, é o AC2 aplicado a 28 de 28.
+
+**Achado lateral:** `scripts/check-gates-falsify.sh:1822` **escreve** um
+`$T12/docs/req/REQ-adr-wizard-e-list-2026-06-11.md` num diretório temporário. Não lê a nossa, então
+não veta — mas o **nome** está acoplado num script de falsificação, e isso fica escrito aqui para não
+ser redescoberto como surpresa.
+
 ### ML-1C — Fixture de teste do produto
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:** —
 **Acceptance criteria:**
-- [ ] Checado se alguma das 28 é lida por caminho literal em `internal/`, `npm/` ou `pypi/`
-- [ ] O resultado fica escrito **mesmo se for "nenhuma"** — gate sem achado é resultado
+- [x] Checado se alguma das 28 é lida por caminho literal em `internal/`, `npm/` ou `pypi/`
+- [x] O resultado fica escrito **mesmo se for "nenhuma"** — gate sem achado é resultado
+
+**Resultado: nenhuma. Zero das 28 é citada em `internal/`, `npm/`, `pypi/` ou `cmd/`.**
+
+🔴 **E o "nenhuma" só vale porque o controle positivo dispara.** As três REQs de `docs/req/` que
+**são** fixture conhecida foram passadas pelo mesmo método:
+
+```
+REQ-2026-07-27-convergencia-dos-templates-...   produto=3
+REQ-2026-07-27-integridade-das-referencias-...  produto=3
+REQ-2026-07-27-roadmap-move-sincroniza-...      produto=3
+```
+
+Três cada — um por runtime, como a `REQ-2026-09-05-tres-reqs-de-docs-req` mediu. Se o método não
+enxergasse fixture, esses três dariam zero também, e o "nenhuma" das 28 seria vácuo com cara de
+resultado. É o erro que já cometi duas vezes num dia e que virou remédio errado publicado em issue.
+
+Medido junto, para dimensionar: **118 arquivos de produto citam `docs/req`** — o `req_dir` **default**
+do produto, não o nosso. As 28 vivem em `docs/requisições`, e é por isso que nenhuma é alcançada.
 
 ## Wave 2 — A decisão, e só então a ação
 
