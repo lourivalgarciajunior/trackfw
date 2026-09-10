@@ -27,6 +27,95 @@ executável; o que faltava era o ponto de referência existir.
 - [ ] Falsificação nas duas direções.
 - [ ] Os doze ACs recebem **(b)**, nenhum marcado como entregue.
 
+## A espera: o que ela comprou, e o que ela invalidou — 2026-09-10
+
+### O que se decidiu, e por quê
+
+Poucas horas depois de esta REQ ser aberta, o mantenedor entregou na branch dele **a mesma solução,
+para o mesmo problema, no mesmo dia**: lista de falhas colhida de um run identificado, versionada, com
+gate que compara **por nome**. Este roadmap ficou em `backlog/` **por convergência**, não por falta de
+trabalho pronto: construir a Wave 0 naquela hora produziria uma **segunda** solução, e o próximo merge
+do upstream teria de reconciliar as duas.
+
+A condição de retomada ficou escrita com gatilho — `upstream/main` receber aquele trabalho — e a vigia
+armada. Parar sem gatilho não é esperar, é abandonar com outro nome.
+
+### O gatilho disparou
+
+```
+20:34 UTC   kgsaran/trackfw#312 mesclada  ->  cd34a2a   trazida pela nossa #93
+20:51 UTC   kgsaran/trackfw#313 mesclada  ->  e4d8349   trazida pela nossa #94
+```
+
+Cerca de cinco horas entre abrir esta REQ e o trabalho dele estar na nossa `main`.
+
+### O que a espera comprou
+
+| o que chegou | `scripts/check-windows-known-failures.py`, 1446 linhas | cobre |
+|---|---|---|
+| ratchet por nome | 38 entradas, `_meta.source` com `run_id`, `job_id` e a receita para refazer | AC1, AC2 — o **mecanismo** |
+| evento tipado | Go `[setup failed]` · Python exit 2/3/4 × 5 · Node `exitCode` no TAP, com multi-reporter | AC3 |
+| remoção exige motivo | `removal_note`: `corrected` \| `renamed` \| `no-longer-runs`, e diff contra o baseline | AC2, lado **sumida** — e melhor que o nosso desenho, que só acusava |
+| estabilidade de nome | `d5_decisions`, uma regra por runtime | nada — o nosso desenho **não tinha resposta** para isto |
+| guarda do artefato | observação ausente → `exit 1`, em vez de 38 remoções espúrias e `exit 0` | AC3, lado da **observação** |
+
+### E ele já roda aqui — medido na nossa `main`
+
+Run `34530876997`, em `029457b`:
+
+```
+windows-full-suites    VERDE     era um dos 3 vermelhos conhecidos; agora sao 2
+ML-2A/2B: 30 observed / 38 active / 0 removed
+          Go 10/14 · Node-assert 6/10 · Node-load 1/1 · Python 13/13
+ML-2B D4: 38 entradas comparadas, nenhuma delecao silenciosa
+```
+
+🔴 **Oito das 38 não falharam no nosso runner** — 4 Go e 4 Node, todas de renderização, CRLF ou golden.
+O ratchet as reporta como aviso de "sumida" e o job fica verde. **A causa não foi medida.**
+
+O que isso já prova, sem precisar da causa: **a lista dele não se transfere como conteúdo nem entre dois
+repositórios no mesmo tipo de runner.** É o argumento da `d2_note` dele, aplicado agora à lista **dele**
+no **nosso** CI. O mecanismo se transfere; o conteúdo, não.
+
+### O que a espera invalidou: o AC1, por mérito
+
+O AC1 pede as listas *"geradas hoje"* e versionadas em `scripts/testdata/`, e foi escrito com a medição
+**desta máquina** — 15 falhas na pypi, 292 s. A `d2_note` do mantenedor decide o contrário, e decide
+certo: *"List extracted from CI run, not from developer machine"*. Ela cita o nosso próprio relato de que
+esta máquina **não é o runner**.
+
+A medição local de hoje confirma pelo nosso lado: `go test ./...` dá 7 vermelhos aqui, e **só 5 estão
+na lista dele**. Os 2 que sobram morrem no arranjo por falta de privilégio de symlink
+([kgsaran/trackfw#315](https://github.com/kgsaran/trackfw/issues/315)) — fato desta máquina, não do produto.
+
+🔴 **Isto não é reescrever o critério para caber no estado atual** — a saída que o
+`check-req-done-com-criterio-aberto` recusa, e que a auditoria desfez em dez REQs. É o contrário: o AC1
+estava **errado no mérito**, porque pedia a lista da máquina que não é o runner. A reescrita dele vem
+depois da leitura inteira do script, e cita esta seção como a razão.
+
+### O que a chegada revelou
+
+- [kgsaran/trackfw#314](https://github.com/kgsaran/trackfw/issues/314) — o `--self-test` do ratchet morre
+  com `UnicodeEncodeError` em `cp1252`. Com `PYTHONIOENCODING=utf-8`: 23 PASS, 0 FAIL.
+- [kgsaran/trackfw#315](https://github.com/kgsaran/trackfw/issues/315) — dois testes Go transformam "sem
+  privilégio" em "reprovou".
+- **O self-test nem roda no nosso CI.** O `parity-rest` morre antes, na linha 78 do `Makefile`
+  (`check-roadmap-barrier-contract.sh`, o snapshot congelado que não regeneramos) — igual antes e depois
+  do merge, nos runs `34504117506` e `34530876997`.
+
+### O que NÃO mudou
+
+🔴 **Os doze ACs continuam abertos e continuam `(b)`.** Nenhum foi marcado, nenhum foi reescrito. A
+espera era sobre **como** construir o gate, não sobre o veredito — e o veredito nunca dependeu dele.
+
+### Próximo passo
+
+Ler o `check-windows-known-failures.py` **inteiro** antes de desenhar qualquer coisa. Depois dele:
+
+1. reescrever o AC1 citando esta seção;
+2. decidir a convergência de AC2 a AC4 — e a primeira pergunta já está posta pelos oito "sumidos": uma
+   lista para este fork teria de ser colhida do **nosso** CI, não herdada do dele.
+
 ## Status Legend
 ⬜ Pendente · 🔄 Em andamento · ✅ Concluído · ❌ Bloqueado
 
