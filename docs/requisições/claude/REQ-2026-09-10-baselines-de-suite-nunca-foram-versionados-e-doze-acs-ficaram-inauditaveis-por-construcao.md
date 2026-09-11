@@ -3,7 +3,7 @@ status: Open
 date: 2026-09-10
 author: "claude"
 adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
-roadmap: "docs/roadmaps/claude/analyzing/ROADMAP-2026-09-10-baselines-de-suite-nunca-foram-versionados-e-doze-acs-ficaram-inauditaveis-por-construcao.md"
+roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-09-10-baselines-de-suite-nunca-foram-versionados-e-doze-acs-ficaram-inauditaveis-por-construcao.md"
 ---
 
 # REQ: baselines de suíte nunca foram versionados, e doze ACs ficaram inauditáveis **por construção**
@@ -169,4 +169,4 @@ ADR: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-t
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/analyzing/ROADMAP-2026-09-10-baselines-de-suite-nunca-foram-versionados-e-doze-acs-ficaram-inauditaveis-por-construcao.md
+Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-09-10-baselines-de-suite-nunca-foram-versionados-e-doze-acs-ficaram-inauditaveis-por-construcao.md

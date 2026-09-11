@@ -4,6 +4,17 @@
 
 ---
 
+## Sessão 2026-09-11 — claude (INÍCIO: ML-1A dos baselines — o self-test do ratchet no nosso CI)
+
+`main` em `560915b`, 0 atrás do upstream. O roadmap dos baselines saiu de `analyzing/` para `wip/`.
+
+O self-test do `check-windows-known-failures.py` não roda em lugar nenhum do nosso CI: o `Makefile`
+o chama no `parity-rest`, mas o nosso `parity-other-gates` morre na linha 78 antes de chegar a ele. O
+ML-1A o põe no `local-gates.yml`, que é arquivo só nosso, com guarda de vacuidade sobre o denominador,
+e falsifica nas duas direções — aqui e no CI, numa branch descartável que nunca chega à `main`.
+
+---
+
 ## Sessão 2026-09-10 — claude (FIM: Wave 0 dos baselines — convergência decidida, e os 8 têm causa)
 
 ML-0A concluído. O roadmap segue em `analyzing/`, com a Wave 1 reescrita.

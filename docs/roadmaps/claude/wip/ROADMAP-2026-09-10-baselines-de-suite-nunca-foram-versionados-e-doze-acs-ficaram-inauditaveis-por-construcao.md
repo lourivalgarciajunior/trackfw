@@ -1,5 +1,5 @@
 ---
-status: analyzing
+status: wip
 date: 2026-09-10
 req: "docs/requisições/claude/REQ-2026-09-10-baselines-de-suite-nunca-foram-versionados-e-doze-acs-ficaram-inauditaveis-por-construcao.md"
 squad: "claude"
@@ -7,7 +7,7 @@ squad: "claude"
 
 # Roadmap: baselines de suíte nunca foram versionados, e doze ACs ficaram inauditáveis por construção
 
-> Created: 2026-09-10 | Status: analyzing
+> Created: 2026-09-10 | Status: wip
 
 ## 🔴 Correção de 2026-09-10 — são cinco ACs, não doze, e estão em `(d)`
 
@@ -224,7 +224,7 @@ comparador próprio. O ML-0A mediu que o ratchet do upstream já roda no nosso C
 por desenho — construir o nosso seria a segunda solução. Ficam só as lacunas do fork.
 
 ### ML-1A — O self-test do ratchet passa a rodar no nosso CI
-**Status:** ⬜ Pendente
+**Status:** 🔄 Em andamento
 **Files affected:** `.github/workflows/local-gates.yml` (só nosso)
 **Acceptance criteria:**
 - [ ] `python3 scripts/check-windows-known-failures.py --self-test` roda no `local-gates.yml`, em
