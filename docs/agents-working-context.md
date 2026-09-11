@@ -4,6 +4,18 @@
 
 ---
 
+## Sessão 2026-09-11 — claude (FIM: ML-2B dos baselines — o gate roda no job de Windows, declarado)
+
+ML-2B concluído. O ratchet do upstream fica fora do `run-local-gates.sh`, declarado no `CLAUDE.md`: o
+veredito precisa das três suítes rodadas no Windows. Custo medido: job de 488 a 604 s, ratchet de 0 a
+1 s. AC6 e AC7 da REQ marcados, com a evidência.
+
+**Todos os MLs do roadmap dos baselines estão concluídos.** Para fechar a REQ ainda faltam os AC1 a
+AC3 — cobertos pela convergência, mas não marcados — e mover o roadmap para `done/`. Isso fica para
+uma decisão explícita, não para este ML.
+
+---
+
 ## Sessão 2026-09-11 — claude (INÍCIO: ML-2B dos baselines — onde o gate roda)
 
 O ML-2B responde ao AC6: o gate entra no `run-local-gates.sh` ou é declarado fora com o motivo medido.

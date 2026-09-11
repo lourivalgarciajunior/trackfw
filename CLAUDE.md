@@ -564,6 +564,41 @@ antes e depois das 28 edições é byte a byte idêntico, 66 linhas de cada lado
 
 Como os outros, é **nosso**, e **não tem alvo no `Makefile`**, pelo mesmo motivo da seção abaixo.
 
+## Ratchet de Windows do upstream: onde roda, e por que fica fora do agregador
+
+O gate que confere as listas de falha **por nome** é o `scripts/check-windows-known-failures.py` do
+**upstream**, lido inteiro no ML-0A da `REQ-2026-09-10-baselines-de-suite-nunca-foram-versionados`.
+Convergimos para ele em vez de construir o nosso: seria a segunda solução para um problema que já tem
+uma.
+
+| parte | onde roda | custo medido |
+|---|---|---|
+| o ratchet, sobre as três suítes | `windows-full-suites`, no `quality.yml` compartilhado | job de 488 a 604 s; o ratchet em si, 0 a 1 s |
+| o self-test | `local-gates.yml`, só nosso, em `ubuntu-latest` | 0 s |
+
+Custo por suíte, nos três runs medidos em 2026-09-11 (`34603239796`, `34598894601`, `34596059692`):
+Go 136 a 183 s, Node 128 a 198 s, Python 110 a 132 s.
+
+**Fica fora do `run-local-gates.sh`, e o motivo não é o custo:**
+
+1. O veredito precisa dos artefatos das **três suítes completas rodadas no Windows**. Sem eles, a
+   guarda de artefato do próprio ratchet reprova — de propósito.
+2. A lista é de falhas **de Windows**. O agregador roda em `ubuntu-latest`, onde ela não diz nada.
+3. O agregador conhece só os `.sh` **nossos**. O ratchet é `.py` do upstream: executado, nunca editado.
+
+A parte que roda em Linux — o self-test — está no `local-gates.yml` (ML-1A), com guarda sobre o
+denominador e com os comandos do GitHub desligados enquanto ele roda: os casos sintéticos imprimem
+`::error::` de propósito, e sem isso um job verde aparecia com 10 erros.
+
+🔴 **Dois pontos cegos, declarados:**
+
+- **Os 8 mascarados.** O nosso `.gitattributes` faz 8 nomes da lista passarem no nosso CI; o ratchet os
+  reporta como "sumidos" e não vê regressão neles. Causa e decisão estão na
+  `REQ-2026-09-11-o-gitattributes-do-fork-mascara-um-defeito-de-produto-que-o-upstream-mantem-exposto-de-proposito`.
+- **Sumida é aviso, não reprovação** — decisão escrita do mantenedor: consertar um teste não pode
+  quebrar o CI. Aposentar um nome exige `removal_note` no `.github/windows-known-failures.json`, que é
+  compartilhado: não se edita aqui.
+
 ## Gate de predicados de plataforma (`scripts/check-platform-predicates.sh`)
 
 O `scripts/testdata/platform-predicates.tsv` deixou de ser tabela decorativa: o gate executa cada

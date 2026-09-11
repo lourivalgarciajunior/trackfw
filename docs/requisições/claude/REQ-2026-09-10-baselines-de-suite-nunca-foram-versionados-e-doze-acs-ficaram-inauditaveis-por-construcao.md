@@ -140,11 +140,18 @@ Causa Raiz decide — mesma causa, mesma REQ.
       linha 90, `…geradores-python-escrevem-crlf…` 99, `…isatty-do-python…` 102,
       `…node-e-python-ignoram-home…` 79 e `…trazer-o-barrier-dialeto-canonico…` 50. Nenhuma linha de
       checkbox mudou no diff.)*
-- [ ] **AC6** — O gate entra no `run-local-gates.sh` **ou** é declarado fora **com o motivo medido**.
+- [x] **AC6** — O gate entra no `run-local-gates.sh` **ou** é declarado fora **com o motivo medido**.
       🔴 A suíte pypi leva ~5 min e a npm mais; se o custo em CI for proibitivo, isso é decisão
       escrita, não omissão.
-- [ ] **AC7** — `validate` e os gates verdes ao fim, com o binário da árvore reconstruído, e
+      *(Entregue em 2026-09-11 pelo ML-2B: declarado fora, no `CLAUDE.md`, seção "Ratchet de Windows
+      do upstream". O motivo não é custo — o veredito precisa dos artefatos das três suítes rodadas no
+      Windows, e o agregador roda em `ubuntu-latest` e só conhece `.sh` nossos. O custo foi medido
+      mesmo assim: job `windows-full-suites` de 488 a 604 s, o ratchet em si de 0 a 1 s.)*
+- [x] **AC7** — `validate` e os gates verdes ao fim, com o binário da árvore reconstruído, e
       divergência de produto **zero**.
+      *(Conferido em 2026-09-11 ao fim do ML-2B: binário reconstruído, `validate` sem violações,
+      `run-local-gates` 10 de 10, e nenhum arquivo compartilhado diferindo do upstream em
+      `internal npm pypi cmd .github Makefile` — o único que difere é o `local-gates.yml`, só nosso.)*
 
 ### Convergência com o ratchet do upstream — decidida em 2026-09-10 (ML-0A)
 
