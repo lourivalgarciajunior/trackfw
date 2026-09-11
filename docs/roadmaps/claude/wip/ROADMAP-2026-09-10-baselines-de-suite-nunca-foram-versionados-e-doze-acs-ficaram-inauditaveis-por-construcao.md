@@ -286,12 +286,29 @@ Nenhum arquivo compartilhado foi tocado neste ML.
 ## Wave 2 — Os cinco ACs
 
 ### ML-2A — Veredito, um por AC
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:** `docs/requisições/claude/**`
 **Acceptance criteria:**
-- [ ] Cada um dos cinco recebe **(b) não entregue**, apontando para esta REQ
-- [ ] 🔴 Nenhum marcado como entregue; nenhum reescrito
-- [ ] Fica escrito, por AC, que **a afirmação sobre agosto é irrecuperável**
+- [x] Cada um dos cinco recebe **(b) não entregue**, apontando para esta REQ
+- [x] 🔴 Nenhum marcado como entregue; nenhum reescrito
+- [x] Fica escrito, por AC, que **a afirmação sobre agosto é irrecuperável**
+
+#### Resultado do ML-2A — 2026-09-11
+
+Os cinco vereditos saíram de `(d)` para `(b) NAO ENTREGUE`, cada um apontando para esta REQ e dizendo
+que a afirmação sobre agosto é irrecuperável. O motivo de 2026-09-10 ficou logo abaixo, como registro.
+
+| REQ | linha do AC |
+|---|---|
+| `atualizar-para-a-upstream-main-com-o-fix-de-symlink` | 90 |
+| `geradores-python-escrevem-crlf-no-windows` | 99 |
+| `isatty-do-python-devolve-true-para-nul-no-windows` | 102 |
+| `node-e-python-ignoram-home-no-windows` | 79 |
+| `trazer-o-barrier-dialeto-canonico-do-upstream` | 50 |
+
+Conferido por efeito: **nenhuma linha de checkbox mudou no diff** — nenhum AC marcado, nenhum
+reescrito. A derivação passou de 11 para **6**, e os 6 que restam são, por nome, os seis de "outras
+causas": dois na REQ do symlink, um na do HOME, dois na do slug e um na do gofmt.
 
 ### ML-2B — Execução
 **Status:** ⬜ Pendente

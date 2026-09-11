@@ -4,6 +4,27 @@
 
 ---
 
+## Sessão 2026-09-11 — claude (FIM: ML-2A dos baselines — os cinco vereditos são `(b)`)
+
+ML-2A concluído. Os cinco ACs de lista nomeada estão `(b) NAO ENTREGUE`, apontando para a REQ dos
+baselines, com a afirmação sobre agosto declarada irrecuperável. O AC5 da REQ foi marcado, com os
+sítios. Nenhuma linha de checkbox mudou no diff. A derivação agora dá 6, e os 6 são, por nome, os de
+"outras causas".
+
+**Próximo:** ML-2B — onde o gate roda (o ratchet do upstream, fora do nosso agregador) — e o AC6/AC7
+da REQ.
+
+---
+
+## Sessão 2026-09-11 — claude (INÍCIO: ML-2A dos baselines — os cinco vereditos de `(d)` para `(b)`)
+
+Os cinco ACs de lista nomeada, um por REQ, saem de `(d) NAO VERIFICAVEL` para `(b) NAO ENTREGUE`,
+apontando para a REQ dos baselines. Nenhum AC é marcado, nenhum é reescrito: muda só o parágrafo de
+veredito, e o motivo original fica como registro. Duas das REQs têm mais de um `(d)`, cada um por
+outra causa — a troca vai ancorada na linha do AC, não só no marcador.
+
+---
+
 ## Sessão 2026-09-11 — claude (FIM: ML-1B dos baselines — a REQ do `.gitattributes` está aberta)
 
 ML-1B concluído. REQ nova: `REQ-2026-09-11-o-gitattributes-do-fork-mascara-um-defeito-de-produto-que-o-upstream-mantem-exposto-de-proposito`, com roadmap em `backlog/` — o dos baselines segue em `wip/`.
