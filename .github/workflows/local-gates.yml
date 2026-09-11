@@ -110,10 +110,23 @@ jobs:
         # 🔴 Guarda de vacuidade sobre o denominador: o self-test sai 0 quando nenhum caso
         # falha, e isso inclui o caso de nenhum caso rodar. Zero PASS nao e verde.
         #
+        # 🔴 stop-commands: os casos sinteticos do self-test imprimem `::error::` de proposito
+        # (exercitam os caminhos de erro do ratchet), e o GitHub converte cada um em anotacao.
+        # Medido no run 34596903146: 10 anotacoes "failure" num job VERDE. Durante o self-test
+        # os comandos ficam desligados; se ele reprovar, o passo emite UM erro, este aqui.
+        #
         # Ver ROADMAP-2026-09-10-baselines-de-suite-nunca-foram-versionados, ML-1A.
         run: |
           set -o pipefail
-          python3 scripts/check-windows-known-failures.py --self-test 2>&1 | tee "$RUNNER_TEMP/ratchet-self-test.txt"
+          token="selftest-$(date +%s)-$RANDOM"
+          echo "::stop-commands::${token}"
+          rc=0
+          python3 scripts/check-windows-known-failures.py --self-test 2>&1 | tee "$RUNNER_TEMP/ratchet-self-test.txt" || rc=$?
+          echo "::${token}::"
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::self-test do ratchet REPROVOU (exit $rc) — ver as linhas SELF-TEST FAIL acima"
+            exit "$rc"
+          fi
           if ! grep -qE '^Self-test summary: [1-9][0-9]* PASS, 0 FAIL$' "$RUNNER_TEMP/ratchet-self-test.txt"; then
             echo "::error::self-test do ratchet sem denominador valido: esperava 'Self-test summary: N PASS, 0 FAIL' com N > 0"
             exit 1
