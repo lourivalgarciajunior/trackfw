@@ -112,9 +112,12 @@ Causa Raiz decide — mesma causa, mesma REQ.
 
 ## Acceptance Criteria
 
-- [ ] **AC1** — As listas de falha das suítes **pypi** e **npm** são geradas hoje, **por nome**, e
-      versionadas em `scripts/testdata/`. Formato estável, uma falha por linha, ordenado — para que a
-      comparação futura seja de **conjunto**, não de contagem.
+- [ ] **AC1** — A lista de falhas conhecidas é colhida de um **run de CI identificado**, nunca desta
+      máquina, **por nome**, e versionada com a receita que a refaz. A diferença entre a lista e o que
+      o **nosso** CI observa é declarada **por nome e com causa medida**. *(Reescrito em 2026-09-10 no
+      ML-0A. A versão anterior pedia listas "geradas hoje" nesta máquina, em `scripts/testdata/`, e
+      caiu por mérito: esta máquina não é o runner. A razão está no roadmap, seção "O que a espera
+      invalidou".)*
 - [ ] **AC2** — 🔴 **Gate que compara por NOME nos dois sentidos**: acusa falha **nova** e falha
       **sumida**, e diz explicitamente que **saldo zero não é conjunto igual**. É o defeito que uma
       queda de 33 para 32 escondeu em 2026-09-08.
@@ -132,6 +135,22 @@ Causa Raiz decide — mesma causa, mesma REQ.
       escrita, não omissão.
 - [ ] **AC7** — `validate` e os gates verdes ao fim, com o binário da árvore reconstruído, e
       divergência de produto **zero**.
+
+### Convergência com o ratchet do upstream — decidida em 2026-09-10 (ML-0A)
+
+O `scripts/check-windows-known-failures.py` do upstream — 1446 linhas, lido inteiro — roda no **nosso**
+CI pelo `quality.yml` compartilhado, sem divergência nenhuma. Ele satisfaz AC1 a AC4 por desenho. O que
+falta é do lado do fork, e está nomeado:
+
+| AC | quem satisfaz | evidência | lacuna do fork |
+|---|---|---|---|
+| AC1 | `.github/windows-known-failures.json` | `_meta.source` com run, job e receita | 8 dos 38 não falham aqui — causa medida no ML-0A: o nosso `.gitattributes` |
+| AC2 | passos 6 e 7 do ratchet | nova reprova; sumida gera aviso e exige `removal_note` | sumida é **aviso**, não reprovação — decisão escrita dele: consertar teste não pode quebrar o CI |
+| AC3 | quatro guardas | lista vazia · artefato ausente · artefato sem resultado · marcadores de carga | nenhuma |
+| AC4 | self-test T1–T22 | os dois braços | **não roda no nosso CI**: o `parity-rest` morre na linha 78 antes de chegar a ele |
+
+**Construir um gate nosso seria a segunda solução para um problema que já tem uma.** A Wave 1 do
+roadmap foi reescrita para fechar só as lacunas do fork.
 
 ## Negative Scope
 

@@ -4,6 +4,24 @@
 
 ---
 
+## Sessão 2026-09-10 — claude (FIM: Wave 0 dos baselines — convergência decidida, e os 8 têm causa)
+
+ML-0A concluído. O roadmap segue em `analyzing/`, com a Wave 1 reescrita.
+
+- **Convergência:** o ratchet do upstream (`check-windows-known-failures.py`, 1446 linhas, lido
+  inteiro) roda no nosso CI pelo `quality.yml` compartilhado e cobre AC1 a AC4 por desenho. Não se
+  constrói gate nosso. O AC1 foi reescrito: a lista vem de run de CI, nunca desta máquina.
+- **Os 8 "sumidos" têm causa medida:** o nosso `.gitattributes` (`*.md text eol=lf`, ML-4) grava os
+  assets em LF no checkout e **mascara** um defeito de produto que o upstream mantém exposto de
+  propósito: o parser de frontmatter é cego a CRLF. Em dois worktrees, na mesma máquina, os 8 passam
+  no nosso e falham no dele.
+- **Um remédio foi falsificado antes de virar issue:** `testdata/** eol=lf` deixou os goldens em LF e
+  os 8 continuaram falhando. A issue que eu ia abrir pediria ao mantenedor que escondesse o defeito.
+- **Próximos:** ML-1A (o self-test do ratchet no `local-gates.yml`), ML-1B (REQ própria para o
+  `.gitattributes`), Wave 2 (os cinco ACs de `(d)` para `(b)`).
+
+---
+
 ## Sessão 2026-09-10 — claude (INÍCIO: Wave 0 dos baselines — leitura do ratchet e convergência)
 
 `main` em `9e7044e`, 0 atrás do upstream. O roadmap dos baselines saiu de `backlog/` para
