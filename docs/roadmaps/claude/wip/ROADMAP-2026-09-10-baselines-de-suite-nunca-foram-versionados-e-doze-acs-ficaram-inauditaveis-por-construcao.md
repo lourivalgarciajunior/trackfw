@@ -311,7 +311,7 @@ reescrito. A derivação passou de 11 para **6**, e os 6 que restam são, por no
 causas": dois na REQ do symlink, um na do HOME, dois na do slug e um na do gofmt.
 
 ### ML-2B — Execução
-**Status:** ⬜ Pendente
+**Status:** 🔄 Em andamento
 **Files affected:** `scripts/run-local-gates.sh`, `CLAUDE.md`
 **Acceptance criteria:**
 - [ ] O gate entra no agregador **ou** é declarado fora com o motivo medido

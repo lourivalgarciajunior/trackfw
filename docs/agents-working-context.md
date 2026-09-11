@@ -4,6 +4,14 @@
 
 ---
 
+## Sessão 2026-09-11 — claude (INÍCIO: ML-2B dos baselines — onde o gate roda)
+
+O ML-2B responde ao AC6: o gate entra no `run-local-gates.sh` ou é declarado fora com o motivo medido.
+Com a convergência, o gate é o ratchet do upstream, e ele não cabe no agregador — precisa dos artefatos
+das três suítes rodadas no Windows. A declaração vai no `CLAUDE.md`, com o custo medido em segundos.
+
+---
+
 ## Sessão 2026-09-11 — claude (FIM: ML-2A dos baselines — os cinco vereditos são `(b)`)
 
 ML-2A concluído. Os cinco ACs de lista nomeada estão `(b) NAO ENTREGUE`, apontando para a REQ dos
