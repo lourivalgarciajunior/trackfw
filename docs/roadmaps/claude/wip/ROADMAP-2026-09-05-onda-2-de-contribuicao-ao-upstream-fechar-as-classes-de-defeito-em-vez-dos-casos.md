@@ -319,7 +319,7 @@ o mesmo fim: baseline escrito à mão diverge do derivado.
 - [x] tests green
 
 ### ML-1H — O lint enxerga os três runtimes, e a costura se reconhece pela origem (reaberto em 2026-09-11)
-**Status:** ⬜ Pendente
+**Status:** 🔄 Em andamento
 **Files affected:** `scripts/check-os-predicate-classification.sh`, `scripts/measure-os-predicate-sites.sh`, `scripts/testdata/os-predicate-sites-baseline.txt`
 **Acceptance criteria:**
 - [ ] `runtime.GOOS`, `sys.platform` e `platform.system()` entram na varredura do lint **e** da medição —
