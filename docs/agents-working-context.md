@@ -4,6 +4,18 @@
 
 ---
 
+## Sessão 2026-09-11 — claude (a REQ da onda-2 reabre: o lint não enxerga Go, e decide a costura pela forma)
+
+O merge da #321 do upstream fez o lint de predicado de SO reprovar uma costura que ele aceitava um
+commit antes — mesma costura, outra forma. O `serve.js` entrou no baseline como remédio de passagem.
+A causa é do nosso instrumento: a lista de seis predicados não tem `runtime.GOOS`, `sys.platform` nem
+`platform.system()` (34, 9 e 1 no produto), e o D3 reconhece a costura só como atribuição a constante.
+
+REQ de volta a `Open`, roadmap em `wip/`, AC8 e ML-1H acrescentados, com o motivo medido de o escopo
+original não prever. A issue do gate do upstream que ninguém executa foi aberta em paralelo.
+
+---
+
 ## Sessão 2026-09-11 — claude (FIM: a REQ dos baselines está fechada)
 
 REQ `done`, roadmap em `done/`. Os sete ACs marcados, cada um com o sítio; o AC1 a AC3 pela

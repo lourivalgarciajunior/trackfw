@@ -1,14 +1,14 @@
 ---
-status: Done
+status: Open
 date: 2026-09-05
 author: "claude"
 adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
-roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md"
+roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md"
 ---
 
 # REQ: Onda 2 de contribuição ao upstream — fechar as classes de defeito em vez dos casos
 
-> Date: 2026-09-05 | Status: Done
+> Date: 2026-09-05 | Status: Open
 
 ## Motivation
 
@@ -175,6 +175,15 @@ são do produto.
 - [x] **AC7** — Nenhum item é mesclado na nossa `main` como produto. Falsificação: a divergência de
       produto continua **vazia** ao fim da onda.
 
+- [ ] **AC8 — o lint enxerga os três runtimes, e reconhece a costura pela origem, não pela forma.**
+      *(Acrescentado em 2026-09-11, na reabertura — ver "Reaberta em 2026-09-11".)* O lint do AC2
+      procura seis predicados e reconhece a costura só como atribuição a constante nomeada. Os dois
+      limites têm medida: `runtime.GOOS` (34 no produto), `sys.platform` (9) e `platform.system()` (1)
+      ficam invisíveis; e a mesma costura do `serve.js`, reescrita de constante para argumento na #321
+      do upstream, passou de D3 para D2. Critério: os predicados de plataforma dos três runtimes entram
+      na varredura, cada sítio novo classificado por D1–D5; o D3 reconhece a plataforma passada como
+      argumento; o `serve.js` sai do baseline por ser D3, não por exceção; falsificação nas duas
+      direções.
 ## Negative Scope
 
 - **Não** propor o que o upstream já mediu e descartou: `make -j` no `parity`, matriz de shards,
@@ -192,7 +201,7 @@ ADR: docs/adr/ADR-2026-09-09-predicado-de-so-em-sitio-de-classificacao-o-discrim
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md
+Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md
 
 ## Desfecho (2026-09-05)
 
@@ -208,3 +217,39 @@ quinto. Gate sem achado não é fracasso.
 
 **O AC6 achou dois adjacentes:** a `REQ-2026-09-01` dele (`In Progress`) para o B1, e a minha própria
 issue #268 para o C1. Nenhum dos dois virou report novo.
+
+## Reaberta em 2026-09-11
+
+Pela Regra Dura de Causa Raiz: sítio de mesma causa entra na REQ vigente, e o roadmap volta para
+`wip/`.
+
+**O que reabriu.** O merge da #321 do upstream (nossa #105) fez o lint do AC2 reprovar o
+`npm/src/commands/serve.js:280` como classificação. Não era: `openBrowser(process.platform, url)` lê a
+plataforma uma vez e a injeta na função que escolhe o comando que abre o browser — costura. Antes da
+#321, a mesma costura era `const platform = process.platform`, e o lint a aceitava como D3. **Mesma
+costura, outra forma — e o lint decide pela forma.** O `serve.js` entrou no baseline com o motivo
+escrito, como remédio de passagem.
+
+**O que isso expôs.** O lint procura `filepath.IsAbs`, `os.path.isabs`, `path.isAbsolute`,
+`process.platform`, `os.name` e `os.IsNotExist`. Os predicados de plataforma do Go e parte dos do Python
+ficam de fora — medido na árvore em 2026-09-11:
+
+| predicado | ocorrências no produto |
+|---|---|
+| `runtime.GOOS` | 34 |
+| `sys.platform` | 9 |
+| `platform.system()` | 1 |
+
+A mesma costura do browser, no Python (`_browser_argv(system, url)`), passa sem ser vista, enquanto a do
+Node é barrada.
+
+**Por que o escopo original não previa — medido, não suposto.** A lista de seis predicados do lint é a
+mesma do `measure-os-predicate-sites.sh` (linha 42), que o ML-1B-a criou para tornar mensurável a
+superfície que esta REQ já nomeava; `runtime.GOOS`, `sys.platform` e `platform.system()` não aparecem
+nenhuma vez nesta REQ. E o D3 foi definido no ML-1B-a pela forma que existia no corpus — plataforma
+"lida uma vez para constante nomeada" (`_platform`, `isWindows`) —, sem uma segunda forma para
+falsificar o reconhecedor. A ADR-2026-09-09 decide pela origem do argumento; a implementação tomou a
+constante como critério.
+
+**O que não é.** Não é defeito no produto do upstream: nenhum sítio novo de classificação foi achado.
+É o nosso instrumento que ficou mais estreito que a ADR que ele implementa.
