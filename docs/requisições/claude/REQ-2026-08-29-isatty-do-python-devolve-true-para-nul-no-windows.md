@@ -100,7 +100,11 @@ pela terceira parede: primeiro o CRLF, depois a home, agora esta.
 - [x] `check-artifact-parity.sh` passa, desbloqueando o ML-2A do slug
       → **(a) ENTREGUE.** `exit 0` — `9 artifact types × 3 runtimes`.
 - [ ] Sem regressao na suite pypi por lista nomeada contra 105 falhas
-      → **(d) NAO VERIFICAVEL AQUI.** O AC exige comparação contra **lista nomeada**, e a lista das
+      → **(b) NAO ENTREGUE** — convertido de `(d)` em 2026-09-11 pela
+      `REQ-2026-09-10-baselines-de-suite-nunca-foram-versionados` (AC5). A afirmação sobre agosto é
+      **irrecuperável**: um baseline tirado hoje não prova "sem regressão desde agosto", só daqui
+      para a frente — e daqui para a frente quem verifica é o ratchet do upstream, no nosso CI.
+      Registro de 2026-09-10, que continua verdadeiro: O AC exige comparação contra **lista nomeada**, e a lista das
       105 falhas de 2026-08-29 **não foi versionada**. Rodar a suite hoje daria um número, e comparar
       número com número é o que o próprio AC recusa.
       **O que faltaria:** a lista de falhas por nome daquela corrida.

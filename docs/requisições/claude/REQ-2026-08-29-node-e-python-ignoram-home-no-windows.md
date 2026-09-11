@@ -79,7 +79,11 @@ tambem resolve pelo `USERPROFILE` hoje.
 - [ ] Sem regressao nas suites npm e pypi, medido por **lista nomeada** contra a corrida anterior
       (npm 297 falhas; pypi 199 falhas), nunca so por contagem — a suite pypi tem teste instavel
       de skew de relogio que move o total sozinho
-      → **(d) NAO VERIFICAVEL AQUI.** As listas nomeadas de 297 e 199 falhas **não foram
+      → **(b) NAO ENTREGUE** — convertido de `(d)` em 2026-09-11 pela
+      `REQ-2026-09-10-baselines-de-suite-nunca-foram-versionados` (AC5). A afirmação sobre agosto é
+      **irrecuperável**: um baseline tirado hoje não prova "sem regressão desde agosto", só daqui
+      para a frente — e daqui para a frente quem verifica é o ratchet do upstream, no nosso CI.
+      Registro de 2026-09-10, que continua verdadeiro: As listas nomeadas de 297 e 199 falhas **não foram
       versionadas**. E o próprio AC explica por que contagem não serve: há teste instável que move o
       total sozinho — então até o número de hoje seria ruído.
 

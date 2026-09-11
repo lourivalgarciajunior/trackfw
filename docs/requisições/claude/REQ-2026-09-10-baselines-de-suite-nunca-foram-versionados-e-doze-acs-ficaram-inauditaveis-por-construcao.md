@@ -40,6 +40,9 @@ outras causas                                  6
   ruido-de-gofmt         nenhuma divergencia deliberada perdida
 ```
 
+*(Depois do ML-2A, em 2026-09-11, os cinco saem de `(d)` para `(b)`, e o mesmo comando dá **6**:
+exatamente os seis de "outras causas" acima, conferidos por nome.)*
+
 A lista de **REQs** estava certa: as cinco são estas. O que estava errado era a contagem de **ACs** —
 a tabela dava 3 ao crlf e 4 ao isatty, e cada um tem um.
 
@@ -130,9 +133,13 @@ Causa Raiz decide — mesma causa, mesma REQ.
       *(Entregue em 2026-09-11 pelo ML-1A. O sítio é o self-test do ratchet — T2: nome novo → exit 1;
       T3: nome sumido → aviso, exit 0; T1: intacto → exit 0 —, que passou a rodar no
       `local-gates.yml`: verde no run 34598001245, e vermelho com o T2 invertido no run 34598044479.)*
-- [ ] **AC5** — Os **cinco ACs** das cinco REQs — hoje gravados como `(d)` — recebem veredito **(b) não entregue**, cada um
+- [x] **AC5** — Os **cinco ACs** das cinco REQs — hoje gravados como `(d)` — recebem veredito **(b) não entregue**, cada um
       apontando para esta REQ. 🔴 **Nenhum é marcado como entregue**, e nenhum é reescrito para caber
       no estado atual — a afirmação sobre agosto é irrecuperável e fica dito.
+      *(Entregue em 2026-09-11 pelo ML-2A. Os sítios, pela linha do AC: `…atualizar-para-a-upstream-main…`
+      linha 90, `…geradores-python-escrevem-crlf…` 99, `…isatty-do-python…` 102,
+      `…node-e-python-ignoram-home…` 79 e `…trazer-o-barrier-dialeto-canonico…` 50. Nenhuma linha de
+      checkbox mudou no diff.)*
 - [ ] **AC6** — O gate entra no `run-local-gates.sh` **ou** é declarado fora **com o motivo medido**.
       🔴 A suíte pypi leva ~5 min e a npm mais; se o custo em CI for proibitivo, isso é decisão
       escrita, não omissão.

@@ -88,7 +88,11 @@ sem gate reprovar, o gate e que esta errado.
 - [x] `go build ./...` verde
       → **(a) ENTREGUE.** `exit 0`.
 - [ ] Suite pypi sem regressao por **lista nomeada** contra 95 falhas, nunca so por contagem
-      → **(d) NAO VERIFICAVEL AQUI.** A lista nomeada das 95 falhas **não foi versionada**. O próprio
+      → **(b) NAO ENTREGUE** — convertido de `(d)` em 2026-09-11 pela
+      `REQ-2026-09-10-baselines-de-suite-nunca-foram-versionados` (AC5). A afirmação sobre agosto é
+      **irrecuperável**: um baseline tirado hoje não prova "sem regressão desde agosto", só daqui
+      para a frente — e daqui para a frente quem verifica é o ratchet do upstream, no nosso CI.
+      Registro de 2026-09-10, que continua verdadeiro: A lista nomeada das 95 falhas **não foi versionada**. O próprio
       AC proíbe comparar por contagem, que é a única coisa que eu conseguiria produzir hoje.
 - [ ] A vulnerabilidade de symlink verificada como corrigida em execucao real, nos tres runtimes
       → **(d) NAO VERIFICAVEL AQUI.** Verificar correção de symlink exige **criar** symlink, e nesta

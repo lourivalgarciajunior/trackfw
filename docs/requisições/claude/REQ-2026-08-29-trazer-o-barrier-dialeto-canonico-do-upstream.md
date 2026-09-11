@@ -48,4 +48,8 @@ interessa e `pypi/trackfw/generators/roadmap.py` — arquivo que este repo patch
 - [x] `go build ./...` verde
       → **(a) ENTREGUE.** `exit 0`.
 - [ ] Suite pypi sem regressao por lista nomeada contra 95 falhas
-      → **(d) NAO VERIFICAVEL AQUI.** A lista das 95 não foi versionada.
+      → **(b) NAO ENTREGUE** — convertido de `(d)` em 2026-09-11 pela
+      `REQ-2026-09-10-baselines-de-suite-nunca-foram-versionados` (AC5). A afirmação sobre agosto é
+      **irrecuperável**: um baseline tirado hoje não prova "sem regressão desde agosto", só daqui
+      para a frente — e daqui para a frente quem verifica é o ratchet do upstream, no nosso CI.
+      Registro de 2026-09-10, que continua verdadeiro: A lista das 95 não foi versionada.

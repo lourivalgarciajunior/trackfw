@@ -97,7 +97,11 @@ E o quinto bloqueio estrutural de Windows da 7.3.0, junto com o UTF-8 do CLI, o 
       pareceu cegueira do gate. Só a segunda, construindo o alvo com `chr(92)`, mediu de verdade.
       O gate é **produto do upstream**, byte a byte idêntico ao dele → issue, não correção local.
 - [ ] Nenhuma regressao na suite pypi contra a medicao de 2026-08-29 (198 failed / 1294 passed)
-      → **(d) NAO VERIFICAVEL AQUI.** O próprio AC exige comparação contra uma **lista nomeada**, e
+      → **(b) NAO ENTREGUE** — convertido de `(d)` em 2026-09-11 pela
+      `REQ-2026-09-10-baselines-de-suite-nunca-foram-versionados` (AC5). A afirmação sobre agosto é
+      **irrecuperável**: um baseline tirado hoje não prova "sem regressão desde agosto", só daqui
+      para a frente — e daqui para a frente quem verifica é o ratchet do upstream, no nosso CI.
+      Registro de 2026-09-10, que continua verdadeiro: O próprio AC exige comparação contra uma **lista nomeada**, e
       a lista de 2026-08-29 **não foi versionada** — a busca no acervo devolve apenas o
       `os-predicate-sites-baseline.txt`, de outra REQ e de 2026-09-09. Rodar a suite hoje daria um
       número, e comparar número com número é exatamente o que o AC proíbe.
