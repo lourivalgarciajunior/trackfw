@@ -468,17 +468,46 @@ bash scripts/check-os-predicate-classification.sh
 ```
 
 ```
-196 sitios varridos
- 86 com arquivo de teste   (D5: reportado a parte, nunca somado)
+240 sitios varridos
+112 com arquivo de teste   (D5: reportado a parte, nunca somado)
  57 D1 travessia           (o predicado recebe um valor de ERRO)
-  4 D3 costura             (plataforma lida uma vez para constante nomeada)
- 30 comentario
- 19 D2 CLASSIFICACAO       em 8 arquivos declarados
+  9 D3 costura             (constante nomeada OU plataforma passada como argumento)
+ 46 comentario             (inclui prosa dentro de docstring do Python)
+ 16 D2 CLASSIFICACAO       em 9 arquivos declarados
 ```
 
-Os cinco somam 196 exatamente — o denominador reconcilia, não sobra resto.
+Os cinco somam 240 exatamente — o denominador reconcilia, não sobra resto.
 
-🔴 **É um RATCHET, não uma varredura de limpeza.** Os 19 sítios de classificação estão **todos em
+**O ML-1H (2026-09-11) alargou o lint em três frentes, e a terceira corrigiu o próprio acervo:**
+
+1. **Nove predicados, não seis.** Entraram `runtime.GOOS`, `sys.platform` e `platform.system()` —
+   44 sítios que os dois instrumentos não viam, porque o lint e o `measure-os-predicate-sites.sh`
+   compartilham a mesma lista.
+2. **O D3 reconhece a costura pela ORIGEM, não pela forma.** Além da atribuição a constante nomeada,
+   agora conta a plataforma **passada como argumento** (`openBrowser(process.platform, url)`). A #321
+   do upstream reescreveu a mesma costura de uma forma para a outra, e o lint mudou de veredito sem o
+   código mudar de natureza. Falsificado: no produto a regra nova casa **só** o `serve.js:280`, e
+   `foo(runtime.GOOS == "windows")` não casa — comparar no próprio sítio é classificar.
+   🔴 A sonda achou um furo **antes do merge**: `strings.Contains(runtime.GOOS, "win")` tem a forma
+   de argumento e o ato de comparação, e a primeira versão da regra o aceitava como costura — seria
+   fechar o ratchet trocando `==` por um ajudante de string. A regra passou a recusar a plataforma
+   que entra num **comparador**, por lista literal e curta; comparador novo e não listado volta a ser
+   aceito, e o remédio é acrescentá-lo à lista, nunca alargar a regra.
+3. 🔴 **Prosa dentro de docstring não é sítio.** O classificador só olhava o início da linha, então
+   contava como classificação sete linhas de texto que citam `os.path.isabs` e `os.name` ao explicar
+   a ADR. Foi por essas linhas que `pypi/trackfw/validator.py` estava no baseline — **um arquivo
+   declarado por um sítio que nunca existiu.** Ele saiu.
+
+**Limite declarado:** o reconhecedor de docstring conta aspas triplas duplas. Medido em 2026-09-11:
+zero ocorrências de `'''` no escopo varrido, e o dia em que houver, o sítio aparece como classificação
+não declarada — que é o lado seguro de errar.
+
+**Duas leituras inline entraram no baseline** (`pypi/trackfw/homedir.py`, `pypi/trackfw/tty.py`):
+`if sys.platform == "win32"`, um sítio por arquivo. Não são classificação de string autorada; o lint
+ainda não tem classe para leitura inline de plataforma, e as reporta sob D2 por falta de classe mais
+fina. O motivo está escrito no baseline, como manda o D4.
+
+🔴 **É um RATCHET, não uma varredura de limpeza.** Os 16 sítios de classificação estão **todos em
 produto do upstream**; corrigi-los aqui criaria divergência, que hoje é zero. O escopo negativo da
 REQ decide: achado vira **issue**, não correção local. O gate congela os conhecidos **com motivo por
 arquivo** e reprova o próximo.

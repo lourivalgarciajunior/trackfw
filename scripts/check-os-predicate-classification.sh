@@ -13,6 +13,20 @@
 #   D4  o onus e de quem quer excluir           -> exclusao escrita
 #   D5  com teste e sem teste, SEPARADOS        -> misturar falseou 3x
 #
+# ML-1H (2026-09-11): a lista passou a ter NOVE predicados. Entraram
+# `runtime.GOOS`, `sys.platform` e `platform.system()`, que ficavam invisiveis
+# -- 44 sitios, 18 deles em produto fora de teste. E o D3 passou a reconhecer a
+# costura tambem quando a plataforma e PASSADA COMO ARGUMENTO
+# (`openBrowser(process.platform, url)`), nao so quando e atribuida a constante:
+# a #321 do upstream reescreveu a MESMA costura de uma forma para a outra, e o
+# lint mudou de veredito sem o codigo mudar de natureza.
+#
+# 🔴 LIMITE DECLARADO: o reconhecedor de docstring do Python conta aspas triplas
+# DUPLAS ("""); docstring com aspas simples nao e reconhecida. Medido em
+# 2026-09-11: zero ocorrencias de ''' no escopo varrido, entao a regra estreita
+# nao esconde nada hoje -- e o dia em que esconder, o sitio aparece como
+# classificacao nao declarada, que e o lado seguro de errar.
+#
 # ESTE GATE E UM RATCHET, NAO UMA VARREDURA DE LIMPEZA.
 #
 # Medido em 2026-09-10: dos 110 sitios sem arquivo de teste, 59 saem por D1 (o
@@ -31,12 +45,32 @@ ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$ROOT_DIR"
 
 ESCOPO=(internal npm/src pypi/trackfw cmd)
-PREDICADOS='filepath\.IsAbs|os\.path\.isabs|path\.isAbsolute|process\.platform|os\.name|os\.IsNotExist'
+PREDICADOS='filepath\.IsAbs|os\.path\.isabs|path\.isAbsolute|process\.platform|os\.name|os\.IsNotExist|runtime\.GOOS|sys\.platform|platform\.system\(\)'
+
+# Os predicados que leem a PLATAFORMA (nao um caminho, nao um erro). So estes
+# podem ser costura: o D3 decide sobre a origem da plataforma, e `IsAbs` ou
+# `IsNotExist` nao carregam plataforma nenhuma.
+PLATAFORMA='process\.platform|os\.name|runtime\.GOOS|sys\.platform|platform\.system\(\)'
+
+# Funcoes que COMPARAM a plataforma. Receber a plataforma como argumento aqui nao
+# e costura: e a mesma classificacao do `==`, escrita de outro jeito.
+COMPARADORES='strings\.(Contains|HasPrefix|HasSuffix|EqualFold|Index)|startswith|endswith|startsWith|endsWith|includes|indexOf|re\.(match|search)'
 
 # ---------------------------------------------------------------------------
 # BASELINE — sitios de classificacao conhecidos em 2026-09-10, COM MOTIVO.
 #
 # Formato: <arquivo>:<predicado>|<motivo>
+#
+# 🔴 SO linhas '<arquivo>|<motivo>' aqui dentro: o laco de declaracao obsoleta le a
+# variavel linha a linha, e uma linha de comentario vira uma declaracao fantasma.
+# Medido em 2026-09-11, ao escrever a nota abaixo dentro da variavel: cinco avisos
+# de obsolescencia para cinco linhas de prosa.
+#
+# O pypi/trackfw/validator.py SAIU deste baseline no ML-1H, e o motivo importa: os
+# cinco sitios que o punham aqui (2136, 2144, 2145, 2146, 2149) sao PROSA dentro de
+# uma docstring que explica a ADR citando os.path.isabs e os.name. O classificador
+# anterior so olhava o inicio da linha, entao contava prosa como classificacao -- e o
+# arquivo foi declarado por um sitio que nunca existiu.
 # Granularidade de ARQUIVO, nao de linha: numero de linha muda a cada merge do
 # upstream e o baseline viraria ruido. O que importa e "este arquivo ja tinha
 # sitio de classificacao"; um arquivo NOVO com sitio novo e o que o gate pega.
@@ -46,11 +80,11 @@ internal/integrations/manager.go|resolucao de caminho de instalacao de integraca
 internal/validator/validator.go|validacao de caminho relativo em artefato; produto do upstream
 npm/src/integrations/manager.js|espelho Node do manager.go; produto do upstream
 npm/src/validator/index.js|espelho Node do validator.go; produto do upstream
-pypi/trackfw/validator.py|espelho Python do validator.go; produto do upstream
 pypi/trackfw/generators/req.py|resolve req_dir vindo do trackfw.yaml; produto do upstream
 pypi/trackfw/generators/adr.py|resolve adr_dir vindo do trackfw.yaml; produto do upstream
 pypi/trackfw/commands/status.py|resolve caminho de artefato; produto do upstream
-npm/src/commands/serve.js|costura, nao classificacao: le process.platform uma vez e injeta no openBrowser (mesmo desenho do _browser_argv do Python); o D3 deste lint so reconhece atribuicao a constante nomeada, nao a plataforma passada como argumento. Produto do upstream (#321)
+pypi/trackfw/homedir.py|leitura INLINE de plataforma (sys.platform == "win32") para preferir $HOME no Windows; um unico sitio no arquivo. Nao e classificacao de string autorada: este lint ainda nao tem classe para leitura inline de plataforma, e reporta sob D2 por falta de classe mais fina. Produto do upstream
+pypi/trackfw/tty.py|leitura INLINE de plataforma (sys.platform == "win32") para escolher a sonda de console; um unico sitio no arquivo. Mesma ressalva do homedir.py. Produto do upstream
 "
 
 esta_no_baseline() {
@@ -71,8 +105,39 @@ eh_d1_travessia() {  # D1: o predicado recebe um valor de ERRO
   printf '%s' "$1" | grep -qE 'IsNotExist\((err|readErr|[a-zA-Z_][a-zA-Z0-9_]*[Ee]rr)\)'
 }
 
-eh_d3_costura() {  # D3: leitura UNICA da plataforma para uma constante nomeada
-  printf '%s' "$1" | grep -qE '(let|const|var)?[[:space:]]*[_a-zA-Z][_a-zA-Z0-9]*[[:space:]]*=[[:space:]]*(process\.platform|os\.name)'
+eh_d3_costura() {  # D3: a plataforma entra por UM ponto -- constante ou argumento
+  # (a) atribuida a uma constante/variavel nomeada, com ou sem anotacao de tipo:
+  #       var CurrentGOOS = runtime.GOOS
+  #       _current_platform: str = sys.platform
+  #       const platform = process.platform
+  printf '%s' "$1" | grep -qE "(let|const|var)?[[:space:]]*[_a-zA-Z][_a-zA-Z0-9]*([[:space:]]*:[[:space:]]*[_a-zA-Z][_a-zA-Z0-9]*)?[[:space:]]*=[[:space:]]*(${PLATAFORMA})" && return 0
+  # (b) PASSADA COMO ARGUMENTO para a funcao que costura:
+  #       openBrowser(process.platform, url)   ·   _browser_argv(system, url)
+  #     Exige o predicado como argumento INTEIRO -- entre '(' ou ',' e ',' ou ')'.
+  #     `foo(runtime.GOOS == "windows")` NAO casa: ali a plataforma e comparada
+  #     no proprio sitio, e comparar e classificar. Medido em 2026-09-11.
+  #
+  #     🔴 EXCECAO, achada por sonda ANTES de mesclar: se quem recebe a plataforma
+  #     e um COMPARADOR (`strings.Contains(runtime.GOOS, "win")`), a forma e de
+  #     argumento mas o ato e comparacao -- e a primeira versao desta regra aceitava,
+  #     abrindo um caminho para fechar o ratchet so trocando `==` por um ajudante de
+  #     string. A lista de comparadores e literal e curta de proposito: um comparador
+  #     novo e nao listado volta a ser aceito como costura, e o remedio e acrescenta-lo
+  #     aqui -- nunca alargar a regra (b).
+  printf '%s' "$1" | grep -qE "(${COMPARADORES})[^)]*(${PLATAFORMA})" && return 1
+  printf '%s' "$1" | grep -qE "[,(][[:space:]]*(${PLATAFORMA})[[:space:]]*[,)]" && return 0
+  return 1
+}
+
+eh_docstring_py() {  # <arquivo> <linha>: a linha esta DENTRO de uma docstring?
+  # Existe porque tres sitios do pypi/ vivem em docstring de modulo, que nao
+  # comeca com '#' e por isso escapava do eh_comentario -- seriam acusados como
+  # classificacao. Conta aspas triplas ate a linha anterior: impar = dentro.
+  case "$1" in *.py) ;; *) return 1 ;; esac
+  [ "$2" -gt 1 ] || return 1
+  local n
+  n=$(head -n "$(($2 - 1))" "$1" | grep -o '"""' | wc -l | tr -d ' ')
+  [ $((n % 2)) -eq 1 ]
 }
 
 eh_teste() {
@@ -94,7 +159,7 @@ while IFS=: read -r f l pred; do
   linha=$(sed -n "${l}p" "$f" 2>/dev/null || true)
   [ -n "$linha" ] || continue
 
-  if eh_comentario "$linha";  then coment=$((coment + 1)); continue; fi
+  if eh_comentario "$linha" || eh_docstring_py "$f" "$l"; then coment=$((coment + 1)); continue; fi
   if eh_d1_travessia "$linha"; then d1=$((d1 + 1)); continue; fi
   if eh_d3_costura "$linha";   then d3=$((d3 + 1)); continue; fi
 
@@ -144,7 +209,7 @@ fi
 echo "check-os-predicate-classification: ${varridos} sitio(s) varrido(s) em ${ESCOPO[*]}"
 echo "  com arquivo de teste (D5, reportado a parte) : ${com_teste}"
 echo "  D1 travessia   (argumento e erro)            : ${d1}"
-echo "  D3 costura     (plataforma p/ constante)     : ${d3}"
+echo "  D3 costura     (constante nomeada ou argumento): ${d3}"
 echo "  comentario                                    : ${coment}"
 echo "  D2 CLASSIFICACAO                              : ${classificacao}  em ${#arq_vistos[@]} arquivo(s) declarado(s)"
 
