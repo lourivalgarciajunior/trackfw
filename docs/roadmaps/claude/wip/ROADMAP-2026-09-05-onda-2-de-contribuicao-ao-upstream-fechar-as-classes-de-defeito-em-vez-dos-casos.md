@@ -1,5 +1,5 @@
 ---
-status: done
+status: wip
 date: 2026-09-05
 req: "docs/requisições/claude/REQ-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md"
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: Onda 2 de contribuição ao upstream — fechar as classes de defeito em vez dos casos
 
-> Created: 2026-09-05 | Status: done
+> Created: 2026-09-05 | Status: wip
 
 ## 🔴 Por que este roadmap esta em `blocked/` — 2026-09-10
 
@@ -39,6 +39,14 @@ impedimento — o que significa que a saida daqui nao depende de evento externo 
 **Condicao de retorno a `wip/`:** a auditoria dos 58 ACs fechar, ou decisao explicita de inverter a
 ordem.
 
+## 🔴 Reaberto em 2026-09-11 — o lint do AC2 não enxerga Go, e decide a costura pela forma
+
+O merge da #321 do upstream fez o lint reprovar uma costura (`openBrowser(process.platform, url)`) que,
+um commit antes, ele aceitava escrita como constante. A investigação mostrou dois limites do nosso
+instrumento: os predicados de plataforma do Go e parte dos do Python não estão na varredura (34
+`runtime.GOOS`, 9 `sys.platform`, 1 `platform.system()`), e o D3 reconhece a costura pela forma. O
+motivo, medido, está na seção "Reaberta em 2026-09-11" da REQ. O trabalho é o **ML-1H**.
+
 ## Context
 <!-- Derived from REQ: REQ-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md -->
 REQ: docs/requisições/claude/REQ-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md
@@ -47,6 +55,7 @@ REQ: docs/requisições/claude/REQ-2026-09-05-onda-2-de-contribuicao-ao-upstream
 <!-- Consolidated criteria for this roadmap. Detail per ML in the waves below. -->
 - [ ]
 - [ ]
+- [ ] AC8 — o lint enxerga os três runtimes, e reconhece a costura pela origem (ML-1H)
 
 ## Status Legend
 ⬜ Pendente · 🔄 Em andamento · ✅ Concluído · ❌ Bloqueado
@@ -308,6 +317,22 @@ o mesmo fim: baseline escrito à mão diverge do derivado.
 - [x] **AC7** — Nenhum item é mesclado na nossa main como produto. Falsificação: a divergência de
 - [x] build passes
 - [x] tests green
+
+### ML-1H — O lint enxerga os três runtimes, e a costura se reconhece pela origem (reaberto em 2026-09-11)
+**Status:** ⬜ Pendente
+**Files affected:** `scripts/check-os-predicate-classification.sh`, `scripts/measure-os-predicate-sites.sh`, `scripts/testdata/os-predicate-sites-baseline.txt`
+**Acceptance criteria:**
+- [ ] `runtime.GOOS`, `sys.platform` e `platform.system()` entram na varredura do lint **e** da medição —
+      os dois compartilham a lista de seis predicados, e corrigir só um deixaria o inventário e o lint
+      discordando
+- [ ] Cada sítio novo classificado por D1–D5, por nome; o denominador reconcilia, sem resto
+- [ ] O D3 reconhece a plataforma **passada como argumento** (costura por injeção), não só atribuída a
+      constante — e o `serve.js` sai do baseline porque passa a ser D3, não por exceção
+- [ ] Falsificação nas duas direções: uma classificação real continua D2 e é acusada; uma costura por
+      argumento vira D3 e é aceita; e o denominador de D1 continua maior que zero
+- [ ] Sítio de classificação real achado em produto do upstream vira **issue**, não correção local — o
+      escopo negativo desta REQ
+- [ ] Nenhum arquivo de produto tocado; `validate` e gates verdes
 
 ## Desfecho de cada item (AC5, AC6)
 
