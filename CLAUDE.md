@@ -512,7 +512,7 @@ histórico.
 **Vereditos possíveis, e o que cada um exige:** `(a) entregue` nomeia o sítio no produto;
 `(b) não entregue` reabre a REQ; `(c) caducou` escreve o que mudou no mundo; `(d) não verificável
 aqui` declara o que faltaria. 🔴 **`(d)` é resultado, não desculpa** — dos 56, **11** caíram nele, e
-a maioria por um motivo só: os ACs exigiam comparação contra **lista nomeada** de corridas de agosto
+**cinco** por um motivo só — a maior causa isolada, não a maioria: os ACs exigiam comparação contra **lista nomeada** de corridas de agosto
 que **nunca foram versionadas**. Uma REQ cujo critério depende de artefato não versionado é
 inauditável por construção.
 

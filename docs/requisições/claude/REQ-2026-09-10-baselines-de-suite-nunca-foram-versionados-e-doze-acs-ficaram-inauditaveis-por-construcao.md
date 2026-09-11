@@ -10,19 +10,58 @@ roadmap: "docs/roadmaps/claude/backlog/ROADMAP-2026-09-10-baselines-de-suite-nun
 
 > Date: 2026-09-10 | Status: Open
 
+## 🔴 Correção de 2026-09-10 — são cinco ACs, não doze
+
+O título e o nome deste arquivo dizem **doze**. **São cinco**, um em cada REQ. O número veio de uma
+tabela escrita à mão — 2+3+4+1+2 — e passou por duas PRs, a #91 e a #92, sem ser derivado. O slug
+fica como está: é identificador, e renomear moveria dois arquivos e todo link que aponta para eles.
+
+**Derivado** varrendo o acervo inteiro, com o comando que refaz a medição:
+
+```bash
+grep -cE '\(d\) NAO VERIFICAVEL' docs/requisições/claude/*.md | grep -v ':0$'
+```
+
+Saem **11**, o mesmo total que a auditoria publicou — o que serve de controle do instrumento. Destes,
+**cinco** têm a causa desta REQ; os outros seis têm causa diferente:
+
+```
+lista nomeada nao versionada                   5
+  atualizar-para-a-upstream-main...symlink     95 falhas
+  geradores-python-escrevem-crlf               198
+  isatty-do-python-devolve-true-para-nul       105
+  node-e-python-ignoram-home                   297 e 199
+  trazer-o-barrier-dialeto-canonico            95
+
+outras causas                                  6
+  atualizar...symlink    processo daquele merge · criar symlink nesta maquina
+  node...home            exige mutar produto
+  slug-de-artefato       artifactId do pom · gate falhar com cada divergencia
+  ruido-de-gofmt         nenhuma divergencia deliberada perdida
+```
+
+A lista de **REQs** estava certa: as cinco são estas. O que estava errado era a contagem de **ACs** —
+a tabela dava 3 ao crlf e 4 ao isatty, e cada um tem um.
+
+🔴 **E os cinco estão gravados como `(d)`, não como `(b)`.** A conversão para `(b)` é o AC5, e ainda
+não foi feita. A #92 escreveu no roadmap que eles *"continuam `(b)`"*; era falso, e está corrigido lá.
+
+É a quarta vez nesta semana que o denominador desta classe sai errado por contagem digitada — e desta
+vez a lista digitada era a da própria REQ que existe para impedir isso.
+
 ## Motivation
 
 A auditoria da `REQ-2026-09-10-onze-reqs` julgou 56 critérios de aceite, um a um. **Onze caíram em
-`(d) não verificável aqui`, e doze deles têm a mesma causa** — espalhada por cinco REQs:
+`(d) não verificável aqui`, e cinco deles têm a mesma causa** — um em cada uma de cinco REQs:
 
 ```
-atualizar-para-a-upstream-main-com-o-fix-de-symlink   2 ACs
-geradores-python-escrevem-crlf-no-windows             3
-isatty-do-python-devolve-true-para-nul-no-windows     4
+atualizar-para-a-upstream-main-com-o-fix-de-symlink   1 AC
+geradores-python-escrevem-crlf-no-windows             1
+isatty-do-python-devolve-true-para-nul-no-windows     1
 node-e-python-ignoram-home-no-windows                 1
-trazer-o-barrier-dialeto-canonico-do-upstream         2
+trazer-o-barrier-dialeto-canonico-do-upstream         1
                                                      --
-                                                     12
+                                                      5
 ```
 
 Todos pedem a mesma coisa, e pedem **bem**:
@@ -59,7 +98,7 @@ versionar a lista: o mecanismo que impede maquiar regressão é o mesmo que impe
 
 ### O que esta REQ **não** é
 
-Não é conversão de vermelho em verde. Os doze ACs vão receber **(b) não entregue**, com a razão
+Não é conversão de vermelho em verde. Os cinco ACs vão receber **(b) não entregue**, com a razão
 escrita — porque **um baseline tirado hoje não prova "sem regressão desde agosto"**. Prova "sem
 regressão daqui para a frente". A afirmação de agosto é **irrecuperável**, e isso fica registrado em
 vez de maquiado.
@@ -68,7 +107,7 @@ O que se troca é *"não dá para saber"* por *"não foi entregue, e agora dá p
 
 ### E por que isto é UMA REQ, não cinco decisões
 
-Doze ACs, cinco REQs, **uma causa**: critério que depende de artefato não versionado. A Regra Dura de
+Cinco ACs, cinco REQs, **uma causa**: critério que depende de artefato não versionado. A Regra Dura de
 Causa Raiz decide — mesma causa, mesma REQ.
 
 ## Acceptance Criteria
@@ -85,7 +124,7 @@ Causa Raiz decide — mesma causa, mesma REQ.
       ao upstream, e ela vale aqui igual.
 - [ ] **AC4** — **Falsificação nas duas direções**: baseline com uma falha a mais → o gate acusa
       "sumida"; com uma a menos → acusa "nova"; árvore intacta → passa. Só a terceira não é prova.
-- [ ] **AC5** — Os **doze ACs** das cinco REQs recebem veredito **(b) não entregue**, cada um
+- [ ] **AC5** — Os **cinco ACs** das cinco REQs — hoje gravados como `(d)` — recebem veredito **(b) não entregue**, cada um
       apontando para esta REQ. 🔴 **Nenhum é marcado como entregue**, e nenhum é reescrito para caber
       no estado atual — a afirmação sobre agosto é irrecuperável e fica dito.
 - [ ] **AC6** — O gate entra no `run-local-gates.sh` **ou** é declarado fora **com o motivo medido**.
@@ -96,7 +135,7 @@ Causa Raiz decide — mesma causa, mesma REQ.
 
 ## Negative Scope
 
-- **Não** marcar nenhum dos doze como entregue. O baseline é novo; o passado não foi verificado.
+- **Não** marcar nenhum dos cinco como entregue. O baseline é novo; o passado não foi verificado.
 - **Não** reescrever os ACs de agosto para que o estado atual os satisfaça. É o que a auditoria de
   hoje desfez em dez REQs, e repetir seria pior com o registro fresco na mão.
 - **Não** corrigir as 15 falhas do pypi. São produto do upstream; corrigi-las aqui criaria
