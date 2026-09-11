@@ -4,6 +4,34 @@
 
 ---
 
+## Sessão 2026-09-11 — claude (FIM: ML-1A dos baselines — o self-test do ratchet roda no nosso CI)
+
+ML-1A concluído. O self-test do `check-windows-known-failures.py` roda no `local-gates.yml`, com guarda
+sobre o denominador, e foi falsificado nas duas direções no CI: verde no run 34598001245, vermelho com
+o T2 invertido no run 34598044479. O AC4 da REQ foi marcado, com o sítio nomeado.
+
+- A primeira rodada mostrou 10 anotações de erro num job verde, vindas dos casos sintéticos do
+  self-test. Corrigido com `stop-commands`; a segunda rodada deu 0.
+- A vigia antiga publicava rajadas falsas (`comm` sobre entrada não ordenada). Foi substituída e
+  testada antes de voltar a rodar.
+- A #316 do upstream foi trazida (nossa #97). A linha 78 do `parity-other-gates` não mudou.
+- **Pendente:** apagar as duas branches descartáveis remotas. O hook bloqueia `git push` cru, e a
+  remoção pela API espera o ok do usuário.
+- **Próximo:** ML-1B, a REQ própria para o `.gitattributes`.
+
+---
+
+## Sessão 2026-09-11 — claude (INÍCIO: ML-1A dos baselines — o self-test do ratchet no nosso CI)
+
+`main` em `560915b`, 0 atrás do upstream. O roadmap dos baselines saiu de `analyzing/` para `wip/`.
+
+O self-test do `check-windows-known-failures.py` não roda em lugar nenhum do nosso CI: o `Makefile`
+o chama no `parity-rest`, mas o nosso `parity-other-gates` morre na linha 78 antes de chegar a ele. O
+ML-1A o põe no `local-gates.yml`, que é arquivo só nosso, com guarda de vacuidade sobre o denominador,
+e falsifica nas duas direções — aqui e no CI, numa branch descartável que nunca chega à `main`.
+
+---
+
 ## Sessão 2026-09-10 — claude (FIM: Wave 0 dos baselines — convergência decidida, e os 8 têm causa)
 
 ML-0A concluído. O roadmap segue em `analyzing/`, com a Wave 1 reescrita.

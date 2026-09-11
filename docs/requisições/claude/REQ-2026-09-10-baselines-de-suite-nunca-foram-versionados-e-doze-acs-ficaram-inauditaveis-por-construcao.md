@@ -3,7 +3,7 @@ status: Open
 date: 2026-09-10
 author: "claude"
 adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
-roadmap: "docs/roadmaps/claude/analyzing/ROADMAP-2026-09-10-baselines-de-suite-nunca-foram-versionados-e-doze-acs-ficaram-inauditaveis-por-construcao.md"
+roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-09-10-baselines-de-suite-nunca-foram-versionados-e-doze-acs-ficaram-inauditaveis-por-construcao.md"
 ---
 
 # REQ: baselines de suíte nunca foram versionados, e doze ACs ficaram inauditáveis **por construção**
@@ -125,8 +125,11 @@ Causa Raiz decide — mesma causa, mesma REQ.
       vazio, ou se o extrator devolver zero nomes. 🔴 Suíte que não carrega **não é** suíte sem
       falhas — é a distinção que a issue [#274](https://github.com/kgsaran/trackfw/issues/274) leva
       ao upstream, e ela vale aqui igual.
-- [ ] **AC4** — **Falsificação nas duas direções**: baseline com uma falha a mais → o gate acusa
+- [x] **AC4** — **Falsificação nas duas direções**: baseline com uma falha a mais → o gate acusa
       "sumida"; com uma a menos → acusa "nova"; árvore intacta → passa. Só a terceira não é prova.
+      *(Entregue em 2026-09-11 pelo ML-1A. O sítio é o self-test do ratchet — T2: nome novo → exit 1;
+      T3: nome sumido → aviso, exit 0; T1: intacto → exit 0 —, que passou a rodar no
+      `local-gates.yml`: verde no run 34598001245, e vermelho com o T2 invertido no run 34598044479.)*
 - [ ] **AC5** — Os **cinco ACs** das cinco REQs — hoje gravados como `(d)` — recebem veredito **(b) não entregue**, cada um
       apontando para esta REQ. 🔴 **Nenhum é marcado como entregue**, e nenhum é reescrito para caber
       no estado atual — a afirmação sobre agosto é irrecuperável e fica dito.
@@ -147,7 +150,7 @@ falta é do lado do fork, e está nomeado:
 | AC1 | `.github/windows-known-failures.json` | `_meta.source` com run, job e receita | 8 dos 38 não falham aqui — causa medida no ML-0A: o nosso `.gitattributes` |
 | AC2 | passos 6 e 7 do ratchet | nova reprova; sumida gera aviso e exige `removal_note` | sumida é **aviso**, não reprovação — decisão escrita dele: consertar teste não pode quebrar o CI |
 | AC3 | quatro guardas | lista vazia · artefato ausente · artefato sem resultado · marcadores de carga | nenhuma |
-| AC4 | self-test T1–T22 | os dois braços | **não roda no nosso CI**: o `parity-rest` morre na linha 78 antes de chegar a ele |
+| AC4 | self-test T1–T22 | os dois braços | ~~não roda no nosso CI~~ — **fechada pelo ML-1A**: roda no `local-gates.yml` |
 
 **Construir um gate nosso seria a segunda solução para um problema que já tem uma.** A Wave 1 do
 roadmap foi reescrita para fechar só as lacunas do fork.
@@ -169,4 +172,4 @@ ADR: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-t
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/analyzing/ROADMAP-2026-09-10-baselines-de-suite-nunca-foram-versionados-e-doze-acs-ficaram-inauditaveis-por-construcao.md
+Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-09-10-baselines-de-suite-nunca-foram-versionados-e-doze-acs-ficaram-inauditaveis-por-construcao.md
