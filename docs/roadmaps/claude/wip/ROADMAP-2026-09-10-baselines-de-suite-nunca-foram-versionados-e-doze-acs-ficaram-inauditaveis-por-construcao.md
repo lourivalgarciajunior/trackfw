@@ -286,7 +286,7 @@ Nenhum arquivo compartilhado foi tocado neste ML.
 ## Wave 2 — Os cinco ACs
 
 ### ML-2A — Veredito, um por AC
-**Status:** ⬜ Pendente
+**Status:** 🔄 Em andamento
 **Files affected:** `docs/requisições/claude/**`
 **Acceptance criteria:**
 - [ ] Cada um dos cinco recebe **(b) não entregue**, apontando para esta REQ
