@@ -122,10 +122,11 @@ em massa com as outras dez.
 As dez REQs perderam o `done`; os dez roadmaps saíram de `done/` para `backlog/`. O gate
 `check-req-done-com-criterio-aberto.sh`, que reprovava com `10 REQs · 56 ACs`, sai `exit 0`.
 
-🔴 **O achado estrutural está nos `(d)`.** A maioria dos 11 tem a mesma causa: o AC exige comparação
+🔴 **O achado estrutural está nos `(d)`.** A maior causa isolada — **cinco** dos 11, um por REQ — é a mesma: o AC exige comparação
 contra **lista nomeada** de uma corrida de agosto — 95, 105, 198, 199, 297 falhas — e **nenhuma
 dessas listas foi versionada**. O próprio AC proíbe comparar por contagem, que é a única coisa
-reproduzível hoje.
+reproduzível hoje. *(Corrigido em 2026-09-10: dizia "a maioria dos 11"; são cinco, derivado na
+`REQ-2026-09-10-baselines-de-suite-nunca-foram-versionados`.)*
 
 **Uma REQ cujo critério depende de artefato não versionado é inauditável por construção.** Não é
 falta de esforço: é desenho. E explica por que dez REQs puderam ficar `done` com critério aberto sem

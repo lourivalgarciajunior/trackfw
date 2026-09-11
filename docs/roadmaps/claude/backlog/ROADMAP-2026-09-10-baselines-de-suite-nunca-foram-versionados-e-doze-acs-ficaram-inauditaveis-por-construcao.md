@@ -9,11 +9,17 @@ squad: "claude"
 
 > Created: 2026-09-10 | Status: backlog
 
+## 🔴 Correção de 2026-09-10 — são cinco ACs, não doze, e estão em `(d)`
+
+O título e o nome deste arquivo dizem **doze**; **são cinco**, um em cada REQ. E eles estão gravados
+como `(d)`, não como `(b)` — a conversão é o ML-2A. A derivação, com o comando que a refaz, está na
+seção de correção da REQ. O slug fica como está.
+
 ## Context
 
 REQ: docs/requisições/claude/REQ-2026-09-10-baselines-de-suite-nunca-foram-versionados-e-doze-acs-ficaram-inauditaveis-por-construcao.md
 
-**Doze ACs, cinco REQs, uma causa:** o critério exige comparação contra **lista nomeada** de uma
+**Cinco ACs, cinco REQs, uma causa:** o critério exige comparação contra **lista nomeada** de uma
 corrida de agosto — 95, 105, 198, 199, 297 falhas — e **nenhuma dessas listas foi versionada**.
 
 Medido hoje: a suíte pypi roda em ~5 min e sai com **15 falhas nomeadas**. O critério é
@@ -25,7 +31,7 @@ executável; o que faltava era o ponto de referência existir.
 - [ ] Gate compara por nome nos dois sentidos: nova **e** sumida.
 - [ ] Guarda de vacuidade: suíte que não carrega não é suíte sem falhas.
 - [ ] Falsificação nas duas direções.
-- [ ] Os doze ACs recebem **(b)**, nenhum marcado como entregue.
+- [ ] Os cinco ACs recebem **(b)**, nenhum marcado como entregue.
 
 ## A espera: o que ela comprou, e o que ela invalidou — 2026-09-10
 
@@ -105,7 +111,9 @@ depois da leitura inteira do script, e cita esta seção como a razão.
 
 ### O que NÃO mudou
 
-🔴 **Os doze ACs continuam abertos e continuam `(b)`.** Nenhum foi marcado, nenhum foi reescrito. A
+🔴 **Os cinco ACs continuam abertos, gravados como `(d)`** — a conversão para `(b)` é o ML-2A, e
+não foi feita. *(Corrigido em 2026-09-10: esta linha dizia "os doze" e "continuam `(b)`".)*
+Nenhum foi marcado, nenhum foi reescrito. A
 espera era sobre **como** construir o gate, não sobre o veredito — e o veredito nunca dependeu dele.
 
 ### Próximo passo
@@ -127,15 +135,16 @@ Ler o `check-windows-known-failures.py` **inteiro** antes de desenhar qualquer c
 **Files affected:** —
 **Actions:**
 
-1. **Enumeração derivada.** Os doze ACs, localizados por varredura das cinco REQs — não pela lista
+1. **Enumeração derivada.** Os ACs, localizados por varredura das cinco REQs — não pela lista
    desta REQ, que foi escrita à mão. 🔴 O denominador desta classe já saiu errado três vezes esta
-   semana, e as três por contagem digitada.
+   semana, e as três por contagem digitada. **Feito em 2026-09-10: são cinco, não doze** — a quarta
+   vez, e a contagem digitada era a desta REQ. Tabela e comando na seção de correção da REQ.
 
 2. **Modelo de ameaça — quem esvazia esta wave sem quebrar regra escrita:**
 
    | forma | remédio |
    |---|---|
-   | gerar o baseline e marcar os doze como entregues | AC5: todos recebem **(b)**; o baseline é novo, o passado não foi verificado |
+   | gerar o baseline e marcar os cinco como entregues | AC5: todos recebem **(b)**; o baseline é novo, o passado não foi verificado |
    | comparar por contagem "porque é mais simples" | AC2 exige os dois sentidos, e o texto do gate diz que saldo zero não é conjunto igual |
    | rodar a suíte, ela não carregar, e gravar baseline vazio | AC3: guarda de vacuidade, e é a distinção da #274 |
    | reescrever o AC de agosto para caber no baseline novo | escopo negativo; é o que a auditoria de hoje desfez em dez REQs |
@@ -171,13 +180,13 @@ Ler o `check-windows-known-failures.py` **inteiro** antes de desenhar qualquer c
 - [ ] 🔴 Falha **sumida** também é achado, não boa notícia: pode ser teste removido, renomeado, ou
       suíte que deixou de carregar
 
-## Wave 2 — Os doze ACs
+## Wave 2 — Os cinco ACs
 
 ### ML-2A — Veredito, um por AC
 **Status:** ⬜ Pendente
 **Files affected:** `docs/requisições/claude/**`
 **Acceptance criteria:**
-- [ ] Cada um dos doze recebe **(b) não entregue**, apontando para esta REQ
+- [ ] Cada um dos cinco recebe **(b) não entregue**, apontando para esta REQ
 - [ ] 🔴 Nenhum marcado como entregue; nenhum reescrito
 - [ ] Fica escrito, por AC, que **a afirmação sobre agosto é irrecuperável**
 

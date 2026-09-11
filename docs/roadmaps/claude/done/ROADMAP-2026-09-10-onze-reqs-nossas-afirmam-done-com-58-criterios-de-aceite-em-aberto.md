@@ -244,7 +244,7 @@ que reprovava com `10 REQs · 56 ACs`, agora sai `exit 0`.
 
 ### O que os `(d)` dizem, e é o achado estrutural
 
-Dos 11, a maioria tem **a mesma causa**: o AC exige comparação contra **lista nomeada** de uma
+Dos 11, **cinco** têm **a mesma causa** *(corrigido em 2026-09-10: dizia "a maioria")*: o AC exige comparação contra **lista nomeada** de uma
 corrida de agosto — `95 falhas`, `105`, `198`, `199`, `297` — e **nenhuma dessas listas foi
 versionada**. O AC proíbe comparar por contagem, que é a única coisa reproduzível hoje.
 
