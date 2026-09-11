@@ -4,6 +4,17 @@
 
 ---
 
+## Sessão 2026-09-11 — claude (FIM: a REQ dos baselines está fechada)
+
+REQ `done`, roadmap em `done/`. Os sete ACs marcados, cada um com o sítio; o AC1 a AC3 pela
+convergência com o ratchet do upstream, com as linhas derivadas do script no momento do fechamento.
+O gate de critério aberto foi falsificado sobre ela nas duas direções.
+
+Fica aberta, e é a próxima: a `REQ-2026-09-11` do `.gitattributes`, que decide se o fork volta a ver o
+defeito de produto que hoje mascara.
+
+---
+
 ## Sessão 2026-09-11 — claude (FIM: ML-2B dos baselines — o gate roda no job de Windows, declarado)
 
 ML-2B concluído. O ratchet do upstream fica fora do `run-local-gates.sh`, declarado no `CLAUDE.md`: o
