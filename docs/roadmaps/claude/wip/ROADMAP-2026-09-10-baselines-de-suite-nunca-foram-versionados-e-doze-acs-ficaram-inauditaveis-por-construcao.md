@@ -224,14 +224,44 @@ comparador próprio. O ML-0A mediu que o ratchet do upstream já roda no nosso C
 por desenho — construir o nosso seria a segunda solução. Ficam só as lacunas do fork.
 
 ### ML-1A — O self-test do ratchet passa a rodar no nosso CI
-**Status:** 🔄 Em andamento
+**Status:** ✅ Concluído
 **Files affected:** `.github/workflows/local-gates.yml` (só nosso)
 **Acceptance criteria:**
-- [ ] `python3 scripts/check-windows-known-failures.py --self-test` roda no `local-gates.yml`, em
+- [x] `python3 scripts/check-windows-known-failures.py --self-test` roda no `local-gates.yml`, em
       `ubuntu-latest`. Hoje não roda em lugar nenhum do nosso CI: o `parity-rest` morre na linha 78,
       antes de chegar a ele
-- [ ] Falsificado nos dois sentidos: com um caso do self-test quebrado o job reprova; intacto, passa
-- [ ] Nenhum arquivo compartilhado tocado
+- [x] Falsificado nos dois sentidos: com um caso do self-test quebrado o job reprova; intacto, passa
+- [x] Nenhum arquivo compartilhado tocado
+
+#### Resultado do ML-1A — 2026-09-11
+
+O passo "Self-test do ratchet de Windows do upstream" entrou no `local-gates.yml`, depois dos gates
+locais. O script do upstream só é executado; nenhum arquivo compartilhado mudou.
+
+| rodada | run | job | passo | resumo | anotações de erro |
+|---|---|---|---|---|---|
+| intacto, 1ª | 34596903146 | success | success | 27 PASS, 0 FAIL | **10**, dos casos sintéticos |
+| quebrado, 1ª (T2 invertido) | 34596996983 | failure | failure | 26 PASS, 1 FAIL | — |
+| intacto, 2ª | 34598001245 | success | success | 27 PASS, 0 FAIL | **0** |
+| quebrado, 2ª (T2 invertido) | 34598044479 | failure | failure | 26 PASS, 1 FAIL | 2: a do runner e a nossa |
+
+🔴 **A primeira rodada achou um defeito no próprio passo.** O self-test imprime `::error::` nos casos
+sintéticos que exercitam os caminhos de erro do ratchet, e o GitHub converteu cada um em anotação: um
+job **verde** com 10 erros vermelhos, que engana quem revisa. Os comandos do GitHub agora ficam
+desligados (`stop-commands`) enquanto o self-test roda, e o passo emite um erro só, o nosso, quando
+ele reprova.
+
+**A guarda do denominador** (zero PASS não é verde) foi falsificada **localmente**, com resumos
+sintéticos: `0 PASS`, resumo ausente e `1 FAIL` reprovam; `27 PASS, 0 FAIL` passa. No CI ela não
+disparou em nenhuma rodada, e é o esperado: no quebrado, o passo reprova antes, pelo código de saída
+do próprio self-test.
+
+🔴 **Uma medição minha errou no caminho.** A primeira contagem de "guarda disparou" deu 1 nos dois
+runs, porque o log do GitHub ecoa o corpo do `run:` antes de executá-lo, e o `grep` contou o
+código-fonte. Refeita sem o eco, deu 0 nos dois.
+
+As branches descartáveis da falsificação (`chore/falsify-ml-1a-self-test-quebrado` e `…-2`) nunca
+viraram PR.
 
 ### ML-1B — Os 8 mascarados vão para REQ própria
 **Status:** ⬜ Pendente
