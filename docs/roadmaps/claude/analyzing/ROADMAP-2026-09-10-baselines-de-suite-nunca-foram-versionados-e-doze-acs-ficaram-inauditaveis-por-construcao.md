@@ -1,5 +1,5 @@
 ---
-status: backlog
+status: analyzing
 date: 2026-09-10
 req: "docs/requisições/claude/REQ-2026-09-10-baselines-de-suite-nunca-foram-versionados-e-doze-acs-ficaram-inauditaveis-por-construcao.md"
 squad: "claude"
@@ -7,7 +7,7 @@ squad: "claude"
 
 # Roadmap: baselines de suíte nunca foram versionados, e doze ACs ficaram inauditáveis por construção
 
-> Created: 2026-09-10 | Status: backlog
+> Created: 2026-09-10 | Status: analyzing
 
 ## 🔴 Correção de 2026-09-10 — são cinco ACs, não doze, e estão em `(d)`
 
@@ -131,7 +131,7 @@ Ler o `check-windows-known-failures.py` **inteiro** antes de desenhar qualquer c
 > Dependencies: none. **Bloqueia a implementação.**
 
 ### ML-0A — Enumeração, ameaça e falsificação
-**Status:** ⬜ Pendente
+**Status:** 🔄 Em andamento
 **Files affected:** —
 **Actions:**
 

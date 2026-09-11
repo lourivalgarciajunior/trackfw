@@ -4,6 +4,20 @@
 
 ---
 
+## Sessão 2026-09-10 — claude (INÍCIO: Wave 0 dos baselines — leitura do ratchet e convergência)
+
+`main` em `9e7044e`, 0 atrás do upstream. O roadmap dos baselines saiu de `backlog/` para
+`analyzing/`, e o ML-0A está em andamento.
+
+Pendências herdadas da #92: ler o `check-windows-known-failures.py` inteiro (feito: 1446 linhas),
+reescrever o AC1, decidir a convergência de AC2 a AC4. A #95 já corrigiu a contagem: são **cinco**
+ACs, não doze, e estão gravados como `(d)`.
+
+A primeira pergunta aberta é por que **8 dos 38** nomes da lista do mantenedor não falham no nosso CI.
+Com a lista dele aqui, esses 8 ficam pré-autorizados a falhar: se um deles regredir, o ratchet cala.
+
+---
+
 ## Sessão 2026-09-02 — claude (o mantenedor pediu a cadeia de governança; achado 244; 3 PRs mescláveis)
 
 `main` em `fd76b63`, em dia com o upstream, árvore limpa, `validate` limpo, **9 dos 10 gates** —
