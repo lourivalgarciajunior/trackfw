@@ -4,6 +4,15 @@
 
 ---
 
+## Sessão 2026-09-11 — claude (INÍCIO: ML-1B dos baselines — REQ própria para o `.gitattributes`)
+
+O ML-1B abre a REQ própria para a causa que o ML-0A mediu: o nosso `.gitattributes` mascara, no
+checkout Windows, um defeito de produto que o upstream mantém exposto de propósito. A REQ nova carrega
+o mecanismo e as opções, mas **não decide**: decidir exige medir antes o efeito de docs em CRLF nos
+nossos gates.
+
+---
+
 ## Sessão 2026-09-11 — claude (FIM: ML-1A dos baselines — o self-test do ratchet roda no nosso CI)
 
 ML-1A concluído. O self-test do `check-windows-known-failures.py` roda no `local-gates.yml`, com guarda

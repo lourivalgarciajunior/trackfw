@@ -264,7 +264,7 @@ As branches descartáveis da falsificação (`chore/falsify-ml-1a-self-test-queb
 viraram PR.
 
 ### ML-1B — Os 8 mascarados vão para REQ própria
-**Status:** ⬜ Pendente
+**Status:** 🔄 Em andamento
 **Files affected:** `docs/requisições/claude/`, este roadmap
 **Acceptance criteria:**
 - [ ] REQ própria aberta para a causa — configuração local mascarando defeito de produto —, com o
