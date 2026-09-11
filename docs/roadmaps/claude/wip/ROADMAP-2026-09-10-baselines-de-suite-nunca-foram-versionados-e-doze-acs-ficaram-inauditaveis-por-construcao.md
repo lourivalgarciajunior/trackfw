@@ -311,12 +311,33 @@ reescrito. A derivação passou de 11 para **6**, e os 6 que restam são, por no
 causas": dois na REQ do symlink, um na do HOME, dois na do slug e um na do gofmt.
 
 ### ML-2B — Execução
-**Status:** ⬜ Pendente
-**Files affected:** `scripts/run-local-gates.sh`, `CLAUDE.md`
+**Status:** ✅ Concluído
+**Files affected:** `CLAUDE.md` (o `run-local-gates.sh` não muda — ver o resultado)
 **Acceptance criteria:**
-- [ ] O gate entra no agregador **ou** é declarado fora com o motivo medido
-- [ ] 🔴 Se ficar fora por custo, o custo é **medido em segundos**, não estimado — a pypi levou 292s
+- [x] O gate entra no agregador **ou** é declarado fora com o motivo medido
+- [x] 🔴 Se ficar fora por custo, o custo é **medido em segundos**, não estimado — a pypi levou 292s
       hoje, a npm estourou 300s sem terminar
+
+#### Resultado do ML-2B — 2026-09-11
+
+O gate — o ratchet do upstream — fica **fora** do `run-local-gates.sh`, declarado no `CLAUDE.md`, seção
+"Ratchet de Windows do upstream". O motivo não é custo: o veredito dele precisa dos artefatos das três
+suítes rodadas no Windows, e o agregador roda em `ubuntu-latest` e só conhece os `.sh` nossos. A parte
+que roda em Linux, o self-test, já entrou no `local-gates.yml` (ML-1A).
+
+O custo foi medido mesmo assim, em segundos, em três runs da `main`:
+
+| run | job | Go | Node | Python | ratchet |
+|---|---|---|---|---|---|
+| 34603239796 | 494 s | 136 s | 174 s | 110 s | 0 s |
+| 34598894601 | 604 s | 183 s | 198 s | 132 s | 1 s |
+| 34596059692 | 488 s | 138 s | 128 s | 112 s | 0 s |
+
+🔴 A primeira medição por suíte não saiu: o Python leu o JSON da API em cp1252, o `í` de "suíte" virou
+lixo, e o filtro não casou nenhum passo. Refeita lendo os bytes como UTF-8.
+
+O `run-local-gates.sh` não muda: a lista de "declarados fora" dele é de scripts **nossos**, e o
+ratchet não é.
 
 ## Residual declarado
 
