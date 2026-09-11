@@ -4,6 +4,19 @@
 
 ---
 
+## Sessão 2026-09-11 — claude (FIM: ML-1B dos baselines — a REQ do `.gitattributes` está aberta)
+
+ML-1B concluído. REQ nova: `REQ-2026-09-11-o-gitattributes-do-fork-mascara-um-defeito-de-produto-que-o-upstream-mantem-exposto-de-proposito`, com roadmap em `backlog/` — o dos baselines segue em `wip/`.
+
+A REQ carrega o mecanismo do ML-0A (0 de 172 arquivos com `\r` no nosso checkout contra 65 de 172 no
+do upstream; 8 de 8 testes passam aqui e falham lá), a premissa da `ADR-2026-08-29` que a medição
+derruba, e três opções — alinhar, manter, ou `eol=lf` só em `docs/**` e `vault/**`. Não escolhe: o
+AC2 dela mede antes o efeito de docs em CRLF nos nossos gates.
+
+**Próximo no roadmap dos baselines:** a Wave 2 — os cinco ACs de `(d)` para `(b)`.
+
+---
+
 ## Sessão 2026-09-11 — claude (INÍCIO: ML-1B dos baselines — REQ própria para o `.gitattributes`)
 
 O ML-1B abre a REQ própria para a causa que o ML-0A mediu: o nosso `.gitattributes` mascara, no
