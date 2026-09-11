@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-09-10
 req: "docs/requisições/claude/REQ-2026-09-10-baselines-de-suite-nunca-foram-versionados-e-doze-acs-ficaram-inauditaveis-por-construcao.md"
 squad: "claude"
@@ -7,7 +7,7 @@ squad: "claude"
 
 # Roadmap: baselines de suíte nunca foram versionados, e doze ACs ficaram inauditáveis por construção
 
-> Created: 2026-09-10 | Status: wip
+> Created: 2026-09-10 | Status: done
 
 ## 🔴 Correção de 2026-09-10 — são cinco ACs, não doze, e estão em `(d)`
 
@@ -27,11 +27,12 @@ executável; o que faltava era o ponto de referência existir.
 
 ## Acceptance Criteria
 
-- [ ] Listas de falha do pypi e do npm geradas hoje, por nome, versionadas.
-- [ ] Gate compara por nome nos dois sentidos: nova **e** sumida.
-- [ ] Guarda de vacuidade: suíte que não carrega não é suíte sem falhas.
-- [ ] Falsificação nas duas direções.
-- [ ] Os cinco ACs recebem **(b)**, nenhum marcado como entregue.
+- [x] ~~Listas de falha do pypi e do npm geradas hoje, por nome, versionadas.~~ Lista colhida de run de
+      CI identificado, por nome, versionada — o AC1 reescrito por mérito no ML-0A (REQ, AC1)
+- [x] Gate compara por nome nos dois sentidos: nova **e** sumida (REQ, AC2)
+- [x] Guarda de vacuidade: suíte que não carrega não é suíte sem falhas (REQ, AC3)
+- [x] Falsificação nas duas direções (REQ, AC4 — ML-1A)
+- [x] Os cinco ACs recebem **(b)**, nenhum marcado como entregue (REQ, AC5 — ML-2A)
 
 ## A espera: o que ela comprou, e o que ela invalidou — 2026-09-10
 
@@ -338,6 +339,19 @@ lixo, e o filtro não casou nenhum passo. Refeita lendo os bytes como UTF-8.
 
 O `run-local-gates.sh` não muda: a lista de "declarados fora" dele é de scripts **nossos**, e o
 ratchet não é.
+
+## Fechamento — 2026-09-11
+
+Os seis MLs concluídos, os sete ACs da REQ marcados, cada um com o sítio que o comprova. O gate de REQ
+`done` com critério aberto foi falsificado sobre esta REQ nas duas direções, no fechamento: com o AC7
+desmarcado ele reprova e a nomeia; remarcado, passa.
+
+**O que fica, declarado:**
+
+- **Os 8 mascarados**, com REQ própria: `REQ-2026-09-11-o-gitattributes-do-fork-mascara-um-defeito-de-produto-que-o-upstream-mantem-exposto-de-proposito`.
+- **Sumida é aviso, não reprovação** — decisão do mantenedor, aceita.
+- **Agosto é irrecuperável.** Os cinco ACs antigos continuam `(b)`: esta REQ tornou a verificação
+  possível daqui para a frente, não para trás.
 
 ## Residual declarado
 

@@ -1,14 +1,14 @@
 ---
-status: Open
+status: done
 date: 2026-09-10
 author: "claude"
 adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
-roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-09-10-baselines-de-suite-nunca-foram-versionados-e-doze-acs-ficaram-inauditaveis-por-construcao.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-09-10-baselines-de-suite-nunca-foram-versionados-e-doze-acs-ficaram-inauditaveis-por-construcao.md"
 ---
 
 # REQ: baselines de suíte nunca foram versionados, e doze ACs ficaram inauditáveis **por construção**
 
-> Date: 2026-09-10 | Status: Open
+> Date: 2026-09-10 | Status: done
 
 ## 🔴 Correção de 2026-09-10 — são cinco ACs, não doze
 
@@ -115,19 +115,35 @@ Causa Raiz decide — mesma causa, mesma REQ.
 
 ## Acceptance Criteria
 
-- [ ] **AC1** — A lista de falhas conhecidas é colhida de um **run de CI identificado**, nunca desta
+- [x] **AC1** — A lista de falhas conhecidas é colhida de um **run de CI identificado**, nunca desta
       máquina, **por nome**, e versionada com a receita que a refaz. A diferença entre a lista e o que
       o **nosso** CI observa é declarada **por nome e com causa medida**. *(Reescrito em 2026-09-10 no
       ML-0A. A versão anterior pedia listas "geradas hoje" nesta máquina, em `scripts/testdata/`, e
       caiu por mérito: esta máquina não é o runner. A razão está no roadmap, seção "O que a espera
       invalidou".)*
-- [ ] **AC2** — 🔴 **Gate que compara por NOME nos dois sentidos**: acusa falha **nova** e falha
+      *(Entregue em 2026-09-11, pela convergência: a lista é o `.github/windows-known-failures.json` do
+      upstream, colhida do run 34478752778 (job 102875922566), com a receita em `_meta.source`. A diferença com
+      o nosso CI está declarada por nome e com causa medida: os 8 do ML-0A, cuja causa — o nosso
+      `.gitattributes` — tem REQ própria.)*
+- [x] **AC2** — 🔴 **Gate que compara por NOME nos dois sentidos**: acusa falha **nova** e falha
       **sumida**, e diz explicitamente que **saldo zero não é conjunto igual**. É o defeito que uma
       queda de 33 para 32 escondeu em 2026-09-08.
-- [ ] **AC3** — **Guarda de vacuidade**: o gate falha se a suíte não rodar, se o baseline estiver
+      *(Entregue em 2026-09-11, pela convergência. No `scripts/check-windows-known-failures.py`: nome novo reprova (linha
+      757) e nome sumido gera aviso (linha 795); o resumo marca `DESEQUILÍBRIO POR CLASSE`
+      (linha 871), calculado por diferença de conjuntos e não por contagem (linha 842) — o teste
+      T23 exercita o caso em que um nome novo e um resolvido se cancelam. Sumida é aviso, não
+      reprovação: decisão escrita do mantenedor, aceita no ML-0A.)*
+- [x] **AC3** — **Guarda de vacuidade**: o gate falha se a suíte não rodar, se o baseline estiver
       vazio, ou se o extrator devolver zero nomes. 🔴 Suíte que não carrega **não é** suíte sem
       falhas — é a distinção que a issue [#274](https://github.com/kgsaran/trackfw/issues/274) leva
       ao upstream, e ela vale aqui igual.
+      *(Entregue em 2026-09-11, pela convergência. Lista vazia ou ausente reprova (`load_known_data`,
+      linha 83); artefato de suíte ausente reprova (`require_artifact`, linha 120); artefato
+      sem nenhuma linha de resultado reprova (linha 675); e suíte que não carrega tem classe
+      própria, com marcador (linha 632). 🔴 O texto diz "zero nomes", e o discriminante certo é
+      outro: uma suíte que roda e passa inteira devolve zero falhas **legitimamente**. O ratchet
+      reprova por **zero linhas de resultado** — a suíte não produziu nada —, que é o que o AC quer
+      pegar.)*
 - [x] **AC4** — **Falsificação nas duas direções**: baseline com uma falha a mais → o gate acusa
       "sumida"; com uma a menos → acusa "nova"; árvore intacta → passa. Só a terceira não é prova.
       *(Entregue em 2026-09-11 pelo ML-1A. O sítio é o self-test do ratchet — T2: nome novo → exit 1;
@@ -186,4 +202,4 @@ ADR: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-t
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-09-10-baselines-de-suite-nunca-foram-versionados-e-doze-acs-ficaram-inauditaveis-por-construcao.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-09-10-baselines-de-suite-nunca-foram-versionados-e-doze-acs-ficaram-inauditaveis-por-construcao.md
