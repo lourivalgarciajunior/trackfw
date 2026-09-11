@@ -1,9 +1,9 @@
 ---
-status: Open
+status: done
 date: 2026-09-05
 author: "claude"
 adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
-roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md"
 ---
 
 # REQ: Onda 2 de contribuição ao upstream — fechar as classes de defeito em vez dos casos
@@ -175,7 +175,7 @@ são do produto.
 - [x] **AC7** — Nenhum item é mesclado na nossa `main` como produto. Falsificação: a divergência de
       produto continua **vazia** ao fim da onda.
 
-- [ ] **AC8 — o lint enxerga os três runtimes, e reconhece a costura pela origem, não pela forma.**
+- [x] **AC8 — o lint enxerga os três runtimes, e reconhece a costura pela origem, não pela forma.**
       *(Acrescentado em 2026-09-11, na reabertura — ver "Reaberta em 2026-09-11".)* O lint do AC2
       procura seis predicados e reconhece a costura só como atribuição a constante nomeada. Os dois
       limites têm medida: `runtime.GOOS` (34 no produto), `sys.platform` (9) e `platform.system()` (1)
@@ -201,7 +201,7 @@ ADR: docs/adr/ADR-2026-09-09-predicado-de-so-em-sitio-de-classificacao-o-discrim
 <!-- none -->
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md
 
 ## Desfecho (2026-09-05)
 

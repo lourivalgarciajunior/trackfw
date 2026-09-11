@@ -4,6 +4,40 @@
 
 ---
 
+## Sessão 2026-09-11 — claude (ML-1H: o lint enxerga os três runtimes, e a costura se reconhece pela origem)
+
+**INÍCIO.** O ML-1H foi criado na reabertura da REQ da onda-2: o lint de predicado de SO via seis
+predicados e reconhecia a costura só como atribuição a constante nomeada.
+
+**FIM.** Lint e medição passaram a nove predicados (`runtime.GOOS`, `sys.platform`,
+`platform.system()`), e o inventário foi de 196 para **240** sítios. O denominador reconcilia:
+112 teste + 57 D1 + 9 D3 + 46 comentário + 16 D2 = 240.
+
+Três decisões, cada uma medida:
+
+1. **D3 pela origem.** Plataforma passada como argumento inteiro é costura, igual à constante. No
+   produto a regra casa só o `serve.js:280`; os outros três casos são arquivo de teste e saem antes
+   por D5.
+2. 🔴 **Furo achado por sonda ANTES do merge.** `strings.Contains(runtime.GOOS, "win")` tinha forma
+   de argumento e ato de comparação, e a primeira versão da regra o aceitava — bastaria trocar `==`
+   por um ajudante de string para fechar o ratchet. Passou a ser recusado; zero sítios nessa forma
+   hoje, então a correção fecha um caminho futuro sem mudar contagem.
+3. **Prosa em docstring não é sítio.** Sete linhas de texto que citam `os.path.isabs` e `os.name` ao
+   explicar a ADR eram contadas como classificação. Foi por elas que `pypi/trackfw/validator.py`
+   estava no baseline — **um arquivo declarado por um sítio que nunca existiu**. Saiu.
+
+Falsificação nas quatro direções, com sítio plantado e `git add` (o lint só vê conteúdo rastreado):
+classificação com predicado novo → acusada; costura por argumento → aceita; comparador → acusado;
+docstring → prosa passa e código é acusado.
+
+A `ADR-2026-09-09` recebeu nota com as duas decisões novas: elas cabem no critério dela (concentração
+num ponto), mas não estavam no texto, e decisão que mora só no script é o script decidindo pela ADR.
+
+Gates: `run-local-gates` 10/10, `validate` limpo, baseline da medição regravado (240, e a execução
+seguinte fecha em 0 novos · 0 sumidos). Nenhum arquivo de produto tocado.
+
+---
+
 ## Sessão 2026-09-11 — claude (a REQ da onda-2 reabre: o lint não enxerga Go, e decide a costura pela forma)
 
 O merge da #321 do upstream fez o lint de predicado de SO reprovar uma costura que ele aceitava um

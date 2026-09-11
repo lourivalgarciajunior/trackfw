@@ -36,10 +36,16 @@ cd "$ROOT_DIR"
 BASELINE="${BASELINE:-$ROOT_DIR/scripts/testdata/os-predicate-sites-baseline.txt}"
 ESCOPO=(internal npm/src pypi/trackfw cmd)
 
-# Predicados, exatamente os seis que a REQ nomeia. Lista literal DE PROPÓSITO:
-# ela é o contrato do AC2, não uma heurística a derivar. Acrescentar um aqui é
-# mudar o escopo da REQ, e tem de ser deliberado.
-PREDICADOS='os\.IsNotExist|filepath\.IsAbs|os\.path\.isabs|process\.platform|path\.isAbsolute|os\.name'
+# Predicados que a REQ nomeia. Lista literal DE PROPÓSITO: ela é o contrato do
+# AC2, não uma heurística a derivar. Acrescentar um aqui é mudar o escopo da
+# REQ, e tem de ser deliberado.
+#
+# Eram seis. O ML-1H (AC8, 2026-09-11) acrescentou três — `runtime.GOOS`,
+# `sys.platform` e `platform.system()` —, e a mudança de escopo está escrita na
+# REQ. Os três eram invisíveis aqui e no lint ao mesmo tempo, porque os dois
+# compartilham esta lista: um inventário que não vê o predicado não pode
+# reconciliar com um lint que também não o vê.
+PREDICADOS='os\.IsNotExist|filepath\.IsAbs|os\.path\.isabs|process\.platform|path\.isAbsolute|os\.name|runtime\.GOOS|sys\.platform|platform\.system\(\)'
 
 eh_teste() {  # eh_teste <caminho>
   case "$1" in
@@ -99,7 +105,7 @@ printf '    arquivos,    SEM teste : %s\n' "$arq_sem"
 echo ""
 echo "  POR PREDICADO (ocorrências, com teste · sem teste)"
 echo "  ──────────────────────────────────────────────────"
-for p in 'os\.IsNotExist' 'filepath\.IsAbs' 'os\.path\.isabs' 'process\.platform' 'path\.isAbsolute' 'os\.name'; do
+for p in 'os\.IsNotExist' 'filepath\.IsAbs' 'os\.path\.isabs' 'process\.platform' 'path\.isAbsolute' 'os\.name' 'runtime\.GOOS' 'sys\.platform' 'platform\.system()'; do
   nome=$(printf '%s' "$p" | sed 's/\\//g')
   c=$(grep -c ":${nome}$" "$TMP/com.txt" 2>/dev/null || true)
   s=$(grep -c ":${nome}$" "$TMP/sem.txt" 2>/dev/null || true)

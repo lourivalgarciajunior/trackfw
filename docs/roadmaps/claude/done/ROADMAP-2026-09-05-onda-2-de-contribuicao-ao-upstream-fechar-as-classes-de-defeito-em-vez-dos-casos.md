@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-09-05
 req: "docs/requisições/claude/REQ-2026-09-05-onda-2-de-contribuicao-ao-upstream-fechar-as-classes-de-defeito-em-vez-dos-casos.md"
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: Onda 2 de contribuição ao upstream — fechar as classes de defeito em vez dos casos
 
-> Created: 2026-09-05 | Status: wip
+> Created: 2026-09-05 | Status: done
 
 ## 🔴 Por que este roadmap esta em `blocked/` — 2026-09-10
 
@@ -53,9 +53,18 @@ REQ: docs/requisições/claude/REQ-2026-09-05-onda-2-de-contribuicao-ao-upstream
 
 ## Acceptance Criteria
 <!-- Consolidated criteria for this roadmap. Detail per ML in the waves below. -->
-- [ ]
-- [ ]
-- [ ] AC8 — o lint enxerga os três runtimes, e reconhece a costura pela origem (ML-1H)
+<!-- 2026-09-11 (ML-1H): as duas primeiras linhas eram checkboxes VAZIOS, herdados do
+     template e nunca preenchidos. Critério vazio conta como critério aberto no nosso
+     próprio check-req-done-com-criterio-aberto.sh, então o espelho dos ACs da REQ
+     entrou no lugar deles. -->
+- [x] AC1 — B1: tabela de contrato de predicados de plataforma (ML-1A)
+- [x] AC2 — B2: lint contra predicado de SO em sítio de classificação (ML-1B, ML-1B-a)
+- [x] AC3 — C1: gate de ponto único de leitura (ML-1C)
+- [x] AC4 — E2: corpus do `barrier-contract` desacoplado da governança (ML-1D)
+- [x] AC5 — cada item vira issue com achado medido e controle (ML-1E)
+- [x] AC6 — conferir o acervo do upstream antes de abrir (ML-1F)
+- [x] AC7 — nenhum item mesclado na nossa `main` como produto (ML-1G)
+- [x] AC8 — o lint enxerga os três runtimes, e reconhece a costura pela origem (ML-1H)
 
 ## Status Legend
 ⬜ Pendente · 🔄 Em andamento · ✅ Concluído · ❌ Bloqueado
@@ -319,7 +328,7 @@ o mesmo fim: baseline escrito à mão diverge do derivado.
 - [x] tests green
 
 ### ML-1H — O lint enxerga os três runtimes, e a costura se reconhece pela origem (reaberto em 2026-09-11)
-**Status:** 🔄 Em andamento
+**Status:** ✅ Concluído
 **Files affected:** `scripts/check-os-predicate-classification.sh`, `scripts/measure-os-predicate-sites.sh`, `scripts/testdata/os-predicate-sites-baseline.txt`
 **Acceptance criteria:**
 - [ ] `runtime.GOOS`, `sys.platform` e `platform.system()` entram na varredura do lint **e** da medição —
@@ -333,6 +342,52 @@ o mesmo fim: baseline escrito à mão diverge do derivado.
 - [ ] Sítio de classificação real achado em produto do upstream vira **issue**, não correção local — o
       escopo negativo desta REQ
 - [ ] Nenhum arquivo de produto tocado; `validate` e gates verdes
+
+**Entregue em 2026-09-11.**
+
+| medida | antes | depois |
+|---|---|---|
+| predicados na lista (lint **e** medição) | 6 | **9** |
+| sítios varridos | 196 | **240** |
+| D3 costura | 4 | **9** |
+| D2 classificação | 20, em 9 arquivos | **16, em 9 arquivos** |
+| comentário | 30 | **46** |
+
+O denominador reconcilia sem resto: 112 teste + 57 D1 + 9 D3 + 46 comentário + 16 D2 = 240.
+
+**Três decisões, cada uma medida:**
+
+1. **O D3 reconhece a costura pela origem.** Plataforma passada como argumento inteiro é costura,
+   igual à constante nomeada. Enumerado no corpus: no produto a regra nova casa **só** o
+   `serve.js:280`; os outros três casos que ela casa são arquivo de teste e saem antes por D5. O
+   `serve.js` saiu do baseline **por ser D3**, não por exceção.
+2. 🔴 **Um furo foi achado por sonda ANTES do merge.** `strings.Contains(runtime.GOOS, "win")` tem a
+   forma de argumento e o ato de comparação, e a primeira versão da regra o aceitava como costura —
+   bastaria trocar `==` por um ajudante de string para fechar o ratchet sem corrigir nada. Passou a
+   ser recusado por lista literal de comparadores. **Zero sítios nessa forma no escopo hoje**, então
+   a correção fecha um caminho futuro sem mexer em contagem.
+3. **Prosa dentro de docstring não é sítio.** O classificador só olhava o início da linha, e contava
+   como classificação sete linhas de texto que citam `os.path.isabs` e `os.name` ao explicar a ADR.
+   Foi por elas que `pypi/trackfw/validator.py` estava no baseline — **um arquivo declarado por um
+   sítio que nunca existiu**. Saiu, com o motivo escrito.
+
+**Falsificação, quatro direções, com sítio plantado e `git add`** (o lint só vê conteúdo rastreado —
+medido em 2026-09-10, quando plantar sem `git add` deu `exit 0`):
+
+| plantado | esperado | medido |
+|---|---|---|
+| `if runtime.GOOS == "windows"` (predicado novo) | acusa | `rc=1`, nomeia o sítio |
+| `abrirBrowser(runtime.GOOS, url)` (costura por argumento) | passa | `rc=0`, D3 sobe de 9 para 10 |
+| `strings.HasPrefix(runtime.GOOS, "win")` (comparador) | acusa | `rc=1`, nomeia o sítio |
+| docstring com prosa + código depois dela | acusa **só** o código | `rc=1`, nomeia só a linha de código |
+
+A `ADR-2026-09-09` recebeu nota com as duas decisões novas. Elas cabem no critério dela — concentração
+da dependência num ponto —, mas não estavam no texto, e decisão que mora só no script é o script
+decidindo pela ADR.
+
+**Gates:** `run-local-gates` 10/10, `validate` limpo, baseline da medição regravado (240 sítios, e a
+execução seguinte fecha em 0 novos · 0 sumidos). **Nenhum arquivo de produto tocado** — a divergência
+continua zero.
 
 ## Desfecho de cada item (AC5, AC6)
 

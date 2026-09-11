@@ -95,6 +95,34 @@ fora da costura.
 🔴 **Isto exige allowlist explícita, com motivo por entrada** — e allowlist sem motivo escrito é o
 mesmo que não ter regra.
 
+**Nota de 2026-09-11 (ML-1H da `REQ-2026-09-05-onda-2`) — a costura tem duas formas, e o comparador
+não é uma delas.**
+
+A decisão acima nomeia a constante nomeada porque era a única forma no corpus quando ela foi escrita.
+A [#321](https://github.com/kgsaran/trackfw/pull/321) do upstream reescreveu a **mesma** costura do
+`npm/src/commands/serve.js` — a plataforma lida uma vez e injetada na função que abre o browser — de
+`const platform = process.platform` para `openBrowser(process.platform, url)`. O lint mudou de
+veredito **sem o código mudar de natureza**, e o sítio entrou no baseline como remédio de passagem.
+
+O critério do D3 é a **concentração da dependência num ponto**, não a forma de escrita. Então:
+
+- **plataforma passada como argumento inteiro** para a função que costura é D3, igual à constante —
+  é a mesma fronteira, escrita por injeção em vez de por nome;
+- 🔴 **plataforma passada a um COMPARADOR** (`strings.Contains(runtime.GOOS, "win")`,
+  `startsWith`, `re.match`) **não é**: a forma é de argumento, mas o ato é comparação — e comparação
+  espalhada é exatamente o que este D3 manda reprovar. Medido por sonda em 2026-09-11, **antes** do
+  merge: a primeira versão da regra aceitava, e teria bastado trocar `==` por um ajudante de string
+  para fechar o ratchet sem corrigir nada. A lista de comparadores é literal e curta de propósito;
+  um comparador novo e não listado volta a ser aceito, e o remédio é acrescentá-lo à lista, nunca
+  alargar a regra do argumento.
+
+**E prosa não é sítio.** O classificador olhava só o início da linha, então contava como
+classificação sete linhas de texto dentro de docstrings do Python que citam `os.path.isabs` e
+`os.name` ao explicar esta própria ADR. Foi por elas que `pypi/trackfw/validator.py` estava na
+allowlist — **um arquivo declarado por um sítio que nunca existiu**. Docstring passa a ser
+comentário; o limite declarado é que o reconhecedor conta aspas triplas duplas, e no escopo varrido
+há zero ocorrências de aspas triplas simples.
+
 ### D4 — O ônus é de quem quer excluir, e a exclusão é escrita
 
 Sítio que não caia mecanicamente em D1 é **classificação até prova em contrário**. A prova é uma
