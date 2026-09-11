@@ -27,18 +27,25 @@ cd "$ROOT_DIR"
 # EXECUTADOS — a lista é explícita, e a GUARDA DE COMPLETUDE abaixo garante que
 # um script só-nosso novo não fique de fora em silêncio. Foi assim que o
 # `check-upstream-content` sumiu de vista.
+#
+# 🔴 Os nomes vão COM `.sh`, de propósito (2026-09-11). O `check-orphan-gates.sh`
+# do upstream (#323) procura o nome LITERAL do gate numa linha de execução; sem a
+# extensão, ele acusava os nossos 9 gates como órfãos, embora rodem a cada push.
+# O `FORA` abaixo continua SEM `.sh`: ali nada é executado, e com a extensão o
+# gate do upstream contaria um script declarado fora como consumido — a busca
+# ingênua por substring que ele mesmo documenta evitar.
 # ---------------------------------------------------------------------------
 EXECUTAR="
-check-upstream-content
-check-req-layout
-check-referential-integrity
-check-inherited-req
-check-req-done-com-criterio-aberto
-check-os-predicate-classification
-check-slug-inventory
-check-subcommand-parity
-check-upstream-sync-falsify
-measure-os-predicate-sites
+check-upstream-content.sh
+check-req-layout.sh
+check-referential-integrity.sh
+check-inherited-req.sh
+check-req-done-com-criterio-aberto.sh
+check-os-predicate-classification.sh
+check-slug-inventory.sh
+check-subcommand-parity.sh
+check-upstream-sync-falsify.sh
+measure-os-predicate-sites.sh
 "
 
 # ---------------------------------------------------------------------------
@@ -95,7 +102,7 @@ fi
 
 nao_listados=0
 for s in $so_nossos; do
-  if printf '%s' "$EXECUTAR" | grep -qx "$s"; then continue; fi
+  if printf '%s' "$EXECUTAR" | grep -qx "${s}.sh"; then continue; fi
   if printf '%s' "$FORA" | grep -q "^${s}|"; then continue; fi
   echo "  ✗ COMPLETUDE: 'scripts/${s}.sh' e so nosso e nao esta nem em EXECUTAR nem em FORA" >&2
   nao_listados=$((nao_listados + 1))
@@ -142,13 +149,13 @@ echo ""
 falhas=0
 executados=0
 for s in $EXECUTAR; do
-  [ -f "scripts/${s}.sh" ] || { echo "  ✗ ${s}: LISTADO em EXECUTAR mas o arquivo nao existe" >&2; falhas=$((falhas+1)); continue; }
-  saida=$(bash "scripts/${s}.sh" 2>&1); rc=$?
+  [ -f "scripts/${s}" ] || { echo "  ✗ ${s%.sh}: LISTADO em EXECUTAR mas o arquivo nao existe" >&2; falhas=$((falhas+1)); continue; }
+  saida=$(bash "scripts/${s}" 2>&1); rc=$?
   executados=$((executados + 1))
   if [ "$rc" -eq 0 ]; then
-    printf '  ok   %-38s\n' "$s"
+    printf '  ok   %-38s\n' "${s%.sh}"
   else
-    printf '  FAIL %-38s exit=%s\n' "$s" "$rc"
+    printf '  FAIL %-38s exit=%s\n' "${s%.sh}" "$rc"
     printf '%s\n' "$saida" | sed 's/^/         /' >&2
     falhas=$((falhas + 1))
   fi
