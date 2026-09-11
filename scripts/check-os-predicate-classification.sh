@@ -50,6 +50,7 @@ pypi/trackfw/validator.py|espelho Python do validator.go; produto do upstream
 pypi/trackfw/generators/req.py|resolve req_dir vindo do trackfw.yaml; produto do upstream
 pypi/trackfw/generators/adr.py|resolve adr_dir vindo do trackfw.yaml; produto do upstream
 pypi/trackfw/commands/status.py|resolve caminho de artefato; produto do upstream
+npm/src/commands/serve.js|costura, nao classificacao: le process.platform uma vez e injeta no openBrowser (mesmo desenho do _browser_argv do Python); o D3 deste lint so reconhece atribuicao a constante nomeada, nao a plataforma passada como argumento. Produto do upstream (#321)
 "
 
 esta_no_baseline() {
