@@ -264,15 +264,24 @@ As branches descartáveis da falsificação (`chore/falsify-ml-1a-self-test-queb
 viraram PR.
 
 ### ML-1B — Os 8 mascarados vão para REQ própria
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:** `docs/requisições/claude/`, este roadmap
 **Acceptance criteria:**
-- [ ] REQ própria aberta para a causa — configuração local mascarando defeito de produto —, com o
+- [x] REQ própria aberta para a causa — configuração local mascarando defeito de produto —, com o
       mecanismo medido no ML-0A escrito nela
-- [ ] A decisão sobre o nosso `.gitattributes` é dessa REQ, não desta: alinhar ao do upstream desfaz o
+- [x] A decisão sobre o nosso `.gitattributes` é dessa REQ, não desta: alinhar ao do upstream desfaz o
       mascaramento, mas muda o fim de linha dos nossos `docs/*.md` no Windows, que os nossos gates leem
-- [ ] 🔴 Nenhuma edição no `.github/windows-known-failures.json`: é arquivo compartilhado, e a lista
+- [x] 🔴 Nenhuma edição no `.github/windows-known-failures.json`: é arquivo compartilhado, e a lista
       dele está **certa**
+
+#### Resultado do ML-1B — 2026-09-11
+
+REQ própria aberta: `REQ-2026-09-11-o-gitattributes-do-fork-mascara-um-defeito-de-produto-que-o-upstream-mantem-exposto-de-proposito`, com roadmap em `backlog/`. Ela carrega o mecanismo medido no ML-0A,
+a premissa da `ADR-2026-08-29` que a medição derruba, e três opções — alinhar ao upstream, manter o
+nosso, ou `eol=lf` só na governança — **sem escolher nenhuma**. Decidir exige medir antes o efeito de
+docs em CRLF nos nossos gates, e é o AC2 dela.
+
+Nenhum arquivo compartilhado foi tocado neste ML.
 
 ## Wave 2 — Os cinco ACs
 
@@ -294,7 +303,7 @@ viraram PR.
 
 ## Residual declarado
 
-- **Os 8 mascarados** (ML-0A): enquanto a REQ própria não fechar, o ratchet aqui não vê regressão
+- **Os 8 mascarados** (ML-0A): enquanto a REQ própria (`REQ-2026-09-11-o-gitattributes-do-fork-mascara-um-defeito-de-produto-que-o-upstream-mantem-exposto-de-proposito`) não fechar, o ratchet aqui não vê regressão
   nesses 8 nomes, e os avisos de "sumida" que ele emite sobre eles não significam correção.
 - **Sumida é aviso, não reprovação** — decisão escrita do mantenedor, e aceita: consertar um teste não
   pode quebrar o CI. A distinção entre corrigido, renomeado e não-executa fica na `removal_note`.
