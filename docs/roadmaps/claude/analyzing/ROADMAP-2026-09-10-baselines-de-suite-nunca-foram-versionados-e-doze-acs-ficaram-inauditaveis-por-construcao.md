@@ -1,5 +1,5 @@
 ---
-status: backlog
+status: analyzing
 date: 2026-09-10
 req: "docs/requisições/claude/REQ-2026-09-10-baselines-de-suite-nunca-foram-versionados-e-doze-acs-ficaram-inauditaveis-por-construcao.md"
 squad: "claude"
@@ -7,7 +7,7 @@ squad: "claude"
 
 # Roadmap: baselines de suíte nunca foram versionados, e doze ACs ficaram inauditáveis por construção
 
-> Created: 2026-09-10 | Status: backlog
+> Created: 2026-09-10 | Status: analyzing
 
 ## 🔴 Correção de 2026-09-10 — são cinco ACs, não doze, e estão em `(d)`
 
@@ -83,6 +83,10 @@ O que isso já prova, sem precisar da causa: **a lista dele não se transfere co
 repositórios no mesmo tipo de runner.** É o argumento da `d2_note` dele, aplicado agora à lista **dele**
 no **nosso** CI. O mecanismo se transfere; o conteúdo, não.
 
+*(Corrigido em 2026-09-10 no ML-0A: a causa foi medida, e é outra. O **nosso** `.gitattributes`
+mascara aqui um defeito de produto que o CI dele expõe. A lista dele está certa; quem diverge é a
+configuração deste fork. Ver o resultado do ML-0A.)*
+
 ### O que a espera invalidou: o AC1, por mérito
 
 O AC1 pede as listas *"geradas hoje"* e versionadas em `scripts/testdata/`, e foi escrito com a medição
@@ -122,7 +126,8 @@ Ler o `check-windows-known-failures.py` **inteiro** antes de desenhar qualquer c
 
 1. reescrever o AC1 citando esta seção;
 2. decidir a convergência de AC2 a AC4 — e a primeira pergunta já está posta pelos oito "sumidos": uma
-   lista para este fork teria de ser colhida do **nosso** CI, não herdada do dele.
+   lista para este fork teria de ser colhida do **nosso** CI, não herdada do dele. *(Respondida no
+   ML-0A, e ao contrário: colher do nosso CI gravaria o mascaramento na lista. Não se colhe.)*
 
 ## Status Legend
 ⬜ Pendente · 🔄 Em andamento · ✅ Concluído · ❌ Bloqueado
@@ -131,7 +136,7 @@ Ler o `check-windows-known-failures.py` **inteiro** antes de desenhar qualquer c
 > Dependencies: none. **Bloqueia a implementação.**
 
 ### ML-0A — Enumeração, ameaça e falsificação
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:** —
 **Actions:**
 
@@ -156,29 +161,88 @@ Ler o `check-windows-known-failures.py` **inteiro** antes de desenhar qualquer c
 4. **Residual declarado.**
 
 **Acceptance criteria:**
-- [ ] As quatro seções respondidas com evidência
-- [ ] Nenhuma linha de implementação escrita neste ML
+- [x] As quatro seções respondidas com evidência — ver o resultado abaixo
+- [x] Nenhuma linha de implementação escrita neste ML
 
-## Wave 1 — Os baselines
+#### Resultado do ML-0A — 2026-09-10
 
-### ML-1A — Gerar e versionar, por nome
+**1. Enumeração derivada.** Cinco ACs, um por REQ, todos gravados como `(d)`. Derivado na #95, com o
+comando escrito na seção de correção da REQ; a derivação reproduz os 11 `(d)` da auditoria.
+
+**2. O ratchet do upstream, lido inteiro.** As 1446 linhas do `check-windows-known-failures.py` e a
+ligação no job `windows-full-suites`. Ele cobre AC1 a AC4 por desenho; a tabela de convergência, AC por
+AC, está na REQ.
+
+**3. Falsificação — a causa dos 8, medida nas duas direções.** Mesma máquina, mesmo git, mesmo
+`core.autocrlf=true`, dois worktrees:
+
+| worktree | arquivos rastreados com `\r` (integrations + npm) | 4 testes Go | 4 testes Node |
+|---|---|---|---|
+| nosso, `9e7044e` | 0 de 172 | 4 PASS | 4 ok |
+| dele, `e4d8349` | 65 de 172 — assets de agents e skills, nos dois runtimes | 4 FAIL | 4 not ok |
+
+A diferença é o `.gitattributes`. O nosso tem `*.md text eol=lf` (ML-4, `da4f439`, 2026-08-16). O
+dele exclui essa regra **de propósito, e por medição**: há uma seção que lista, arquivo por arquivo,
+`*/integrations/assets/**` e `internal/integrations/testdata/*.golden.*` como entradas que o produto
+processa. O motivo, nas palavras dele: *"O parser de frontmatter é CEGO A CRLF"*. Forçar LF no checkout
+esconderia o defeito em vez de curá-lo — e é exatamente o que o nosso bloco faz aqui.
+
+🔴 **Um remédio foi falsificado antes de virar issue.** Com uma linha só,
+`internal/integrations/testdata/** text eol=lf`, os goldens ficaram LF (187 `\r` → 0) e **os 8
+continuaram falhando**: o renderizador lê os assets (`//go:embed assets`), não só os goldens. A issue
+que eu ia abrir pediria ao mantenedor que escondesse um defeito que ele documentou para não esconder.
+
+Os 8 nomes, que o ratchet reporta aqui como "sumidos":
+
+```
+go    TestRenderOpenCodeAgent_CRLFSourceMatchesLF
+go    TestRenderSubagentRouteInjectsIdentity_CRLFSourceMatchesLF
+go    TestRenderWithoutIdentityMatchesFrozenGoldens
+go    TestResolveAgentModelMatchesRender
+node  gemini e kiro (mesma representação agent-markdown do cursor) permanecem bit-a-bit inalterados
+node  opencode-agent renderer: source CRLF renderiza byte-idêntico ao source LF (ADR CRLF)
+node  renderers produce native deterministic formats
+node  sem identidade — saída idêntica ao comportamento pré-existente (não-regressão)
+```
+
+**4. Residual e o que isso muda.**
+
+- 🔴 **Os 8 avisos de "sumida" dizem, na prática, "corrigido" sobre um defeito que está mascarado.**
+  O ratchet sugere mover os 8 para `removed` com `removal_note`; aqui, a nota verdadeira seria
+  "escondido pela configuração do fork", que não existe no vocabulário dele — e com razão.
+- A `ADR-2026-08-29` classifica o `.gitattributes` como **local**, "configuração deste repositório". A
+  medição mostra que ele **não é inerte**: muda o resultado de 8 testes de produto no Windows. É **outra
+  causa** — configuração local mascarando defeito de produto — e não fecha com nenhum ML desta REQ.
+  Pela Regra de Causa Raiz, vai para REQ própria, com este mecanismo escrito nela (ML-1B).
+- **Não medido:** que o runner Windows do CI tenha `core.autocrlf=true`. O log não imprime. A ligação
+  com o CI é por **consistência**: exatamente estes 8 falham no CI dele e passam no nosso.
+
+## Wave 1 — Convergência com o ratchet do upstream (reescrita em 2026-09-10, no ML-0A)
+
+A versão anterior desta wave construía um gate **nosso**: listas em `scripts/testdata/` e um
+comparador próprio. O ML-0A mediu que o ratchet do upstream já roda no nosso CI e satisfaz AC1 a AC4
+por desenho — construir o nosso seria a segunda solução. Ficam só as lacunas do fork.
+
+### ML-1A — O self-test do ratchet passa a rodar no nosso CI
 **Status:** ⬜ Pendente
-**Files affected:** `scripts/testdata/`
+**Files affected:** `.github/workflows/local-gates.yml` (só nosso)
 **Acceptance criteria:**
-- [ ] `pypi` e `npm`, uma falha por linha, ordenado, formato estável
-- [ ] O comando que gera fica **escrito no cabeçalho do próprio baseline** — baseline sem receita
-      envelhece e ninguém sabe refazer
-- [ ] Denominador impresso: quantos testes rodaram, quantos falharam
+- [ ] `python3 scripts/check-windows-known-failures.py --self-test` roda no `local-gates.yml`, em
+      `ubuntu-latest`. Hoje não roda em lugar nenhum do nosso CI: o `parity-rest` morre na linha 78,
+      antes de chegar a ele
+- [ ] Falsificado nos dois sentidos: com um caso do self-test quebrado o job reprova; intacto, passa
+- [ ] Nenhum arquivo compartilhado tocado
 
-### ML-1B — O gate
+### ML-1B — Os 8 mascarados vão para REQ própria
 **Status:** ⬜ Pendente
-**Files affected:** `scripts/`
+**Files affected:** `docs/requisições/claude/`, este roadmap
 **Acceptance criteria:**
-- [ ] Compara por **conjunto**: acusa **nova** e **sumida**, separadamente
-- [ ] Diz explicitamente que saldo zero não é conjunto igual
-- [ ] Falha se a suíte não rodar, se o baseline estiver vazio, ou se o extrator devolver zero nomes
-- [ ] 🔴 Falha **sumida** também é achado, não boa notícia: pode ser teste removido, renomeado, ou
-      suíte que deixou de carregar
+- [ ] REQ própria aberta para a causa — configuração local mascarando defeito de produto —, com o
+      mecanismo medido no ML-0A escrito nela
+- [ ] A decisão sobre o nosso `.gitattributes` é dessa REQ, não desta: alinhar ao do upstream desfaz o
+      mascaramento, mas muda o fim de linha dos nossos `docs/*.md` no Windows, que os nossos gates leem
+- [ ] 🔴 Nenhuma edição no `.github/windows-known-failures.json`: é arquivo compartilhado, e a lista
+      dele está **certa**
 
 ## Wave 2 — Os cinco ACs
 
@@ -200,6 +264,10 @@ Ler o `check-windows-known-failures.py` **inteiro** antes de desenhar qualquer c
 
 ## Residual declarado
 
+- **Os 8 mascarados** (ML-0A): enquanto a REQ própria não fechar, o ratchet aqui não vê regressão
+  nesses 8 nomes, e os avisos de "sumida" que ele emite sobre eles não significam correção.
+- **Sumida é aviso, não reprovação** — decisão escrita do mantenedor, e aceita: consertar um teste não
+  pode quebrar o CI. A distinção entre corrigido, renomeado e não-executa fica na `removal_note`.
 - **Um baseline de hoje não valida o passado.** Ele fecha a auditabilidade daqui para a frente. A
   afirmação de agosto morre como não verificada, e isso é o resultado honesto.
 - **As 15 falhas do pypi ficam.** São produto do upstream; corrigi-las aqui criaria divergência.
