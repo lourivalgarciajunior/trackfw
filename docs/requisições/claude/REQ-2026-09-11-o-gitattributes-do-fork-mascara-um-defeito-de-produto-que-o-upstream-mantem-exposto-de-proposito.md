@@ -73,18 +73,18 @@ em CRLF no checkout Windows — e os nossos gates (`awk`, `grep`) e o `validate`
 
 ## Acceptance Criteria
 
-- [ ] **AC1** — Medido **por arquivo**, no checkout Windows, o que muda sob cada opção: quais arquivos
+- [x] **AC1** — Medido **por arquivo**, no checkout Windows, o que muda sob cada opção: quais arquivos
       rastreados passam de LF a CRLF. Por nome e agrupado por área, nunca só por contagem.
-- [ ] **AC2** — Medido o efeito de docs em CRLF em **cada** gate local nosso e no `validate`, com
+- [x] **AC2** — Medido o efeito de docs em CRLF em **cada** gate local nosso e no `validate`, com
       controle em LF: o que quebra, o que reprova pelo motivo errado, e o que passa.
-- [ ] **AC3** — Decisão escrita em ADR — nova, ou emenda à `ADR-2026-08-29` — sobre o que o
+- [x] **AC3** — Decisão escrita em ADR — nova, ou emenda à `ADR-2026-08-29` — sobre o que o
       `.gitattributes` deste fork cobre, com as opções consideradas e o motivo medido. O arquivo deixa
       de ser tratado como configuração inerte.
 - [ ] **AC4** — Depois da decisão, as **9 entradas** (nomeadas no roadmap) **falham** no nosso
       `windows-full-suites` como no CI do upstream (o ratchet passa a observar 38 de 38) — **ou**, se a
       decisão for manter o mascaramento, as 9 ficam declaradas por nome, com o motivo, na REQ dos
       baselines.
-- [ ] **AC5** — Nenhum arquivo de **produto** tocado (`internal`, `npm`, `pypi`, `cmd`, `.github`,
+- [x] **AC5** — Nenhum arquivo de **produto** tocado (`internal`, `npm`, `pypi`, `cmd`, `.github`,
       `Makefile`), e o `.github/windows-known-failures.json` em particular. O `.gitattributes` é o
       objeto da decisão, e a ADR-2026-08-29 já o declara local.
 - [ ] **AC6** — `validate` e os gates locais verdes ao fim, com o binário da árvore reconstruído.
@@ -109,7 +109,10 @@ A **C** parece a candidata natural — a nossa governança em LF, as entradas do
 —, mas é hipótese até o AC1 e o AC2 medirem.
 
 ## Linked ADR
-ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
+ADR: docs/adr/ADR-2026-09-11-o-gitattributes-do-fork-alinha-ao-upstream-porque-mascarava-defeito-de-produto-sem-custo-medido.md
+
+> A `ADR-2026-08-29` continua valendo e é **emendada** por esta: o `.gitattributes` deixa de ser
+> classificado como configuração local e passa a upstream, pelo motivo medido.
 
 ## Blocked by ADRs
 <!-- none -->

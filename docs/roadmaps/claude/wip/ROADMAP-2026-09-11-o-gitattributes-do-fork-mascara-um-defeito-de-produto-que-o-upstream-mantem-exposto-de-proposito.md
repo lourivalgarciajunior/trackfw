@@ -35,7 +35,7 @@ Windows, um defeito de produto que o upstream mantém exposto de propósito.
       edição em curso
 
 ### ML-0B — O efeito nos nossos gates (AC2)
-**Status:** 🔄 Em andamento
+**Status:** ✅ Concluído
 **Files affected:** —
 **Acceptance criteria:**
 - [ ] Cada gate local e o `validate` rodados sobre docs em CRLF, com controle em LF
@@ -104,18 +104,45 @@ O agregador abortou na guarda de runtimes (`bin/trackfw` e `npm/bin/trackfw` aus
 partir de uma execução que não rodou gate nenhum. Fica registrado como *não medido*, nunca como
 *passou*.
 
+### Medição final do ML-0B (AC2) — 2026-09-11
+
+🔴 **A primeira medição foi retratada.** Ela dizia "110 de 180 docs em CRLF"; o laço que produziu esse
+número lia os caminhos citados pelo `git ls-files` e errava com acento. Refeito com `git ls-files -z`,
+guarda de vacuidade (confirma que os 180 foram abertos) e recusa de medir se a fase CRLF não montar:
+
+```
+antes (.gitattributes nosso)            2 de 180 com CR   (demo.gif e .trackfw-log)
+fase CRLF (.gitattributes do upstream) 180 de 180 com CR
+```
+
+Com **180 de 180** comprovados por nome, sobre a opção A:
+
+| gate | veredito |
+|---|---|
+| `check-req-layout` · `check-referential-integrity` · `check-inherited-req` | rc=0 |
+| `check-req-done-com-criterio-aberto` · `check-upstream-content` · `check-slug-inventory` | rc=0 |
+| `check-upstream-sync-falsify` · `check-os-predicate-classification` · `measure-os-predicate-sites` | rc=0 |
+| `trackfw validate` | ✓ sem violações |
+
+**O custo de alinhar, que a REQ dizia não estar medido, é ZERO nos nossos gates.**
+
+O décimo gate, `check-subcommand-parity`, saiu `exit 1` mudo no worktree — e isso **não é veredito
+sobre CRLF**: falta `node_modules` ali, e o próprio agregador documenta a assinatura desde 2026-09-10
+(*"um gate que morre calado é indistinguível de um gate que reprovou"*). Na árvore principal o CLI
+Node responde normalmente.
+
 ## Wave 1 — A decisão (AC3)
 
 ### ML-1A — ADR
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:** `docs/adr/`
 **Acceptance criteria:**
 - [ ] ADR nova, ou emenda à `ADR-2026-08-29`, com as opções e o motivo medido
 
 ## Wave 2 — Aplicar e provar (AC4 a AC6)
 
-### ML-2A — O `.gitattributes`, e os 8 no CI
-**Status:** ⬜ Pendente
+### ML-2A — O `.gitattributes`, e as 9 no CI
+**Status:** 🔄 Em andamento — aplicado; a prova é o CI
 **Files affected:** `.gitattributes`
 **Acceptance criteria:**
 - [ ] Os 8 falham no nosso `windows-full-suites` (38 de 38 observados) — ou ficam declarados por nome,
