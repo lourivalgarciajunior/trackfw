@@ -694,10 +694,26 @@ depois que a medição fechou as saídas: remover está vetado em 28 de 28 (26 p
 barrier, 2 por ADR nossa), e mover está proibido pelo escopo negativo. Sobrou declarar — e a
 declaração tem gate, senão alguém apaga a linha e nada acusa.
 
-🔴 **A declaração vive só no frontmatter, e isso foi medido.** O `req list` dos três runtimes lê o
-status de uma linha do **corpo** (`> Date: … | Status: <status>`), não do frontmatter — então uma
-nota em blockquote abaixo do H1 poderia virar o "status" da REQ. Falsificado por efeito: `req list`
-antes e depois das 28 edições é byte a byte idêntico, 66 linhas de cada lado.
+🔴 **A declaração vive só no frontmatter, e isso foi medido.** Quando as 28 edições entraram, o
+`req list` dos três runtimes lia o status de uma linha do **corpo** (`> Date: … | Status: <status>`),
+não do frontmatter — e uma nota em blockquote abaixo do H1 poderia virar o "status" da REQ.
+Falsificado por efeito na época: `req list` antes e depois das 28 edições saiu byte a byte idêntico.
+
+**Isso mudou com o [#341](https://github.com/kgsaran/trackfw/pull/341) do upstream (2026-09-12):** o
+`req list` passou a ler o `status:` do **frontmatter**, e só cai no corpo quando o frontmatter não tem
+o campo. Medido com o binário antes e depois do merge, no mesmo acervo:
+
+```
+70 REQs listadas, casadas por nome   48 mudaram · 22 iguais
+  unknown          -> status real      33
+  texto do corpo   -> status real       6    (ex.: "<status>` (regex ou strings.Split)")
+  status do corpo  -> status do frontmatter, que discordava   9
+depois: 0 unknown · 0 texto de corpo tomado por status
+```
+
+🔴 **O limite que sobra é o fallback:** REQ **sem** `status:` no frontmatter continua lendo o corpo,
+então o risco do blockquote vale para ela. Hoje nenhuma das 70 cai nisso — mas é propriedade do
+acervo, não garantia do comando.
 
 Como os outros, é **nosso**, e **não tem alvo no `Makefile`**, pelo mesmo motivo da seção abaixo.
 

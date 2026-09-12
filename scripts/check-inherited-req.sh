@@ -185,10 +185,15 @@ while IFS= read -r f; do
   # negativo já proibia mover.
   #
   # A declaração vive só no FRONTMATTER, de propósito: medido em 2026-09-09, o
-  # `req list` dos três runtimes lê o status de uma linha do CORPO
+  # `req list` dos três runtimes lia o status de uma linha do CORPO
   # (`> Date: … | Status: <status>`), não do frontmatter. Uma nota em blockquote
   # logo abaixo do H1 poderia ser capturada por aquele extrator. Falsificado por
-  # efeito: `req list` antes e depois das 28 edições é byte a byte idêntico.
+  # efeito na época: `req list` antes e depois das 28 edições saiu idêntico.
+  #
+  # Desde o #341 do upstream (2026-09-12) o `req list` lê o `status:` do
+  # frontmatter e só cai no corpo quando o campo falta. O risco do blockquote
+  # ficou restrito a REQ sem `status:` no frontmatter -- nenhuma das 70 hoje.
+  # Medição e números no CLAUDE.md, seção "Gate de REQ herdada".
   #
   # Sem esta checagem, a decisão seria decorativa -- alguém apaga a linha e nada
   # acusa.
