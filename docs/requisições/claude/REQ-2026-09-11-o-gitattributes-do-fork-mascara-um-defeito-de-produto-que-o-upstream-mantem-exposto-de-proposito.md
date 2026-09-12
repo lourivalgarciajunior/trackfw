@@ -89,6 +89,45 @@ em CRLF no checkout Windows — e os nossos gates (`awk`, `grep`) e o `validate`
       objeto da decisão, e a ADR-2026-08-29 já o declara local.
 - [x] **AC6** — `validate` e os gates locais verdes ao fim, com o binário da árvore reconstruído.
 
+## Veredito do AC4 — 2026-09-11, run 34664542939 (PR #115)
+
+**O ratchet, na íntegra:**
+
+```
+ML-2A/2B: 37 observed / 38 active / 0 removed — DESEQUILÍBRIO POR CLASSE.
+Go 14/14, Node-assert 10/10, Node-load 1/1, Python 12/13 [-1 resolvido].
+```
+
+**8 das 9 entradas foram desmascaradas.** Falsificado nas duas direções, comparando por nome o job
+`windows-full-suites` da PR contra o da `main`:
+
+| | resultado |
+|---|---|
+| falhas Go na PR | 14 |
+| falhas Go na `main` | 10 |
+| novas na PR | **exatamente as 4 desmascaradas** |
+| sumidas em relação à `main` | **nenhuma** |
+
+🔴 **A nona é imune por construção, e isso não é falha da decisão — é o critério ter presumido causa
+única.** O `test_barrier.py::test_barrier_cli_crlf_roadmap_gates_da_wave_e_reconhecido_e_comando_roda_e2e`
+monta a própria fixture em memória (`content = "
+".join([...])`) e faz **zero leituras de arquivo
+do repositório**. Nenhum `.gitattributes`, nosso ou do upstream, pode fazê-lo falhar ou passar. A
+ausência dele na corrida tem outra causa, e essa causa não é nossa.
+
+**Por que o AC4 fica ABERTO.** Ele exige "as 9 falham, 38 de 38"; o medido é 8 de 9 e 37 de 38.
+Marcá-lo seria reescrever o critério para caber no resultado — o que o
+`check-req-done-com-criterio-aberto.sh` recusa como saída, por escrito. Aposentar o nome exigiria
+`removal_note` no `.github/windows-known-failures.json`, que é **arquivo compartilhado** e está no
+escopo negativo desta REQ.
+
+**Duas saídas, e a escolha é do mantenedor deste repositório:**
+
+1. **Issue no upstream** pela nona entrada — a lista dele espera 13 falhas de Python e observa 12, e a
+   causa não é fim de linha. Fechado isso lá, o AC4 fecha aqui sozinho.
+2. **Veredito `(c) caducou`** para o AC4, escrevendo que a premissa de causa única foi falsificada
+   pela medição, e o alvo real eram 8 entradas.
+
 ## Negative Scope
 
 - **Não** corrigir o parser de frontmatter que não lida com CRLF. É produto do upstream, e ele já

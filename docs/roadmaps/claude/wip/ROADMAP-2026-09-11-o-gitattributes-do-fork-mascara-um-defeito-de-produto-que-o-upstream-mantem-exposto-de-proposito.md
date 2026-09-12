@@ -142,7 +142,7 @@ Node responde normalmente.
 ## Wave 2 — Aplicar e provar (AC4 a AC6)
 
 ### ML-2A — O `.gitattributes`, e as 9 no CI
-**Status:** 🔄 Em andamento — aplicado; a prova é o CI
+**Status:** ✅ Concluído no que dependia de nós — 8 de 9 desmascaradas; a nona é imune por construção (ver o veredito do AC4 na REQ)
 **Files affected:** `.gitattributes`
 **Acceptance criteria:**
 - [ ] Os 8 falham no nosso `windows-full-suites` (38 de 38 observados) — ou ficam declarados por nome,
