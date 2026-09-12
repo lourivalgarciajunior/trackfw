@@ -87,7 +87,7 @@ em CRLF no checkout Windows — e os nossos gates (`awk`, `grep`) e o `validate`
 - [x] **AC5** — Nenhum arquivo de **produto** tocado (`internal`, `npm`, `pypi`, `cmd`, `.github`,
       `Makefile`), e o `.github/windows-known-failures.json` em particular. O `.gitattributes` é o
       objeto da decisão, e a ADR-2026-08-29 já o declara local.
-- [ ] **AC6** — `validate` e os gates locais verdes ao fim, com o binário da árvore reconstruído.
+- [x] **AC6** — `validate` e os gates locais verdes ao fim, com o binário da árvore reconstruído.
 
 ## Negative Scope
 
