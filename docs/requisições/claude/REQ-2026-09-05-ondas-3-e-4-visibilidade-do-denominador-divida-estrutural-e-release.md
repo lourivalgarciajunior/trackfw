@@ -57,6 +57,72 @@ não-entregues, com o motivo. Dois dos oito itens saíram.
 | **F1** vocabulário canônico de ML | o nosso acervo já está normalizado e o `validate` está limpo; medir o dele exigiria rodar o `barrier`, que leva ~16 min e depende do corpus acoplado — que é justamente o [#277](https://github.com/kgsaran/trackfw/issues/277). Bloqueado por outro item aberto. |
 | **D2** Windows local para o mantenedor | não é issue: é o arranjo que já existe de fato. Este fork **é** o Windows dele há três dias, e sete achados saíram disso. Propor a formalização é conversa, não report. |
 
+## Re-medição de 2026-09-12 — cinco caducaram, um segue recusado, e o F1 foi REFUTADO
+
+Pedido: "vamos para a onda 3", depois "mede a onda 4". A REQ estava `Done` com 2 de 8 entregues, e
+**seis recusas justificadas**. Sete dias depois, os motivos foram confrontados com o mundo.
+
+### Onda 3 — A1, F3, G3
+
+| item | motivo em 05/09 | medido em 12/09 | veredito |
+|---|---|---|---|
+| **A1** | — | entregue: virou a [#278](https://github.com/kgsaran/trackfw/issues/278), fechada por ele | entregue |
+| **F3** `doctor --governance` | "11 de 13 roadmaps em `wip/` parados no upstream" | **2** em `wip/`, **0** parados · **0 de 208** REQs `Open` com roadmap em `done/` | **caducou** |
+| **G3** release | "42 commits desde a v7.3.0, `CHANGELOG` sem seção" | **v7.4.0** (06/09), **v7.5.0** e **v7.5.1** (09/09); 14 commits desde a última tag | **caducou** |
+
+### Onda 4 — D1, D2, E1, F1, G1, G2
+
+| item | motivo em 05/09 | medido em 12/09 | veredito |
+|---|---|---|---|
+| **G2** os 41 `t.Skip` | — | entregue: virou a [#279](https://github.com/kgsaran/trackfw/issues/279) | entregue |
+| **D1** cache por gate | "exigiria medir o custo no CI dele; não tenho acesso" | ele **implementou sharding**, que havia descartado por escrito em 05/09 (`strategy.matrix.shard: [0,1,2,3]`); run inteiro em **526 s** | **caducou** |
+| **D2** Windows local | "não é issue, é o arranjo que já existe" | `scripts/windows-repro/run.ps1` **existe**, com sondas nos 3 runtimes; 5 jobs `windows-*` no CI dele | **caducou** |
+| **E1** `upstream sync` | "cada merge me custa 23 conflitos" | ele não tem o subcomando nem `merge=ours`, mas **nós** resolvemos com o `scripts/upstream-sync.sh`, com falsificação. A dor não existe mais aqui | **caducou** |
+| **G1** quebrar os `validator` | "refatoração pura, sem defeito medido" | cresceram de 2794/3684/3844 para **2988/4042/4325** linhas — crescimento não é defeito | **segue recusado** |
+| **F1** vocabulário de status de ML | "medir o dele exigiria o `barrier` (~16 min) e o corpus acoplado do #277" | **REFUTADO por medição** — ver abaixo | **refutado** |
+
+### 🔴 O F1: o motivo da recusa era falso, e a proposta também
+
+**O bloqueio nunca existiu.** A medição saiu por `git grep` sobre as refs dele, em segundos, sem
+tocar no `barrier` nem no corpus do #277.
+
+**E o que ela mostrou refuta a proposta.** O acervo dele tem **25 tokens distintos** de status em 1088
+ocorrências (o nosso: 8 em 427). Mas o F1 propunha "vocabulário canônico porque gerador e verificador
+discordam" — e **eles não discordam**. Reimplementei o predicado real (`internal/commands/barrier.go`,
+`statusIsComplete`) e confrontei os 25:
+
+- `✅ Concluído` (730), `done` (91), `✅ concluído` (50), `CONCLUIDO` (5), `✅ Concluido` (1) → **completo**,
+  porque `normalizeStatusToken` dobra diacríticos e minúscula de propósito;
+- `⬜ Pendente` (163), `🔄 Em andamento` (11), `pending` (9), `❌ Cancelado`, `PENDENTE`, `ABANDONADO`,
+  `🚫 **Abandonado**` → **não-completo**, corretamente;
+- `⬜ Pendente ✅` (2) → **não-completo**, e o código comenta que um `Contains(marker, "✅")` classificaria
+  errado — o predicado olha só `Fields[0]` justamente por isso;
+- `d<U+1DC0>one` → **não-completo**: é o ataque de combining mark que ele fecha com `hasDisallowedCombiningMark`.
+
+Paridade preservada: os três runtimes aceitam `✅`, `done`, `concluido`, `feito`, `finalizado`, `ok`,
+`complete`. **Não há divergência entre gerador e verificador.** As 25 formas são variação cosmética
+que um normalizador endurecido absorve.
+
+🔴 **Quatro medições, três erradas — e isso fica escrito.** "12 grafias" veio de um regex de duas
+palavras que truncava `🔄 Em andamento` e capturava crases; "246 formas" contava prosa anexada
+(`· **Agente:** …`) como vocabulário; "9 tokens" mutilava sequências UTF-8 e perdia 90% do corpus.
+Só a quarta, com extrator que opera em caracteres, deu o número estável. É o mesmo padrão que o
+`check-inherited-req.sh` existe para impedir, e desta vez ele apareceu **antes** de virar issue.
+
+### Efeito colateral achado no nosso próprio acervo
+
+`ROADMAP-2026-08-29-atualizar-para-a-upstream-main-com-o-fix-de-symlink.md:159` escreve
+`**Status:** done, com um criterio **nao cumprido** e declarado`. O primeiro campo é `done,` **com
+vírgula**, que não está no vocabulário: o produto lê aquele ML como **não concluído**.
+
+O formato com emoji tolera ressalva (`✅ Concluído — commit …` continua completo, porque `Fields[0]`
+é `✅`); o formato `done` não. Registrado aqui; não é defeito do produto, é uso nosso.
+
+### Conclusão
+
+**Nada a reportar ao upstream.** Cinco itens caducaram porque ele resolveu, um segue sem defeito
+medido, e o único que parecia achado foi refutado pelo próprio código dele. A REQ permanece `Done`.
+
 ## Negative Scope
 
 - **Não** abrir issue para item sem achado medido.

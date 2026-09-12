@@ -156,7 +156,7 @@ Este era o primeiro teste real dos quatro gates locais. Eles fizeram o que exist
 > Dependencies: ML-1A, ML-1B
 
 ### ML-2A — Symlink e regressao
-**Status:** done, com um criterio **nao cumprido** e declarado
+**Status:** ✅ Concluído — um criterio **nao cumprido** e declarado
 
 #### Regressao: zero
 
