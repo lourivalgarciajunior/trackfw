@@ -407,6 +407,54 @@ O gate existe porque a ADR foi aceita e, cinco dias depois, **7 REQs estavam em 
 o `validate` dizendo `✓ No violations found`. E o custo não era a desarrumação: aquele nível a mais
 produziu um **ponto cego de medição** que fez um número publicado sair errado.
 
+## Branch `feat/fix/refactor` custa 3 jobs vermelhos por motivo falso
+
+🔴 **Não leia estes três como regressão** — `python (3.10)`, `python (3.12)` e `windows-full-suites`.
+Em branch `feat/`, `fix/` ou `refactor/` eles reprovam **sem que a árvore tenha defeito**. Medido em
+2026-09-11, na PR #112 deste fork, com controle nas duas direções:
+
+| cenário | resultado |
+|---|---|
+| `main`, arquivos da `main` | 30 passaram |
+| `main`, **com os arquivos da PR por cima** | 30 passaram |
+| branch `fix/…`, mesma árvore | **8 falharam** |
+| branch `chore/…`, **mesma árvore, só o nome mudou** | 64 passaram |
+
+A quarta linha é o discriminante: **nenhum byte mudou** entre ela e a terceira.
+
+**O mecanismo.** `validate_branch_has_wip_roadmap` (`pypi/trackfw/validator.py:1990`) só se aplica a
+branch `feat/fix/refactor` (2014) e, quando nenhum roadmap casa, devolve uma **`str` crua** (2025). O
+`_apply_rule` (4205) documenta no docstring que recebe *"lista de dicts"*; o `_enrich_items` (429)
+deixa o item passar intacto pelo `else` final. A `str` entra em `violations` no meio de dicionários, e
+todo teste que faz `[item["message"] for item in items]` estoura com `TypeError`.
+
+O que faz a regra disparar **dentro de um teste** é a assimetria de resolução:
+
+```
+cwd = raiz do repo  ->  wip_dirs = docs/roadmaps/<agente>/wip   matched=True   candidatos=68   (nao dispara)
+cwd = tmpdir        ->  wip_dirs = docs/roadmaps/wip (default)  matched=False  candidatos=0    (dispara)
+```
+
+O nome da branch vem do git do repositório real; os roadmaps são procurados a partir do `cwd`, que na
+fixture temporária não tem `trackfw.yaml` e cai no default flat.
+
+**Os três runtimes devolvem string crua** nesta regra — Go `[]string`, Node array de string, Python
+lista. O que é só do Python é ter teste que lê `item["message"]`: na mesma execução de CI, `go` e
+`node` ficaram verdes e os dois de Python, vermelhos. Não é divergência de implementação.
+
+**O `windows-full-suites` cai pelo mesmo motivo**: o ratchet acusa as 8 falhas novas de Python. 🔴 As
+**10 falhas de Go** que aparecem nesse job são **idênticas por nome** às do último run verde da
+`main` — ruído conhecido, tolerado, e não têm relação com isto.
+
+**O que fazer.** Trabalho sem uma linha de produto — gate, script, governança — vai em `chore/` ou
+`docs/`, que a regra não alcança, e que já é o tipo correto para esse trabalho. Se a branch precisar
+mesmo ser `fix/`, conte com os três vermelhos e **compare por nome** contra o último run da `main`
+antes de investigar qualquer um deles.
+
+Reportado no upstream como sítio da mesma causa:
+[#261](https://github.com/kgsaran/trackfw/issues/261#issuecomment-5641879945). O arquivo é o mesmo da
+`main` dele (blob `26a5f6c854bd`): não há divergência local envolvida.
+
 ## Ponto cego local: os 3 gates de PATH curado não rodam nesta máquina
 
 `check-ship-force-parity.sh`, `check-push-force-parity.sh` e `check-release-tag-parity.sh` **não
