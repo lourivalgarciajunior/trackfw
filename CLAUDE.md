@@ -407,6 +407,28 @@ O gate existe porque a ADR foi aceita e, cinco dias depois, **7 REQs estavam em 
 o `validate` dizendo `✓ No violations found`. E o custo não era a desarrumação: aquele nível a mais
 produziu um **ponto cego de medição** que fez um número publicado sair errado.
 
+## `req new` e `roadmap new` exigem `--agent` aqui — são três namespaces
+
+Desde o merge da [#330](https://github.com/kgsaran/trackfw/pull/330) do upstream (2026-09-12), em
+projeto `by_agent` com **dois ou mais** agentes o comando **falha nomeando as opções** em vez de
+escolher `agents[0]` em silêncio. O nosso `trackfw.yaml` declara `[apolo, artemis, claude]`, então
+isto vale para todo uso diário:
+
+```
+trackfw req new "titulo"                  rc=1
+  Error: by_agent project has multiple agent namespaces (apolo, artemis, claude): use --agent
+
+trackfw req new "titulo" --agent claude   rc=0
+  created docs/requisições/claude/REQ-2026-09-12-titulo.md
+```
+
+**Não é regressão — é a correção da nossa [#320](https://github.com/kgsaran/trackfw/issues/320).** O
+comportamento antigo escrevia em `apolo/` sem avisar, que é exatamente o defeito que relatamos. A
+flag passou a existir em `req new` **e** `roadmap new` nos três runtimes, e o `roadmap new --req`
+agora **herda o agente da REQ** em vez de ignorá-lo.
+
+Medido por efeito em projeto temporário com os mesmos três agentes, antes de mesclar.
+
 ## Branch `feat/fix/refactor` custa 3 jobs vermelhos por motivo falso
 
 🔴 **Não leia estes três como regressão** — `python (3.10)`, `python (3.12)` e `windows-full-suites`.
