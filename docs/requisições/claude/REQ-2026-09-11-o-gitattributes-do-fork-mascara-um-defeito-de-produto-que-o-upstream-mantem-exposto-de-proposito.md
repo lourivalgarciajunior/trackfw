@@ -31,12 +31,18 @@ O nosso `.gitattributes` tem um bloco próprio, de 2026-08-16 (ML-4, `da4f439`, 
 assets de integração e os goldens são entrada que o produto processa, e o parser de frontmatter não
 lida com CRLF. Forçar LF ali esconderia o defeito em vez de curá-lo.
 
-É exatamente o que o nosso bloco faz: no Windows, o checkout grava os assets em LF, e os 8 testes que
-expõem o defeito passam aqui.
+É exatamente o que o nosso bloco faz: no Windows, o checkout grava os assets em LF, e as **9 entradas**
+da lista que expõem o defeito passam aqui — 5 identificadores de teste e 4 descrições de asserção do
+Node. A lista nomeada está no roadmap, seção *"Correção de número — são 9, não 8"*.
 
 🔴 Um remédio de uma linha (`internal/integrations/testdata/** text eol=lf`) foi falsificado no ML-0A:
 os goldens ficaram LF e os 8 **continuaram falhando** — o renderizador lê os assets
 (`//go:embed assets`), não só os goldens.
+
+> **O "8" desta frase é o número daquela medição, de 2026-09-10, e fica como ela o escreveu.** Ele
+> nunca foi listado por nome, então não dá para dizer qual entrada faltou. A medição de 2026-09-11,
+> estável em dois runs (`34660260112` e `34659208572`), dá **9 de 38**, nomeadas no roadmap. Corrigir
+> o número aqui seria reescrever o que a medição anterior afirmou.
 
 ### Por que isto é outra causa, e outra REQ
 
@@ -49,8 +55,8 @@ Causa Raiz, REQ própria, com o mecanismo escrito.
 A `ADR-2026-08-29-adotar-upstream-como-base` classifica o `.gitattributes` como **local** —
 "configuração deste repositório", ao lado do `trackfw.yaml`. A mesma ADR ainda o lista entre as
 correções que seriam "candidatas naturais a contribuição para o upstream". A medição mostra as duas
-coisas erradas: ele **não é inerte** para o produto (muda o resultado de 8 testes no Windows), e a
-parte que mascara é justamente a que o upstream recusa por escrito.
+coisas erradas: ele **não é inerte** para o produto (muda o resultado de 9 entradas da lista no
+Windows), e a parte que mascara é justamente a que o upstream recusa por escrito.
 
 ### Onde o efeito existe, e onde não
 
@@ -74,9 +80,10 @@ em CRLF no checkout Windows — e os nossos gates (`awk`, `grep`) e o `validate`
 - [ ] **AC3** — Decisão escrita em ADR — nova, ou emenda à `ADR-2026-08-29` — sobre o que o
       `.gitattributes` deste fork cobre, com as opções consideradas e o motivo medido. O arquivo deixa
       de ser tratado como configuração inerte.
-- [ ] **AC4** — Depois da decisão, os 8 nomes **falham** no nosso `windows-full-suites` como no CI do
-      upstream (o ratchet passa a observar 38 de 38) — **ou**, se a decisão for manter o mascaramento,
-      os 8 ficam declarados por nome, com o motivo, na REQ dos baselines.
+- [ ] **AC4** — Depois da decisão, as **9 entradas** (nomeadas no roadmap) **falham** no nosso
+      `windows-full-suites` como no CI do upstream (o ratchet passa a observar 38 de 38) — **ou**, se a
+      decisão for manter o mascaramento, as 9 ficam declaradas por nome, com o motivo, na REQ dos
+      baselines.
 - [ ] **AC5** — Nenhum arquivo de **produto** tocado (`internal`, `npm`, `pypi`, `cmd`, `.github`,
       `Makefile`), e o `.github/windows-known-failures.json` em particular. O `.gitattributes` é o
       objeto da decisão, e a ADR-2026-08-29 já o declara local.
