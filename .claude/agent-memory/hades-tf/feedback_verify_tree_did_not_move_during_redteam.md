@@ -24,6 +24,17 @@ silently mixing evidence from two code states, and the coordinator then formally
 described code that either didn't exist yet or had already been superseded, undermining every "not
 broken" claim in it.
 
+**Aconteceu de novo na sessão seguinte, 2026-09-22, ML-2A do coletor** ([[trackfw-radar-coletor-redteam]]).
+Comecei em `d420dd1`, terminei em `c6082f8`: entraram 5 commits, entre eles um que **corrigia um
+achado meu** (`13ac3db`, tmpfs no serviço `coletor`) e um que acrescentava um controle novo
+(`cd58583`, recusa de clone raso). Desta vez o sinal não foi o `git status` — o commit
+`6d9b9f4` pôs a minha pasta de sonda no `.gitignore`, então o `status` ficava limpo. O que
+denunciou foi um **número de linha que não bateu**: `grep -n` devolveu 154 onde o meu `Read` tinha
+mostrado 147. Reconferi e reproduzi todos os achados vivos contra o `HEAD` final antes de escrever.
+Lição acrescentada: num repositório onde o trabalho é concorrente, `git status` limpo **não** é
+prova de árvore parada — compare `git rev-parse HEAD` no início e no fim, e trate divergência de
+numeração de linha como alarme, não como erro de leitura.
+
 **How to apply:** For any red-team/audit task against a branch (not a tag/frozen SHA), snapshot
 `git status --short` + `git log --oneline -1` at the start of live testing and again before writing
 the final report. If they diverge, stop and reconcile — either the coordinator explicitly expands

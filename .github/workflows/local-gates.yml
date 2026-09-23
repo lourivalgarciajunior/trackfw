@@ -133,3 +133,27 @@ jobs:
             echo "::error::divergencia de produto deixou de ser zero"
             exit 1
           fi
+
+  # ---------------------------------------------------------------------------
+  # Job de Windows: o check-platform-predicates.sh só diz algo AQUI.
+  #
+  # 14 das 20 linhas do corpus divergem entre `esperado` e `nativo_windows`, e a
+  # linha do execbit reprovaria em `ubuntu-latest` por fato de NTFS — por isso ele
+  # nunca entrou no agregador, que roda em Linux. A consequência era um gate nosso
+  # que só rodava na máquina de desenvolvimento.
+  #
+  # O `check-orphan-gates.sh` do upstream (#409, 2026-09-23) tornou isso visível:
+  # script `check-*.sh` sem consumidor REPROVA o `parity-rest`. A saída honesta é
+  # dar a ele o consumidor que faltava, no sistema operacional para o qual ele
+  # existe — não citá-lo em algum arquivo para o grep achar.
+  # ---------------------------------------------------------------------------
+  gates-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Predicados de plataforma (só faz sentido no Windows)
+        run: bash scripts/check-platform-predicates.sh

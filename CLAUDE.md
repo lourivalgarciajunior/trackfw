@@ -430,17 +430,23 @@ Aqui o custo é maior que no upstream: o nosso `trackfw.yaml` tem `req_dir: docs
 e pode sair verde por não achar nada. Nenhum gate nosso chama o `parity-rest`; o CI roda num runner
 descartável. Se precisar rodar local, rode num worktree.
 
-## Contorno: `docs/roadmaps/done/.gitkeep` existe só por um teste do upstream
+## O contorno do `docs/roadmaps/done/.gitkeep` caiu em 2026-09-23
 
-Este fork é `by_agent`: roadmaps ficam em `docs/roadmaps/<agente>/done/`, e o `docs/roadmaps/done/`
-plano não tem conteúdo nosso. Ele existe, com um `.gitkeep` que explica o motivo, porque o
-`TestCorpusMeasurement_ReportOnly` (`internal/roadmapdoc`, #395 do upstream) faz `t.Fatalf` quando o
-diretório não existe — apesar de se declarar "report-only, never fails". Sem a pasta, no CI da PR #147:
-`go` e `windows-full-suites` reprovaram, e `parity-falsify-shard` e `parity-other-gates` foram
-**pulados**. Medido: com a pasta vazia o teste passa e o `validate` segue 0.
+Ficou de 2026-09-11 a 2026-09-23. O `TestCorpusMeasurement_ReportOnly` (`internal/roadmapdoc`) fazia
+`t.Fatalf` quando o `docs/roadmaps/done/` plano não existia — apesar de se declarar "report-only,
+never fails" —, e num fork `by_agent` essa pasta não tem conteúdo nosso. Reportado na
+[#396](https://github.com/kgsaran/trackfw/issues/396) e corrigido pelo upstream na
+[#409](https://github.com/kgsaran/trackfw/pull/409), que entrou aqui no merge de hoje.
 
-Reportado em [#396](https://github.com/kgsaran/trackfw/issues/396). **Remova a pasta quando o upstream
-corrigir o teste** — ela não é governança, e mantê-la depois disso é lixo com cara de estrutura.
+Medido nas duas direções antes de remover a pasta, com o mesmo teste:
+
+| | com `docs/roadmaps/done/` | sem a pasta |
+|---|---|---|
+| antes do #409 (`29381aea`, em worktree separado) | passa | **reprova** — `ReadDir … cannot find the file` |
+| depois do #409 | passa | **passa** |
+
+A linha de cima é o que justificava o contorno; a de baixo é o que o aposenta. Sem a segunda, remover
+seria fé; sem a primeira, eu não saberia se algum dia fez falta.
 
 ## Gate de layout de REQ (`scripts/check-req-layout.sh`)
 
