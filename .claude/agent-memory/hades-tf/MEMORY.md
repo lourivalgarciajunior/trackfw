@@ -23,3 +23,5 @@
 - [Verify the tree did not move mid-session during a red team](feedback_verify_tree_did_not_move_during_redteam.md) — undeclared concurrent commits landed while attacking trackfw-radar; check git status/mtimes before finalizing, not just at start
 - [trackfw-radar coletor red team (ML-2A)](project_trackfw_radar_coletor_redteam.md) — 2026-09-22, 81 vetores/13 achados; 1 alta: empresa A registra o caminho do clone de B e leva os eventos dela
 - [Comparar a unidade do validador com a da coluna](feedback_comparar_unidade_do_validador_com_a_da_coluna.md) — runa vs byte derruba a transação inteira e a falha some; pergunte também o que acontece quando o validador reprova
+- [trackfw-radar painel do gestor red team (ML-2A)](project_trackfw_radar_painel_redteam.md) — 2026-09-23, 64 vetores/14 achados; 1 alta: coleta sem filtro carrega autoria de ADR desde o ML-1J e vaza pessoa de outra equipe
+- [Classificação por entidade caduca quando o conteúdo muda](feedback_classificacao_por_entidade_caduca_quando_o_conteudo_muda.md) — "não é dado de pessoa" era verdade no ML-1C e falso no ML-1J; `field.JSON` aceita campo novo sem migração e sem revisão
