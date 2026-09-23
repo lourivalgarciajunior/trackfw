@@ -182,6 +182,33 @@ while IFS=$'\t' read -r fam caso bytes esp win nota; do
         na "$rot" "System32\\bash.exe ausente (WSL nao instalado) -- o cenario do corpus exige o stub"
         continue
       fi
+      # PRECONDICAO 2 (2026-09-23, medida no windows-latest do GitHub). A linha do
+      # corpus afirma que o System32 VENCE a resolucao por nome nu -- e isso depende
+      # da ORDEM do PATH, nao de o stub existir. No runner do GitHub o bash do Git
+      # vem ANTES do System32, entao a premissa da linha nao vale la.
+      #
+      # A precondicao olha a ORDEM no PATH, NUNCA o resultado observado: olhar o
+      # observado viraria "divergiu => N/A", que e tautologia e nunca reprova.
+      pos_sys32=-1
+      pos_git=-1
+      idx=0
+      OLD_IFS=$IFS
+      IFS=:
+      for _e in $PATH; do
+        _l=$(printf '%s' "$_e" | tr 'A-Z' 'a-z')
+        case "$_l" in
+          *system32*) [ "$pos_sys32" -lt 0 ] && pos_sys32=$idx ;;
+        esac
+        case "$_l" in
+          */git/bin*|*/git/usr/bin*|*/mingw64/bin*) [ "$pos_git" -lt 0 ] && pos_git=$idx ;;
+        esac
+        idx=$((idx+1))
+      done
+      IFS=$OLD_IFS
+      if [ "$pos_git" -ge 0 ] && { [ "$pos_sys32" -lt 0 ] || [ "$pos_git" -lt "$pos_sys32" ]; }; then
+        na "$rot" "o bash do Git precede o System32 no PATH (posicoes $pos_git vs $pos_sys32) -- a linha do corpus afirma o System32 vencendo"
+        continue
+      fi
       w=$(cmd //c where bash 2>/dev/null | tr -d '\r' | head -1 || true)
       case "$w" in
         *System32*|"") obs=stub-ou-erro ;;
