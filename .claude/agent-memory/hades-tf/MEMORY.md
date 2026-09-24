@@ -25,3 +25,6 @@
 - [Comparar a unidade do validador com a da coluna](feedback_comparar_unidade_do_validador_com_a_da_coluna.md) — runa vs byte derruba a transação inteira e a falha some; pergunte também o que acontece quando o validador reprova
 - [trackfw-radar painel do gestor red team (ML-2A)](project_trackfw_radar_painel_redteam.md) — 2026-09-23, 64 vetores/14 achados; 1 alta: coleta sem filtro carrega autoria de ADR desde o ML-1J e vaza pessoa de outra equipe
 - [Classificação por entidade caduca quando o conteúdo muda](feedback_classificacao_por_entidade_caduca_quando_o_conteudo_muda.md) — "não é dado de pessoa" era verdade no ML-1C e falso no ML-1J; `field.JSON` aceita campo novo sem migração e sem revisão
+- [trackfw-radar runner de delegacao red team (ML-2A)](project_trackfw_radar_runner_redteam.md) — 2026-09-24, 113 vetores/24 achados/5 altas; a mais bonita: ConferirAutoria pula o ramo inteiro quando a base e o PRIMEIRO pai de um merge
+- [So o parser de verdade decide injecao de config](feedback_so_o_parser_de_verdade_decide_injecao_de_config.md) — grep no arquivo gravado deu "INJETOU"; o git real disse chave ausente, porque o go-git escapa
+- [Medir pelo caminho do cmd, nao pela fixture](feedback_medir_pelo_caminho_do_cmd_nao_pela_fixture.md) — os 3 tetos de orcamento eram config morta: o cmd nao os passava e o helper de teste os preenchia a mao
