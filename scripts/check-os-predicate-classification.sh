@@ -145,7 +145,12 @@ eh_docstring_py() {  # <arquivo> <linha>: a linha esta DENTRO de uma docstring?
   case "$1" in *.py) ;; *) return 1 ;; esac
   [ "$2" -gt 1 ] || return 1
   local n
-  n=$(head -n "$(($2 - 1))" "$1" | grep -o '"""' | wc -l | tr -d ' ')
+  # O cano inteiro vai guardado: com `set -o pipefail`, um arquivo SEM aspas
+  # triplas faz o grep sair 1, o rc propaga pela captura e o gate morre num
+  # arquivo que simplesmente nao tem docstring. Forma que o
+  # check-unguarded-capture-rc do upstream reconhece.
+  n=$({ head -n "$(($2 - 1))" "$1" | grep -o '"""' | wc -l | tr -d ' '; } || true)
+  [ -n "$n" ] || n=0
   [ $((n % 2)) -eq 1 ]
 }
 
