@@ -18,23 +18,8 @@ import (
 // EvalSymlinks resolves it to /private/tmp/... — passing the unresolved path as
 // root causes false "escapes root" errors for files that are genuinely inside the
 // project. Falls back to the unresolved cwd if EvalSymlinks fails.
-// getwdFn is the single seam through which projectRoot reads the working
-// directory. os.Getwd failing is the ONLY error path of projectRoot
-// (filepath.EvalSymlinks failing falls back to the unresolved cwd and returns
-// nil), so injecting this variable is the portable, deterministic way for a test
-// to exercise the "root could not be established" branch of every call site.
-//
-// 🔴 The seam is at os.Getwd and NOT at projectRoot: internal/pathguard's
-// analyser keys provenance on the literal identifier `projectRoot` at the call
-// site (approvedResolvers / taintSourceCalls). Turning projectRoot itself into a
-// variable would strip resolver provenance from every guard root in this package
-// and make P2 report them as unresolved. See vault/notes/
-// chdir-removeall-nao-forca-getwd-falhar-no-windows-2026-09-17.md for why a
-// filesystem trick (chdir + RemoveAll) is not usable here.
-var getwdFn = os.Getwd
-
 func projectRoot() (string, error) {
-	cwd, err := getwdFn()
+	cwd, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("projectRoot: %w", err)
 	}
@@ -86,20 +71,24 @@ func scaffoldRoot(rootDir string) (string, error) {
 	if rootDir == "" || rootDir == "." {
 		return projectRoot()
 	}
-	// ML-8A / #402: Abs + EvalSymlinks-with-fallback is exactly what
-	// pathguard.ResolveRoot does; this was the third hand-written copy of it.
-	// Delegating keeps one implementation of "what a guard root must be".
-	return pathguard.ResolveRoot(rootDir)
+	abs, err := filepath.Abs(rootDir)
+	if err != nil {
+		return "", fmt.Errorf("resolving rootDir: %w", err)
+	}
+	if resolved, rerr := filepath.EvalSymlinks(abs); rerr == nil {
+		return resolved, nil
+	}
+	return abs, nil
 }
 
 // rejectScaffoldPath guards a path inside root before any write or MkdirAll.
-// It delegates to pathguard.RejectAndReport, which is the single site in the
-// binary that emits the containment refusal (ML-7B).
+// It calls pathguard.RejectSymlinks and returns a formatted error on failure.
 func rejectScaffoldPath(root, absTarget string) error {
-	// Thin adapter over pathguard.RejectAndReport: it must NOT re-wrap the error
-	// (the message already names the refused path) and must NOT print — the single
-	// emission point lives in pathguard (ML-7B).
-	return pathguard.RejectAndReport(root, absTarget)
+	if err := pathguard.RejectSymlinks(root, absTarget); err != nil {
+		fmt.Fprintf(os.Stderr, "trackfw: refusing write to %s: %v\n", absTarget, err)
+		return fmt.Errorf("refusing write to %s: %w", absTarget, err)
+	}
+	return nil
 }
 
 func Scaffold(cfg Config) error {
@@ -217,13 +206,12 @@ func installGlobalSkillInner(force bool) error {
 	}
 
 	// Guard: resolve home and use it as root for the global skill write.
-	// ML-8A / #402: one assignment from one resolver. The previous shape (Abs,
-	// then a conditional reassignment from EvalSymlinks) was behaviourally the
-	// same but bound absHome to the UNRESOLVED Abs(home), which is what the
-	// containment analyser's P2 reads.
-	absHome, absErr := pathguard.ResolveRoot(home)
+	absHome, absErr := filepath.Abs(home)
 	if absErr != nil {
 		return fmt.Errorf("resolving home: %w", absErr)
+	}
+	if resolved, rerr := filepath.EvalSymlinks(absHome); rerr == nil {
+		absHome = resolved
 	}
 	skillPath := GlobalClaudeSkillPath(home)
 	skillDir := filepath.Dir(skillPath)
@@ -243,15 +231,7 @@ func installGlobalSkillInner(force bool) error {
 		return nil
 	}
 
-	// Guard the leaf file — rejectScaffoldPath above covers the directory but not the file
-	// itself (RejectSymlinks walks upward from its argument and never descends below it).
-	// If SKILL.md already exists as a symlink pointing outside absHome, os.WriteFile would
-	// follow it silently. Guarding the file catches that case.
-	absSkillPath := filepath.Join(absHome, ".claude", "skills", "trackfw", "SKILL.md")
-	if err := rejectScaffoldPath(absHome, absSkillPath); err != nil {
-		return err
-	}
-	// write-containment-allowed: guarded by pathguard.RejectSymlinks via rejectScaffoldPath above
+	// write-containment-allowed: guarded by pathguard.RejectSymlinks at the enclosing write site
 	if err := os.WriteFile(skillPath, GlobalClaudeSkillContent(), 0644); err != nil {
 		return fmt.Errorf("writing SKILL.md: %w", err)
 	}
@@ -769,12 +749,7 @@ func generateClaudeCommandsInner(force bool) error {
 			skipped++
 			continue
 		}
-		// Guard the leaf file — directory guard above does not detect a symlinked filename.
-		absFilePath := filepath.Join(ccRoot, path)
-		if err := rejectScaffoldPath(ccRoot, absFilePath); err != nil {
-			return err
-		}
-		// write-containment-allowed: guarded by pathguard.RejectSymlinks via rejectScaffoldPath above
+		// write-containment-allowed: guarded by pathguard.RejectSymlinks at the enclosing write site
 		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 			return fmt.Errorf("writing %s: %w", path, err)
 		}
@@ -873,12 +848,7 @@ func generateValidateScript(cfg Config) error {
 
 	script := buildValidateScript(cfg)
 	path := filepath.Join("scripts", "trackfw-validate.sh")
-	// Guard the leaf file — directory guard above does not detect a symlinked script file.
-	absValidatePath := filepath.Join(vsRoot, path)
-	if err := rejectScaffoldPath(vsRoot, absValidatePath); err != nil {
-		return err
-	}
-	// write-containment-allowed: guarded by pathguard.RejectSymlinks via rejectScaffoldPath above
+	// write-containment-allowed: guarded by pathguard.RejectSymlinks at the enclosing write site
 	if err := os.WriteFile(path, []byte(script), 0755); err != nil {
 		return fmt.Errorf("writing validate script: %w", err)
 	}
@@ -976,11 +946,7 @@ func GenerateAttentionScripts(rootDir string) error {
 	}
 
 	signalPath := filepath.Join(scriptsDir, "trackfw-attention-signal.sh")
-	// Guard the leaf file — directory guard above does not detect a symlinked script file.
-	if err := rejectScaffoldPath(root, signalPath); err != nil {
-		return err
-	}
-	// write-containment-allowed: guarded by pathguard.RejectSymlinks via rejectScaffoldPath above
+	// write-containment-allowed: guarded by pathguard.RejectSymlinks at the enclosing write site
 	if err := os.WriteFile(signalPath, []byte(attentionSignalScript), 0755); err != nil {
 		return fmt.Errorf("writing attention signal script: %w", err)
 	}
@@ -995,11 +961,7 @@ func GenerateAttentionScripts(rootDir string) error {
 	fmt.Printf("  ✓ %s\n", filepath.Join("scripts", "trackfw-attention-signal.sh"))
 
 	cleanupPath := filepath.Join(scriptsDir, "trackfw-attention-cleanup.sh")
-	// Guard the leaf file — directory guard above does not detect a symlinked script file.
-	if err := rejectScaffoldPath(root, cleanupPath); err != nil {
-		return err
-	}
-	// write-containment-allowed: guarded by pathguard.RejectSymlinks via rejectScaffoldPath above
+	// write-containment-allowed: guarded by pathguard.RejectSymlinks at the enclosing write site
 	if err := os.WriteFile(cleanupPath, []byte(attentionCleanupScript), 0755); err != nil {
 		return fmt.Errorf("writing attention cleanup script: %w", err)
 	}
@@ -1042,11 +1004,7 @@ func GenerateCredentialGuardScript(rootDir string) error {
 	}
 
 	path := filepath.Join(scriptsDir, "trackfw-credential-guard.sh")
-	// Guard the leaf file — directory guard above does not detect a symlinked script file.
-	if err := rejectScaffoldPath(root, path); err != nil {
-		return err
-	}
-	// write-containment-allowed: guarded by pathguard.RejectSymlinks via rejectScaffoldPath above
+	// write-containment-allowed: guarded by pathguard.RejectSymlinks at the enclosing write site
 	if err := os.WriteFile(path, []byte(credentialGuardScript), 0755); err != nil {
 		return fmt.Errorf("writing credential guard script: %w", err)
 	}
@@ -1080,10 +1038,12 @@ func GenerateGlobalCredentialGuardScript(home string) error {
 	if home == "" {
 		return fmt.Errorf("home directory vazio")
 	}
-	// ML-8A / #402: see GenerateGlobalSkill — one assignment from one resolver.
-	absHome, err := pathguard.ResolveRoot(home)
+	absHome, err := filepath.Abs(home)
 	if err != nil {
 		return fmt.Errorf("resolving home: %w", err)
+	}
+	if resolved, rerr := filepath.EvalSymlinks(absHome); rerr == nil {
+		absHome = resolved
 	}
 	scriptsDir := filepath.Join(absHome, ".trackfw", "scripts")
 	if err := rejectScaffoldPath(absHome, scriptsDir); err != nil {
@@ -1095,11 +1055,7 @@ func GenerateGlobalCredentialGuardScript(home string) error {
 	}
 
 	path := filepath.Join(scriptsDir, "trackfw-credential-guard.sh")
-	// Guard the leaf file — directory guard above does not detect a symlinked script file.
-	if err := rejectScaffoldPath(absHome, path); err != nil {
-		return err
-	}
-	// write-containment-allowed: guarded by pathguard.RejectSymlinks via rejectScaffoldPath above
+	// write-containment-allowed: guarded by pathguard.RejectSymlinks at the enclosing write site
 	if err := os.WriteFile(path, []byte(globalCredentialGuardScript), 0755); err != nil {
 		return fmt.Errorf("writing global credential guard script: %w", err)
 	}
@@ -1391,11 +1347,7 @@ func GenerateGitBranchGuardScript(rootDir string) error {
 	}
 
 	path := filepath.Join(scriptsDir, "trackfw-git-branch-guard.sh")
-	// Guard the leaf file — directory guard above does not detect a symlinked script file.
-	if err := rejectScaffoldPath(root, path); err != nil {
-		return err
-	}
-	// write-containment-allowed: guarded by pathguard.RejectSymlinks via rejectScaffoldPath above
+	// write-containment-allowed: guarded by pathguard.RejectSymlinks at the enclosing write site
 	if err := os.WriteFile(path, []byte(gitBranchGuardScript), 0755); err != nil {
 		return fmt.Errorf("writing git branch guard script: %w", err)
 	}
@@ -1429,10 +1381,12 @@ func GenerateGlobalGitBranchGuardScript(home string) error {
 	if home == "" {
 		return fmt.Errorf("home directory vazio")
 	}
-	// ML-8A / #402: see GenerateGlobalSkill — one assignment from one resolver.
-	absHome, err := pathguard.ResolveRoot(home)
+	absHome, err := filepath.Abs(home)
 	if err != nil {
 		return fmt.Errorf("resolving home: %w", err)
+	}
+	if resolved, rerr := filepath.EvalSymlinks(absHome); rerr == nil {
+		absHome = resolved
 	}
 	scriptsDir := filepath.Join(absHome, ".trackfw", "scripts")
 	if err := rejectScaffoldPath(absHome, scriptsDir); err != nil {
@@ -1444,11 +1398,7 @@ func GenerateGlobalGitBranchGuardScript(home string) error {
 	}
 
 	path := filepath.Join(scriptsDir, "trackfw-git-branch-guard.sh")
-	// Guard the leaf file — directory guard above does not detect a symlinked script file.
-	if err := rejectScaffoldPath(absHome, path); err != nil {
-		return err
-	}
-	// write-containment-allowed: guarded by pathguard.RejectSymlinks via rejectScaffoldPath above
+	// write-containment-allowed: guarded by pathguard.RejectSymlinks at the enclosing write site
 	if err := os.WriteFile(path, []byte(gitBranchGuardScript), 0755); err != nil {
 		return fmt.Errorf("writing global git branch guard script: %w", err)
 	}
@@ -1540,74 +1490,22 @@ set -f
 # (ex.: um runtime de hook que nunca fecha o descritor) travava o antigo "cat" para sempre, sem
 # limite -- foi o que pendurou "make quality" por 1h05 quando o gate de schema (ML-2A) chamou o
 # guard sem "</dev/null" em 3 sítios. Substituído por dreno com ORÇAMENTO DE TEMPO via
-# "read -t <segundos> -d ''": builtin do próprio bash desde a 3.0 (não do coreutils); o bash do
-# MSYS2/Git-Bash do Windows é bash de verdade e traz o mesmo builtin. Evita depender de
-# "timeout(1)", que NÃO existe no macOS base nem no MSYS2 mínimo. "-d ''" faz o read tentar ler
-# até o EOF real (NUL nunca aparece em payload de hook).
-#
-# ML-1B (ROADMAP-2026-09-24-treze-rotulos-falham-no-censo-de-windows-e-cinco-sao-setup-que-aborta-
-# o-cenario-inteiro.md, grupo G5 da triagem): o orçamento do ML-3A era TOTAL, e um orçamento total
-# é dependente do TAMANHO do payload -- o que o torna arbitrário por construção. Medido no
-# Git-Bash 5.3.15 do Windows (VM, 2026-09-24), lendo um payload de 200000 bytes de um PIPE:
-#
-#   read -t 600 -d ''  -> rc=1 (EOF), len=200000, 13.6 s     <- a semântica de -d '' está CERTA
-#   read -t 2   -d ''  -> rc=142 (timeout), len=25397, 2.1 s <- o orçamento TOTAL é a causa
-#   redirect de ARQUIVO (fd seekable), -t 600 -> 618 ms      <- o custo é do pipe, não do read
-#
-# São ~14,7 KB/s no pipe do MSYS contra ~1,3 MB/s no macOS (mesma medição, bash 5.3): o read do
-# bash consome fd não-seekable 1 byte por read(2), e a syscall do MSYS é ~90x mais cara. Com o
-# orçamento total, o guard lia 12,7% do payload, saía com 0 no no-op abaixo, e o escritor levava
-# EPIPE -- o rótulo
-# falsify/git-branch-guard/stdin-drain-before-noop/baseline-writer-clean-large-payload.
-#
-# 🔴 A correção NÃO é aumentar o "-t": qualquer valor passa em 200 KB e falha em 400 KB. O que
-# muda é a NATUREZA do orçamento -- de TOTAL para OCIOSO. O laço abaixo renova os 2s toda vez que
-# QUALQUER byte chega, então o limite deixa de ser "quanto tempo a transferência inteira pode
-# levar" (dependente de tamanho) e passa a ser "quanto tempo o escritor pode ficar sem enviar
-# nada" (independente de tamanho). 2s de ociosidade é limite de CONTRATO: é o que separa "escritor
-# lento" de "escritor que não vai escrever", e foi o segundo caso -- um chamador que segura o
-# descritor aberto sem escrever -- que pendurou "make quality" por 1h05 no ML-2A. Medido no mesmo
-# Git-Bash: o laço lê os 200000 bytes inteiros (len=200000, truncado=0) em 13,4 s.
-#
-# Por que não despejar o stdin em arquivo temporário, já que fd seekable é 22x mais rápido: o
-# despejo exige "cat" (ou equivalente) sem limite, e é exatamente o travamento indefinido que o
-# ML-3A removeu.
-#
-# Dois efeitos do orçamento OCIOSO, medidos e declarados (não são regressão silenciosa):
-#   (a) LATÊNCIA: com um escritor que manda alguns bytes e depois trava, o guard paga UMA janela
-#       ociosa a mais que o orçamento total antigo -- medido 4,07 s contra 2,07 s (1 byte + fd
-#       preso, macOS). É o preço de não cortar um escritor que ainda estava entregando.
-#   (b) TERMINAÇÃO: um escritor que mande 1 byte a cada menos de 2 s indefinidamente mantém o
-#       guard vivo indefinidamente. Aceito de propósito: esse escritor ESTÁ entregando o comando,
-#       e cortá-lo é justamente o defeito que este ML corrige. A patologia que o ML-3A fechou --
-#       chamador que segura o descritor e NÃO escreve nada (o "make quality" sem "</dev/null") --
-#       continua cortada em 2 s, porque lá nenhuma janela tem progresso. Um teto absoluto adicional
-#       seria um número sem razão de contrato (o mesmo chute que o "-t" maior), então não existe.
-#
-# Discriminante de truncamento: no bash >= 4 o read retorna rc > 128 (142 = 128+SIGALRM) quando
-# estoura o "-t", e rc=1 no EOF -- medido nos dois bash 5.3 (macOS e Windows). ⚠️ No bash 3.2
-# (padrão do macOS) NÃO existe esse discriminante: medido rc=1 no timeout, com a variável VAZIA
-# (o prefixo já lido é DESCARTADO). O comentário anterior deste bloco afirmava o contrário
-# ("preserva na variável qualquer prefixo já lido... bash 3.2 e 5.3") -- afirmação falsa,
-# corrigida aqui por medição. Consequência declarada: sob bash 3.2 o laço roda uma iteração só e
-# o truncamento fica INDETECTÁVEL (degrada exatamente para o comportamento de hoje). Não é
-# remediável sem discriminante; sob bash 3.2 a vazão medida é 200 KB em 0,15 s, então um timeout
-# ali só pode significar escritor parado, não payload grande.
+# "read -t <segundos> -d ''": builtin do próprio bash desde a 3.0 (não do coreutils) -- medido
+# idêntico no bash 3.2 (padrão do macOS) e no bash 5.3 (Linux/Homebrew); o bash do MSYS2/Git-Bash
+# do Windows é bash de verdade e traz o mesmo builtin. Evita depender de "timeout(1)", que NÃO
+# existe no macOS base nem no MSYS2 mínimo. "-d ''" faz o read tentar ler até o EOF real (NUL
+# nunca aparece em payload de hook); "-t" interrompe a espera no orçamento e, medido contra um
+# FIFO nunca fechado (bash 3.2 e 5.3), preserva na variável qualquer prefixo já lido antes do
+# timeout -- sem perda do que chegou, só do que nunca chegou. 2s de orçamento: folga generosa
+# para o payload pequeno de um hook sob scheduler sob carga (CI, "make quality" paralelo), e
+# ainda curto o bastante para o travamento continuar perceptível em vez de indefinido. Estourar
+# o orçamento NÃO libera o bloqueio: o passo 1 abaixo já prefere "$*" quando há argumento
+# posicional, e cai para o que foi lido até o limite quando não há -- "exit 2" e o fail-closed
+# continuam idênticos nos dois casos. O antigo desvio para invocação manual em terminal (skip
+# total quando "-t 0") foi removido de propósito: era o próprio discriminante errado que este ML
+# elimina, não um caso a preservar -- agora toda invocação drena com o mesmo orçamento de 2s.
 _TRACKFW_STDIN=""
-_TRACKFW_STDIN_TRUNCATED=0
-while :; do
-  _TRACKFW_STDIN_CHUNK=""
-  _TRACKFW_STDIN_RC=0
-  IFS= read -r -t 2 -d '' _TRACKFW_STDIN_CHUNK || _TRACKFW_STDIN_RC=$?
-  _TRACKFW_STDIN="${_TRACKFW_STDIN}${_TRACKFW_STDIN_CHUNK}"
-  if [ "$_TRACKFW_STDIN_RC" -le 128 ]; then
-    break
-  fi
-  if [ -z "$_TRACKFW_STDIN_CHUNK" ]; then
-    _TRACKFW_STDIN_TRUNCATED=1
-    break
-  fi
-done
+IFS= read -r -t 2 -d '' _TRACKFW_STDIN || true
 
 # --- 0b. No-op fora de projeto trackfw (ADR-2026-08-17-guard-global-cabeado-com-no-op-fora-de-
 # projeto-trackfw.md): sobe diretórios a partir do cwd FÍSICO (pwd -P, resolve symlink) até
@@ -1631,35 +1529,6 @@ while :; do
   fi
 done
 [ "$_TRACKFW_FOUND" -eq 1 ] || exit 0
-
-# --- 0c. Contrato quando o stdin NÃO pôde ser lido por inteiro (ML-1B, ROADMAP-2026-09-24-treze-
-# rotulos-..., grupo G5). Até aqui o guard era FAIL-OPEN nesse caso: com o payload truncado, o
-# passo 1 extraía comando vazio, caía em "[ -n "$CMD_RAW" ] || exit 0" e APROVAVA -- em silêncio,
-# sem nenhum sinal para quem chamou. É a pior das quatro categorias da triagem: os outros grupos
-# reprovam alto, este aprova baixo.
-#
-# Decisão: FAIL-CLOSED. Se o dreno terminou truncado e NÃO há comando em argv, o guard recusa com
-# a mesma resposta de bloqueio dos demais caminhos (JSON de deny no stdout + exit 2), nomeando o
-# motivo. O que isso CUSTA, escrito: uma invocação legítima, DENTRO de projeto trackfw, feita por
-# um runtime que só passa o comando por stdin e que fica 2s inteiros sem enviar um único byte,
-# passa a ser BLOQUEADA -- o usuário vê a razão e refaz o comando. Antes, ela era aprovada sem o
-# guard ter lido o que aprovava.
-#
-# Duas escolhas que limitam esse custo:
-#   (a) a recusa vem DEPOIS do no-op de 0b -- fora de projeto trackfw o guard continua saindo 0,
-#       como manda a ADR-2026-08-17; ali ele não tem autoridade para recusar nada, e não há perda
-#       de controle porque ali ele também nunca bloqueia;
-#   (b) argv isenta ($# > 0): o passo 1 prefere "$*" e o comando está completo -- o stdin é
-#       irrelevante para a decisão. Já "$TRACKFW_GIT_COMMAND" NÃO isenta, de propósito: o passo 1
-#       só recorre a ele quando o stdin rende vazio, e um payload truncado pode render um comando
-#       NÃO-vazio e ERRADO (um prefixo que não casa com "git push") -- que é mais perigoso que o
-#       vazio, porque desliga a isenção sem completar a informação.
-if [ "$_TRACKFW_STDIN_TRUNCATED" -eq 1 ] && [ "$#" -eq 0 ]; then
-  _TRACKFW_TRUNC_REASON='trackfw git-branch-guard: RECUSADO — o comando nao pode ser lido por inteiro do stdin (nenhum byte chegou em 2s de espera ociosa) e nao ha comando em argv. O guard recusa em vez de aprovar um comando que nao conseguiu ler. Reenvie o comando, ou use trackfw ship / trackfw branch new.'
-  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}}\n' "$_TRACKFW_TRUNC_REASON"
-  printf '%s\n' "$_TRACKFW_TRUNC_REASON" >&2
-  exit 2
-fi
 
 # --- 1. Obter o comando git bruto ------------------------------------------------------------
 if [ "$#" -gt 0 ]; then
@@ -2364,12 +2233,7 @@ func generateGitHubActionsWorkflow(cfg Config) error {
 	}
 
 	path := GitHubActionsWorkflowPath
-	// Guard the leaf file — directory guard above does not detect a symlinked workflow file.
-	absWorkflowPath := filepath.Join(ghRoot, path)
-	if err := rejectScaffoldPath(ghRoot, absWorkflowPath); err != nil {
-		return err
-	}
-	// write-containment-allowed: guarded by pathguard.RejectSymlinks via rejectScaffoldPath above
+	// write-containment-allowed: guarded by pathguard.RejectSymlinks at the enclosing write site
 	if err := os.WriteFile(path, []byte(buildGitHubActionsWorkflowContent(IsProducerGoMod("."))), 0644); err != nil {
 		return fmt.Errorf("writing CI workflow: %w", err)
 	}
@@ -2435,11 +2299,7 @@ func generateCommitMsgHook(cfg Config) error {
 			return fmt.Errorf("creating .husky: %w", err)
 		}
 		path := ".husky/commit-msg"
-		// Guard the leaf file — directory guard above does not detect a symlinked hook file.
-		if err := rejectScaffoldPath(cmhRoot, filepath.Join(cmhRoot, path)); err != nil {
-			return err
-		}
-		// write-containment-allowed: guarded by pathguard.RejectSymlinks via rejectScaffoldPath above
+		// write-containment-allowed: guarded by pathguard.RejectSymlinks at the enclosing write site
 		if err := os.WriteFile(path, []byte(script), 0755); err != nil {
 			return fmt.Errorf("writing husky commit-msg hook: %w", err)
 		}
@@ -2449,12 +2309,7 @@ func generateCommitMsgHook(cfg Config) error {
 		existing, _ := os.ReadFile(lefthookPath)
 		if !strings.Contains(string(existing), "commit-msg:") {
 			addition := "\ncommit-msg:\n  scripts:\n    \"trackfw-req-check.sh\":\n      runner: sh\n"
-			// Guard lefthook.yml — distinct from the .lefthook/commit-msg directory guard above;
-			// that guard never walks lefthook.yml (it is at root level, outside the guarded dir).
-			if err := rejectScaffoldPath(cmhRoot, filepath.Join(cmhRoot, lefthookPath)); err != nil {
-				return err
-			}
-			// write-containment-allowed: guarded by pathguard.RejectSymlinks via rejectScaffoldPath above
+			// write-containment-allowed: guarded by pathguard.RejectSymlinks at the enclosing write site
 			if err := os.WriteFile(lefthookPath, append(existing, []byte(addition)...), 0644); err != nil {
 				return fmt.Errorf("writing lefthook.yml commit-msg section: %w", err)
 			}
@@ -2465,11 +2320,7 @@ func generateCommitMsgHook(cfg Config) error {
 			return fmt.Errorf("creating %s: %w", scriptDir, err)
 		}
 		scriptPath := scriptDir + "/trackfw-req-check.sh"
-		// Guard the leaf script file — directory guard does not detect a symlinked script file.
-		if err := rejectScaffoldPath(cmhRoot, filepath.Join(cmhRoot, scriptPath)); err != nil {
-			return err
-		}
-		// write-containment-allowed: guarded by pathguard.RejectSymlinks via rejectScaffoldPath above
+		// write-containment-allowed: guarded by pathguard.RejectSymlinks at the enclosing write site
 		if err := os.WriteFile(scriptPath, []byte(script), 0755); err != nil {
 			return fmt.Errorf("writing lefthook commit-msg script: %w", err)
 		}
@@ -2503,11 +2354,7 @@ func generateHuskyHook() error {
 	}
 	content := "#!/usr/bin/env sh\n. \"$(dirname -- \"$0\")/_/husky.sh\"\n\ntrackfw validate\n"
 	path := ".husky/pre-commit"
-	// Guard the leaf file — directory guard above does not detect a symlinked hook file.
-	if err := rejectScaffoldPath(hhRoot, filepath.Join(hhRoot, path)); err != nil {
-		return err
-	}
-	// write-containment-allowed: guarded by pathguard.RejectSymlinks via rejectScaffoldPath above
+	// write-containment-allowed: guarded by pathguard.RejectSymlinks at the enclosing write site
 	if err := os.WriteFile(path, []byte(content), 0755); err != nil {
 		return fmt.Errorf("writing husky hook: %w", err)
 	}
@@ -2543,12 +2390,7 @@ func generateVaultIndex() error {
 - [nome-da-nota-YYYY-MM-DD](nome-da-nota-YYYY-MM-DD.md)
 -->
 `
-	// Guard the leaf file — directory guard above does not detect a symlinked index file.
-	absIndexPath := filepath.Join(viRoot, indexPath)
-	if err := rejectScaffoldPath(viRoot, absIndexPath); err != nil {
-		return err
-	}
-	// write-containment-allowed: guarded by pathguard.RejectSymlinks via rejectScaffoldPath above
+	// write-containment-allowed: guarded by pathguard.RejectSymlinks at the enclosing write site
 	if err := os.WriteFile(indexPath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("writing vault/notes/index.md: %w", err)
 	}
