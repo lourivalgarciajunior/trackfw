@@ -812,14 +812,43 @@ A parte que roda em Linux — o self-test — está no `local-gates.yml` (ML-1A)
 denominador e com os comandos do GitHub desligados enquanto ele roda: os casos sintéticos imprimem
 `::error::` de propósito, e sem isso um job verde aparecia com 10 erros.
 
-🔴 **Dois pontos cegos, declarados:**
+> ✅ **Os "8 mascarados" caducaram em 2026-09-11, e esta seção afirmava o contrário até 2026-09-29.**
+> A `ADR-2026-09-11-o-gitattributes-do-fork-alinha-ao-upstream-porque-mascarava-defeito-de-produto-sem-custo-medido`
+> decidiu a **opção A** — alinhar byte a byte e tirar o bloco local inteiro —, e ainda emendou a
+> `ADR-2026-08-29` para reclassificar o `.gitattributes` de local para upstream. Medido por efeito em
+> 2026-09-29: `git diff main upstream/main -- .gitattributes` sai **vazio**.
+>
+> 🔴 **Por que isso não é detalhe:** documentação que descreve divergência inexistente faz o próximo
+> merge procurar conflito onde não há. É o mesmo erro que este arquivo já pagou uma vez, na nota de
+> 2026-09-05 sobre o `_force_utf8_output`. O ponto cego real, medido no lugar do que estava escrito,
+> está abaixo.
 
-- **Os 8 mascarados.** O nosso `.gitattributes` faz 8 nomes da lista passarem no nosso CI; o ratchet os
-  reporta como "sumidos" e não vê regressão neles. Causa e decisão estão na
-  `REQ-2026-09-11-o-gitattributes-do-fork-mascara-um-defeito-de-produto-que-o-upstream-mantem-exposto-de-proposito`.
+🔴 **Um ponto cego, declarado — e ele tem prazo:**
+
 - **Sumida é aviso, não reprovação** — decisão escrita do mantenedor: consertar um teste não pode
   quebrar o CI. Aposentar um nome exige `removal_note` no `.github/windows-known-failures.json`, que é
   compartilhado: não se edita aqui.
+
+  ⏳ **Isto muda quando o [#479](https://github.com/kgsaran/trackfw/pull/479) dele mesclar.** Lá,
+  "não observada" deixa de ser `::warning::` e passa a `::error::` + `exit 1`, em três baldes — 1
+  *passou, aposente a entrada*; 2 *não rodou*; 3 *ainda falha*, o único sem ação. E entra um **D7**:
+  entrada ativa sem campo `reason` reprova.
+
+  **Nossa exposição medida antes de ele mesclar: ZERO**, nas três frentes —
+
+  ```
+  balde 1 e 2   nenhuma: log real do windows-full-suites do nosso PR #181 diz
+                "ML-2A/2B: 14 observed / 14 active / 24 removed. Go 14/14"
+                todas as 14 caem no balde 3
+  D7            as 14 estão sem `reason` na nossa árvore HOJE — e o próprio
+                #479 preenche as 14 no mesmo commit (conferido em pr479:.github/…)
+  gitattributes já alinhado, então não há nome passando aqui por mascaramento
+  ```
+
+  🔴 **Duas armadilhas de medição, para não repetir:** contar `::warning::` no log do job acusa 3
+  ocorrências que são o **código sendo exibido** (prefixo `[36;1m`), não saída do ratchet. E ver "14
+  sem `reason`" na nossa árvore parece reprovação garantida até se ler a versão **do PR**, que as
+  preenche. As duas levariam a alarme falso.
 
 ## Gate de predicados de plataforma (`scripts/check-platform-predicates.sh`)
 
