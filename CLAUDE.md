@@ -899,19 +899,44 @@ recebido  esperado=\scaffold.go     ← atribuição VÁLIDA, `sh -n` sai 0
 — e o fragmento passa. Com espaço a ida e volta é fiel (`echo "abre` sai 2), o que faz a classe ser
 estreita e **passar desapercebida**. O discriminante é a presença de **espaço**, não a aspa ímpar.
 
-**E o mesmo vale para a execução, o que é pior:** `runGateCommand` (`internal/commands/barrier.go`)
-chama `exec.Command("sh", "-c", command)`. No Windows, linha de gate malformada dessa forma sai **0** —
-**gate malformado conta como gate que passou**. Medido com os dois controles fechando: `false` sai 1
-nos dois caminhos e `echo "abre` sai 2 nos dois.
+> ✅ **A metade do PRODUTO caducou em 2026-10-01**, no mesmo dia em que foi escrita. O
+> [#495](https://github.com/kgsaran/trackfw/pull/495) do upstream trocou o transporte do texto do gate
+> de argv para **stdin** nos dois sítios — `checkGateFragments` e `runGateCommand` —, e entrou aqui no
+> sync de `99616fe1`. **Medido por efeito na nossa `main` depois do merge:**
+>
+> ```
+> esperado="scaffold.go    ✗ gates: blocked   line N: incomplete command
+> x="ab                    ✗ gates: blocked
+> true                     ✓ gates: passed    ← controle
+> ```
+>
+> Antes do merge os dois primeiros saíam **verdes nesta máquina**. O mecanismo do argv continua real —
+> é por isso que **o nosso gate usa stdin** — mas **o produto já não o sofre**. Não leia mais
+> "gate malformado passa" como estado atual do `barrier`.
+>
+> 🔴 Por que este bloco existe em vez de a seção ser apagada: o motivo do nosso `sh -n` por stdin é a
+> medição acima, e sem ela alguém "simplifica" o gate de volta para argv. E este arquivo já pagou duas
+> vezes por descrever defeito que não existe mais — a nota do `_force_utf8_output` (2026-09-05) e a dos
+> "8 mascarados" (2026-09-29).
 
-Reportado no upstream na [#491](https://github.com/kgsaran/trackfw/issues/491), onde ele implementou o
-detector da Wave 2 com `exec.Command("sh", "-n", "-c", gc.Text)` — e medido contra o **binário dele**:
+**O registro da medição, como ela foi feita.** `runGateCommand` chamava
+`exec.Command("sh", "-c", command)`, e no Windows linha de gate malformada dessa forma saía **0** —
+gate malformado contava como gate que passou. Com os dois controles fechando: `false` saía 1 nos dois
+caminhos e `echo "abre` saía 2 nos dois.
+
+Reportado no upstream na [#491](https://github.com/kgsaran/trackfw/issues/491). Ele havia implementado
+o detector da Wave 2 com `exec.Command("sh", "-n", "-c", gc.Text)`, e medido contra o binário **dele**,
+em `1290231b`, o detector não via a forma sem espaço:
 
 ```
-esperado="scaffold.go    ✓ gates: passed     ← o detector não vê
+esperado="scaffold.go    ✓ gates: passed     ← o detector não via (1290231b)
 echo "abre               ✗ gates: blocked    ← "line 79: incomplete command"
 true                     ✓ gates: passed     ← controle
 ```
+
+Ele aceitou a medição no mesmo PR, escolheu **stdin** por um braço que eu não tinha — no bash 3.2 do
+macOS o `eval` sai 1 onde o `sh -c` sai 2 —, e transformou a ressalva do invariante em guard: os dois
+sítios recusam texto com `\n` ou `\r` **antes** de chamar o `sh`.
 
 **Duas guardas de vacuidade**, e a segunda é a que importa: se **zero** linhas de comando saírem da
 extração enquanto houver arquivos com bloco, o classificador parou de casar e o gate passaria
