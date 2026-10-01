@@ -70,18 +70,7 @@ sonda    REQ com NADA alem de uma frase citando `ADR:` e `Roadmap:`
 ```bash
 # Wave 0 gate — replace this placeholder with a project-specific check before
 # marking ML-0A done. Do not remove the gate; replace its command (AC13).
-python -c "
-import glob,os,re
-bad=[]
-for p in glob.glob(os.path.join('docs','requisições','**','*.md'),recursive=True):
-    c=open(p,encoding='utf-8',newline='').read()
-    for m in ('ADR:','Roadmap:'):
-        has=m in c; empty=(m+' 
-') in c or (m+' 
-') in c
-        anch=bool(re.search(r'(?m)^'+re.escape(m)+r'[ 	]*(\S.*)$',c))
-        if (has and not empty) and not anch: bad.append(p); break
-raise SystemExit(1 if bad else 0)"
+bash scripts/check-req-marcador-ancorado.sh
 ```
 
 ## Wave 1 — Implementation (derived from REQ criteria)

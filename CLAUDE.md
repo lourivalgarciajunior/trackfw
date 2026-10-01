@@ -850,6 +850,133 @@ denominador e com os comandos do GitHub desligados enquanto ele roda: os casos s
   sem `reason`" na nossa árvore parece reprovação garantida até se ler a versão **do PR**, que as
   preenche. As duas levariam a alarme falso.
 
+## Gate de gate: um comando por linha (`scripts/check-gates-uma-linha-por-comando.sh`)
+
+A regra 5 de `docs/cli-parity.md` decide que **cada linha não-vazia e não-comentário do bloco
+`**Gates da wave:**` é um comando**, executado da raiz num `sh -c` próprio. Linhas não compartilham
+estado — nem `export`, nem `cd`, nem variável, e principalmente nem **construção multilinha**.
+
+```bash
+bash scripts/check-gates-uma-linha-por-comando.sh
+```
+
+Lê o `roadmap_dir` do `trackfw.yaml` (nunca chumbado), varre recursivamente, imprime o denominador e
+reprova a próxima linha que não rode sozinha.
+
+**Medido neste acervo em 2026-10-01, antes da correção:** 83 roadmaps, 18 arquivos com bloco, **40
+linhas de comando — 19 achados em 5 blocos**, e 🔴 **quatro dos cinco em roadmap `done/`**.
+
+| estado | wave | ruins | roadmap |
+|---|---|---|---|
+| backlog | 0 | 4 de 4 | `…2026-08-29-atualizar-para-a-upstream-main-com-o-fix-de-symlink` |
+| done | 0 | 2 de 3 | `…2026-09-05-onda-1-de-contribuicao-ao-upstream` |
+| done | 0 | 2 de 4 | `…2026-09-05-onda-2-de-contribuicao-ao-upstream` |
+| done | 0 | 2 de 3 | `…2026-09-05-ondas-3-e-4-visibilidade-do-denominador` |
+| done | 0 | 9 de 12 | `…2026-09-05-reqs-que-passam-so-por-prosa` |
+
+**O custo não era a desarrumação.** Reproduzido por efeito com o binário, no `onda-1` wave 0:
+
+```
+- for n in 273 274 275 268; do:  exit 2
+- gh issue view "$n" … :         exit 1   ← EXECUTOU, com $n vazio
+- done:                          exit 2
+```
+
+Um laço correto virava **três** falhas, e a do meio **rodava** — não é fragmento recusado, é comando
+errado executando. As quatro waves de `done/` saíam `result: blocked`; depois da correção, `passed`.
+Ou seja: havia **wave fechada como concluída cujo gate nunca pôde passar**, e a causa era parsing, não
+gate reprovando. É a Regra Dura de Reconciliação atingida por um defeito de leitura.
+
+🔴 **Por que o `sh -n` vai por STDIN e nunca por argumento.** `sh -n -c "$cmd"` **mente no Windows**.
+Medido em 2026-10-01, em Go e em Python: quando o fragmento **não tem espaço**, o argumento sofre
+escape na ida e a aspa chega ao `sh` como contrabarra —
+
+```
+enviado   esperado="scaffold.go
+recebido  esperado=\scaffold.go     ← atribuição VÁLIDA, `sh -n` sai 0
+```
+
+— e o fragmento passa. Com espaço a ida e volta é fiel (`echo "abre` sai 2), o que faz a classe ser
+estreita e **passar desapercebida**. O discriminante é a presença de **espaço**, não a aspa ímpar.
+
+**E o mesmo vale para a execução, o que é pior:** `runGateCommand` (`internal/commands/barrier.go`)
+chama `exec.Command("sh", "-c", command)`. No Windows, linha de gate malformada dessa forma sai **0** —
+**gate malformado conta como gate que passou**. Medido com os dois controles fechando: `false` sai 1
+nos dois caminhos e `echo "abre` sai 2 nos dois.
+
+Reportado no upstream na [#491](https://github.com/kgsaran/trackfw/issues/491), onde ele implementou o
+detector da Wave 2 com `exec.Command("sh", "-n", "-c", gc.Text)` — e medido contra o **binário dele**:
+
+```
+esperado="scaffold.go    ✓ gates: passed     ← o detector não vê
+echo "abre               ✗ gates: blocked    ← "line 79: incomplete command"
+true                     ✓ gates: passed     ← controle
+```
+
+**Duas guardas de vacuidade**, e a segunda é a que importa: se **zero** linhas de comando saírem da
+extração enquanto houver arquivos com bloco, o classificador parou de casar e o gate passaria
+descrevendo o vazio. Ele falha nomeando o denominador.
+
+**Uma passada de `awk` sobre todos os arquivos, de propósito.** A primeira versão do gate irmão fazia
+`grep` por arquivo e por marcador e **não terminou em 120 s** nesta máquina: criar processo no MSYS é
+caro, e gate que não termina não é gate.
+
+Como os outros, é **nosso**, e **não tem alvo no `Makefile`** pelo mesmo motivo dos demais.
+
+### O resíduo declarado: o roadmap de `backlog/`
+
+O bloco do `…2026-08-29-atualizar-para-a-upstream-main…` teve a **forma** corrigida (4 linhas → 1,
+sem `<(...)`, que não é POSIX e morre sob `dash` no CI do upstream). O gate agora **reprova por motivo
+real**: a colisão que ele exige ser 8 hoje é **914**, porque o roadmap é de 29/08 e a premissa
+envelheceu com os merges.
+
+🔴 **O `8` não foi trocado por `914`.** Ajustar o critério para caber no estado atual é fabricar
+histórico — a mesma saída que o `check-req-done-com-criterio-aberto.sh` recusa. O roadmap está em
+`backlog/`, então gate vermelho ali não é contradição: é trabalho não feito, agora com o sinal
+legível. E **o barrier não alcança `backlog/`**, então esse bloco é o único dos cinco cuja correção
+não pôde ser verificada por efeito pelo produto — medido rodando a linha direto: `sh -n` rc=0 (forma
+boa), execução rc=1 (premissa velha).
+
+## Gate de marcador de REQ ancorado (`scripts/check-req-marcador-ancorado.sh`)
+
+Acusa REQ nossa que **tem** `ADR:` ou `Roadmap:` no texto mas nunca **ancorado em início de linha e
+com valor** — o defeito da `REQ-2026-09-05-reqs-que-passam-so-por-prosa-tres-do-acervo-sem-link-real-de-adr`.
+
+```bash
+bash scripts/check-req-marcador-ancorado.sh
+```
+
+Lê o `req_dir` do `trackfw.yaml`, varre recursivamente, e distingue três estados: **ancorado com
+valor** (ok), **vazio pelo template** (`ADR: ` e fim de linha — não é prosa, decisão do ML original) e
+**só em prosa** (reprova). Medido em 2026-10-01: **73 REQs · 146 marcadores · 146 ancorados · 0 em
+prosa**.
+
+**Ele existe porque a lógica morava dentro do bloco de gates daquele roadmap, em `python -c "` com DEZ
+linhas** — e pela regra 5 aquelas dez linhas nunca rodaram como um programa: 9 das 12 reprovam `sh -n`
+sozinhas.
+
+🔴 **E o gate carregava um defeito a mais, de autoria.** O que estava escrito era
+
+```python
+empty = (m+' \n') in c or (m+' \r\n') in c
+```
+
+e as **contrabarras foram comidas por heredoc** na hora de escrever. O que ficou no arquivo tem
+newline literal nas duas pernas — as duas ficaram **idênticas**, e o caso **CRLF deixou de ser
+verificado**. Conferido com `cat -A` em 2026-10-01.
+
+Aqui o CRLF não é remendado com uma segunda perna: é **removido na entrada**, o que cobre os dois fins
+de linha por um caminho só. Os arquivos deste repo são CRLF (205 de 205 linhas no roadmap medido),
+então sem isso o `$` do `grep` nunca casaria — e o gate sairia verde por não achar nada.
+
+**Falsificado nas duas direções**, com REQ plantada e removida: marcador só em prosa → `rc=1` nomeando
+as duas ocorrências; `ADR: ` vazio **em CRLF e em LF** → conta como template, `rc=0` nos dois. Sem o
+segundo braço eu não saberia se o `tr` é o que faz passar.
+
+🔴 **Armadilha de medição, da própria autoria deste commit:** `cat -A` depois de `sed` mostrou as
+linhas **sem** `^M`, e eu quase registrei o arquivo como LF — o `sed` do MSYS converte CRLF em modo
+texto. Quem disse a verdade foi contar os bytes.
+
 ## Gate de predicados de plataforma (`scripts/check-platform-predicates.sh`)
 
 O `scripts/testdata/platform-predicates.tsv` deixou de ser tabela decorativa: o gate executa cada
