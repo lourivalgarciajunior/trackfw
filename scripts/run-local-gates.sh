@@ -44,6 +44,8 @@ check-req-done-com-criterio-aberto.sh
 check-os-predicate-classification.sh
 check-slug-inventory.sh
 check-upstream-sync-falsify.sh
+check-gates-uma-linha-por-comando.sh
+check-req-marcador-ancorado.sh
 measure-os-predicate-sites.sh
 "
 

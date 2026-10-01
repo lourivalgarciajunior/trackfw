@@ -129,9 +129,7 @@ issue porque a frase induz ao erro.
 ```bash
 # Wave 0 gate — replace this placeholder with a project-specific check before
 # marking ML-0A done. Do not remove the gate; replace its command (AC13).
-for n in 276 277 268; do
-  gh issue view "$n" --repo kgsaran/trackfw --json number >/dev/null 2>&1 || { echo "issue #$n ausente"; exit 1; }
-done
+for n in 276 277 268; do gh issue view "$n" --repo kgsaran/trackfw --json number >/dev/null 2>&1 || { echo "issue #$n ausente"; exit 1; }; done
 test -s scripts/testdata/platform-predicates.tsv || { echo "tabela de contrato ausente"; exit 1; }
 ```
 

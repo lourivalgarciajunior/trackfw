@@ -98,10 +98,7 @@ que sumiu".
 ```bash
 # A superficie esta enumerada quando os 8 arquivos em colisao continuam sendo os 8 —
 # um nono significa que o upstream mexeu onde este repo tambem mexeu, sem ninguem ver.
-comm -12 \
-  <(git diff --name-only v7.3.0..upstream/main | grep -vE '^docs/|^vault/|^\.claude/' | sort) \
-  <(git diff --name-only v7.3.0..HEAD -- npm/src pypi/trackfw internal scripts | sort) \
-  | wc -l | grep -qx 8
+t="$(mktemp)"; git diff --name-only v7.3.0..upstream/main | grep -vE '^docs/|^vault/|^\.claude/' | sort > "$t"; git diff --name-only v7.3.0..HEAD -- npm/src pypi/trackfw internal scripts | sort | comm -12 "$t" - | wc -l | grep -qx 8; rc=$?; rm -f "$t"; exit $rc
 ```
 
 ## Wave 1 — O merge

@@ -74,9 +74,7 @@ A1 (que era proposta de flag), o defeito da literal apareceu, e ele é maior que
 ```bash
 # Wave 0 gate — replace this placeholder with a project-specific check before
 # marking ML-0A done. Do not remove the gate; replace its command (AC13).
-for n in 278 279; do
-  gh issue view "$n" --repo kgsaran/trackfw --json number >/dev/null 2>&1 || { echo "issue #$n ausente"; exit 1; }
-done
+for n in 278 279; do gh issue view "$n" --repo kgsaran/trackfw --json number >/dev/null 2>&1 || { echo "issue #$n ausente"; exit 1; }; done
 ```
 
 ## Wave 1 — Implementation (derived from REQ criteria)

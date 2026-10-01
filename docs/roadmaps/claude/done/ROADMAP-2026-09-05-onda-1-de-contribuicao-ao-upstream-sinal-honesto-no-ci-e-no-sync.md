@@ -81,9 +81,7 @@ A3  a contagem escondeu 1 regressao em 3 merges medidos por nome (#271)
 ```bash
 # Wave 0 gate — replace this placeholder with a project-specific check before
 # marking ML-0A done. Do not remove the gate; replace its command (AC13).
-for n in 273 274 275 268; do
-  gh issue view "$n" --repo kgsaran/trackfw --json number >/dev/null 2>&1 || { echo "issue #$n ausente"; exit 1; }
-done
+for n in 273 274 275 268; do gh issue view "$n" --repo kgsaran/trackfw --json number >/dev/null 2>&1 || { echo "issue #$n ausente"; exit 1; }; done
 ```
 
 ## Wave 1 — Implementation (derived from REQ criteria)
