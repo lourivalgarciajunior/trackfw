@@ -47,6 +47,7 @@ check-upstream-sync-falsify.sh
 check-gates-uma-linha-por-comando.sh
 check-req-marcador-ancorado.sh
 measure-os-predicate-sites.sh
+check-vigia-forma.sh
 "
 
 # ---------------------------------------------------------------------------
@@ -56,6 +57,7 @@ measure-os-predicate-sites.sh
 FORA="
 check-platform-predicates|so diz algo no Windows: 14 das 20 linhas do corpus divergem entre 'esperado' e 'nativo_windows', e a linha do execbit reprovaria em ubuntu-latest por fato de NTFS. Decisao medida, escrita no CLAUDE.md
 upstream-sync|nao e gate, e ferramenta: faz merge e MODIFICA a arvore. Rodar num CI de verificacao seria absurdo
+vigia-do-upstream|nao e gate, e daemon: laco infinito que vigia o upstream e emite evento. Executa-lo aqui penduraria o agregador; e ele nao reprova nada, nao ha veredito para colher
 run-local-gates|e o proprio agregador: executa-lo a partir de si mesmo seria recursao infinita. A guarda de completude o pegou na PRIMEIRA execucao, e esta entrada e a prova de que ela funciona
 "
 
