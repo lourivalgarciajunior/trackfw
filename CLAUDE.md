@@ -607,6 +607,92 @@ cenário vacuo. O ponto cego é real, mas nunca vira verde falso.
   — **exit code certo pelo motivo errado**. Aconteceu três vezes em 2026-09-09. Rode de dentro de
   `scripts/`.
 
+## Ponto cego local: sem `jq`, a cerca de git falha ABERTA
+
+🔴 **Medido em 2026-10-02 e reportado na [#507](https://github.com/kgsaran/trackfw/issues/507).** Em
+máquina sem `jq`, o `scripts/trackfw-git-branch-guard.sh` — o hook `PreToolUse` que bloqueia
+`git commit`, `git push` e `git checkout -b` — **deixa passar** esses comandos quando eles estão na
+**segunda linha ou depois** de um comando multilinha.
+
+**O mecanismo, em três passos:**
+
+1. O comando é extraído por `jq`, com fallback por `sed` quando `jq` não existe
+   (`internal/generators/scaffold.go:1875-1879`; linhas 163-167 do script gerado).
+2. O `sed` captura `\([^"]*\)` e **não desescapa nada**. Como JSON não admite newline literal dentro
+   de string, todo comando multilinha chega com `\n` **literal** — uma linha só.
+3. A segmentação **não quebra em `\n` literal, de propósito** (para não fatiar
+   `-m "linha 1\nlinha 2"`). O multilinha inteiro vira **um segmento**, e quem decide é o primeiro
+   token: se a primeira linha não for um git bloqueado, nada bloqueia.
+
+**O `strip_heredoc_bodies` está correto** — ele preserva o texto cru quando a cerca não fecha. A falha
+é **antes dele**, no desescape; heredoc é irrelevante.
+
+**Medido por efeito com o script real, nas duas direções:**
+
+| entrada (`tool_input.command`) | sem `jq` | com `jq` |
+|---|---|---|
+| `echo oi` + `\n` + `git push origin main` | **rc=0 — passa** | rc=2 |
+| `echo oi` + `\n` + `git commit -m x` | **rc=0 — passa** | rc=2 |
+| `echo oi` + `\n` + `git checkout -b feat/x` | **rc=0 — passa** | — |
+| `echo oi ; git push origin main` (uma linha) | rc=2 | rc=2 |
+| `git push origin main` + `\n` + `echo oi` | rc=2 | rc=2 |
+| `git status` (controle negativo) | rc=0 | rc=0 |
+
+As duas últimas são o discriminante: **mesma intenção, só a forma de separação muda**, e o guard só vê
+o primeiro token do segmento único. O teste do upstream que pega isso é o
+`TestGitBranchGuard_UnterminatedHeredocBeforeRealPush_StillBlocks`, que reprovava aqui e **passa**
+depois do `jq` (`PASS`, 5,63 s).
+
+**O `jq` foi instalado nesta máquina em 2026-10-02** (`winget install jqlang.jq`, 1.8.2). 🔴 **E isso
+só vale da próxima sessão em diante:** o `winget` acrescenta o diretório ao **PATH do usuário**, e
+processo já iniciado não o vê — medido, o PowerShell da sessão da instalação continuou sem achar o
+`jq` pelo nome. As medições da coluna "com `jq`" foram feitas **prependando** o diretório ao `PATH`,
+que é o que uma sessão nova herda.
+
+**Por que isso sobreviveu no upstream, e não é sorte:** o braço do `sed` **nunca é exercitado em CI** —
+`internal/generators/git_branch_guard_test.go` tem **zero** ocorrências de `jq`, e nenhum job do
+`.github/workflows/` mascara o `jq`. O irmão `trackfw-attention-signal.sh` faz o certo: fallback por
+`python3 -c "import json; json.load(...)"`, com o `TestAttentionScripts_FallbackWithoutJQ` montando um
+`PATH` curado sem `jq`. Correção e forma de teste já existem no repositório, em outro arquivo.
+
+**Sítio único, conferido:** só o `git-branch-guard` tem o padrão `jq`-ou-`sed` sobre `tool_input`.
+
+🔴 **Isto não é permissão para contornar o hook.** A falha é conhecida e **não se usa** — nem para
+destravar trabalho, nem para medir. Em 2026-10-02 o `git worktree remove` recusou um worktree e o
+caminho foi `core.longpaths`, não o `--force` que o hook bloqueia; o mesmo critério vale aqui.
+
+## Ponto cego local de bit de execução: `pin7-noexec` e as três falhas do Group A
+
+Mesma causa da [#421](https://github.com/kgsaran/trackfw/issues/421): **`os.Chmod` é no-op em NTFS
+montado sem ACL**, então a fixture *"presente e não executável"* e a *"diretório ilegível"* são
+**inconstruíveis** nesta máquina — o teste não falha por defeito, falha por não conseguir montar a
+premissa.
+
+**O que está medido (2026-10-02):**
+
+```
+no ratchet do upstream, com `reason`:
+  TestFilenameUniqueness_DiretorioNaoLegivel_P2    os.Chmod(0o000) silently ignored on NTFS
+  TestFolderStatus_DiretorioNaoLegivel_P2          os.Chmod(0o000) silently ignored on NTFS
+  TestSave_WritesAtomicallyWithPermissions         os.Chmod(0o600) silently ignored on NTFS
+
+pin7-noexec: 0 ocorrências em .github/windows-known-failures.json
+  vive em scripts/check-validate-rule-pins.sh:599 — espera "not executable" na fixture
+  cg-claude-noexec-go.json; alvo do Makefile (linha 33), FORA da lista EXECUTAR do
+  nosso scripts/run-local-gates.sh
+```
+
+Ou seja: as três do Group A são **declaradas** pelo upstream; o `pin7-noexec` não é declarado em lugar
+nenhum, e não roda no nosso agregador.
+
+**Limite declarado:** o `check-validate-rule-pins.sh` **não foi reexecutado hoje**. O que esta seção
+afirma é a filiação de causa (a mesma da #421, já medida) e a fiação dos gates (medida agora) — não um
+veredito novo de execução. Quem precisar do veredito, rode o gate em worktree e escreva o resultado
+aqui.
+
+🔴 **O remédio nunca é `chmod +x` nem forçar o bit** — é ordem em vigor desde 2026-08-29, e foi manter
+o vermelho que sustentou o achado que o upstream corrigiu em 2026-09-01.
+
 ## Lint de predicado de SO em sítio de classificação (`scripts/check-os-predicate-classification.sh`)
 
 Implementa o **AC2** da `REQ-2026-09-05-onda-2`, com o discriminante da
@@ -829,25 +915,52 @@ denominador e com os comandos do GitHub desligados enquanto ele roda: os casos s
   quebrar o CI. Aposentar um nome exige `removal_note` no `.github/windows-known-failures.json`, que é
   compartilhado: não se edita aqui.
 
-  ⏳ **Isto muda quando o [#479](https://github.com/kgsaran/trackfw/pull/479) dele mesclar.** Lá,
-  "não observada" deixa de ser `::warning::` e passa a `::error::` + `exit 1`, em três baldes — 1
-  *passou, aposente a entrada*; 2 *não rodou*; 3 *ainda falha*, o único sem ação. E entra um **D7**:
-  entrada ativa sem campo `reason` reprova.
+  > ✅ **O prazo venceu: o [#479](https://github.com/kgsaran/trackfw/pull/479) mesclou em 2026-09-29 e
+  > já está nesta árvore.** "Não observada" agora é `::error::` + `exit 1`, em três baldes, e vale o
+  > **D7** — entrada ativa sem `reason` reprova. **Medido depois do merge**, no `windows-full-suites`
+  > do nosso PR #191 (run `37021938293`), que é a primeira corrida nossa com a regra nova:
+  >
+  > ```
+  > D7         14 entradas ativas · 14 com `reason` · 0 sem      -> satisfeito
+  > D4         14 entradas comparadas — nenhuma deleção silenciosa
+  > baldes 1 e 2  vazios (nenhuma entrada passou nem deixou de rodar)
+  > NOVO       15 observed / 14 active  ->  Go 15/14 [+1 NOVO]
+  > ```
+  >
+  > 🔴 **A nossa exposição deixou de ser ZERO, e o +1 tem nome:**
+  >
+  > ```
+  > ML-2A ratchet: NEW Go assertion failure not in known list:
+  >   'TestBranchStateE2E_AC2_DoneOnlyBlocksCreation'
+  > ```
+  >
+  > Não é defeito nosso: é o teste dele lendo o `docs/roadmaps/done/` **plano** do repositório real,
+  > que num fork `by_agent` não existe — mesma causa da #396, reportada na
+  > [#502](https://github.com/kgsaran/trackfw/issues/502).
+  >
+  > 🔴 **E o remédio que o próprio ratchet sugere está vetado aqui.** A mensagem manda *"add to
+  > `.github/windows-known-failures.json` with a source run id"* — e esse arquivo é **compartilhado
+  > com o upstream**, então não se edita neste fork (é a decisão escrita acima, que este bloco não
+  > revoga). Logo a única saída legítima é a correção no upstream. **Enquanto a #502 não fechar, todo
+  > PR nosso que rode a suíte de Windows tem dois vermelhos pelo mesmo motivo** — o teste em si e o
+  > ratchet acusando o nome não listado.
+  >
+  > O registro de antes do merge fica abaixo, com as duas armadilhas de medição, que continuam válidas.
 
-  **Nossa exposição medida antes de ele mesclar: ZERO**, nas três frentes —
+  **Antes do merge a exposição era ZERO**, nas três frentes —
 
   ```
   balde 1 e 2   nenhuma: log real do windows-full-suites do nosso PR #181 diz
                 "ML-2A/2B: 14 observed / 14 active / 24 removed. Go 14/14"
                 todas as 14 caem no balde 3
-  D7            as 14 estão sem `reason` na nossa árvore HOJE — e o próprio
-                #479 preenche as 14 no mesmo commit (conferido em pr479:.github/…)
+  D7            as 14 estavam sem `reason` na nossa árvore — e o próprio
+                #479 preencheu as 14 no mesmo commit (conferido em pr479:.github/…)
   gitattributes já alinhado, então não há nome passando aqui por mascaramento
   ```
 
   🔴 **Duas armadilhas de medição, para não repetir:** contar `::warning::` no log do job acusa 3
   ocorrências que são o **código sendo exibido** (prefixo `[36;1m`), não saída do ratchet. E ver "14
-  sem `reason`" na nossa árvore parece reprovação garantida até se ler a versão **do PR**, que as
+  sem `reason`" na nossa árvore parecia reprovação garantida até se ler a versão **do PR**, que as
   preenche. As duas levariam a alarme falso.
 
 ## Gate de gate: um comando por linha (`scripts/check-gates-uma-linha-por-comando.sh`)
@@ -1044,12 +1157,42 @@ em `scripts/` não cria divergência — é o mesmo precedente dos outros três 
 A governança do upstream **não** é importada: as 52 ADRs, 140 REQs e 142 roadmaps dele cairiam
 dentro de `docs/adr/` e `docs/roadmaps/`, que é onde vive a governança daqui.
 
-**Divergência local de produto: NENHUMA.** Medido em 2026-09-05:
+**Divergência local de produto: NENHUMA.** Medido em 2026-09-05 e re-medido em 2026-10-02, agora com
+o instrumento certo:
 
 ```bash
-git diff --name-only main upstream/main -- internal npm/src pypi/trackfw cmd .github Makefile
-# (vazio)
+base=$(git merge-base HEAD upstream/main)
+git diff --name-only "$base" HEAD -- internal npm/src pypi/trackfw cmd .github Makefile
+# só .github/workflows/local-gates.yml, que é SÓ NOSSO — adição, não divergência
 ```
+
+🔴 **A comparação tem de ser ancorada na BASE DE MERGE, e o comando que esta seção publicava até
+2026-10-02 era de dois pontos** (`main upstream/main`). A diferença não é estilo — ela inverte o
+veredito assim que o upstream publica e a nossa `main` fica atrás. Medido no PR #192, com o upstream
+quatro merges à frente (#500, #501, #503, #506):
+
+```
+dois pontos  HEAD..upstream/main            28 arquivos  ->  21 compartilhados "divergentes"
+base..HEAD   (o que NÓS mudamos)             1 arquivo   ->   0 compartilhados
+```
+
+O dois-pontos responde *"o upstream andou?"*, não *"nós mudamos?"* — e quem pagou foi o nosso próprio
+gate `Divergência de produto tem de ser ZERO` do `local-gates.yml`, que **reprovou o PR #192** com a
+divergência real em zero. Ele passou a ser ancorado na base no mesmo PR, com guarda de vacuidade
+(`upstream/main:Makefile` ilegível reprova, para "zero" nunca significar ref que não chegou) e com o
+número de arquivos que o upstream mudou desde a base impresso como **informação**, não como falha.
+
+É a terceira vez que o dois-pontos engana neste fork — a primeira foi um alarme falso de deleção de um
+teste nosso que o três-pontos mostrou inexistente.
+
+**Limite declarado:** o gate compara **commits**, então mudança não commitada não é vista — medido em
+2026-10-02, com uma sonda plantada no `Makefile` sem `git add`: `div=0`. Em CI isso não é limitação,
+porque lá tudo chega commitado. Mesma classe do limite já declarado no
+`check-os-predicate-classification.sh`.
+
+**Falsificado nas duas direções em 2026-10-02:** com o filtro alargado para incluir o `CLAUDE.md` —
+arquivo compartilhado que este commit muda —, o mecanismo **acusa** (`div=1`); e o
+`local-gates.yml`, que não existe no upstream, continua **não contando** por ser adição.
 
 Os únicos arquivos só nossos são adições que o upstream não tem — `scripts/check-slug-inventory.sh`,
 `scripts/check-subcommand-parity.sh`, `scripts/check-upstream-content.sh`, `scripts/upstream-sync.sh`
@@ -1059,7 +1202,8 @@ difere.
 > **Atualização de 2026-09-16 (v8).** O `check-subcommand-parity.sh` foi **retirado**: comparava
 > subcomandos entre os três CLIs, e com uma implementação só a propriedade deixou de ser definível. O
 > `check-slug-inventory.sh` ficou Go-only. `npm/src` e `pypi/trackfw` não existem mais — o comando
-> acima continua valendo, e os dois caminhos passam a não casar nada.
+> acima continua valendo **na forma ancorada na base** (a de dois pontos foi aposentada em
+> 2026-10-02, acima), e os dois caminhos passam a não casar nada.
 
 > **Correção de 2026-09-05.** Esta seção afirmava que `_force_utf8_output` em `pypi/trackfw/cli.py`
 > era divergência local deliberada. **Não é mais** — o upstream absorveu (2 ocorrências em
