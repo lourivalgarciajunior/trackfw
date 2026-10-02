@@ -88,6 +88,22 @@ COMPARADORES='strings\.(Contains|HasPrefix|HasSuffix|EqualFold|Index)|startswith
 # upstream e o baseline viraria ruido. O que importa e "este arquivo ja tinha
 # sitio de classificacao"; um arquivo NOVO com sitio novo e o que o gate pega.
 # ---------------------------------------------------------------------------
+# 🔴 PONTO CEGO REVELADO EM 2026-10-02, e ele e do nosso PROCESSO, nao do gate.
+#
+# Este gate e SO NOSSO (nao existe em upstream/main, conferido com git ls-tree). Branch
+# de PR para o upstream NASCE de upstream/main — logo o gate nao esta la, e nao pode
+# rodar. Resultado: codigo que NOS escrevemos e contribuimos escapa dos nossos proprios
+# ratchets ate VOLTAR pelo sync.
+#
+# Medido: o nosso PR #498 (mesclado como fa882a34) acrescentou resolveDeclared em
+# internal/discover/discover.go, com filepath.IsAbs sobre caminho vindo do trackfw.yaml.
+# O gate so acusou no primeiro run-local-gates DEPOIS do sync — 11 executados, 1 reprovou.
+# Nenhum erro de execucao da nossa parte: `go build`, `go vet`, `gofmt` e as suites do
+# pacote passaram na branch, e o agregador local nao existia la para rodar.
+#
+# O que isso NAO e: nao e desculpa para nao rodar o agregador antes de abrir PR do FORK,
+# onde ele existe e roda. E a classe nova e estreita: vale para PR upstream, e o sinal
+# chega um sync depois, nunca nunca.
 BASELINE="
 internal/integrations/manager.go|resolucao de caminho de instalacao de integracao; produto do upstream, e o maior sitio unico (10 ocorrencias)
 internal/validator/validator.go|validacao de caminho relativo em artefato; produto do upstream
@@ -96,6 +112,7 @@ internal/metrics/metrics.go|torna absoluto o caminho do export contra a raiz ant
 internal/pathguard/pathguard.go|Beneath recusa o resultado de filepath.Rel que saia da raiz; produto do upstream, entrou com o #397 em 2026-09-22
 internal/sync/sync.go|torna absoluto o caminho da REQ contra a raiz antes da guarda de escrita; produto do upstream, entrou com o #397 em 2026-09-22
 internal/validator/branchlink.go|torna absoluto o roadmap_dir relativo do trackfw.yaml contra a raiz resolvida antes da GuardedWrite; mesma forma do adr.go, produto do upstream, entrou com o #446 em 2026-09-27
+internal/discover/discover.go|resolveDeclared ancora no rootDir o diretorio declarado no trackfw.yaml, respeitando caminho absoluto e til, antes de contar os ADRs pelo ponto unico; codigo NOSSO, entrou com o nosso PR #498 em 2026-10-02 e so foi visto no sync porque este gate nao existe em upstream/main
 "
 
 esta_no_baseline() {
