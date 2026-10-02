@@ -117,14 +117,44 @@ jobs:
         run: ./bin/trackfw validate
 
       - name: Divergência de produto tem de ser ZERO
-        # O invariante do fork: arquivo COMPARTILHADO que difere. Adição não
+        # O invariante do fork: arquivo COMPARTILHADO que NÓS mudamos. Adição não
         # conta — os scripts só nossos não são divergência.
+        #
+        # 🔴 A comparação é ancorada na BASE DE MERGE, não em `HEAD upstream/main`.
+        # Medido em 2026-10-02, no PR #192: com o upstream quatro merges à frente
+        # (#500, #501, #503, #506) e a nossa `main` ainda sem eles, o diff de dois
+        # pontos acusou 21 arquivos compartilhados "divergentes" — e a nossa
+        # divergência real era ZERO. O que o dois-pontos mede é "o upstream andou",
+        # não "nós mudamos". Ancorado na base:
+        #
+        #   dois pontos  HEAD..upstream/main  ->  28 arquivos
+        #   base..HEAD   (o que nós mudamos)  ->   1 arquivo, e ele é só nosso
+        #                                          (.github/workflows/local-gates.yml)
+        #
+        # É a mesma armadilha de instrumento que já custou um alarme falso neste
+        # fork: dois pontos contra três pontos. O gate que afirma a invariante não
+        # pode ser o que a quebra quando o upstream publica.
         run: |
           set -euo pipefail
+          base=$(git merge-base HEAD upstream/main) || base=""
+          if [ -z "$base" ]; then
+            echo "::error::nao foi possivel resolver a base de merge com upstream/main — sem ela este gate nao mede nada"
+            exit 1
+          fi
+          # Guarda de vacuidade: se o instrumento nao consegue ler um arquivo
+          # compartilhado conhecido, "zero" seria ref quebrada, nao limpeza.
+          if ! git cat-file -e "upstream/main:Makefile" 2>/dev/null; then
+            echo "::error::guarda de vacuidade: upstream/main:Makefile ilegivel — refs do upstream nao chegaram"
+            exit 1
+          fi
+          echo "base de merge: $base"
+          echo "upstream/main: $(git rev-parse upstream/main)"
+          adiante=$(git diff --name-only "$base" upstream/main -- internal npm pypi cmd .github Makefile | wc -l | tr -d ' ')
+          echo "arquivos de produto que o upstream mudou desde a base (nao e divergencia): $adiante"
           div=0
-          for f in $(git diff --name-only HEAD upstream/main -- internal npm pypi cmd .github Makefile); do
+          for f in $(git diff --name-only "$base" HEAD -- internal npm pypi cmd .github Makefile); do
             if git cat-file -e "HEAD:$f" 2>/dev/null && git cat-file -e "upstream/main:$f" 2>/dev/null; then
-              echo "  DIVERGE (compartilhado): $f"
+              echo "  DIVERGE (compartilhado, mudado por nos): $f"
               div=$((div + 1))
             fi
           done

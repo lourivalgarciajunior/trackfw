@@ -1157,12 +1157,42 @@ em `scripts/` não cria divergência — é o mesmo precedente dos outros três 
 A governança do upstream **não** é importada: as 52 ADRs, 140 REQs e 142 roadmaps dele cairiam
 dentro de `docs/adr/` e `docs/roadmaps/`, que é onde vive a governança daqui.
 
-**Divergência local de produto: NENHUMA.** Medido em 2026-09-05:
+**Divergência local de produto: NENHUMA.** Medido em 2026-09-05 e re-medido em 2026-10-02, agora com
+o instrumento certo:
 
 ```bash
-git diff --name-only main upstream/main -- internal npm/src pypi/trackfw cmd .github Makefile
-# (vazio)
+base=$(git merge-base HEAD upstream/main)
+git diff --name-only "$base" HEAD -- internal npm/src pypi/trackfw cmd .github Makefile
+# só .github/workflows/local-gates.yml, que é SÓ NOSSO — adição, não divergência
 ```
+
+🔴 **A comparação tem de ser ancorada na BASE DE MERGE, e o comando que esta seção publicava até
+2026-10-02 era de dois pontos** (`main upstream/main`). A diferença não é estilo — ela inverte o
+veredito assim que o upstream publica e a nossa `main` fica atrás. Medido no PR #192, com o upstream
+quatro merges à frente (#500, #501, #503, #506):
+
+```
+dois pontos  HEAD..upstream/main            28 arquivos  ->  21 compartilhados "divergentes"
+base..HEAD   (o que NÓS mudamos)             1 arquivo   ->   0 compartilhados
+```
+
+O dois-pontos responde *"o upstream andou?"*, não *"nós mudamos?"* — e quem pagou foi o nosso próprio
+gate `Divergência de produto tem de ser ZERO` do `local-gates.yml`, que **reprovou o PR #192** com a
+divergência real em zero. Ele passou a ser ancorado na base no mesmo PR, com guarda de vacuidade
+(`upstream/main:Makefile` ilegível reprova, para "zero" nunca significar ref que não chegou) e com o
+número de arquivos que o upstream mudou desde a base impresso como **informação**, não como falha.
+
+É a terceira vez que o dois-pontos engana neste fork — a primeira foi um alarme falso de deleção de um
+teste nosso que o três-pontos mostrou inexistente.
+
+**Limite declarado:** o gate compara **commits**, então mudança não commitada não é vista — medido em
+2026-10-02, com uma sonda plantada no `Makefile` sem `git add`: `div=0`. Em CI isso não é limitação,
+porque lá tudo chega commitado. Mesma classe do limite já declarado no
+`check-os-predicate-classification.sh`.
+
+**Falsificado nas duas direções em 2026-10-02:** com o filtro alargado para incluir o `CLAUDE.md` —
+arquivo compartilhado que este commit muda —, o mecanismo **acusa** (`div=1`); e o
+`local-gates.yml`, que não existe no upstream, continua **não contando** por ser adição.
 
 Os únicos arquivos só nossos são adições que o upstream não tem — `scripts/check-slug-inventory.sh`,
 `scripts/check-subcommand-parity.sh`, `scripts/check-upstream-content.sh`, `scripts/upstream-sync.sh`
@@ -1172,7 +1202,8 @@ difere.
 > **Atualização de 2026-09-16 (v8).** O `check-subcommand-parity.sh` foi **retirado**: comparava
 > subcomandos entre os três CLIs, e com uma implementação só a propriedade deixou de ser definível. O
 > `check-slug-inventory.sh` ficou Go-only. `npm/src` e `pypi/trackfw` não existem mais — o comando
-> acima continua valendo, e os dois caminhos passam a não casar nada.
+> acima continua valendo **na forma ancorada na base** (a de dois pontos foi aposentada em
+> 2026-10-02, acima), e os dois caminhos passam a não casar nada.
 
 > **Correção de 2026-09-05.** Esta seção afirmava que `_force_utf8_output` em `pypi/trackfw/cli.py`
 > era divergência local deliberada. **Não é mais** — o upstream absorveu (2 ocorrências em
