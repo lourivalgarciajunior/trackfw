@@ -473,6 +473,48 @@ O gate existe porque a ADR foi aceita e, cinco dias depois, **7 REQs estavam em 
 o `validate` dizendo `✓ No violations found`. E o custo não era a desarrumação: aquele nível a mais
 produziu um **ponto cego de medição** que fez um número publicado sair errado.
 
+## `branch new feat/fix/refactor` exige roadmap em `wip/` desde 2026-10-02
+
+O [#500](https://github.com/kgsaran/trackfw/pull/500) do upstream (que fecha a #494 e a #490) mudou o
+conjunto de estados que governa a criação de branch. **`branch new` consulta só `wip/`.** `done/` e
+`blocked/` continuam governando branch que **já existe** — `blocked/` pela inferência e pelo vínculo
+escrito, `done/` só pelo vínculo escrito ou se a própria branch moveu o roadmap para lá.
+
+Aqui isso **muda o fluxo de criação**, porque o nosso `wip/` vive vazio. Medido por efeito com o
+binário, antes e depois do sync, no mesmo slug:
+
+| | antes | depois |
+|---|---|---|
+| `fix/<slug>` casando com roadmap de `done/` | criava | **`rc=1`, bloqueia** |
+| `chore/<slug>` | `rc=0` | `rc=0` |
+
+```
+acervo medido: wip=0  blocked=1  done=69
+
+$ trackfw branch new fix/cerca-nao-terminada-mascara-ate-o-fim-do-arquivo --dry-run
+[dry-run] would block: branch "fix/…" is a feat/fix/refactor branch but no roadmap is in wip/
+  trackfw req new --agent <agent> "title"  # agents: apolo, artemis, claude
+  trackfw roadmap new --agent <agent> "title"
+```
+
+**O trabalho diário não é afetado**, e o motivo é o tipo: sync, gate e governança vão em `chore/` ou
+`docs/`, que não passam pelo gate. O que mudou é o caminho de `feat`/`fix`/`refactor`: **mova o
+roadmap para `wip/` antes de criar a branch**, que é a ordem que a cadeia ADR → REQ → ROADMAP sempre
+pediu.
+
+🔴 **E isto não é regressão nem perda de capacidade.** As nossas 23 branches `feat`/`fix` mescladas
+historicamente casavam por **contenção contra `done/`** — medido em 2026-10-01, 23 de 23 — e hoje
+nenhuma delas seria criável. Elas nasceram quando o roadmap delas **estava em `wip/`**, que é
+exatamente o que a regra nova exige; o que mudou foi o produto deixar de aceitar o atalho que o
+acervo de hoje oferece.
+
+**A nossa medição que entrou nessa decisão** está na #494: 160 branches gated mescladas do upstream,
+142 por contenção e 16 só por sobreposição contra `done/`. O mantenedor usou o **limite** que eu
+declarei junto — *"o acervo de hoje não é o da época"* — para concluir que aquelas 16 não justificam
+afrouxar a criação. Ver [[antes-de-implementar-issue-dele-alinhar-e-fechar-o-ci]] para o resto do
+episódio.
+
+
 ## `req new` e `roadmap new` exigem `--agent` aqui — são três namespaces
 
 Desde o merge da [#330](https://github.com/kgsaran/trackfw/pull/330) do upstream (2026-09-12), em
