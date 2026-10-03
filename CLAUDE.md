@@ -972,8 +972,19 @@ denominador e com os comandos do GitHub desligados enquanto ele roda: os casos s
   > ```
   >
   > O `+1 NOVO` desapareceu porque a causa foi removida: o teste passou a montar **fixture sintética**
-  > em vez de copiar o `docs/roadmaps/done/` plano do repositório real. A confirmação pelo lado do
-  > fork é a corrida deste PR de sync, abaixo.
+  > em vez de copiar o `docs/roadmaps/done/` plano do repositório real.
+  >
+  > **E confirmado pelo lado do fork**, no `windows-full-suites` do PR #191 — a corrida que trouxe o
+  > `de9df66c` para cá:
+  >
+  > ```
+  > ML-2A/2B: 14 observed / 14 active / 24 removed. Go 14/14
+  > --- PASS: TestBranchStateE2E_AC2_DoneOnlyBlocksCreation
+  > --- PASS: TestBranchStateE2E_AC2_ByAgent_DoneOnlyBlocksCreation
+  > ```
+  >
+  > Duas corridas, dois repositórios, mesmo veredito: `14 observed / 14 active`. A medição no CI dele
+  > provava que a correção funciona no layout plano; esta prova no `by_agent`, que é o nosso.
   >
   > 🔴 **A regra que o episódio deixou, e que continua valendo:** quando o ratchet acusar nome novo, o
   > remédio que ele sugere — *"add to `.github/windows-known-failures.json` with a source run id"* —
