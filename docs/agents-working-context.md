@@ -28587,3 +28587,98 @@ REQs 61 · Roadmaps 71             docs/req/ removido inteiro
 
 Residual: a referência quebrada em `docs/cli-parity.md` existe e **nenhum gate a lê** — registrada,
 não corrigida.
+
+---
+
+## 2026-10-02 — ciclo de contribuição ao upstream e conserto de instrumentos
+
+> A entrada anterior é de 2026-09-11. Três semanas sem registro, com o `CLAUDE.md` mandando atualizar
+> ao iniciar e encerrar cada ciclo. O que está abaixo é o estado real, com número e identificador em
+> cada linha.
+
+### O que o upstream mesclou, e o que veio de medição nossa
+
+| commit | PR dele | o que é, e o nosso papel |
+|---|---|---|
+| `fa882a34` | [#498](https://github.com/kgsaran/trackfw/pull/498) | `discover`: a declaração do `trackfw.yaml` vence a sonda de caminho convencional. **PR nosso, mesclado** |
+| `54c227d1` | [#500](https://github.com/kgsaran/trackfw/pull/500) | `branch new` passa a exigir `wip/`; fecha as nossas #494 e #490 |
+| `2dd76b40` | [#503](https://github.com/kgsaran/trackfw/pull/503) | ADR identificado por prefixo `ADR-`; fecha a #471. Crédito escrito à nossa medição (6 acervos, 133 ADRs) e ao segundo sítio no `discover` |
+| `f3d98639` | [#506](https://github.com/kgsaran/trackfw/pull/506) | limite de tempo por chunk no driver de falsificação; fecha a #504 dele |
+| `0bf66679`, `3b2eff09` | #505, #508 | fechamento das REQs dele pós-merge; zero produto |
+
+🔴 **Dois PRs nossos foram fechados sem merge** — [#497](https://github.com/kgsaran/trackfw/pull/497)
+por colisão com REQ dele já em implementação, e [#499](https://github.com/kgsaran/trackfw/pull/499)
+por gate vermelho que eu sabia corrigir e deixei parado. A política dele, agora escrita no acervo
+(`.claude/agent-memory/zeus-tf/project_contribuicao_externa_discussion_e_gates.md`): **Discussion
+antes de qualquer linha** em issue com `req-aberta` ou em backlog, inclusive para contribuição só de
+medição; PR vermelho não mescla; PR que colide é fechado com crédito, não fica esperando.
+
+### O que está na mão dele agora
+
+```
+#509  PR nosso, CI 20/20 VERDE, esperando merge
+      corrige o TestBranchStateE2E_AC2, que le o docs/roadmaps/done/ plano do
+      repositorio real e falha em projeto by_agent
+#507  issue nossa, triada por ele com req-aberta e EM IMPLEMENTACAO
+      o trackfw-git-branch-guard falha ABERTO sem jq
+#502  issue nossa, SEM TRIAGEM — e a mesma causa que o #509 corrige
+```
+
+### O nosso lado
+
+```
+main                 0950bd29   arvore limpa
+#191 (fork)          ABERTO e VERMELHO, por um motivo so e ele nao e nosso:
+                     o teste da #502. O corpo do PR diz isso.
+#192 (fork)          MESCLADO 17:50 — bloco caduco do #479 aposentado com a
+                     medicao pos-merge, dois pontos cegos locais declarados, e o
+                     conserto do gate de divergencia (dois pontos -> base de merge)
+divergencia local    ZERO, agora medida pela base de merge
+jq                   instalado (1.8.2, winget) — fecha a exposicao do #507 aqui
+                     da proxima sessao em diante
+```
+
+🔴 **O que o `#191` destrava quando o `#509` mesclar:** o `windows-full-suites` do nosso PR acusa
+`15 observed / 14 active — Go 15/14 [+1 NOVO]`, e o `+1` é o nome daquele teste. O remédio que o
+ratchet sugere — listar no `.github/windows-known-failures.json` — **está vetado aqui**, porque o
+arquivo é compartilhado com o upstream. Então a única saída é a correção vindo de lá. Quando vier, a
+seção do `CLAUDE.md` que afirma *"a exposição deixou de ser ZERO"* **caduca no mesmo instante** e tem
+de ser corrigida no PR do sync.
+
+### Instrumentos consertados neste ciclo
+
+- **Gate de divergência de produto** (`local-gates.yml`): media `HEAD upstream/main` de **dois
+  pontos**, que responde *"o upstream andou?"* e não *"nós mudamos?"*. Reprovou o #192 com a
+  divergência real em zero. Ancorado na base de merge, com guarda de vacuidade. Varredura dos 13
+  scripts e 10 workflows só nossos depois: **nenhum segundo sítio** — os outros usam três pontos, ou
+  dois pontos onde a pergunta é de fato "existe commit para trazer".
+- **Vigia do upstream** (`scripts/vigia-do-upstream.sh`, saiu do scratchpad): a guarda *"leitura que
+  falhou não é dado"* existia em **um** dos três braços, e cobria *vazio*, não *forma*. Um 503 fez o
+  corpo de erro virar evento (`PR #{"message" ...`) e envenenar a base. Agora os três braços validam
+  a forma do snapshot **inteiro**, com self-test (`check-vigia-forma.sh`, 19 casos) no agregador.
+- 🔴 **E o self-test nasceu decorativo.** A primeira versão exercitava a função `valida_forma`
+  direto e **não** os braços: tirar `| valida_forma` de `snap_prs` deixava o gate verde. Pego por
+  sabotagem, não por leitura. Os casos 14-17 exercitam os braços de ponta a ponta, com `gh` e `git`
+  substituídos por função — e aí a mesma sabotagem reprova.
+
+### Estado dos gates
+
+```
+run-local-gates                 12 executado(s) · 0 falha(s)
+validate                        0 violacoes · 2 avisos (grandfathering conhecido)
+check-parity-contract-coverage  OK
+go build ./...                  exit 0
+```
+
+### Adendo — fechamento da REQ da vigia (2026-10-03)
+
+O [#193](https://github.com/lourivalgarciajunior/trackfw/pull/193) mesclou em `d81e03ff` (CI 24/24,
+comparação por nome: 22 = 17 da base + 5 nossos). Roadmap em `done/`, REQ em `Done` com evidência por
+AC. O `wip/` volta a ficar **vazio**, o que restaura o `branch new feat/fix/refactor` ao estado em que
+ele exige mover um roadmap antes.
+
+E o upstream respondeu ao [#509](https://github.com/kgsaran/trackfw/pull/509): a direção foi aceita,
+com um ajuste pedido que **eu havia estreitado sem perceber** — a fixture casava por *contenção*, e o
+AC2 existe para o formato da #494, que é casamento **só por sobreposição** e **no plural**. Corrigido
+com os dois roadmaps do caso original, mais o controle que prova que a asserção do plural morde (só um
+dos dois em `done/` → reprova). CI do #509: 20/20, ratchet `14 observed / 14 active`. O merge é dele.
