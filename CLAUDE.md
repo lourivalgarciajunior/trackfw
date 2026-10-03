@@ -957,37 +957,49 @@ denominador e com os comandos do GitHub desligados enquanto ele roda: os casos s
   quebrar o CI. Aposentar um nome exige `removal_note` no `.github/windows-known-failures.json`, que é
   compartilhado: não se edita aqui.
 
-  > ✅ **O prazo venceu: o [#479](https://github.com/kgsaran/trackfw/pull/479) mesclou em 2026-09-29 e
-  > já está nesta árvore.** "Não observada" agora é `::error::` + `exit 1`, em três baldes, e vale o
-  > **D7** — entrada ativa sem `reason` reprova. **Medido depois do merge**, no `windows-full-suites`
-  > do nosso PR #191 (run `37021938293`), que é a primeira corrida nossa com a regra nova:
+  > ✅ **Resolvido em 2026-10-03 pelo [#509](https://github.com/kgsaran/trackfw/pull/509), que é
+  > nosso.** A exposição voltou a ZERO. O que estava escrito aqui — *"a nossa exposição deixou de ser
+  > ZERO, e o +1 tem nome"* — valeu de 2026-09-29 (merge do #479) até o merge do #509 em `de9df66c`,
+  > e **fica registrado abaixo** porque é o episódio que explica o conserto, não porque descreva o
+  > estado atual.
+  >
+  > **Medido no CI do #509**, no `windows-full-suites` do repositório dele:
+  >
+  > ```
+  > ML-2A/2B: 14 observed / 14 active / 24 removed. Go 14/14
+  > --- PASS: TestBranchStateE2E_AC2_DoneOnlyBlocksCreation
+  > --- PASS: TestBranchStateE2E_AC2_ByAgent_DoneOnlyBlocksCreation
+  > ```
+  >
+  > O `+1 NOVO` desapareceu porque a causa foi removida: o teste passou a montar **fixture sintética**
+  > em vez de copiar o `docs/roadmaps/done/` plano do repositório real. A confirmação pelo lado do
+  > fork é a corrida deste PR de sync, abaixo.
+  >
+  > 🔴 **A regra que o episódio deixou, e que continua valendo:** quando o ratchet acusar nome novo, o
+  > remédio que ele sugere — *"add to `.github/windows-known-failures.json` with a source run id"* —
+  > **está vetado aqui**, porque o arquivo é compartilhado com o upstream (é a decisão escrita acima,
+  > que este bloco não revoga). A saída legítima é a correção no upstream, e foi o caminho tomado:
+  > issue [#502](https://github.com/kgsaran/trackfw/issues/502) com a medição, depois PR com a
+  > correção. Entre a issue e o merge, **todo PR nosso que rodasse a suíte de Windows tinha dois
+  > vermelhos pelo mesmo motivo** — o teste e o ratchet —, e isso é custo aceito, não defeito nosso.
+  >
+  > **O registro do episódio**, medido no `windows-full-suites` do nosso PR #191 (run `37021938293`),
+  > a primeira corrida nossa com a regra nova do #479:
   >
   > ```
   > D7         14 entradas ativas · 14 com `reason` · 0 sem      -> satisfeito
   > D4         14 entradas comparadas — nenhuma deleção silenciosa
   > baldes 1 e 2  vazios (nenhuma entrada passou nem deixou de rodar)
   > NOVO       15 observed / 14 active  ->  Go 15/14 [+1 NOVO]
-  > ```
   >
-  > 🔴 **A nossa exposição deixou de ser ZERO, e o +1 tem nome:**
-  >
-  > ```
   > ML-2A ratchet: NEW Go assertion failure not in known list:
   >   'TestBranchStateE2E_AC2_DoneOnlyBlocksCreation'
   > ```
   >
-  > Não é defeito nosso: é o teste dele lendo o `docs/roadmaps/done/` **plano** do repositório real,
-  > que num fork `by_agent` não existe — mesma causa da #396, reportada na
-  > [#502](https://github.com/kgsaran/trackfw/issues/502).
+  > O D7 e o D4 daquela medição continuam valendo: 14 entradas ativas, 14 com `reason`, nenhuma
+  > deleção silenciosa.
   >
-  > 🔴 **E o remédio que o próprio ratchet sugere está vetado aqui.** A mensagem manda *"add to
-  > `.github/windows-known-failures.json` with a source run id"* — e esse arquivo é **compartilhado
-  > com o upstream**, então não se edita neste fork (é a decisão escrita acima, que este bloco não
-  > revoga). Logo a única saída legítima é a correção no upstream. **Enquanto a #502 não fechar, todo
-  > PR nosso que rode a suíte de Windows tem dois vermelhos pelo mesmo motivo** — o teste em si e o
-  > ratchet acusando o nome não listado.
-  >
-  > O registro de antes do merge fica abaixo, com as duas armadilhas de medição, que continuam válidas.
+  > O registro de antes do merge do #479 fica abaixo, com as duas armadilhas de medição, que continuam válidas.
 
   **Antes do merge a exposição era ZERO**, nas três frentes —
 
