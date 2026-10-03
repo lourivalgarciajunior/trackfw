@@ -9,7 +9,7 @@ branch: chore/migrar-upstream-7.3.0
 
 # Roadmap: migrar para o upstream 7.3.0
 
-> Created: 2026-08-29 | Status: done
+> Created: 2026-08-29 | Status: backlog
 
 REQ: `docs/requisições/claude/REQ-2026-08-29-migrar-para-upstream-7.3.0.md`
 ADR: `docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md`
@@ -153,3 +153,52 @@ Medido contra worktree pristina em `v7.3.0`, mesma máquina:
 | pypi | 223 falhas / 1264 passes | 213 falhas / 1307 passes |
 
 A migração não introduziu regressão de teste — em npm e pypi ficou melhor que o upstream puro.
+
+## Wave 0 — Threat Model
+
+**Não houve, e esta seção declara a ausência em vez de inventar o conteúdo.**
+
+Este roadmap é de 2026-08-29, anterior à `ADR-2026-09-18` decisão 8, que passou a exigir Wave 0 antes de
+qualquer implementação. A transição para `done` a cobra **estruturalmente** (`AC7-bis`, em
+`internal/generators/roadmap.go:722`), e a cobrança não tem corte por data — diferente do
+`req_has_roadmap`, cujo corte de 2026-09-03 está declarado em
+`internal/validator/validator_req_roadmap_cutoff.go`.
+
+🔴 **Escrever um threat model agora afirmaria uma análise que não aconteceu.** O trabalho deste
+roadmap foi entregue antes da regra existir; o que esta seção registra é exatamente isso. Quem ler
+daqui a um ano tem de poder distinguir "houve Wave 0" de "a seção existe porque a ferramenta a exige".
+
+## Veredito da varredura de caducidade — 2026-10-03
+
+**Veredito: (a) entregue**
+
+🔴 **O corpo já dizia `Status: done`; o frontmatter dizia `backlog`.** Segunda contradição do mesmo
+tipo, no mesmo acervo.
+
+**Medido em 2026-10-03:** a tag `v7.3.0` é **ancestral** da nossa `main`, e a `main` está em
+`94fe36b2`, que tem `upstream/main` (`de9df66c`, v9.1.0) como ancestral. Migramos para a 7.3.0 e
+seguimos cinco majors além. Os 21 critérios já estavam marcados.
+
+### Emenda do mesmo dia — por que este roadmap NÃO pode ir para `done/`
+
+🔴 **O trabalho foi entregue, e ainda assim `done/` seria uma afirmação falsa.** A REQ ligada tem
+critério de aceite que **não pode ser fechado honestamente**: `trackfw version reporta 7.3.0 nos tres runtimes` — o próprio acervo já registrou o veredito **(c) CADUCOU** nesta AC em 2026-09-10, deixando-a **aberta de propósito**: marcá-la afirmaria `7.3.0`, e hoje o binário é `9.1.0` — além de não haver três runtimes.
+
+A cadeia é fechada pelos dois lados, e os dois estão certos:
+
+```
+o produto    recusa REQ `Open` com roadmap em done/        (validate: 6 violacoes)
+o nosso gate recusa REQ `done` com criterio em aberto      (check-req-done-com-criterio-aberto)
+```
+
+Então marcar o roadmap `done` exigiria marcar a REQ `Done`, o que exigiria **fechar um critério que
+não foi atendido** — a terceira saída que o nosso próprio gate recusa, e com razão.
+
+**Fica em `backlog/`, agora com o motivo escrito.** O que mudou nesta varredura não é o estado: é que
+o estado deixou de ser inexplicado. Antes, um leitor via trabalho entregue parado em `backlog` sem
+saber por quê.
+
+🔴 **E isto é uma lacuna do modelo, não deste roadmap:** não existe estado para *"entregue, com
+critério de verificação permanentemente inverificável"*. `done` afirma demais, `backlog` afirma
+trabalho pendente, `abandoned` afirma que não será feito. Os três erram, e o menos errado é o que
+deixa a prosa corrigir — registrado aqui para quem for decidir a convenção.

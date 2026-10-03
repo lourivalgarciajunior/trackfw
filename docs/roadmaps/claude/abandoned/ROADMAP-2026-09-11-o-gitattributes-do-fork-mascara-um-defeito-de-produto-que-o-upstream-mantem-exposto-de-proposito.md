@@ -1,5 +1,5 @@
 ---
-status: blocked
+status: abandoned
 date: 2026-09-11
 req: "docs/requisições/claude/REQ-2026-09-11-o-gitattributes-do-fork-mascara-um-defeito-de-produto-que-o-upstream-mantem-exposto-de-proposito.md"
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: o .gitattributes do fork mascara um defeito de produto que o upstream mantém exposto de propósito
 
-> Created: 2026-09-11 | Status: blocked
+> Created: 2026-09-11 | Status: abandoned
 
 ## Context
 
@@ -161,3 +161,26 @@ Movido para `blocked/` porque o único critério em aberto, o AC4, depende de
 esse issue, em 2026-09-12, como *"deixa de ser possível"* na v8, que remove a suíte Python.
 Todos os MLs daqui estão concluídos. O bloqueio é externo, não pendência nossa: sai daqui quando a
 #329 fechar ou quando a Wave 3 da v8 remover a suíte, e aí o AC4 recebe o veredito `(c) caducou`.
+
+## Veredito da varredura de caducidade — 2026-10-03
+
+**Veredito: (c) caducou**
+
+**O que mudou no mundo:** a
+`ADR-2026-09-11-o-gitattributes-do-fork-alinha-ao-upstream-porque-mascarava-defeito-de-produto-sem-custo-medido`
+decidiu a **opção A** — alinhar byte a byte e remover o bloco local inteiro — e **emendou** a
+`ADR-2026-08-29` para reclassificar o `.gitattributes` de local para upstream.
+
+**Medido em 2026-10-03:**
+
+```
+git diff --name-only HEAD upstream/main -- .gitattributes    0 arquivos
+```
+
+O mascaramento que este roadmap atacava **não existe mais**: não há bloco local para mascarar nada. Os
+8 critérios nunca foram executados como escritos, e não há mais objeto para executá-los.
+
+🔴 **Por que `abandoned` e não `done`:** o problema foi resolvido por uma ADR que tornou o plano deste
+roadmap sem objeto, não pela execução do plano. Marcar `done` afirmaria que estes 8 critérios foram
+atendidos, e eles não foram. É a distinção que o `check-req-done-com-criterio-aberto.sh` existe para
+cobrar.
