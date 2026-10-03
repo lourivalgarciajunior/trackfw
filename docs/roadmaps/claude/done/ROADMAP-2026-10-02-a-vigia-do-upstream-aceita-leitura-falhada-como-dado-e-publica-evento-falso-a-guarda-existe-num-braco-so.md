@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-10-02
 req: "docs\requisições\claude/REQ-2026-10-02-a-vigia-do-upstream-aceita-leitura-falhada-como-dado-e-publica-evento-falso-a-guarda-existe-num-braco-so.md"
 squad: "claude"
@@ -7,7 +7,7 @@ squad: "claude"
 
 # Roadmap: a vigia do upstream aceita leitura falhada como dado e publica evento falso: a guarda existe num braco so
 
-> Created: 2026-10-02 | Status: wip
+> Created: 2026-10-02 | Status: done
 
 ## Context
 <!-- Derived from REQ: REQ-2026-10-02-a-vigia-do-upstream-aceita-leitura-falhada-como-dado-e-publica-evento-falso-a-guarda-existe-num-braco-so.md -->

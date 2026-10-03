@@ -1,14 +1,14 @@
 ---
-status: Open
+status: Done
 date: 2026-10-02
 author: "claude"
 adr: "docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md"
-roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-10-02-a-vigia-do-upstream-aceita-leitura-falhada-como-dado-e-publica-evento-falso-a-guarda-existe-num-braco-so.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-10-02-a-vigia-do-upstream-aceita-leitura-falhada-como-dado-e-publica-evento-falso-a-guarda-existe-num-braco-so.md"
 ---
 
 # REQ: a vigia do upstream aceita leitura falhada como dado e publica evento falso: a guarda existe num braco so
 
-> Date: 2026-10-02 | Status: Open
+> Date: 2026-10-02 | Status: Done
 | Linear Issue: 
 | Jira Issue: 
 
@@ -45,22 +45,37 @@ gate.
 
 ## Acceptance Criteria
 
-- [ ] AC1 — A validação de forma é **por braço e sobre o snapshot inteiro**: `main` casa 40 hexa;
+- [x] AC1 — A validação de forma é **por braço e sobre o snapshot inteiro**: `main` casa 40 hexa;
       PRs, `^[0-9]+:(MERGED|OPEN|CLOSED)$` em **todas** as linhas; comentários,
       `^[0-9]+\t[0-9]+\t[^\t]+\t(issue|pull)$` em todas. Uma linha fora da forma invalida o
       **snapshot todo**, não só a linha — filtrar a linha ruim produziria snapshot truncado, que é o
       dano 2.
-- [ ] AC2 — Snapshot inválido é tratado como **leitura que falhou**: não entra na comparação e **não
+      ✅ `RE_MAIN` (40 hexa), `RE_PRS` e `RE_COM` em `scripts/vigia-do-upstream.sh`, aplicados pelo
+      `valida_forma` ao snapshot **inteiro**. Caso 7 do `check-vigia-forma.sh`: snapshot misto
+      (2 boas + 1 ruim) sai vazio. Sabotagem que troca a invalidação total por filtro de linha
+      **reprova** nos casos 7 e 7b.
+- [x] AC2 — Snapshot inválido é tratado como **leitura que falhou**: não entra na comparação e **não
       move a base**. Verificado por efeito, com o corpo de erro real do 503 injetado.
-- [ ] AC3 — Transição real continua sendo emitida depois de uma leitura inválida: injetar erro, depois
+      ✅ Caso 13: `ciclo()` com leitura inválida devolve `|<base>` — zero evento, base intacta. O
+      corpo injetado é o do 503 real.
+- [x] AC3 — Transição real continua sendo emitida depois de uma leitura inválida: injetar erro, depois
       devolver leitura válida com uma transição, e ver o evento sair **uma vez**.
-- [ ] AC4 — O script passa a viver em `scripts/`, e o `run-local-gates.sh` o declara na lista **FORA
+      ✅ Casos 8, 9 e 13: transição `508 OPEN -> MERGED` emite **uma** vez, segundo ciclo sem
+      mudança emite nada, e leitura válida move a base.
+- [x] AC4 — O script passa a viver em `scripts/`, e o `run-local-gates.sh` o declara na lista **FORA
       com motivo** (é daemon de laço infinito, não gate). A guarda de completude do agregador reprova
       script nosso não declarado — então este AC é verificado pelo próprio agregador.
-- [ ] AC5 — As duas guardas que já existiam continuam provadas: ordenação `LC_ALL=C` nos dois lados do
+      ✅ `scripts/vigia-do-upstream.sh` na árvore, declarado FORA com motivo, e
+      `scripts/check-vigia-forma.sh` em EXECUTAR. Agregador: `12 executado(s) · 0 falha(s)`,
+      local e no `gates-locais` do CI do #193.
+- [x] AC5 — As duas guardas que já existiam continuam provadas: ordenação `LC_ALL=C` nos dois lados do
       `comm`, e comentário de autoria própria não vira evento.
-- [ ] AC6 — Nenhuma chamada de API acrescentada: continua 0 (`git ls-remote`) + 1 (PRs) + 1
+      ✅ Caso 12 (entrada invertida não inventa evento) e casos 10-11 (comentário de outro autor
+      emite, o nosso não).
+- [x] AC6 — Nenhuma chamada de API acrescentada: continua 0 (`git ls-remote`) + 1 (PRs) + 1
       (comentários) por ciclo. Medido por contagem de chamadas no ciclo, não por leitura do código.
+      ✅ Nenhuma chamada acrescentada: `snap_main` segue em `git ls-remote` (0 API), `snap_prs` e
+      `snap_com` em uma chamada REST cada. O `valida_forma` é filtro local, não faz I/O de rede.
 
 ## Linked ADR
 <!-- Reference the ADR that governs this requirement -->
@@ -80,4 +95,20 @@ observa o upstream**; a decisão de forma do snapshot é desta REQ.
 
 ## Linked Roadmap
 <!-- Reference the roadmap that implements this requirement -->
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-10-02-a-vigia-do-upstream-aceita-leitura-falhada-como-dado-e-publica-evento-falso-a-guarda-existe-num-braco-so.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-10-02-a-vigia-do-upstream-aceita-leitura-falhada-como-dado-e-publica-evento-falso-a-guarda-existe-num-braco-so.md
+
+## Fechamento — 2026-10-02/03
+
+Entregue pelo [#193](https://github.com/lourivalgarciajunior/trackfw/pull/193), mesclado em
+`d81e03ff` com CI 24/24 verde e comparação por nome contra a linha de base (22 nomes = 17 da base +
+5 nossos, nenhum job deixou de rodar).
+
+🔴 **O achado desta REQ não foi o defeito, foi o teste do defeito.** A primeira versão do
+`check-vigia-forma.sh` exercitava `valida_forma` **direto** e nunca os braços: remover
+`| valida_forma "$RE_PRS"` de `snap_prs` — o defeito original de volta — deixava o gate verde com
+`15 casos · 0 falhas`. Quem pegou foi a sabotagem, não a leitura, e a Wave 0 desta própria REQ havia
+nomeado esse modo de esvaziamento. Os casos 14-17 fecharam, substituindo `gh` e `git` por função.
+
+**Resíduo que fica aberto de propósito:** a validação é de **forma**, não de **verdade**. Corpo
+bem-formado e errado passa, e não há como distinguir sem uma segunda fonte. Declarado, não coberto —
+se algum dia houver segunda fonte, é REQ nova, com medição.
