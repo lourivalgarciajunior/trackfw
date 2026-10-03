@@ -6,7 +6,7 @@ req: docs/requisições/claude/REQ-2026-08-30-ruido-de-gofmt-divergindo-do-upstr
 
 # Roadmap: Ruido de gofmt divergindo do upstream
 
-> Created: 2026-08-30 | Status: done
+> Created: 2026-08-30 | Status: backlog
 
 ## Context
 
@@ -78,3 +78,57 @@ log_basename = agent    1 -> 1
 arvore esta limpa no Go 1.26.1 local, e esse mesmo gofmt reformataria **206 arquivos** na arvore
 dele, que declara 1.25.2. Tocar um arquivo Go para um PR ao upstream exige formatar com o gofmt
 **dele**.
+
+## Wave 0 — Threat Model
+
+**Não houve, e esta seção declara a ausência em vez de inventar o conteúdo.**
+
+Este roadmap é de 2026-08-30, anterior à `ADR-2026-09-18` decisão 8, que passou a exigir Wave 0 antes de
+qualquer implementação. A transição para `done` a cobra **estruturalmente** (`AC7-bis`, em
+`internal/generators/roadmap.go:722`), e a cobrança não tem corte por data — diferente do
+`req_has_roadmap`, cujo corte de 2026-09-03 está declarado em
+`internal/validator/validator_req_roadmap_cutoff.go`.
+
+🔴 **Escrever um threat model agora afirmaria uma análise que não aconteceu.** O trabalho deste
+roadmap foi entregue antes da regra existir; o que esta seção registra é exatamente isso. Quem ler
+daqui a um ano tem de poder distinguir "houve Wave 0" de "a seção existe porque a ferramenta a exige".
+
+## Veredito da varredura de caducidade — 2026-10-03
+
+**Veredito: (a) entregue**
+
+**Medido em 2026-10-03, e o número é o veredito:**
+
+```
+gofmt -l internal cmd                        39 arquivos
+desses, que diferem do upstream               0
+```
+
+O `gofmt` acusa 39 arquivos, e **nenhum deles é nosso** — todos byte a byte iguais aos de
+`upstream/main`. O ruído que este roadmap atacava era divergência **nossa** de formatação, e ela é
+zero; o que resta é estilo do upstream, que não é objeto deste roadmap. Os 6 critérios já estavam
+marcados.
+
+### Emenda do mesmo dia — por que este roadmap NÃO pode ir para `done/`
+
+🔴 **O trabalho foi entregue, e ainda assim `done/` seria uma afirmação falsa.** A REQ ligada tem
+critério de aceite que **não pode ser fechado honestamente**: `Nenhuma divergencia deliberada perdida — verificado por marcador` e `Os sete gates verdes` — não há divergência deliberada a perder (divergência de produto medida hoje: **0**), e o conjunto de "sete gates" de agosto de 2026 não existe mais como tal — o agregador de hoje executa 12.
+
+A cadeia é fechada pelos dois lados, e os dois estão certos:
+
+```
+o produto    recusa REQ `Open` com roadmap em done/        (validate: 6 violacoes)
+o nosso gate recusa REQ `done` com criterio em aberto      (check-req-done-com-criterio-aberto)
+```
+
+Então marcar o roadmap `done` exigiria marcar a REQ `Done`, o que exigiria **fechar um critério que
+não foi atendido** — a terceira saída que o nosso próprio gate recusa, e com razão.
+
+**Fica em `backlog/`, agora com o motivo escrito.** O que mudou nesta varredura não é o estado: é que
+o estado deixou de ser inexplicado. Antes, um leitor via trabalho entregue parado em `backlog` sem
+saber por quê.
+
+🔴 **E isto é uma lacuna do modelo, não deste roadmap:** não existe estado para *"entregue, com
+critério de verificação permanentemente inverificável"*. `done` afirma demais, `backlog` afirma
+trabalho pendente, `abandoned` afirma que não será feito. Os três erram, e o menos errado é o que
+deixa a prosa corrigir — registrado aqui para quem for decidir a convenção.

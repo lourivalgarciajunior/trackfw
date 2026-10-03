@@ -1,5 +1,5 @@
 ---
-status: backlog
+status: abandoned
 date: 2026-08-29
 req: docs/requisições/claude/REQ-2026-08-29-geradores-python-escrevem-crlf-no-windows.md
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: Geradores Python escrevem CRLF no Windows
 
-> Created: 2026-08-29 | Status: done
+> Created: 2026-08-29 | Status: abandoned
 
 ## Context
 
@@ -205,3 +205,27 @@ E o mesmo problema de isolamento de home que a migracao corrigiu no Go com `inte
 Consequencia: o **ML-2A do roadmap do slug segue bloqueado**, agora por esta e nao mais pelo CRLF.
 Precisa de REQ propria. A superficie ja e conhecida: `os.homedir()` no Node e
 `os.path.expanduser` no Python leem `%USERPROFILE%`, nao `$HOME`.
+
+## Veredito da varredura de caducidade — 2026-10-03
+
+**Veredito: (c) caducou**
+
+**O que mudou no mundo:** a **v8.0.0** do upstream apagou os CLIs de Node e de Python. O trackfw tem
+**uma** implementação, em Go, entregue por três canais.
+
+**Medido em 2026-10-03:**
+
+```
+npm/   7 arquivos   -> .gitattributes README bin/trackfw bin/trackfw.js package.json
+                       package-lock.json shim_packaging.test.js      (casquinha de canal)
+pypi/  5 arquivos   -> .gitattributes AGENTS.md README pyproject.toml
+                       scripts/build_wheel.py                        (casquinha de canal)
+npm/src        NAO existe
+pypi/trackfw   NAO existe
+```
+
+E o gate que os critérios deste roadmap exigem — `check-artifact-parity.sh` — **não existe**, nem
+nesta árvore nem em `upstream/main` (0 ocorrências). Os critérios abertos são **inconstruíveis**: não
+há CLI Python para gravar LF, nem paridade de três runtimes para medir.
+
+🔴 **Não é "entregue":** o defeito nunca foi corrigido. O produto que o tinha deixou de existir.

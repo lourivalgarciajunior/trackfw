@@ -3,7 +3,7 @@ status: Open
 date: 2026-08-29
 author: claude
 adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
-roadmap: "docs/roadmaps/claude/backlog/ROADMAP-2026-08-29-node-e-python-ignoram-home-no-windows.md"
+roadmap: "docs/roadmaps/claude/abandoned/ROADMAP-2026-08-29-node-e-python-ignoram-home-no-windows.md"
 ---
 
 # REQ: Node e Python ignoram HOME no Windows
@@ -102,4 +102,4 @@ ADR: docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito
 
 ## Linked Roadmap
 
-Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-08-29-node-e-python-ignoram-home-no-windows.md
+Roadmap: docs/roadmaps/claude/abandoned/ROADMAP-2026-08-29-node-e-python-ignoram-home-no-windows.md

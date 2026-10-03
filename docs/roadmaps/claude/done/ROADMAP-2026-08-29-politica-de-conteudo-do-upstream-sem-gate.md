@@ -1,5 +1,5 @@
 ---
-status: backlog
+status: done
 date: 2026-08-29
 req: docs/requisições/claude/REQ-2026-08-29-politica-de-conteudo-do-upstream-sem-gate.md
 ---
@@ -123,3 +123,12 @@ pelo motivo errado.
 A lista de mantidos pode virar deposito. Nada impede que a proxima reprovacao no meio de um merge
 seja "resolvida" acrescentando uma linha ao `KEEP`. O motivo escrito por entrada torna isso visivel
 a quem le, e nao mais que isso — e por isso o motivo e criterio de aceite, nao gosto.
+
+## Veredito da varredura de caducidade — 2026-10-03
+
+**Veredito: (a) entregue**
+
+**Sítio que comprova:** `scripts/check-upstream-content.sh` existe na árvore e está na lista
+EXECUTAR do `scripts/run-local-gates.sh` — medido em 2026-10-03, o agregador fecha
+`12 executado(s) · 0 falha(s)` com ele dentro. Os 9 critérios de aceite já estavam marcados; o que
+faltava era o estado do roadmap, não o trabalho.

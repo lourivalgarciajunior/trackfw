@@ -3,7 +3,7 @@ status: Open
 date: 2026-08-29
 author: claude
 adr: "docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md"
-roadmap: "docs/roadmaps/claude/backlog/ROADMAP-2026-08-29-slug-de-artefato-no-python-diverge-de-go-e-node.md"
+roadmap: "docs/roadmaps/claude/abandoned/ROADMAP-2026-08-29-slug-de-artefato-no-python-diverge-de-go-e-node.md"
 ---
 
 # REQ: Slug de artefato no Python diverge de Go e Node
@@ -99,4 +99,4 @@ ADR: docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudan
 
 ## Linked Roadmap
 
-Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-08-29-slug-de-artefato-no-python-diverge-de-go-e-node.md
+Roadmap: docs/roadmaps/claude/abandoned/ROADMAP-2026-08-29-slug-de-artefato-no-python-diverge-de-go-e-node.md

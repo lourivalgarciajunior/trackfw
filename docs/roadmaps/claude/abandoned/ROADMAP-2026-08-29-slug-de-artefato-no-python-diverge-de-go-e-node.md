@@ -1,5 +1,5 @@
 ---
-status: backlog
+status: abandoned
 date: 2026-08-29
 req: docs/requisições/claude/REQ-2026-08-29-slug-de-artefato-no-python-diverge-de-go-e-node.md
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: Slug de artefato no Python diverge de Go e Node
 
-> Created: 2026-08-29 | Status: done
+> Created: 2026-08-29 | Status: abandoned
 
 ## Context
 
@@ -297,3 +297,16 @@ propria ou registro:
 
 Nenhuma delas era sobre slug. O gate que existia para guardar o contrato de slug so pode guardar
 qualquer coisa depois que as quatro cairam.
+
+## Veredito da varredura de caducidade — 2026-10-03
+
+**Veredito: (c) caducou**
+
+**Mesma causa, e aqui a inconstrutibilidade é literal:** o critério diz *"`adr new` produz o mesmo
+nome nos três runtimes"* e *"o `artifactId` do `pom.xml` concorda entre Go e Node (o Python não tem
+esse gerador)"*. Com um runtime só, "concordar entre runtimes" deixa de ser uma propriedade definível
+— é o mesmo motivo pelo qual o upstream **retirou** o `check-subcommand-parity.sh`, registrado no
+`CLAUDE.md`.
+
+O que sobreviveu deste roadmap é o `check-slug-inventory.sh`, que **existe** na árvore e ficou
+Go-only. Então parte do valor foi preservada por outra via; os critérios como escritos, não.

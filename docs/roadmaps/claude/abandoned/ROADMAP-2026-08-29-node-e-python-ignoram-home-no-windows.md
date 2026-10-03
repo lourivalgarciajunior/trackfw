@@ -1,5 +1,5 @@
 ---
-status: backlog
+status: abandoned
 date: 2026-08-29
 req: docs/requisições/claude/REQ-2026-08-29-node-e-python-ignoram-home-no-windows.md
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: Node e Python ignoram HOME no Windows
 
-> Created: 2026-08-29 | Status: done
+> Created: 2026-08-29 | Status: abandoned
 
 ## Context
 
@@ -255,3 +255,14 @@ configurada, entao `_identity_file_exists(home)` era verdadeiro e o wizard nunca
 
 Precisa de REQ propria. Enquanto nao entrar, o **ML-2A do roadmap do slug segue bloqueado** — pela
 terceira parede diferente: primeiro o CRLF, depois a home, agora o `isatty`.
+
+## Veredito da varredura de caducidade — 2026-10-03
+
+**Veredito: (c) caducou**
+
+**Mesma causa:** os critérios exigem que **os três runtimes** resolvam `HOME` e que o
+`check-artifact-parity.sh` passe no Windows. Medido em 2026-10-03: sobrou **um** runtime, e o gate não
+existe. Inconstruível.
+
+O tratamento de `HOME` no Windows **pelo Go** é assunto vivo, mas é outro escopo e tem medição própria
+(ver as notas de `windows-known-failures` no `CLAUDE.md`). Este roadmap pedia paridade entre três.
