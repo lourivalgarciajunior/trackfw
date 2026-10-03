@@ -28669,3 +28669,16 @@ validate                        0 violacoes · 2 avisos (grandfathering conhecid
 check-parity-contract-coverage  OK
 go build ./...                  exit 0
 ```
+
+### Adendo — fechamento da REQ da vigia (2026-10-03)
+
+O [#193](https://github.com/lourivalgarciajunior/trackfw/pull/193) mesclou em `d81e03ff` (CI 24/24,
+comparação por nome: 22 = 17 da base + 5 nossos). Roadmap em `done/`, REQ em `Done` com evidência por
+AC. O `wip/` volta a ficar **vazio**, o que restaura o `branch new feat/fix/refactor` ao estado em que
+ele exige mover um roadmap antes.
+
+E o upstream respondeu ao [#509](https://github.com/kgsaran/trackfw/pull/509): a direção foi aceita,
+com um ajuste pedido que **eu havia estreitado sem perceber** — a fixture casava por *contenção*, e o
+AC2 existe para o formato da #494, que é casamento **só por sobreposição** e **no plural**. Corrigido
+com os dois roadmaps do caso original, mais o controle que prova que a asserção do plural morde (só um
+dos dois em `done/` → reprova). CI do #509: 20/20, ratchet `14 observed / 14 active`. O merge é dele.
