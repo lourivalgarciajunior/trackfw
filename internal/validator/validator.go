@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -190,6 +191,10 @@ func isHTMLCommentOnlyValue(value string) bool {
 // Regras ausentes deste mapa usam "error" como default.
 var ruleDefaults = map[string]string{
 	"note_orphan": "warning",
+	// D4 (ADR-2026-10-02): warning para .md sem prefixo ADR- com status reconhecível.
+	// Nunca "error": o arquivo pode ser documento auxiliar legítimo; o aviso existe para
+	// o caso em que é um ADR mal nomeado. "off" silencia normalmente, como qualquer regra.
+	"adr_file_without_prefix": "warning",
 	// ROADMAP-2026-08-12-deteccao-de-adulteracao-do-credential-guard-regra-de-validate, ML-1A,
 	// ADR-2026-08-12 Emenda 3: the script carries no version marker, so this rule cannot tell
 	// legitimate drift (trackfw not updated yet) from tampering — kept a warning, never an error.
@@ -399,17 +404,28 @@ func scopeRedirectViolations(diskCfg *config.ProjectConfig) []string {
 	return out
 }
 
-// mdBasenamesInGitTree returns the set of .md file basenames committed in the given git ref
-// under the given directory prefix. Uses the same gitCommand wrapper as originMainTrackfwYAML.
-// Returns an empty (non-nil) set on error so callers can do set subtraction safely.
-func mdBasenamesInGitTree(ref, dirPrefix string) map[string]bool {
-	out, err := gitCommand(".", "ls-tree", "-r", "--name-only", ref, "--", dirPrefix).Output()
+// mdBasenamesInGitTreeWithError returns the set of .md file basenames committed in the given git
+// ref under the given directory prefix, and any error from git ls-tree.
+//
+// A1 (ADR-2026-10-01): uses `-z` (NUL-delimited output) and bytes.Split so that filenames with
+// non-ASCII or special characters are never quoted by git's core.quotepath mechanism. Without `-z`,
+// a roadmap named "ROADMAP-2026-09-01-com-ç-teste.md" would appear quoted in the output and
+// filepath.Base would return the escaped form, causing the file to appear absent from the base tree
+// and triggering a spurious "moved by this branch" acceptance.
+//
+// RN1 (ML-3C, 2026-10-01): passes `--literal-pathspecs` as a git global option before the
+// subcommand so that pathspec magic tokens in roadmap_dir (e.g. ":(exclude)", ":(icase)", "[x]")
+// are never interpreted as patterns by git. Without it, a dir named ":(exclude)rm" or "[x]rm"
+// causes ls-tree to return rc=0 with an empty stdout and a fatal on stderr — D3 never fires,
+// the base tree silently appears empty, and the roadmap is accepted as "moved by this branch".
+func mdBasenamesInGitTreeWithError(ref, dirPrefix string) (map[string]bool, error) {
+	out, err := gitCommand(".", "--literal-pathspecs", "ls-tree", "-r", "-z", "--name-only", ref, "--", dirPrefix).Output()
 	set := make(map[string]bool)
 	if err != nil {
-		return set
+		return set, err
 	}
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-		line = strings.TrimSpace(line)
+	for _, entry := range bytes.Split(out, []byte{0}) {
+		line := string(entry)
 		if line == "" {
 			continue
 		}
@@ -417,6 +433,15 @@ func mdBasenamesInGitTree(ref, dirPrefix string) map[string]bool {
 			set[filepath.Base(line)] = true
 		}
 	}
+	return set, nil
+}
+
+// mdBasenamesInGitTree returns the set of .md file basenames committed in the given git ref
+// under the given directory prefix. Uses the same gitCommand wrapper as originMainTrackfwYAML.
+// Returns an empty (non-nil) set on error so callers can do set subtraction safely.
+// Uses mdBasenamesInGitTreeWithError internally (A1: -z, NUL-delimited).
+func mdBasenamesInGitTree(ref, dirPrefix string) map[string]bool {
+	set, _ := mdBasenamesInGitTreeWithError(ref, dirPrefix)
 	return set
 }
 
@@ -834,6 +859,12 @@ func ValidateUnfiltered() (violations []string, warnings []string, err error) {
 	}
 	applyRule("adr_orphan", adrOrphanViolations, &violations, &warnings)
 
+	adrWithoutPrefixWarnings, e := validateADRFilesWithoutPrefix()
+	if e != nil {
+		return nil, nil, e
+	}
+	applyRule("adr_file_without_prefix", adrWithoutPrefixWarnings, &violations, &warnings)
+
 	criteriaViolations, e := validateWIPHasAcceptanceCriteria()
 	if e != nil {
 		return nil, nil, e
@@ -1188,6 +1219,12 @@ func validateUnfilteredTagged() (violations []TaggedMsg, warnings []TaggedMsg, e
 		return nil, nil, e
 	}
 	applyRuleTagged("adr_orphan", adrOrphanViolations, &violations, &warnings)
+
+	adrWithoutPrefixWarningsT, e := validateADRFilesWithoutPrefix()
+	if e != nil {
+		return nil, nil, e
+	}
+	applyRuleTagged("adr_file_without_prefix", adrWithoutPrefixWarningsT, &violations, &warnings)
 
 	criteriaViolations, e := validateWIPHasAcceptanceCriteria()
 	if e != nil {
@@ -1882,6 +1919,17 @@ func ResolveWIPDirs(cfg config.ProjectConfig) []string {
 // pacote validator (ex: comando `trackfw branch new`).
 func ResolveDoneDirs(cfg config.ProjectConfig) []string {
 	return resolveDoneDirs(cfg)
+}
+
+// resolveBlockedDirs retorna todos os diretórios blocked/ conforme o modo de namespacing.
+func resolveBlockedDirs(cfg config.ProjectConfig) []string {
+	return resolveStateDirs(cfg, "blocked")
+}
+
+// ResolveBlockedDirs é o wrapper exportado de resolveBlockedDirs, usado por consumidores fora do
+// pacote validator (ex: ResolveBranchRoadmapForExisting em branchlink.go e por testes externos).
+func ResolveBlockedDirs(cfg config.ProjectConfig) []string {
+	return resolveBlockedDirs(cfg)
 }
 
 // ListMDFiles lista os arquivos .md diretamente dentro de dir (sem subdiretórios, sem glob) —
@@ -3027,16 +3075,20 @@ func resolvePhysical(p string) string {
 	}
 }
 
-// walkADRFilePaths retorna os caminhos completos de todos os arquivos .md encontrados recursivamente em adrDir.
+// walkADRFilePaths retorna os caminhos completos de todos os arquivos ADR encontrados recursivamente
+// em adrDir. Critério: D1 (ADR-2026-10-02) — basename com prefixo "ADR-" (case-insensitive) e
+// sufixo ".md", arquivo regular ou symlink para arquivo regular (isADRFileName +
+// d.Type().IsRegular() ou os.Stat seguindo o link). Symlink para diretório e link quebrado não contam.
 func walkADRFilePaths(adrDir string) []string {
 	return walkADRFilePathsForRule("", adrDir, nil)
 }
 
 // WalkADRFilePaths é o wrapper exportado de walkADRFilePaths — primitivo por diretório.
-// Retorna os caminhos completos de todos os arquivos .md encontrados recursivamente em adrDir.
+// Retorna os caminhos completos de todos os arquivos ADR encontrados recursivamente em adrDir.
 // Consumido por ListADRs e NewADRDraft (internal/generators/adr.go) para substituir filepath.Glob
-// raiz-only. Critério de identificação: strings.HasSuffix(path, ".md") sem filtro de prefixo —
-// idêntico ao comportamento existente de walkADRFilePaths.
+// raiz-only. Critério de identificação: D1 (ADR-2026-10-02) — basename com prefixo "ADR-"
+// (sem distinção de maiúsculas) e sufixo ".md", arquivo regular ou symlink para arquivo regular
+// (symlink de diretório e link quebrado não contam).
 func WalkADRFilePaths(adrDir string) []string {
 	return walkADRFilePaths(adrDir)
 }
@@ -3072,6 +3124,33 @@ func ResolveADRFiles(cfg config.ProjectConfig) []string {
 	return files
 }
 
+// isADRFileName reports whether name (a file basename) identifies an ADR file under the
+// criterion of D1 (ADR-2026-10-02-o-criterio-de-identificacao-de-adr-e-o-prefixo-adr...):
+// the basename must begin with "ADR-" (without case distinction) and end with ".md".
+// Used by walkADRFilePathsForRule (the sole enumeration primitive) and by
+// validateADRFilesWithoutPrefix (rule adr_file_without_prefix, D4) as the complementary predicate.
+func isADRFileName(name string) bool {
+	return strings.HasPrefix(strings.ToUpper(name), "ADR-") && strings.HasSuffix(name, ".md")
+}
+
+// isRegularOrLinkToRegular reports whether the entry at path should be treated as a
+// readable regular file. Three situations, used consistently in walkADRFilePathsForRule
+// and validateADRFilesWithoutPrefix:
+//
+//  1. Regular file (not a symlink): d.Type().IsRegular() is true → counts.
+//  2. Symlink to a regular file: d.Type() has ModeSymlink set; os.Stat follows the link —
+//     if it resolves to a regular file, it counts. readRegularFile (os.Open → f.Stat) also
+//     follows the link, so the content is readable.
+//  3. Symlink to a directory, or broken symlink: os.Stat returns a directory Mode or an
+//     error, respectively → does NOT count (A3 of Wave 0).
+func isRegularOrLinkToRegular(path string, d fs.DirEntry) bool {
+	if d.Type()&fs.ModeSymlink != 0 {
+		info, err := os.Stat(path)
+		return err == nil && info.Mode().IsRegular()
+	}
+	return d.Type().IsRegular()
+}
+
 func walkADRFilePathsForRule(rule, adrDir string, msgs *[]string) []string {
 	adrDir = config.ExpandPath(adrDir)
 	var paths []string
@@ -3082,15 +3161,79 @@ func walkADRFilePathsForRule(rule, adrDir string, msgs *[]string) []string {
 			}
 			return nil
 		}
-		if !d.IsDir() && strings.HasSuffix(path, ".md") {
-			paths = append(paths, path)
+		// D1 (ADR-2026-10-02): basename must match isADRFileName and the entry must
+		// resolve to a regular file. Three situations:
+		//   1. Regular file (not a symlink): d.Type().IsRegular() is true → counts.
+		//   2. Symlink to a regular file: d.Type() has ModeSymlink set; os.Stat follows
+		//      the link — if it resolves to a regular file, it counts. readRegularFile
+		//      (os.Open → f.Stat) also follows the link, so the content is readable.
+		//   3. Symlink to a directory, or broken symlink: os.Stat returns a directory
+		//      Mode or an error, respectively → does NOT count (A3 of Wave 0).
+		if !isADRFileName(filepath.Base(path)) {
+			return nil
 		}
+		if !isRegularOrLinkToRegular(path, d) {
+			return nil
+		}
+		paths = append(paths, path)
 		return nil
 	})
 	return paths
 }
 
-// walkADRFiles retorna basenames de todos os arquivos .md encontrados recursivamente em adrDir.
+// validateADRFilesWithoutPrefix implements rule "adr_file_without_prefix" (D4,
+// ADR-2026-10-02): for each regular .md in adr_dirs whose basename does NOT satisfy
+// isADRFileName (i.e. no ADR- prefix) and whose content has a resolvable status via
+// resolveAdrStatus (frontmatter status: or | Status: header line), emit a warning.
+// The warning names the file and suggests renaming to ADR-<...>.md.
+// Files without any recognisable status (README.md, NOTAS.md without frontmatter)
+// do NOT trigger the warning — the rule targets mis-named ADRs, not auxiliary documents.
+// Deduplication by absolute path mirrors ResolveADRFiles to handle nested adr_dirs.
+func validateADRFilesWithoutPrefix() ([]string, error) {
+	cfg := config.Load()
+	seen := make(map[string]bool)
+	var warnings []string
+	for _, adrDir := range cfg.ADRDirs {
+		expanded := config.ExpandPath(adrDir)
+		_ = filepath.WalkDir(expanded, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return nil
+			}
+			if !isRegularOrLinkToRegular(path, d) {
+				return nil
+			}
+			name := filepath.Base(path)
+			if !strings.HasSuffix(name, ".md") {
+				return nil
+			}
+			if isADRFileName(name) {
+				return nil // ADR-prefixed: not the concern of this rule
+			}
+			key, kerr := filepath.Abs(path)
+			if kerr != nil {
+				key = filepath.Clean(path)
+			}
+			if seen[key] {
+				return nil
+			}
+			seen[key] = true
+			content, readErr := readRegularFile(path)
+			if readErr != nil {
+				return nil // unreadable file: ignore silently
+			}
+			if resolveAdrStatus(string(content)) != "" {
+				warnings = append(warnings, fmt.Sprintf(
+					`adr_file_without_prefix: %q declares a status but is not counted as an ADR — rename it to ADR-<...>.md if it is one`,
+					name,
+				))
+			}
+			return nil
+		})
+	}
+	return warnings, nil
+}
+
+// walkADRFiles retorna basenames de todos os arquivos ADR (critério isADRFileName, arquivo regular ou symlink para arquivo regular) encontrados recursivamente em adrDir.
 func walkADRFiles(adrDir string) []string {
 	paths := walkADRFilePaths(adrDir)
 	var names []string
@@ -3931,11 +4074,11 @@ func sharedTokenCount(a, b []string) int {
 	return count
 }
 
-// validateBranchHasWIPRoadmap verifica se a branch atual (feat/fix/refactor) tem ao menos um roadmap em wip/.
-// Retorna violation se a branch for de implementação mas wip/ estiver vazio — previne trabalho órfão.
-// It returns (violations, warnings, error): the warnings channel exists for the STALE WRITTEN LINK
-// (D1 of ADR-2026-09-26). A stale link must not be silent — and must not be a violation either, or
-// the additive order of D4 breaks.
+// validateBranchHasWIPRoadmap verifica se a branch atual (feat/fix/refactor) tem ao menos um
+// roadmap em wip/ (criação) ou wip/∪blocked/∪done/ com restrição de ls-tree (branch existente).
+// Retorna violation se a branch for de implementação sem roadmap governante.
+// It returns (violations, warnings, error): warnings carry non-fatal advisories (stale link, D3
+// unverifiable base). Neither must be silent (ADR-2026-10-01 D3, D4).
 func validateBranchHasWIPRoadmap() ([]string, []string, error) {
 	branch := firstNonEmpty(os.Getenv("TRACKFW_BRANCH"))
 	if branch == "" && isGitWorktree(".") {
@@ -3958,37 +4101,95 @@ func validateBranchHasWIPRoadmap() ([]string, []string, error) {
 
 	cfg := config.Load()
 	wipDirs := resolveWIPDirs(cfg)
+	blockedDirs := resolveBlockedDirs(cfg)
 	doneDirs := resolveDoneDirs(cfg)
 
-	// D1 resolution order: written link first, name inference as fallback.
-	res := ResolveBranchRoadmap(cfg, branch, wipDirs, doneDirs)
+	// D2 resolution for existing branch: wip∪blocked by inference; done only if moved by this branch.
+	res := ResolveBranchRoadmapForExisting(cfg, branch, wipDirs, blockedDirs, doneDirs)
 	if res.Matched {
 		return nil, res.Warnings, nil
 	}
 
 	if len(res.Candidates) == 0 {
-		return []string{BranchGovernanceOrientation(branch, cfg)}, res.Warnings, nil
+		return []string{BranchGovernanceOrientationForExisting(branch, cfg)}, res.Warnings, nil
 	}
-	return []string{BranchNoMatchingRoadmapMessage(branch, res.Candidates)}, res.Warnings, nil
+	return []string{BranchNoMatchingRoadmapMessageForExisting(branch, res.Candidates)}, res.Warnings, nil
 }
 
-// BranchGovernanceOrientation is the guidance message printed when a feat/fix/refactor branch
-// has no roadmap in wip/ nor done/ at all (candidates is empty). Shared by
-// validateBranchHasWIPRoadmap and `trackfw branch new` — never duplicate this string.
-// For by_agent projects with 2+ agents, the hint includes --agent so the user does not run
-// the command that now requires a flag (AC13, ML-3A).
-func BranchGovernanceOrientation(branch string, cfg config.ProjectConfig) string {
+// BranchGovernanceOrientationForCreation is the guidance message for the CREATION context
+// (trackfw branch new): a feat/fix/refactor branch whose slug matches no roadmap in wip/.
+// doneMatches optionally names roadmaps found in done/ that would need a `roadmap move` first.
+// Used by ML-1B when updating branch.go.
+func BranchGovernanceOrientationForCreation(branch string, cfg config.ProjectConfig, doneMatches []string) string {
+	msg := fmt.Sprintf(
+		"branch %q is a feat/fix/refactor branch but no roadmap is in wip/ — create governance artifacts first:\n  %s\n  %s\n  trackfw roadmap move <name> wip",
+		branch, ReqNewLine(cfg), RoadmapNewLine(cfg),
+	)
+	if hint := doneMatchesHint(doneMatches); hint != "" {
+		msg += "\n" + hint
+	}
+	return msg
+}
+
+// BranchGovernanceOrientationForExisting is the guidance message for the EXISTING BRANCH context
+// (validate, commit, push, ship): a feat/fix/refactor branch with no roadmap in wip/, blocked/
+// nor done/ that was moved by this branch. Used by validateBranchHasWIPRoadmap.
+func BranchGovernanceOrientationForExisting(branch string, cfg config.ProjectConfig) string {
 	return fmt.Sprintf(
-		"branch %q is a feat/fix/refactor branch but no roadmap is in wip/ nor done/ — create governance artifacts first:\n  %s\n  %s\n  trackfw roadmap move <name> wip",
+		"branch %q is a feat/fix/refactor branch but no roadmap is in wip/, blocked/ nor done/ — create governance artifacts first:\n  %s\n  %s\n  trackfw roadmap move <name> wip",
 		branch, ReqNewLine(cfg), RoadmapNewLine(cfg),
 	)
 }
 
-// BranchNoMatchingRoadmapMessage is the guidance message printed when roadmaps exist in wip/ or
-// done/ but none of them match the branch's slug. Shared by validateBranchHasWIPRoadmap and
-// `trackfw branch new` — never duplicate this string. Does not mutate candidates.
-func BranchNoMatchingRoadmapMessage(branch string, candidates []string) string {
-	// P3: sort for deterministic output regardless of filesystem ordering.
+// BranchNoMatchingRoadmapMessageForCreation is the guidance message for the CREATION context
+// (trackfw branch new): roadmaps exist in wip/ but none match the branch slug.
+// doneMatches optionally names roadmaps found in done/ that would need a `roadmap move` first.
+// Used by ML-1B when updating branch.go. Does not mutate candidates or doneMatches.
+func BranchNoMatchingRoadmapMessageForCreation(branch string, candidates, doneMatches []string) string {
+	sorted := make([]string, len(candidates))
+	copy(sorted, candidates)
+	sort.Strings(sorted)
+	display := sorted
+	suffix := ""
+	if len(sorted) > 3 {
+		display = sorted[:3]
+		suffix = fmt.Sprintf(", e mais %d", len(sorted)-3)
+	}
+	msg := fmt.Sprintf(
+		"branch %q has no matching roadmap in wip/ (found: %s%s) — include the branch slug in the roadmap filename or set TRACKFW_BRANCH explicitly in CI",
+		branch, strings.Join(display, ", "), suffix,
+	)
+	if hint := doneMatchesHint(doneMatches); hint != "" {
+		msg += "\n" + hint
+	}
+	return msg
+}
+
+// doneMatchesHint returns a single-line hint string listing done/ roadmaps that share the branch
+// slug but do not govern a new branch. Returns "" when doneMatches is empty.
+// Lists at most 3 names (sorted); names beyond 3 are summarised as "e mais N".
+// The hint uses the literal placeholder "<name>" — it never emits a ready-to-run command with a
+// concrete roadmap name, to avoid directing an agent to reopen the wrong roadmap.
+func doneMatchesHint(doneMatches []string) string {
+	if len(doneMatches) == 0 {
+		return ""
+	}
+	sorted := make([]string, len(doneMatches))
+	copy(sorted, doneMatches)
+	sort.Strings(sorted)
+	display := sorted
+	suffix := ""
+	if len(sorted) > 3 {
+		display = sorted[:3]
+		suffix = fmt.Sprintf(", e mais %d", len(sorted)-3)
+	}
+	return fmt.Sprintf("(similar names in done/ — concluded roadmaps do not govern a new branch: %s%s. Only if this branch reopens one of them: trackfw roadmap move <name> wip)", strings.Join(display, ", "), suffix)
+}
+
+// BranchNoMatchingRoadmapMessageForExisting is the guidance message for the EXISTING BRANCH
+// context: roadmaps exist in wip/, blocked/ or done/ but none match the branch slug. Used by
+// validateBranchHasWIPRoadmap. Does not mutate candidates.
+func BranchNoMatchingRoadmapMessageForExisting(branch string, candidates []string) string {
 	sorted := make([]string, len(candidates))
 	copy(sorted, candidates)
 	sort.Strings(sorted)
@@ -3999,7 +4200,7 @@ func BranchNoMatchingRoadmapMessage(branch string, candidates []string) string {
 		suffix = fmt.Sprintf(", e mais %d", len(sorted)-3)
 	}
 	return fmt.Sprintf(
-		"branch %q has no matching roadmap in wip/ nor done/ (found: %s%s) — include the branch slug in the roadmap filename or set TRACKFW_BRANCH explicitly in CI",
+		"branch %q has no matching roadmap in wip/, blocked/ nor done/ (found: %s%s) — include the branch slug in the roadmap filename or set TRACKFW_BRANCH explicitly in CI",
 		branch, strings.Join(display, ", "), suffix,
 	)
 }
@@ -4090,10 +4291,20 @@ func normalizeBranchSlug(value string) string {
 	return strings.Trim(out.String(), "-")
 }
 
-// GovernanceViolation holds the messages from a failed CheckShipGovernance call.
+// GovernanceViolation holds the messages from a CheckShipGovernance call.
+//
+// A2 (ADR-2026-10-01): Warnings carries non-fatal advisory messages (e.g.
+// branch_done_scope_unverifiable from D3) that must reach push/ship even when Missing is empty.
+// Contract: non-nil with empty Missing = "pass with warnings" (governance OK, degraded). The
+// Error() method deliberately omits Warnings — callers print them separately as "Governance:
+// degraded: …" to distinguish from hard violations.
 type GovernanceViolation struct {
 	// Missing contains human-readable violation messages, one per line.
 	Missing []string
+	// Warnings contains non-fatal advisory messages (e.g. branch_done_scope_unverifiable).
+	// A non-nil GovernanceViolation with empty Missing but non-empty Warnings means governance
+	// passed in degraded mode — the gate should allow the operation but print the warnings.
+	Warnings []string
 }
 
 func (e *GovernanceViolation) Error() string {
@@ -4106,21 +4317,27 @@ func (e *GovernanceViolation) Error() string {
 // governance regardless of project settings.
 //
 // It checks:
-//  1. The current branch has a matching roadmap in wip/ or done/ (branch_has_wip_roadmap)
+//  1. The current branch has a matching roadmap in wip/, blocked/ or done/ (branch_has_wip_roadmap)
 //  2. All WIP roadmaps have a linked REQ (wip_has_req)
 //
-// Returns nil when all checks pass. Returns *GovernanceViolation otherwise.
+// Returns nil when all checks pass AND there are no warnings.
+// Returns *GovernanceViolation with empty Missing (and non-empty Warnings) when governance
+// passes in degraded mode — e.g. origin unreachable, D3 of ADR-2026-10-01. ML-1B prints those
+// as "Governance: degraded: …" instead of "Governance: OK". Never returns a non-nil value with
+// both Missing and Warnings empty.
 func CheckShipGovernance() *GovernanceViolation {
 	var missing []string
+	var warnings []string
 
-	branchViolations, _, _ := validateBranchHasWIPRoadmap()
+	branchViolations, branchWarnings, _ := validateBranchHasWIPRoadmap()
 	missing = append(missing, branchViolations...)
+	warnings = append(warnings, branchWarnings...)
 
 	wipReqViolations, _ := validateWIPHasREQ()
 	missing = append(missing, wipReqViolations...)
 
-	if len(missing) == 0 {
+	if len(missing) == 0 && len(warnings) == 0 {
 		return nil
 	}
-	return &GovernanceViolation{Missing: missing}
+	return &GovernanceViolation{Missing: missing, Warnings: warnings}
 }
