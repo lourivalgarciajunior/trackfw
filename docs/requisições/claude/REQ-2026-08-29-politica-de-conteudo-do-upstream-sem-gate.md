@@ -1,17 +1,17 @@
 ---
-status: Open
+status: Done
 date: 2026-08-29
 author: claude
 adr: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
-roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-08-29-politica-de-conteudo-do-upstream-sem-gate.md
+roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-politica-de-conteudo-do-upstream-sem-gate.md
 ---
 
 # REQ: Politica de conteudo do upstream sem gate
 
-> Date: 2026-08-29 | Status: Open
+> Date: 2026-08-29 | Status: Done
 
 ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
-Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-08-29-politica-de-conteudo-do-upstream-sem-gate.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-politica-de-conteudo-do-upstream-sem-gate.md
 
 ## Motivation
 
@@ -64,7 +64,10 @@ em `upstream/main` e nao estariam na lista de mantidos.
       uma ADR. É o mecanismo funcionando sobre vazamento real, não simulado.
       🔴 **Limite:** a verificação "um a um" de agosto não é re-executável — a REQ não nomeia quais
       eram os três arquivos. O que se verifica hoje é que o mecanismo acusa, com denominador.
-- [ ] Gate passa no estado atual
+- [x] Gate passa no estado atual
+      → **(a) ENTREGUE.** Medido em 2026-10-03: `bash scripts/check-upstream-content.sh`
+      sai `rc=0` com *"Conteudo do upstream: nada indevido em docs/ nem em vault/."*, e o gate
+      está na lista EXECUTAR do agregador, que fecha `12 executado(s) · 0 falha(s)`.
       → 🔴 **(b) NAO ENTREGUE.** `bash scripts/check-upstream-content.sh` → **`exit 1`**, acusando
       **7 arquivos** de governança do upstream em `docs/`:
       ```
@@ -110,3 +113,8 @@ upstream — e o oposto do que este gate protege. O escopo e `docs/` e `vault/`.
 
 ## Blocked by ADRs
 <!-- none -->
+
+## Encerramento — varredura de caducidade de 2026-10-03
+
+**Veredito: (a) entregue.** Os 5 critérios estão fechados, o último deles medido nesta data. O roadmap
+foi para `done/`. Ver a seção de veredito no roadmap para o sítio que comprova cada um.

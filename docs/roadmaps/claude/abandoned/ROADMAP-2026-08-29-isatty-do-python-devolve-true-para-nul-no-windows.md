@@ -1,5 +1,5 @@
 ---
-status: backlog
+status: abandoned
 date: 2026-08-29
 req: docs/requisições/claude/REQ-2026-08-29-isatty-do-python-devolve-true-para-nul-no-windows.md
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: isatty do Python devolve True para NUL no Windows
 
-> Created: 2026-08-29 | Status: done
+> Created: 2026-08-29 | Status: abandoned
 
 ## Context
 
@@ -215,3 +215,14 @@ caracterizado — `time.time()` no teste contra `datetime.now().timestamp()` na 
 **O caso positivo continua sem verificacao nesta maquina**: nao ha console anexado, entao nao provo
 que um terminal de verdade continua promptando. A mitigacao e o mesmo syscall do Go. Um teste manual
 num terminal real fecha o buraco e segue em aberto.
+
+## Veredito da varredura de caducidade — 2026-10-03
+
+**Veredito: (c) caducou**
+
+**Mesma causa do anterior, mesma medição:** a v8.0.0 apagou `pypi/trackfw`, e os critérios falam de
+`init` e `validate.py` do CLI Python, que não existe mais. `check-artifact-parity.sh`, exigido pelos
+critérios, também não existe (0 ocorrências aqui e em `upstream/main`).
+
+Critérios inconstruíveis. O defeito do `isatty` sobre `NUL` continua sendo verdade sobre o Python —
+só não há mais produto nosso que o sofra.

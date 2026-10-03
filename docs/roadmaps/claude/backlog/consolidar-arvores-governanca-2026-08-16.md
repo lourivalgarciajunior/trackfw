@@ -9,7 +9,7 @@ branch: feat/consolidar-arvores-governanca
 
 # Roadmap: consolidar árvores de governança
 
-> Criado em: 2026-08-16 | Status: ✅ Done
+> Criado em: 2026-08-16 | Status: backlog
 
 REQ: `docs/requisições/claude/REQ-2026-08-16-consolidar-arvores-governanca.md`
 
@@ -118,7 +118,10 @@ tirou a árvore B da invisibilidade. Registrado aqui em vez de ser feito em sil�
 - [x] `go build ./...` verde
 - [x] `go test ./...` — **10 falhas pré-existentes**, todas em `internal/generators`, todas de
       ambiente Windows e sem relação com este trabalho (ver Residual abaixo)
-- [ ] `trackfw validate` limpo — **não atingido**, 5 violações residuais de `req_has_adr`
+- [x] `trackfw validate` limpo — **atingido em 2026-10-03**: 0 violações. Sobram 2 avisos, os
+      dois de grandfathering declarado (`req_has_roadmap`, 1 REQ anterior ao corte de
+      2026-09-03). As 5 violações de `req_has_adr` que este AC registrava como residuais não
+      existem mais.
 **Comandos de validação:** `go build ./... && go test ./... && trackfw validate`
 
 ---
@@ -147,3 +150,65 @@ falham com o `trackfw.yaml` removido da raiz. Duas causas:
 - `TestGenerateCommitMsgHook_*` — checam bit de execução POSIX; NTFS entrega `-rw-rw-rw-`.
 
 Merece REQ própria de portabilidade de testes.
+
+## Wave 0 — Threat Model
+
+**Não houve, e esta seção declara a ausência em vez de inventar o conteúdo.**
+
+Este roadmap é de 2026-08-16, anterior à `ADR-2026-09-18` decisão 8, que passou a exigir Wave 0 antes de
+qualquer implementação. A transição para `done` a cobra **estruturalmente** (`AC7-bis`, em
+`internal/generators/roadmap.go:722`), e a cobrança não tem corte por data — diferente do
+`req_has_roadmap`, cujo corte de 2026-09-03 está declarado em
+`internal/validator/validator_req_roadmap_cutoff.go`.
+
+🔴 **Escrever um threat model agora afirmaria uma análise que não aconteceu.** O trabalho deste
+roadmap foi entregue antes da regra existir; o que esta seção registra é exatamente isso. Quem ler
+daqui a um ano tem de poder distinguir "houve Wave 0" de "a seção existe porque a ferramenta a exige".
+
+## Veredito da varredura de caducidade — 2026-10-03
+
+**Veredito: (a) entregue**
+
+🔴 **O corpo deste roadmap já dizia `Status: ✅ Done` enquanto o frontmatter dizia `backlog`.** A
+contradição estava no próprio arquivo.
+
+**O único critério aberto era `trackfw validate` limpo — "não atingido, 5 violações residuais de
+`req_has_adr`". Medido em 2026-10-03: 0 violações.** Sobram 2 avisos, os dois de grandfathering
+declarado (`req_has_roadmap`, 1 REQ anterior ao corte de 2026-09-03, com o corte declarado em
+`internal/validator/validator_req_roadmap_cutoff.go`).
+
+**Layout hoje, que é o que o roadmap pedia:**
+
+```
+docs/requisições/   74 REQs em 3 namespaces (apolo, artemis, claude)   <- arvore unica
+docs/req/            3 arquivos — fixture de teste do produto, que FICA por decisao escrita
+docs/roadmaps/      namespaces artemis e claude, no padrao by_agent
+```
+
+A árvore de REQ é uma só. Os 3 arquivos de `docs/req/` não são uma segunda árvore de governança: são
+fixture lida por caminho literal pelo produto, e removê-los quebra a suíte — decisão registrada no
+`CLAUDE.md`.
+
+### Emenda do mesmo dia — por que este roadmap NÃO pode ir para `done/`
+
+🔴 **O trabalho foi entregue, e ainda assim `done/` seria uma afirmação falsa.** A REQ ligada tem
+critério de aceite que **não pode ser fechado honestamente**: `go test ./... verde` — medido: não está verde nesta máquina, e as falhas são as de Windows já declaradas em `.github/windows-known-failures.json` (14 ativas, todas com `reason`) — logo o AC como escrito exige algo que o acervo declara como ponto cego local.
+
+A cadeia é fechada pelos dois lados, e os dois estão certos:
+
+```
+o produto    recusa REQ `Open` com roadmap em done/        (validate: 6 violacoes)
+o nosso gate recusa REQ `done` com criterio em aberto      (check-req-done-com-criterio-aberto)
+```
+
+Então marcar o roadmap `done` exigiria marcar a REQ `Done`, o que exigiria **fechar um critério que
+não foi atendido** — a terceira saída que o nosso próprio gate recusa, e com razão.
+
+**Fica em `backlog/`, agora com o motivo escrito.** O que mudou nesta varredura não é o estado: é que
+o estado deixou de ser inexplicado. Antes, um leitor via trabalho entregue parado em `backlog` sem
+saber por quê.
+
+🔴 **E isto é uma lacuna do modelo, não deste roadmap:** não existe estado para *"entregue, com
+critério de verificação permanentemente inverificável"*. `done` afirma demais, `backlog` afirma
+trabalho pendente, `abandoned` afirma que não será feito. Os três erram, e o menos errado é o que
+deixa a prosa corrigir — registrado aqui para quem for decidir a convenção.

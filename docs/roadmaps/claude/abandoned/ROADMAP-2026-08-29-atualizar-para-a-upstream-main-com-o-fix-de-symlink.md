@@ -1,5 +1,5 @@
 ---
-status: backlog
+status: abandoned
 date: 2026-08-29
 req: docs/requisições/claude/REQ-2026-08-29-atualizar-para-a-upstream-main-com-o-fix-de-symlink.md
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: Atualizar para a upstream main com o fix de symlink
 
-> Created: 2026-08-29 | Status: done
+> Created: 2026-08-29 | Status: abandoned
 
 ## Context
 
@@ -200,3 +200,26 @@ suite do trackfw em Windows sem esse privilegio.
       verificado**, sem privilegio nesta maquina
 - [ ] Symlink pendurado **nao** faz `discover --init` criar arquivo fora — **nao verificado**, idem
 - [x] Zero falhas novas na lista nomeada, fora as 5 do proprio arquivo de teste do upstream
+
+## Veredito da varredura de caducidade — 2026-10-03
+
+**Veredito: (c) caducou**
+
+**Dois dos nove critérios abertos são inconstruíveis** pela mesma remoção da v8.0.0:
+
+```
+- Suite pypi sem regressao por lista nomeada contra 95 falhas   -> nao existe suite pypi
+- Symlink verificado como corrigido ... nos tres runtimes       -> existe um runtime
+```
+
+**E os demais foram satisfeitos muitas vezes desde então.** Medido em 2026-10-03: `upstream/main`
+(`de9df66c`) é **ancestral** da nossa `main`, depois de uma sequência de syncs em que `go build`,
+`validate` e os gates fecharam a cada vez — o último deles no PR #191 de hoje, com 24 checks verdes.
+O ato que este roadmap pedia aconteceu; a forma como ele pedia que fosse verificado é que não existe
+mais.
+
+🔴 **E o bloco de gates deste roadmap reprova por motivo real, já declarado no `CLAUDE.md`:** ele
+exige que a colisão seja **8**, e hoje é **914**, porque a premissa é de 2026-08-29 e envelheceu com
+os merges. Ajustar o número para caber no estado atual seria fabricar histórico — a mesma saída que o
+`check-req-done-com-criterio-aberto.sh` recusa. Fica como está, agora em `abandoned/`, onde gate
+vermelho não é contradição.
