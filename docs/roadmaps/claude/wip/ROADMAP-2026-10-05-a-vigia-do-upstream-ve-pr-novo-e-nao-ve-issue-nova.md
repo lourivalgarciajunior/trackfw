@@ -18,7 +18,7 @@ por isso que a #526 do upstream, aberta as 17:27 local de 2026-10-05, passou com
 
 ## Acceptance Criteria
 
-- [ ] AC1 a AC6 da REQ, verificadas por efeito
+- [x] AC1 a AC6 da REQ, verificadas por efeito
 
 ## Status Legend
 ⬜ Pendente · 🔄 Em andamento · ✅ Concluído · ❌ Bloqueado
@@ -70,7 +70,7 @@ bash scripts/check-vigia-forma.sh
 > Dependencies: Wave 0
 
 ### ML-1A — `snap_issues`, `diff_issues` e os casos que os afirmam
-**Status:** 🔄 Em andamento
+**Status:** ✅ Concluído
 **Files affected:** `scripts/vigia-do-upstream.sh`, `scripts/check-vigia-forma.sh`
 **Actions:**
 1. `snap_issues()` lendo `repos/$REPO/issues?state=all&per_page=15`, com
@@ -87,9 +87,9 @@ bash scripts/check-vigia-forma.sh
    subindo do minimo atual para o novo.
 
 **Acceptance criteria:**
-- [ ] AC1 a AC6 da REQ
-- [ ] `bash scripts/check-vigia-forma.sh` verde, com o numero de casos impresso maior que o de antes
-- [ ] A sabotagem do braco novo reprova o gate — removido o `select(.pull_request == null)`, o gate
+- [x] AC1 a AC6 da REQ
+- [x] `bash scripts/check-vigia-forma.sh` verde, com o numero de casos impresso maior que o de antes
+- [x] A sabotagem do braco novo reprova o gate — removido o `select(.pull_request == null)`, o gate
       falha nomeando o caso; e removido o `| valida_forma`, tambem. Sem esta verificacao o gate seria
       decorativo, que e o defeito que a propria primeira versao dele teve em 2026-10-02
 
@@ -99,3 +99,23 @@ bash scripts/check-vigia-forma.sh
 grep -q 'pull_request == null' scripts/vigia-do-upstream.sh
 grep -q 'RE_ISSUES' scripts/check-vigia-forma.sh
 ```
+
+## Medicao do ML-1A
+
+```
+check-vigia-forma           31 caso(s) · 0 falha(s)     (eram 19)
+sabotagem 1  tirar o select(.pull_request == null)  -> reprova em "o PR 527 da carga NAO aparece"
+sabotagem 2  tirar o | valida_forma do braco novo   -> reprova em "snap_issues com corpo de erro"
+sabotagem 3  filtrar $ME no diff_issues             -> reprova em "issue nossa emite igual"
+arvore byte a byte identica depois das tres
+```
+
+**Contra a API real do upstream**, nao so contra fixture: `snap_issues` devolveu 5 issues com
+`per_page=30`, e a sobreposicao com o snapshot de PRs e **zero** — o filtro de `pull_request` provado
+por efeito contra a carga de verdade.
+
+🔴 **E o teste real achou um limite que a fixture nao mostrava:** dos 15 primeiros itens do `/issues`,
+**13 eram PR**, porque o endpoint mistura os dois. Com `per_page=15` sobravam 2 issues na janela. A
+janela foi para 30 e as duas propriedades desiguais ficaram **declaradas no script**: criacao e sempre
+vista (ordem por criacao decrescente poe issue nova na posicao 1), mudanca de estado so para issue
+dentro da janela.

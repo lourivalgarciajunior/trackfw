@@ -1,5 +1,5 @@
 ---
-status: Open
+status: Done
 date: 2026-10-05
 author: ""
 adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
@@ -8,7 +8,7 @@ roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-10-05-a-vigia-do-upstream-ve-pr-
 
 # REQ: a vigia do upstream ve PR novo e nao ve issue nova
 
-> Date: 2026-10-05 | Status: Open
+> Date: 2026-10-05 | Status: Done
 | Linear Issue: 
 | Jira Issue: 
 
@@ -36,17 +36,17 @@ lugar algum: e consequencia de a reescrita de 2026-09-29 ter trocado a lista fix
 
 ## Acceptance Criteria
 
-- [ ] AC1 — A vigia emite evento quando uma issue e CRIADA no upstream, e o evento nomeia o autor
-- [ ] AC2 — Pull request NAO aparece pelo braco de issues, falsificado por efeito contra o braco
+- [x] AC1 — A vigia emite evento quando uma issue e CRIADA no upstream, e o evento nomeia o autor
+- [x] AC2 — Pull request NAO aparece pelo braco de issues, falsificado por efeito contra o braco
       `snap_prs` que ja o cobre: o endpoint `/issues` do GitHub devolve PR junto, e sem filtro cada PR
       novo sairia duas vezes, com vocabulario de estado diferente nas duas
-- [ ] AC3 — O braco novo passa pelas TRES guardas existentes: forma sobre o snapshot inteiro,
+- [x] AC3 — O braco novo passa pelas TRES guardas existentes: forma sobre o snapshot inteiro,
       leitura que falhou nao move a base, e ordenacao na mesma colacao
-- [ ] AC4 — O custo por ciclo e re-declarado no cabecalho: deixa de ser 2 chamadas de API e passa a 3,
+- [x] AC4 — O custo por ciclo e re-declarado no cabecalho: deixa de ser 2 chamadas de API e passa a 3,
       com o numero escrito onde hoje se le 2
-- [ ] AC5 — O `check-vigia-forma.sh` ganha caso para cada afirmacao acima, e a guarda de vacuidade
+- [x] AC5 — O `check-vigia-forma.sh` ganha caso para cada afirmacao acima, e a guarda de vacuidade
       dele sobe para o novo minimo — sem isso um `return` precoce deixaria os casos novos sem rodar
-- [ ] AC6 — Evento de issue nova NAO e filtrado por autor, e a razao da assimetria com `diff_com`
+- [x] AC6 — Evento de issue nova NAO e filtrado por autor, e a razao da assimetria com `diff_com`
       fica escrita no proprio script
 
 ## Linked ADR
@@ -94,3 +94,14 @@ O filtro e `select(.pull_request == null)`, e o AC2 o falsifica por efeito com c
 - Nao se funde o braco de PRs no de issues para manter 2 chamadas: a lista de issues nao traz
   `merged_at`, entao a fusao custaria a distincao entre "mesclou" e "fechou sem mesclar", que e a
   diferenca que interessa vigiar.
+
+## Onde cada AC foi entregue
+
+| AC | sitio |
+|---|---|
+| AC1 | `diff_issues` em `scripts/vigia-do-upstream.sh`, emitindo `ISSUE #N aberta por <autor>` |
+| AC2 | `select(.pull_request == null)` em `snap_issues`; casos 25-27 do gate, com `jq` real, e zero sobreposicao contra a API de verdade |
+| AC3 | `| sort | valida_forma "$RE_ISSUES"` no braco, e as duas linhas de guarda no laco; casos 18-20 |
+| AC4 | bloco "2026-10-05: o invariante passou de 2 chamadas por ciclo para 3" no cabecalho |
+| AC5 | `check-vigia-forma.sh`: 31 casos (eram 19), minimo da vacuidade de 19 para 31 |
+| AC6 | comentario de `diff_issues` que escreve a razao da assimetria; caso 24 reprova se alguem filtrar `$ME` |
