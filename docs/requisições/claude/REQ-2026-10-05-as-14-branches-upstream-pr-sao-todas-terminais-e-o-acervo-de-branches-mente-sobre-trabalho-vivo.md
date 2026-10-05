@@ -3,7 +3,7 @@ status: Done
 date: 2026-10-05
 author: ""
 adr: ""
-roadmap: "docs/roadmaps/claude/backlog/ROADMAP-2026-10-05-as-14-branches-upstream-pr-sao-todas-terminais-e-o-acervo-de-branches-mente-sobre-trabalho-vivo.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-10-05-as-14-branches-upstream-pr-sao-todas-terminais-e-o-acervo-de-branches-mente-sobre-trabalho-vivo.md"
 ---
 
 # REQ: as 14 branches upstream-pr sao todas terminais e o acervo de branches mente sobre trabalho vivo
@@ -43,7 +43,7 @@ ADR:
 
 ## Linked Roadmap
 <!-- Reference the roadmap that implements this requirement -->
-Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-10-05-as-14-branches-upstream-pr-sao-todas-terminais-e-o-acervo-de-branches-mente-sobre-trabalho-vivo.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-10-05-as-14-branches-upstream-pr-sao-todas-terminais-e-o-acervo-de-branches-mente-sobre-trabalho-vivo.md
 
 ## Context
 

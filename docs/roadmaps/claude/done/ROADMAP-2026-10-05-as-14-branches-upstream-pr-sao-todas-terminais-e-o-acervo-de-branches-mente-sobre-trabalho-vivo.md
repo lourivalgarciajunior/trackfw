@@ -1,5 +1,5 @@
 ---
-status: backlog
+status: done
 date: 2026-10-05
 req: "REQ-2026-10-05-as-14-branches-upstream-pr-sao-todas-terminais-e-o-acervo-de-branches-mente-sobre-trabalho-vivo"
 squad: "claude"
@@ -7,7 +7,7 @@ squad: "claude"
 
 # Roadmap: as 14 branches upstream-pr sao todas terminais e o acervo de branches mente sobre trabalho vivo
 
-> Created: 2026-10-05 | Status: backlog
+> Created: 2026-10-05 | Status: done
 
 ## Context
 
