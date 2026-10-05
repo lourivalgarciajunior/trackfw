@@ -48,6 +48,7 @@ check-gates-uma-linha-por-comando.sh
 check-req-marcador-ancorado.sh
 measure-os-predicate-sites.sh
 check-vigia-forma.sh
+check-req-done-caducou-falsify.sh
 "
 
 # ---------------------------------------------------------------------------

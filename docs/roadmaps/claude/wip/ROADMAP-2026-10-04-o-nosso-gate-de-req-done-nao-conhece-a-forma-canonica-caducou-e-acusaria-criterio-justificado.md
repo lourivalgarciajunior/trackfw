@@ -67,8 +67,16 @@ alternativa (chamar `roadmap show --json`) não serve: o gate varre **REQ**, e o
 Declarado, não coberto; o AC1 amarra a paridade **hoje**, e a divergência futura é risco aceito.
 
 **Acceptance criteria:**
-- [ ] As quatro seções respondidas com evidência, não com asserção de uma linha
-- [ ] Nenhuma linha de implementação escrita neste ML
+- [x] As quatro seções respondidas com evidência, não com asserção de uma linha
+      ✅ (1) enumeração por busca, 3 sítios nomeados e o segundo sítio da mesma causa declarado
+      fora do escopo COM o motivo; (2) o esvaziador nomeado — reconhecimento frouxo viraria porta;
+      (3) tabela de 4 bordas × 2 direções, 8 células; (4) resíduo declarado — o gate lê TEXTO e
+      reimplementa a leitura, porque o JSON do produto é de roadmap e este gate varre REQ.
+- [x] Nenhuma linha de implementação escrita neste ML
+      ✅ a seção ML-0A é prosa e tabela: zero linha de script.
+      🔴 **Limite declarado:** a separação é verificável por SEÇÃO, não por commit — o threat
+      model e a Wave 1 entraram no MESMO commit (`966817b0`). Quem quiser conferir lê a seção,
+      não o diff; e isso é mais fraco do que teria sido um commit próprio.
 
 **Gates da wave:**
 ```bash
@@ -88,8 +96,14 @@ test "$(grep -c 'Caducou' docs/cli-parity.md)" -gt 0
 3. Preservar as três discriminações que o gate já tem: herdada fora, só `status: done` no alvo, e só
    checkbox sob bloco de critério e fora de cerca.
 **Acceptance criteria:**
-- [ ] AC1 e AC3 da REQ
-- [ ] `bash -n` no gate
+- [x] AC1 e AC3 da REQ
+      ✅ AC1 — as quatro bordas espelham `LapsedContinuationRe = regexp.MustCompile(`^ {2,}Caducou:\s*\S`)`,
+      lida em `internal/roadmapdoc/roadmapdoc.go:58` (no código, não na prosa), e o `docs/cli-parity.md`
+      cita a forma em 10 linhas.
+      ✅ AC3 — a guarda de reconciliação está em `scripts/check-req-done-com-criterio-aberto.sh:173`:
+      `[ "$((sob + lapsed + fora))" -ne "$total" ]` reprova nomeando os quatro números.
+- [x] `bash -n` no gate
+      ✅ `bash -n scripts/check-req-done-com-criterio-aberto.sh` → rc=0, medido em 2026-10-04.
 **Gates da wave:**
 ```bash
 bash -n scripts/check-req-done-com-criterio-aberto.sh
@@ -97,15 +111,50 @@ bash -n scripts/check-req-done-com-criterio-aberto.sh
 
 ### ML-1B — Falsificação nas duas direções, borda por borda
 **Status:** ✅ Concluído
-**Files affected:** nenhum (medição) — ou gate novo, se a medição mostrar que medir uma vez não basta
+**Files affected:** `scripts/check-req-done-caducou-falsify.sh` (novo), `scripts/run-local-gates.sh` — a medição mostrou que medir uma vez não basta
 **Actions:**
 1. REQ plantada com `Caducou:` válido → não acusa.
 2. Cada uma das quatro bordas violada, uma por uma → **continua** acusando, e o motivo é nomeado.
 3. Sabotar o gate (remover o reconhecimento) → o caso válido volta a acusar, provando que o
    reconhecimento é o que faz passar.
 **Acceptance criteria:**
-- [ ] AC2 da REQ, com a saída observada escrita por caso
-- [ ] Uma frase por verificação dizendo qual conclusão da REQ ela afirma
+- [x] AC2 da REQ, com a saída observada escrita por caso
+      ✅ **11 casos · 0 falhas**, e a saída observada por grupo:
+
+      | grupo | casos | saída observada |
+      |---|---|---|
+      | forma válida (2 esp., 4 esp., sem espaço após `:`) | 3 | `censo` = `0 1 0 1` — conta como `lapsed`, não como aberto |
+      | bordas violadas (sem justificativa, coluna 0, 1 espaço, tabulação, linha vazia) | 5 | `censo` = `1 0 0 1` — **volta a acusar**, uma a uma |
+      | cerca de código | 1 | `censo` = `0 0 0 0` — não conta nem como aberto nem como caducado |
+      | e2e caminho de sucesso | 1 | `rc=0 · acusa=0 · caducados=8` (822 s) |
+      | e2e caminho de falha | 1 | `rc=1 · acusa=1 · menciona-caducado=1 · três-saídas=1 (399 s)` |
+
+      Os 9 primeiros rodam em **26 s** porque chamam só a função `censo`, extraída
+      do gate em tempo de execução — uma fonte de verdade, não uma cópia.
+      🔴 **Limite declarado:** uma passada do gate alvo custa **678 s** nesta
+      máquina (75 `git cat-file` sobre MSYS), então os 2 e2e somam ~23 min
+      localmente e foram verificados **um por vez**; juntos, a primeira tentativa
+      foi MORTA no limite de 30 min e deixou uma sonda no `req_dir` real. Em
+      `ubuntu-latest`, onde o agregador roda, o mesmo laço custa segundos.
+- [x] Uma frase por verificação dizendo qual conclusão da REQ ela afirma
+      ✅ escritas **no próprio gate**, por grupo, e não só no relatório:
+      direção A afirma *"o gate reconhece a forma do produto, logo não acusa
+      caducado justificado"*; direção B afirma *"o reconhecimento é ESTRITO, logo
+      a palavra não é porta para fechar critério"*; a cerca afirma *"exemplo em
+      documentação não fecha e não infla critério real"*; e os dois e2e afirmam
+      *"o VEREDITO do gate muda, não só o veredito da função"*.
+      🔴 **O par anti-decorativo existe por erro medido meu:** o
+      `check-vigia-forma.sh` que escrevi testava a função direto, e remover a
+      chamada dela do braço deixou o auto-teste 15/15 **verde**. Aqui o e2e de
+      falha foi o que pegou que a mensagem do gate ainda dizia *"Duas saídas
+      legítimas, e SÓ estas duas"* — verdade até o #519, falsa depois dele.
+
+      **E o ML-1B mudou de veredito por causa desta medição.** Ele admitia
+      *"nenhum arquivo (medição) — ou gate novo, se a medição mostrar que medir
+      uma vez não basta"*. Mostrou, duas vezes no mesmo dia: o auto-teste
+      decorativo e a prosa caducada. Entregue como gate:
+      `scripts/check-req-done-caducou-falsify.sh`, em `EXECUTAR` no
+      `run-local-gates.sh`.
 **Gates da wave:**
 ```bash
 bash scripts/check-req-done-com-criterio-aberto.sh
