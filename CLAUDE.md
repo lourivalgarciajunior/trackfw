@@ -846,6 +846,84 @@ inauditável por construção.
 
 Como os outros, é **nosso**, e **não tem alvo no `Makefile`** pelo mesmo motivo.
 
+### A forma canônica do critério caducado: `Caducou:` — e ela é do PRODUTO
+
+Desde 2026-10-04 existem **três** saídas, não duas. A terceira veio do
+[#519](https://github.com/kgsaran/trackfw/pull/519) do upstream, que implementa a **nossa**
+[#514](https://github.com/kgsaran/trackfw/issues/514) — e a forma que ele escolheu é **o nosso
+próprio precedente**: a caixa **continua `- [ ]`**, porque o critério não foi atendido, e ganha uma
+linha de continuação.
+
+```
+- [ ] <critério>
+  Caducou: <justificativa obrigatória>
+```
+
+🔴 **A fonte da verdade das bordas é o código, não esta seção nem o `cli-parity.md`:**
+
+```go
+// internal/roadmapdoc/roadmapdoc.go
+LapsedContinuationRe = regexp.MustCompile(`^ {2,}Caducou:\s*\S`)
+```
+
+Quatro bordas, e **o nosso gate espelha as quatro** (AC1 da `REQ-2026-10-04-o-nosso-gate-de-req-done…`):
+
+| borda | o que recusa |
+|---|---|
+| `^ {2,}` | **≥ 2 espaços, e tabulação NÃO vale** — `\t` não casa |
+| continuação imediata | linha em branco entre o item e o `Caducou:` invalida |
+| `\s*\S` | justificativa **obrigatória** — `  Caducou:` pelado falha, **e `  Caducou:\r` também**, porque `\r` é espaço |
+| fence-mask | `Caducou:` dentro de cerca de código é ignorado |
+
+A terceira borda é a que importa aqui: **os arquivos deste repo são CRLF**, e sem o `\S` um
+`Caducou:` sem texto passaria com o `\r` fazendo o papel de conteúdo.
+
+**Por que paridade e não "uma heurística que funcione":** divergir numa borda faria este gate e o
+`validate` discordarem **sobre o mesmo arquivo** — e aí o veredito do acervo passa a depender de qual
+instrumento foi rodado.
+
+**O censo do gate tem quatro baldes que somam o total**, e ele **falha nomeando** se não somarem:
+
+```
+sob + lapsed + fora = total
+```
+
+**Medido em 2026-10-04**, depois de aplicar a forma às 4 REQs que a varredura de caducidade havia
+deixado travadas:
+
+```
+75 REQs · 28 herdadas excluídas · 7 não-'done' com critério aberto (legítimo)
+        · 7 critério(s) com `Caducou:` justificado (não acusam)
+validate: 0 violações · 3 avisos  (o novo é `req_done_open_criteria`, 22 de 67 Done
+          isentas pelo corte de 2026-10-04 — isenção visível, 0 reprovando)
+```
+
+🔴 **A forma fechou um impasse que não tinha saída honesta antes.** Na varredura de 2026-10-03, quatro
+roadmaps entregues não podiam ir para `done/`: o produto recusa `REQ Open` com roadmap em `done/`, e
+este gate recusa `REQ done` com critério aberto. Marcar exigiria fechar critério não atendido — a
+saída que o gate existe para recusar. Com a terceira porta, **os dois instrumentos concordam**, e o
+`backlog/` zerou.
+
+**E um critério dos oito NÃO caducou.** O *"nenhum arquivo de governança do upstream em `docs/`"* é
+verificável hoje (`check-upstream-content.sh` sai `rc=0`), então levou `[x]` nomeando o sítio.
+Aplicar `Caducou:` nos oito em bloco teria afirmado caducidade onde havia entrega — a diferença só
+aparece medindo um por um.
+
+🔴 **Duas armadilhas de instrumento, medidas no mesmo dia:**
+
+- **O `roadmap move` não sincroniza REQ de template antigo.** A `REQ-2026-08-29-migrar-para-upstream-7.3.0`
+  não tinha a chave `roadmap:` no frontmatter — só o marcador no corpo —, e o `move` sincroniza pela
+  chave. O link ficou apontando para `backlog/` depois de o arquivo ir para `done/`, e o `validate`
+  pegou (`stale state path`). A chave foi acrescentada; REQ antiga sem ela tem o mesmo risco.
+- **Sonda que planta REQ no `req_dir` real contamina medição concorrente.** Um `validate` rodado no
+  meio da falsificação acusou a sonda como REQ sem roadmap. Não medir outra coisa enquanto a sonda
+  roda — e, de preferência, plantar no scratchpad.
+
+**Custo medido, para não repetir:** este gate faz um `git cat-file` por REQ (76 hoje), e encadeá-lo
+com a falsificação **estourou os 30 min** de segundo plano três vezes em 2026-10-04. A falsificação
+passou a extrair a função `censo` **do próprio gate** — fonte única, zero `git` — e só os dois casos
+de ponta a ponta pagam a varredura completa.
+
 ## Gate de REQ herdada do upstream (`scripts/check-inherited-req.sh`)
 
 A `ADR-2026-08-29` decide que **a governança do upstream não é importada**. Vinte e oito REQs do

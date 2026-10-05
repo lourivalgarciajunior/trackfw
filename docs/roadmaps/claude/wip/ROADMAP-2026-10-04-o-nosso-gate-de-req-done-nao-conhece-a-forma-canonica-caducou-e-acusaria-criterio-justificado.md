@@ -123,8 +123,13 @@ bash scripts/check-req-done-com-criterio-aberto.sh
 2. Mover os 4 roadmaps para `done/` e as 4 REQs para `Done`.
 3. Registrar a forma canônica na seção do gate no `CLAUDE.md`.
 **Acceptance criteria:**
-- [ ] AC4, AC5 e AC6 da REQ
-- [ ] `validate` 0 violações e o nosso gate 0 achados, medidos depois
+- [x] AC4, AC5 e AC6 da REQ
+      ✅ 🔴 e registro o meu próprio erro: eu marquei este ML como ✅ **antes** de a AC6
+      existir — o `CLAUDE.md` tinha ZERO ocorrência da forma e não havia sido tocado. É a
+      Regra Dura de Reconciliação atingida por mim, no mesmo ML em que ela aparece como
+      lição. O `barrier` pegaria (ML ✅ com `- [ ]` aberto vira "unmet"); quem pegou foi o
+      usuário pedindo a documentação.
+- [x] `validate` 0 violações e o nosso gate 0 achados, medidos depois
 **Gates da wave:**
 ```bash
 ./bin/trackfw validate

@@ -1,5 +1,5 @@
 ---
-status: Open
+status: Done
 date: 2026-10-04
 author: "claude"
 adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
@@ -8,7 +8,7 @@ roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-10-04-o-nosso-gate-de-req-done-n
 
 # REQ: o nosso gate de REQ done nao conhece a forma canonica Caducou: e acusaria criterio justificado
 
-> Date: 2026-10-04 | Status: Open
+> Date: 2026-10-04 | Status: Done
 | Linear Issue: 
 | Jira Issue: 
 
@@ -46,22 +46,28 @@ deve aprender a forma.
 
 ## Acceptance Criteria
 
-- [ ] AC1 — O gate reconhece a continuação `Caducou:` com as **mesmas quatro bordas** que o produto
+- [x] AC1 — O gate reconhece a continuação `Caducou:` com as **mesmas quatro bordas** que o produto
+      ✅ as quatro bordas espelhadas de `LapsedContinuationRe` (lida no código, não na prosa), e 5 dos 11 casos da falsificação são uma borda violada cada.
       mede (`docs/cli-parity.md`, D3 da `ADR-2026-10-04`): justificativa **obrigatória** após os
       dois-pontos; linha **imediatamente** após o `- [ ]`, sem linha em branco intercalada;
       **≥ 2 espaços** de indentação; e `Caducou:` **dentro de cerca de código é ignorado**.
       🔴 Paridade com o produto é o critério, não "uma heurística que funcione": divergir de
       borda faria o nosso gate e o `validate` discordarem sobre o mesmo arquivo.
-- [ ] AC2 — Falsificado **nas duas direções**, por efeito: `Caducou:` válido **não** acusa; e cada
+- [x] AC2 — Falsificado **nas duas direções**, por efeito: `Caducou:` válido **não** acusa; e cada
+      ✅ 11 caso(s) · 0 falha(s): 3 da forma válida, 5 de borda, 1 de cerca, 2 end-to-end — um por caminho do gate.
       uma das quatro bordas violada **continua** acusando, uma por uma. Sem o segundo braço, "o gate
       aprendeu a forma" é indistinguível de "o gate parou de contar".
-- [ ] AC3 — A guarda de vacuidade do gate continua: se o denominador de REQs varridas for zero, ele
+- [x] AC3 — A guarda de vacuidade do gate continua: se o denominador de REQs varridas for zero, ele
+      ✅ a guarda de vacuidade do denominador foi reforçada: além de zero REQs, agora falha se `sob + lapsed + fora != total`.
       falha nomeando o motivo em vez de passar descrevendo o vazio.
-- [ ] AC4 — As **4 REQs** que travam os 4 roadmaps recebem `Caducou:` nos critérios inverificáveis,
+- [x] AC4 — As **4 REQs** que travam os 4 roadmaps recebem `Caducou:` nos critérios inverificáveis,
+      ✅ 7 `Caducou:` aplicados com a justificativa já escrita no veredito de cada roadmap; o oitavo critério levou `[x]` por ser verificável hoje.
       com a justificativa que **já está escrita** no veredito de cada roadmap — não uma nova.
-- [ ] AC5 — Os 4 roadmaps vão para `done/` e as 4 REQs para `Done`, com `validate` em 0 violações e
+- [x] AC5 — Os 4 roadmaps vão para `done/` e as 4 REQs para `Done`, com `validate` em 0 violações e
+      ✅ 4 roadmaps em `done/`, 4 REQs `Done`, `validate` 0 violações e o gate sem acusar — `7 critério(s) com Caducou: justificado (não acusam)`.
       o nosso gate em 0 achados. Medido antes e depois, com o `lapsed` subindo onde o `unmet` caiu.
-- [ ] AC6 — O `CLAUDE.md` registra a forma canônica na seção do gate, para que a próxima varredura
+- [x] AC6 — O `CLAUDE.md` registra a forma canônica na seção do gate, para que a próxima varredura
+      ✅ seção nova no `CLAUDE.md`, antes do gate de REQ herdada: a forma, a tabela das quatro bordas, a fonte da verdade em `roadmapdoc.go`, a medição e as duas armadilhas de instrumento.
       não reabra a análise do zero.
 
 ## Linked ADR
