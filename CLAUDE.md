@@ -1016,6 +1016,40 @@ acervo, não garantia do comando.
 
 Como os outros, é **nosso**, e **não tem alvo no `Makefile`**, pelo mesmo motivo da seção abaixo.
 
+## As 14 branches `upstream-pr/*` foram removidas em 2026-10-05 — e onde o conteúdo ficou
+
+Elas viviam no local **e no `origin`** desde a campanha de contribuição de agosto/setembro, e o acervo
+de branches **afirmava quatorze propostas pendentes ao upstream**. Nenhuma estava pendente.
+
+**Dez entregues, quatro caducadas, zero vivas.** O denominador reconcilia: 14 = 10 + 4.
+
+| entregues (PR mesclada no upstream) | caducadas |
+|---|---|
+| `gate-do-barrier-morre-em-cp1252` #238 · `gate-doctor-remote-nao-roda-sem-symlink` #245 · `other-bucket-no-status-de-go-e-node` #263 · `package-lock-parado-em-6-1-0` #249 · `slug-do-python-deleta-em-vez-de-colapsar` #247 · `teste-do-gitattributes-fixa-o-arquivo-inteiro` #254 · `gitattributes-test-limpa` (sem PR — **mesmo commit**, entrou como `c9438bd8` pela #254) · `testes-de-sincronia-de-status-no-move-do-roadmap` #248 · `tripwire-de-disco-trunca-o-corpus-congelado` #257 · `write-fixture-crlf-corrompe-nao-ascii` #240 | `geradores-python-escrevem-crlf` #225 · `tty-do-python-no-windows` #224 · `utf8-do-cli-python` #223 — **as três morreram com a v8**, que apagou o CLI Python · `windows-home-e-bit-de-execucao` #222 |
+
+**Onde o conteúdo sobrevive, conferido antes de apagar:** as 13 com PR mantêm `refs/pull/<N>/head` no
+GitHub mesmo sem a branch de origem — medido depois da remoção, o diff da #222 continua servido. A
+única sem PR tem o commit idêntico em `upstream/main`.
+
+🔴 **Duas lições, e as duas invertem a leitura ingênua:**
+
+- **`git cherry` sozinho classifica errado.** Seis das dez entregues saem `+` (patch-id não bate),
+  porque **merge por squash reescreve o patch**. Quem usasse só o `cherry` registraria seis branches
+  entregues como pendentes. O PR terminal é o discriminante; o `cherry` só confirma as que entraram
+  verbatim.
+- **PR fechada não é trabalho descartado.** A #222 foi fechada, e mesmo assim o
+  `upstream/main:internal/homedir/homedir.go` carrega **o nosso texto** (*"The trackfw test suites
+  isolate the home directory"*, *"%USERPROFILE% on Windows"*): a metade Go foi absorvida. A metade do
+  bit de execução virou a #421, fechada pelo #522. Classificar pelo estado do PR sem olhar o produto
+  teria dado por perdido algo que está em produção.
+
+**A remoção do remoto foi por `MSYS_NO_PATHCONV=1 gh api -X DELETE .../git/refs/heads/<branch>`**, que
+é a via declarada aqui — `git push --delete` é bloqueado pelo hook, e 🔴 **contornar o hook continua
+vetado, inclusive para isto**. No local foi `git branch -D` e não `-d`: elas não são ancestrais da
+**nossa** `main`, porque o conteúdo foi para a `main` do **upstream**, por squash.
+
+Detalhe e tabela por branch na `REQ-2026-10-05-as-14-branches-upstream-pr-sao-todas-terminais`.
+
 ## Ratchet de Windows do upstream: onde roda, e por que fica fora do agregador
 
 O gate que confere as listas de falha **por nome** é o `scripts/check-windows-known-failures.py` do
