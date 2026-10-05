@@ -154,16 +154,44 @@ acs_acusados=0
 acs_caducados=0
 fora_de_bloco=0
 
+# ---------------------------------------------------------------------------
+# HERDADAS: UMA chamada, não uma por REQ.
+#
+# 🔴 `git ls-tree`, nunca `git cat-file -e` por arquivo — a mesma lição que o
+# `run-local-gates.sh` já traz em letra vermelha, e que este gate não seguia.
+# Medido em 2026-10-05, nesta máquina: 76 `git cat-file` custam 5 149 ms; UM
+# `git ls-tree` custa 82 ms. Criar processo no MSYS custa 40–95 ms, e é daí que
+# vem o custo do gate — não do git.
+#
+# GUARDA: lista vazia faria TODA REQ parecer "não herdada", e o gate acusaria
+# governança do upstream. Falha nomeando, em vez de derivar zero e seguir.
+# (A guarda de `herdadas -eq 0` mais abaixo é a segunda rede, por efeito.)
+# ---------------------------------------------------------------------------
+declare -A HERDADA=()
+_n_up=0
+while IFS= read -r _up; do
+  [ -n "$_up" ] || continue
+  HERDADA["${_up##*/}"]=1
+  _n_up=$((_n_up + 1))
+done < <(git ls-tree -r --name-only "$UPSTREAM_REF" -- "$UPSTREAM_REQ_DIR")
+
+if [ "$_n_up" -eq 0 ]; then
+  echo "check-req-done-com-criterio-aberto: GUARDA — 'git ls-tree $UPSTREAM_REF -- $UPSTREAM_REQ_DIR' devolveu VAZIO." >&2
+  echo "  Isso faria toda REQ parecer não-herdada, e este gate passaria a acusar" >&2
+  echo "  governança do upstream. Não é resultado: é a derivação quebrada." >&2
+  exit 1
+fi
+
 while IFS= read -r f; do
   varridas=$((varridas + 1))
-  b=$(basename "$f")
+  b="${f##*/}"
 
-  if git cat-file -e "${UPSTREAM_REF}:${UPSTREAM_REQ_DIR}/${b}" 2>/dev/null; then
+  if [ -n "${HERDADA[$b]:-}" ]; then
     herdadas=$((herdadas + 1)); continue
   fi
 
   st=$(sed -n 's/^status:[[:space:]]*//p' "$f" | head -1 | tr -d '"' | tr -d "'" | tr -d '\r')
-  lst=$(printf '%s' "$st" | tr 'A-Z' 'a-z')
+  lst="${st,,}"
 
   read -r sob lapsed fora total < <(censo "$f")
 

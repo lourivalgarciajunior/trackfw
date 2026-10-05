@@ -131,11 +131,21 @@ bash -n scripts/check-req-done-com-criterio-aberto.sh
 
       Os 9 primeiros rodam em **26 s** porque chamam só a função `censo`, extraída
       do gate em tempo de execução — uma fonte de verdade, não uma cópia.
-      🔴 **Limite declarado:** uma passada do gate alvo custa **678 s** nesta
+      🔴 **CORRIGIDO EM 2026-10-05 — o número abaixo estava errado.** Uma passada
+      do gate alvo custa **29 a 42 s** (cinco passadas independentes), não 678 s.
+      O 678 s saiu de UMA cronometragem, e não reproduz; a hipótese de contenção
+      foi testada e é falsa (duas concorrentes somam 60 s). O texto original fica
+      como registro: *"uma passada do gate alvo custa **678 s** nesta
       máquina (75 `git cat-file` sobre MSYS), então os 2 e2e somam ~23 min
       localmente e foram verificados **um por vez**; juntos, a primeira tentativa
       foi MORTA no limite de 30 min e deixou uma sonda no `req_dir` real. Em
-      `ubuntu-latest`, onde o agregador roda, o mesmo laço custa segundos.
+      `ubuntu-latest`, onde o agregador roda, o mesmo laço custa segundos."*
+
+      Dos quatro fatos daquele texto, **três continuam valendo**: os e2e foram
+      verificados um por vez, a primeira tentativa foi morta no limite de 30 min
+      deixando sonda, e no `ubuntu-latest` o laço custa segundos (do log: ~1 s).
+      O que caiu foi **a magnitude** e **a atribuição** — o `git cat-file` é 19%
+      do custo, e a causa é haver ~5 processos por iteração a 40–95 ms cada.
 - [x] Uma frase por verificação dizendo qual conclusão da REQ ela afirma
       ✅ escritas **no próprio gate**, por grupo, e não só no relatório:
       direção A afirma *"o gate reconhece a forma do produto, logo não acusa
