@@ -70,7 +70,7 @@ bash scripts/check-vigia-forma.sh
 > Dependencies: Wave 0
 
 ### ML-1A — `snap_issues`, `diff_issues` e os casos que os afirmam
-**Status:** ⬜ Pendente
+**Status:** 🔄 Em andamento
 **Files affected:** `scripts/vigia-do-upstream.sh`, `scripts/check-vigia-forma.sh`
 **Actions:**
 1. `snap_issues()` lendo `repos/$REPO/issues?state=all&per_page=15`, com
