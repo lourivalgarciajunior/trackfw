@@ -1,12 +1,12 @@
 ---
-status: backlog
+status: done
 date: 2026-08-30
 req: docs/requisições/claude/REQ-2026-08-30-ruido-de-gofmt-divergindo-do-upstream.md
 ---
 
 # Roadmap: Ruido de gofmt divergindo do upstream
 
-> Created: 2026-08-30 | Status: backlog
+> Created: 2026-08-30 | Status: done
 
 ## Context
 

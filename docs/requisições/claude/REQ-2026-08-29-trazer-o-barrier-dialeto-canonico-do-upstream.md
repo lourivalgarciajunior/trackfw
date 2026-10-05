@@ -1,17 +1,17 @@
 ---
-status: Open
+status: Done
 date: 2026-08-29
 author: claude
 adr: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
-roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-08-29-trazer-o-barrier-dialeto-canonico-do-upstream.md
+roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-trazer-o-barrier-dialeto-canonico-do-upstream.md
 ---
 
 # REQ: Trazer o barrier dialeto canonico do upstream
 
-> Date: 2026-08-29 | Status: Open
+> Date: 2026-08-29 | Status: Done
 
 ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
-Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-08-29-trazer-o-barrier-dialeto-canonico-do-upstream.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-29-trazer-o-barrier-dialeto-canonico-do-upstream.md
 
 ## Motivation
 
@@ -32,6 +32,7 @@ interessa e `pypi/trackfw/generators/roadmap.py` — arquivo que este repo patch
 - [x] Merge sem marcador de conflito
       → **(a) ENTREGUE.** `git grep '^<<<<<<<'` na árvore versionada: **0 ocorrências**.
 - [ ] Os **sete** gates verdes; para cada perda, o gate que a acusou registrado
+  Caducou: o conjunto de SETE gates de 2026-08 nao existe mais como tal; o agregador de hoje executa 12, e tres dos sete foram retirados pelo upstream na v8
       → 🔴 **(b) NAO ENTREGUE.** Seis dos sete saem `exit 0`; o **`check-upstream-content.sh` está
       vermelho** com 7 arquivos de governança do upstream em `docs/`.
       ```
@@ -48,6 +49,7 @@ interessa e `pypi/trackfw/generators/roadmap.py` — arquivo que este repo patch
 - [x] `go build ./...` verde
       → **(a) ENTREGUE.** `exit 0`.
 - [ ] Suite pypi sem regressao por lista nomeada contra 95 falhas
+  Caducou: a v8.0.0 removeu o CLI Python; medido em 2026-10-04, pypi/ tem 5 arquivos e todos sao casquinha de canal, e nao existe suite pypi para medir regressao
       → **(b) NAO ENTREGUE** — convertido de `(d)` em 2026-09-11 pela
       `REQ-2026-09-10-baselines-de-suite-nunca-foram-versionados` (AC5). A afirmação sobre agosto é
       **irrecuperável**: um baseline tirado hoje não prova "sem regressão desde agosto", só daqui

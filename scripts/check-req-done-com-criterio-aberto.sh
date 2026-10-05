@@ -70,17 +70,49 @@ if ! git cat-file -t "${UPSTREAM_REF}:${UPSTREAM_REQ_DIR}" >/dev/null 2>&1; then
 fi
 
 # ---------------------------------------------------------------------------
-# Conta checkbox aberto SOB bloco de critério. Devolve: <sob> <total>
+# Conta checkbox aberto SOB bloco de critério, em QUATRO baldes que somam o
+# total. Devolve: <sob> <lapsed> <fora> <total>
+#
+# `sob`    aberto sob bloco de critério, SEM continuação `Caducou:`  -> acusa
+# `lapsed` aberto sob bloco de critério, COM `Caducou:` válido       -> não acusa
+# `fora`   aberto fora de bloco de critério                          -> nomeado, não acusa
+# `total`  todos os `- [ ]` fora de cerca — e sob+lapsed+fora TEM de dar total
+#
+# 🔴 A forma `Caducou:` é do PRODUTO, não nossa. O #519 do upstream — que
+# implementa a nossa #514 — a definiu, e a fonte da verdade das bordas é
+# `internal/roadmapdoc/roadmapdoc.go`:
+#
+#     LapsedContinuationRe = regexp.MustCompile(`^ {2,}Caducou:\s*\S`)
+#
+# As quatro bordas, lidas de lá e espelhadas aqui:
+#   1. >= 2 espaços de indentação, e **não** tabulação;
+#   2. a continuação vem IMEDIATAMENTE após o `- [ ]`, sem linha em branco;
+#   3. justificativa obrigatória — `  Caducou:` pelo e `  Caducou:` falham,
+#      porque `` é espaço e o `\S` exige caractere real depois;
+#   4. dentro de cerca de código, é ignorado.
+#
+# 🔴 Por que paridade e não "uma heurística que funcione": divergir numa borda
+# faria este gate e o `validate` discordarem sobre o mesmo arquivo — e aí o
+# acervo passa a depender de qual instrumento foi rodado.
+#
+# E por que reconhecer em vez de endurecer: sem isto, o gate seria o ÚNICO
+# instrumento a recusar a saída que o produto passou a oferecer, e a forma
+# canônica — que é o nosso próprio precedente, "fica aberto de propósito" —
+# viraria inútil aqui.
 # ---------------------------------------------------------------------------
 censo() {
   awk '
+    function fecha() {
+      if (pend) { if (pend_dentro) sob++; else fora++; pend = 0 }
+    }
     # CERCA DE CODIGO: `- [ ]` dentro de ``` e CITACAO, nao criterio. Medido em
     # 2026-09-10: sao 3 no acervo -- um trecho de outra REQ citado como prova, e
     # dois de um template de roadmap embutido. Conta-los inventa criterio que
     # ninguem escreveu, e foi o que fez este inventario acusar um caso que nao
     # existe.
-    /^```/ { cerca = !cerca; next }
+    /^```/ { fecha(); cerca = !cerca; next }
     /^#+[ ]/ {
+      fecha()
       lvl = index($0, " ") - 1
       h = tolower($0)
       ehcrit = ((h ~ /crit/ && h ~ /aceit/) || (h ~ /acceptance/ && h ~ /criteri/)) ? 1 : 0
@@ -88,8 +120,29 @@ censo() {
       else if (dentro && lvl <= base) { dentro = 0 }
       next
     }
-    /^-[ ]\[[ ]\]/ { if (cerca) next; total++; if (dentro) sob++ }
-    END { printf "%d %d\n", sob+0, total+0 }
+    /^-[ ]\[[ ]\]/ {
+      fecha()
+      if (cerca) next
+      total++
+      pend = 1; pend_dentro = dentro
+      next
+    }
+    {
+      # Continuacao `Caducou:` — paridade com LapsedContinuationRe do produto.
+      # `^   *` e DOIS espacos literais mais zero-ou-mais: >= 2, e tabulacao nao
+      # casa. O `[^[:space:]]` no fim e o `\S` do produto, e e ele que recusa a
+      # justificativa vazia, inclusive com CRLF.
+      if (pend && !cerca && $0 ~ /^   *Caducou:[[:space:]]*[^[:space:]]/) {
+        if (pend_dentro) lapsed++; else fora++
+        pend = 0
+        next
+      }
+      fecha()
+    }
+    END {
+      fecha()
+      print sob+0, lapsed+0, fora+0, total+0
+    }
   ' "$1"
 }
 
@@ -98,6 +151,7 @@ herdadas=0
 abertas_legitimas=0
 acusadas=0
 acs_acusados=0
+acs_caducados=0
 fora_de_bloco=0
 
 while IFS= read -r f; do
@@ -111,14 +165,23 @@ while IFS= read -r f; do
   st=$(sed -n 's/^status:[[:space:]]*//p' "$f" | head -1 | tr -d '"' | tr -d "'" | tr -d '\r')
   lst=$(printf '%s' "$st" | tr 'A-Z' 'a-z')
 
-  read -r sob total < <(censo "$f")
+  read -r sob lapsed fora total < <(censo "$f")
+
+  # RECONCILIACAO DO DENOMINADOR: os tres baldes TEM de somar o total. Se nao
+  # somarem, o classificador parou de casar e o gate passaria descrevendo outra
+  # coisa -- falha nomeando, em vez de seguir.
+  if [ "$((sob + lapsed + fora))" -ne "$total" ]; then
+    echo "check-req-done-com-criterio-aberto: FALHA — denominador nao reconcilia em ${b}: sob=${sob} + lapsed=${lapsed} + fora=${fora} != total=${total}" >&2
+    exit 1
+  fi
+  [ "$lapsed" -gt 0 ] && acs_caducados=$((acs_caducados + lapsed))
 
   # RECONCILIAÇÃO: checkbox aberto que o gate não soube atribuir a bloco de
   # critério. Não acusa -- mas também não some. Medido: existe exatamente um
   # caso hoje (REQ-2026-09-05-reqs-que-passam-so-por-prosa), e ele foi tratado
   # como ML próprio justamente por não caber no lote.
-  if [ "$total" -gt "$sob" ]; then
-    echo "  ⚠ reconciliação: ${b} — $((total - sob)) checkbox(es) aberto(s) FORA de bloco de critério" >&2
+  if [ "$fora" -gt 0 ]; then
+    echo "  ⚠ reconciliação: ${b} — ${fora} checkbox(es) aberto(s) FORA de bloco de critério" >&2
     fora_de_bloco=$((fora_de_bloco + 1))
   fi
 
@@ -153,17 +216,28 @@ fi
 if [ "$acusadas" -gt 0 ]; then
   echo "" >&2
   echo "${acusadas} REQ(s) marcada(s) 'done' com ${acs_acusados} critério(s) de aceite em aberto." >&2
+  echo "  (${acs_caducados} outro(s) critério(s) com \`Caducou:\` justificado NÃO estão nesta conta)" >&2
   echo "" >&2
-  echo "Duas saídas legítimas, e SÓ estas duas:" >&2
-  echo "  1. o critério foi atendido  -> marque, NOMEANDO o sítio no produto que comprova" >&2
+  echo "TRÊS saídas legítimas, e só estas três:" >&2
+  echo "  1. o critério foi atendido  -> marque [x], NOMEANDO o sítio no produto que comprova" >&2
   echo "  2. o critério não foi atendido -> a REQ deixa de ser 'done'" >&2
+  echo "  3. o critério CADUCOU -> a caixa fica '- [ ]' e ganha a continuação canônica:" >&2
+  echo "" >&2
+  echo "       - [ ] <critério>" >&2
+  echo "         Caducou: <justificativa obrigatória>" >&2
+  echo "" >&2
+  echo "     >= 2 espaços (não tabulação), linha imediatamente seguinte, sem linha em" >&2
+  echo "     branco, e justificativa não vazia. A forma é do PRODUTO (#519 do upstream," >&2
+  echo "     que implementa a nossa #514); a fonte da verdade é" >&2
+  echo "     internal/roadmapdoc/roadmapdoc.go, LapsedContinuationRe." >&2
   echo "" >&2
   echo "🔴 Reescrever o critério para que o estado atual o satisfaça NÃO é saída: é" >&2
-  echo "   fabricar histórico, e é o defeito que este gate existe para fechar." >&2
+  echo "   fabricar histórico, e é o defeito que este gate existe para fechar. A saída 3" >&2
+  echo "   NÃO é essa: ela mantém o critério não atendido e exige dizer POR QUE caducou." >&2
   exit 1
 fi
 
-echo "check-req-done-com-criterio-aberto: ${varridas} REQ(s) varrida(s) em '${REQ_DIR}' · ${herdadas} herdada(s) excluída(s) · ${abertas_legitimas} não-'done' com critério aberto (legítimo)"
+echo "check-req-done-com-criterio-aberto: ${varridas} REQ(s) varrida(s) em '${REQ_DIR}' · ${herdadas} herdada(s) excluída(s) · ${abertas_legitimas} não-'done' com critério aberto (legítimo) · ${acs_caducados} critério(s) com \`Caducou:\` justificado (não acusam)"
 if [ "$fora_de_bloco" -gt 0 ]; then
   echo "  ⚠ ${fora_de_bloco} REQ(s) com checkbox fora de bloco de critério (ver acima) — não acusadas, mas nomeadas"
 fi

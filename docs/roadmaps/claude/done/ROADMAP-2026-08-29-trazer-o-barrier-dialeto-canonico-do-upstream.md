@@ -1,12 +1,12 @@
 ---
-status: backlog
+status: done
 date: 2026-08-29
 req: docs/requisições/claude/REQ-2026-08-29-trazer-o-barrier-dialeto-canonico-do-upstream.md
 ---
 
 # Roadmap: Trazer o barrier dialeto canonico do upstream
 
-> Created: 2026-08-29 | Status: backlog
+> Created: 2026-08-29 | Status: done
 
 ## Context
 
