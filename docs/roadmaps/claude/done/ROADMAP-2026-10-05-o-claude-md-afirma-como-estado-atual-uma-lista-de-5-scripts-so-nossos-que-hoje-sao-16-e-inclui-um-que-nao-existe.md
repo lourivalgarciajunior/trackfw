@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-10-05
 req: "REQ-2026-10-05-o-claude-md-afirma-como-estado-atual-uma-lista-de-5-scripts-so-nossos-que-hoje-sao-16-e-inclui-um-que-nao-existe"
 squad: "claude"
@@ -7,7 +7,7 @@ squad: "claude"
 
 # Roadmap: o CLAUDE.md afirma como estado atual uma lista de 5 scripts so nossos que hoje sao 16 e inclui um que nao existe
 
-> Created: 2026-10-05 | Status: wip
+> Created: 2026-10-05 | Status: done
 
 ## Context
 

@@ -3,7 +3,7 @@ status: Done
 date: 2026-10-05
 author: ""
 adr: "docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md"
-roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-10-05-o-claude-md-afirma-como-estado-atual-uma-lista-de-5-scripts-so-nossos-que-hoje-sao-16-e-inclui-um-que-nao-existe.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-10-05-o-claude-md-afirma-como-estado-atual-uma-lista-de-5-scripts-so-nossos-que-hoje-sao-16-e-inclui-um-que-nao-existe.md"
 ---
 
 # REQ: o CLAUDE.md afirma como estado atual uma lista de 5 scripts so nossos que hoje sao 16 e inclui um que nao existe
@@ -63,7 +63,7 @@ ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
 
 ## Linked Roadmap
 <!-- Reference the roadmap that implements this requirement -->
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-10-05-o-claude-md-afirma-como-estado-atual-uma-lista-de-5-scripts-so-nossos-que-hoje-sao-16-e-inclui-um-que-nao-existe.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-10-05-o-claude-md-afirma-como-estado-atual-uma-lista-de-5-scripts-so-nossos-que-hoje-sao-16-e-inclui-um-que-nao-existe.md
 
 ## Context
 
