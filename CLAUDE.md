@@ -489,7 +489,8 @@ binário, antes e depois do sync, no mesmo slug:
 | `chore/<slug>` | `rc=0` | `rc=0` |
 
 ```
-acervo medido: wip=0  blocked=1  done=69
+acervo medido em 2026-10-02: wip=0  blocked=1  done=69
+(em 2026-10-05:              wip=0  blocked=0  done=79  abandoned=7)
 
 $ trackfw branch new fix/cerca-nao-terminada-mascara-ate-o-fim-do-arquivo --dry-run
 [dry-run] would block: branch "fix/…" is a feat/fix/refactor branch but no roadmap is in wip/
@@ -624,9 +625,15 @@ empilhados — descobrir o segundo exigiu destravar o primeiro:
    de propósito o diretório de instalação do Python. Mesmo mecanismo que o comentário do próprio
    script documenta para o `git.exe`.
 
-**O ramo Windows desses gates não tem cobertura em CI nenhum** — `Makefile:58,60,61` os põe em
-`parity-rest`, e `quality.yml:624` roda `make parity-rest` no job `parity-other-gates`, que é
-`runs-on: ubuntu-latest`. Em POSIX o `ln -s` é symlink de verdade e o ramo é outro.
+**O ramo Windows desses gates não tem cobertura em CI nenhum** — o `Makefile` os põe em
+`parity-rest` (`grep -n check-release-tag-parity Makefile`), e o `quality.yml` roda `make parity-rest`
+no job `parity-other-gates`, que é `runs-on: ubuntu-latest`.
+
+> 🔴 **Os números de linha foram removidos de propósito em 2026-10-05.** `Makefile:58,60,61` e
+> `check-validate-rule-pins.sh:599` **já não batiam** — o código andou com os merges do upstream. É a
+> regra que este arquivo já aplica ao baseline do lint de SO (*"granularidade de arquivo, não de
+> linha — número de linha muda a cada merge e viraria ruído"*), agora aplicada às citações também.
+> Cite o **símbolo**; o leitor acha com um `grep`. Em POSIX o `ln -s` é symlink de verdade e o ramo é outro.
 
 Reportado no upstream: [#307](https://github.com/kgsaran/trackfw/issues/307). Mesma causa do
 [#304](https://github.com/kgsaran/trackfw/pull/304) — wrapper dependente de DLL no Windows —, outra
@@ -650,6 +657,19 @@ cenário vacuo. O ponto cego é real, mas nunca vira verde falso.
   `scripts/`.
 
 ## Ponto cego local: sem `jq`, a cerca de git falha ABERTA
+
+> ✅ **Nesta máquina o ponto cego fechou.** Medido em 2026-10-05: `jq` está no `PATH`
+> (`jq-1.8.2`, instalado em 2026-10-02), então o braço do `sed` **não é mais exercitado aqui**. O
+> mecanismo descrito abaixo continua verdadeiro para qualquer máquina sem `jq`, e por isso a seção
+> fica — mas **não leia mais "a cerca falha aberta" como estado desta máquina**.
+>
+> 🔴 **E a causa está sendo removida na raiz, não contornada.** O mantenedor abriu
+> `feat/hooks-de-guard-executam-no-windows` (7 commits em 2026-10-04/05) portando os guards de shell
+> para subcomandos Go — `trackfw guard git-branch` e `trackfw guard credential` —, com corpus de
+> paridade de 170 cenários. O commit de 2026-10-05 10:35 diz, literalmente, *"LF separa segmento"*:
+> é o mecanismo da nossa #507. Sem `.sh`, não há `jq` nem fallback por `sed` para falhar aberto.
+> **A branch ainda não foi mesclada** — quando for, esta seção caduca inteira e deve ser medida de
+> novo, não apagada por fé.
 
 🔴 **Medido em 2026-10-02 e reportado na [#507](https://github.com/kgsaran/trackfw/issues/507).** Em
 máquina sem `jq`, o `scripts/trackfw-git-branch-guard.sh` — o hook `PreToolUse` que bloqueia
@@ -719,7 +739,7 @@ no ratchet do upstream, com `reason`:
   TestSave_WritesAtomicallyWithPermissions         os.Chmod(0o600) silently ignored on NTFS
 
 pin7-noexec: 0 ocorrências em .github/windows-known-failures.json
-  vive em scripts/check-validate-rule-pins.sh:599 — espera "not executable" na fixture
+  vive em scripts/check-validate-rule-pins.sh (procure por `pin7-noexec`) — espera "not executable" na fixture
   cg-claude-noexec-go.json; alvo do Makefile (linha 33), FORA da lista EXECUTAR do
   nosso scripts/run-local-gates.sh
 ```
@@ -793,7 +813,17 @@ Os cinco somam 240 exatamente — o denominador reconcilia, não sobra resto.
 > 204 sitios · 116 com teste · 57 D1 · 2 D3 · 25 comentario · 4 D2 em 2 arquivos declarados
 > ```
 >
-> Os cinco somam 204. Os números acima, as duas leituras inline de `homedir.py` e `tty.py` e os "16
+> Os cinco somam 204.
+>
+> **E em 2026-10-05** — o acervo do upstream cresceu com os merges, e o baseline acompanhou:
+>
+> ```
+> 242 sitios · 142 com teste · 62 D1 · 2 D3 · 25 comentario · 11 D2 em 8 arquivos declarados
+> ```
+>
+> 🔴 **O ratchet continua fechado** (`Nenhum sitio de classificacao fora do baseline`): os sítios novos
+> entraram **declarados**, um a um, e não por afrouxamento da regra. O número que importa aqui não é o
+> total — é o **zero de não-declarados**. Os números acima, as duas leituras inline de `homedir.py` e `tty.py` e os "16
 > sítios" abaixo são de 2026-09-11. Detalhe e falsificação na `REQ-2026-09-16-gates-so-nossos-depois-da-v8`.
 
 **O ML-1H (2026-09-11) alargou o lint em três frentes, e a terceira corrigiu o próprio acervo:**
@@ -924,6 +954,7 @@ deixado travadas:
 ```
 75 REQs · 28 herdadas excluídas · 7 não-'done' com critério aberto (legítimo)
         · 7 critério(s) com `Caducou:` justificado (não acusam)
+em 2026-10-05: 78 REQs · 28 herdadas · 6 não-'done' · 7 com `Caducou:`
 validate: 0 violações · 3 avisos  (o novo é `req_done_open_criteria`, 22 de 67 Done
           isentas pelo corte de 2026-10-04 — isenção visível, 0 reprovando)
 ```
@@ -1313,7 +1344,8 @@ bash scripts/check-req-marcador-ancorado.sh
 Lê o `req_dir` do `trackfw.yaml`, varre recursivamente, e distingue três estados: **ancorado com
 valor** (ok), **vazio pelo template** (`ADR: ` e fim de linha — não é prosa, decisão do ML original) e
 **só em prosa** (reprova). Medido em 2026-10-01: **73 REQs · 146 marcadores · 146 ancorados · 0 em
-prosa**.
+prosa**; em 2026-10-05, **78 · 156 · 156 · 0**. O denominador cresce com o acervo — o que o gate
+afirma é o **zero da terceira classe**, não o total.
 
 **Ele existe porque a lógica morava dentro do bloco de gates daquele roadmap, em `python -c "` com DEZ
 linhas** — e pela regra 5 aquelas dez linhas nunca rodaram como um programa: 9 das 12 reprovam `sh -n`
@@ -1380,8 +1412,11 @@ em `scripts/` não cria divergência — é o mesmo precedente dos outros três 
 - `roadmap_namespacing: by_agent`, agentes `[apolo, artemis, claude]`, então os artefatos ficam em
   `docs/requisições/<agente>/` e `docs/roadmaps/<agente>/{backlog,wip,done}/`.
 
-A governança do upstream **não** é importada: as 52 ADRs, 140 REQs e 142 roadmaps dele cairiam
-dentro de `docs/adr/` e `docs/roadmaps/`, que é onde vive a governança daqui.
+A governança do upstream **não** é importada: as ADRs, REQs e roadmaps dele cairiam dentro de
+`docs/adr/` e `docs/roadmaps/`, que é onde vive a governança daqui. 🔴 **A ordem de grandeza não é
+estática** — esta seção dizia "52 ADRs, 140 REQs e 142 roadmaps", medido quando foi escrita; em
+2026-10-05 são **82, 249 e 246**. Derive quando precisar do número, com
+`git ls-tree -r --name-only upstream/main -- docs/adr`.
 
 **Divergência local de produto: NENHUMA.** Medido em 2026-09-05 e re-medido em 2026-10-02, agora com
 o instrumento certo:
@@ -1420,10 +1455,25 @@ porque lá tudo chega commitado. Mesma classe do limite já declarado no
 arquivo compartilhado que este commit muda —, o mecanismo **acusa** (`div=1`); e o
 `local-gates.yml`, que não existe no upstream, continua **não contando** por ser adição.
 
-Os únicos arquivos só nossos são adições que o upstream não tem — `scripts/check-slug-inventory.sh`,
-`scripts/check-subcommand-parity.sh`, `scripts/check-upstream-content.sh`, `scripts/upstream-sync.sh`
-e `scripts/check-upstream-sync-falsify.sh`. Adição não é divergência: nenhum arquivo compartilhado
-difere.
+**Adição não é divergência: nenhum arquivo compartilhado difere.** Os arquivos só nossos são
+adições que o upstream não tem, e 🔴 **a lista NÃO se escreve à mão** — ela se deriva, porque a versão
+escrita aqui ficou errada por um mês:
+
+```bash
+git ls-tree -r --name-only upstream/main -- scripts > /tmp/up.txt
+for f in scripts/*.sh; do grep -qx "$f" /tmp/up.txt || basename "$f"; done
+```
+
+Medido em 2026-10-05: **16**. O `scripts/run-local-gates.sh` deriva o mesmo conjunto e **reprova** se
+algum deles não estiver em `EXECUTAR` ou em `FORA` — é ele, não esta seção, que mantém o conjunto
+honesto.
+
+> 🔴 **Esta seção afirmava "os únicos … são 5", e um dos cinco não existia.** De 2026-09-16 (quando o
+> upstream retirou o `check-subcommand-parity.sh`) a 2026-10-05, a lista dizia **5 scripts, incluindo
+> um apagado**, enquanto o conjunto real crescia para 16. Não é número desatualizado: é **afirmação
+> falsa sobre o estado atual**, a mesma classe que este arquivo já pagou duas vezes — a nota do
+> `_force_utf8_output` (2026-09-05) e a dos "8 mascarados" (2026-09-29). Lista enumerada à mão sobre
+> conjunto que cresce **apodrece por construção**; a derivação, não.
 
 > **Atualização de 2026-09-16 (v8).** O `check-subcommand-parity.sh` foi **retirado**: comparava
 > subcomandos entre os três CLIs, e com uma implementação só a propriedade deixou de ser definível. O
