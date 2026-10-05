@@ -3,7 +3,7 @@ status: Done
 date: 2026-10-05
 author: ""
 adr: "docs/adr/ADR-2026-09-03-layout-canonico-de-req-em-by-agent-e-o-invariante-de-que-req-nao-tem-dimensao-de-estado.md"
-roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-10-05-seis-reqs-dizem-open-com-o-roadmap-em-abandoned-porque-a-varredura-de-caducidade-so-fechou-o-lado-done.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-10-05-seis-reqs-dizem-open-com-o-roadmap-em-abandoned-porque-a-varredura-de-caducidade-so-fechou-o-lado-done.md"
 ---
 
 # REQ: seis REQs dizem Open com o roadmap em abandoned porque a varredura de caducidade so fechou o lado done
@@ -55,7 +55,7 @@ ADR: docs/adr/ADR-2026-09-03-layout-canonico-de-req-em-by-agent-e-o-invariante-d
 
 ## Linked Roadmap
 <!-- Reference the roadmap that implements this requirement -->
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-10-05-seis-reqs-dizem-open-com-o-roadmap-em-abandoned-porque-a-varredura-de-caducidade-so-fechou-o-lado-done.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-10-05-seis-reqs-dizem-open-com-o-roadmap-em-abandoned-porque-a-varredura-de-caducidade-so-fechou-o-lado-done.md
 
 ## Context
 

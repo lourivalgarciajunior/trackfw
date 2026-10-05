@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-10-05
 req: "REQ-2026-10-05-seis-reqs-dizem-open-com-o-roadmap-em-abandoned-porque-a-varredura-de-caducidade-so-fechou-o-lado-done"
 squad: "claude"
@@ -7,7 +7,7 @@ squad: "claude"
 
 # Roadmap: seis REQs dizem Open com o roadmap em abandoned porque a varredura de caducidade so fechou o lado done
 
-> Created: 2026-10-05 | Status: wip
+> Created: 2026-10-05 | Status: done
 
 ## Context
 
