@@ -1,5 +1,5 @@
 ---
-status: Open
+status: Closed
 date: 2026-09-11
 author: ""
 adr: "docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md"
@@ -8,7 +8,14 @@ roadmap: "docs/roadmaps/claude/abandoned/ROADMAP-2026-09-11-o-gitattributes-do-f
 
 # REQ: o .gitattributes do fork mascara um defeito de produto que o upstream mantém exposto de propósito
 
-> Date: 2026-09-11 | Status: Open
+> Date: 2026-09-11 | Status: Closed
+
+> 🔴 **Encerrada sem entrega em 2026-10-05.** O roadmap desta REQ está em `abandoned/`
+> com o veredito **(c) caducou**: a `ADR-2026-09-11` decidiu a opção A — alinhar byte a byte ao upstream — e o mascaramento que esta REQ atacava não existe mais (`git diff … -- .gitattributes` sai vazio). 🔴 Não é entrega: o plano ficou sem objeto.
+>
+> **Os critérios abaixo continuam em aberto de propósito** — eles não foram atendidos, e
+> marcá-los afirmaria entrega que não houve. Ver a
+> `REQ-2026-10-05-seis-reqs-dizem-open-com-o-roadmap-em-abandoned…`.
 
 ## Motivation
 

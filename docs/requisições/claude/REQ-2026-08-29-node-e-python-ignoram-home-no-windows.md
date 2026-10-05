@@ -1,5 +1,5 @@
 ---
-status: Open
+status: Closed
 date: 2026-08-29
 author: claude
 adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
@@ -8,7 +8,14 @@ roadmap: "docs/roadmaps/claude/abandoned/ROADMAP-2026-08-29-node-e-python-ignora
 
 # REQ: Node e Python ignoram HOME no Windows
 
-> Date: 2026-08-29 | Status: Open
+> Date: 2026-08-29 | Status: Closed
+
+> 🔴 **Encerrada sem entrega em 2026-10-05.** O roadmap desta REQ está em `abandoned/`
+> com o veredito **(c) caducou**: os critérios exigem que **os três** runtimes resolvam `HOME` e que o `check-artifact-parity.sh` passe. Sobrou um runtime, e o gate não existe.
+>
+> **Os critérios abaixo continuam em aberto de propósito** — eles não foram atendidos, e
+> marcá-los afirmaria entrega que não houve. Ver a
+> `REQ-2026-10-05-seis-reqs-dizem-open-com-o-roadmap-em-abandoned…`.
 
 ## Motivation
 

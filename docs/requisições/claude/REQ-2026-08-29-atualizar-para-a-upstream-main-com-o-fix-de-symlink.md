@@ -1,5 +1,5 @@
 ---
-status: Open
+status: Closed
 date: 2026-08-29
 author: claude
 adr: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
@@ -8,7 +8,14 @@ roadmap: "docs/roadmaps/claude/abandoned/ROADMAP-2026-08-29-atualizar-para-a-ups
 
 # REQ: Atualizar para a upstream main com o fix de symlink
 
-> Date: 2026-08-29 | Status: Open
+> Date: 2026-08-29 | Status: Closed
+
+> 🔴 **Encerrada sem entrega em 2026-10-05.** O roadmap desta REQ está em `abandoned/`
+> com o veredito **(c) caducou**: dois dos nove critérios são **inconstruíveis** — pedem a suíte `pypi` e verificação "nos três runtimes", e a v8.0.0 apagou os dois CLIs. Os demais foram satisfeitos muitas vezes desde então: `upstream/main` é ancestral da nossa `main`.
+>
+> **Os critérios abaixo continuam em aberto de propósito** — eles não foram atendidos, e
+> marcá-los afirmaria entrega que não houve. Ver a
+> `REQ-2026-10-05-seis-reqs-dizem-open-com-o-roadmap-em-abandoned…`.
 
 ## Motivation
 
