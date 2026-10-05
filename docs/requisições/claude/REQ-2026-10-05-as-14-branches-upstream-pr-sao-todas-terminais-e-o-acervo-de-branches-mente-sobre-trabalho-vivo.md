@@ -2,7 +2,7 @@
 status: Done
 date: 2026-10-05
 author: ""
-adr: ""
+adr: "docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md"
 roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-10-05-as-14-branches-upstream-pr-sao-todas-terminais-e-o-acervo-de-branches-mente-sobre-trabalho-vivo.md"
 ---
 
@@ -36,7 +36,7 @@ no de REQs.
 
 ## Linked ADR
 <!-- Reference the ADR that governs this requirement -->
-ADR: 
+ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
 
 ## Blocked by ADRs
 <!-- none -->
