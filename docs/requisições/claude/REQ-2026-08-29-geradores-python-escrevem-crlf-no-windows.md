@@ -1,5 +1,5 @@
 ---
-status: Open
+status: Closed
 date: 2026-08-29
 author: claude
 adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
@@ -8,7 +8,14 @@ roadmap: "docs/roadmaps/claude/abandoned/ROADMAP-2026-08-29-geradores-python-esc
 
 # REQ: Geradores Python escrevem CRLF no Windows
 
-> Date: 2026-08-29 | Status: Open
+> Date: 2026-08-29 | Status: Closed
+
+> 🔴 **Encerrada sem entrega em 2026-10-05.** O roadmap desta REQ está em `abandoned/`
+> com o veredito **(c) caducou**: a v8.0.0 apagou `pypi/trackfw`, e o gate que os critérios exigem (`check-artifact-parity.sh`) não existe nem aqui nem em `upstream/main`. 🔴 O defeito nunca foi corrigido — o produto que o tinha deixou de existir.
+>
+> **Os critérios abaixo continuam em aberto de propósito** — eles não foram atendidos, e
+> marcá-los afirmaria entrega que não houve. Ver a
+> `REQ-2026-10-05-seis-reqs-dizem-open-com-o-roadmap-em-abandoned…`.
 
 ## Motivation
 

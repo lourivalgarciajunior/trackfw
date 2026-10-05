@@ -1,5 +1,5 @@
 ---
-status: Open
+status: Closed
 date: 2026-08-29
 author: claude
 adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
@@ -8,7 +8,14 @@ roadmap: "docs/roadmaps/claude/abandoned/ROADMAP-2026-08-29-isatty-do-python-dev
 
 # REQ: isatty do Python devolve True para NUL no Windows
 
-> Date: 2026-08-29 | Status: Open
+> Date: 2026-08-29 | Status: Closed
+
+> 🔴 **Encerrada sem entrega em 2026-10-05.** O roadmap desta REQ está em `abandoned/`
+> com o veredito **(c) caducou**: mesma causa: os critérios falam do `init` e do `validate.py` do CLI Python, apagado pela v8.0.0.
+>
+> **Os critérios abaixo continuam em aberto de propósito** — eles não foram atendidos, e
+> marcá-los afirmaria entrega que não houve. Ver a
+> `REQ-2026-10-05-seis-reqs-dizem-open-com-o-roadmap-em-abandoned…`.
 
 ## Motivation
 

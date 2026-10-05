@@ -1,5 +1,5 @@
 ---
-status: Open
+status: Closed
 date: 2026-08-29
 author: claude
 adr: "docs/adr/ADR-2026-09-05-paridade-tri-runtime-e-a-regra-de-que-nenhuma-mudanca-de-comportamento-entra-num-cli-so.md"
@@ -8,7 +8,14 @@ roadmap: "docs/roadmaps/claude/abandoned/ROADMAP-2026-08-29-slug-de-artefato-no-
 
 # REQ: Slug de artefato no Python diverge de Go e Node
 
-> Date: 2026-08-29 | Status: Open
+> Date: 2026-08-29 | Status: Closed
+
+> 🔴 **Encerrada sem entrega em 2026-10-05.** O roadmap desta REQ está em `abandoned/`
+> com o veredito **(c) caducou**: o critério pede que `adr new` produza o mesmo nome **nos três runtimes**. Com um runtime, "concordar entre runtimes" deixa de ser uma propriedade definível — mesmo motivo pelo qual o upstream retirou o `check-subcommand-parity.sh`.
+>
+> **Os critérios abaixo continuam em aberto de propósito** — eles não foram atendidos, e
+> marcá-los afirmaria entrega que não houve. Ver a
+> `REQ-2026-10-05-seis-reqs-dizem-open-com-o-roadmap-em-abandoned…`.
 
 ## Motivation
 
