@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-10-05
 req: "REQ-2026-10-05-a-vigia-do-upstream-ve-pr-novo-e-nao-ve-issue-nova"
 squad: "claude"
@@ -7,7 +7,7 @@ squad: "claude"
 
 # Roadmap: a vigia do upstream ve PR novo e nao ve issue nova
 
-> Created: 2026-10-05 | Status: wip
+> Created: 2026-10-05 | Status: done
 
 ## Context
 

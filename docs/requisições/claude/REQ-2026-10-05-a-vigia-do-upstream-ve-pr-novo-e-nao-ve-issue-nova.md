@@ -3,7 +3,7 @@ status: Done
 date: 2026-10-05
 author: ""
 adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
-roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-10-05-a-vigia-do-upstream-ve-pr-novo-e-nao-ve-issue-nova.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-10-05-a-vigia-do-upstream-ve-pr-novo-e-nao-ve-issue-nova.md"
 ---
 
 # REQ: a vigia do upstream ve PR novo e nao ve issue nova
@@ -58,7 +58,7 @@ ADR: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-t
 
 ## Linked Roadmap
 <!-- Reference the roadmap that implements this requirement -->
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-10-05-a-vigia-do-upstream-ve-pr-novo-e-nao-ve-issue-nova.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-10-05-a-vigia-do-upstream-ve-pr-novo-e-nao-ve-issue-nova.md
 
 ## Context
 
