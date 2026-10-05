@@ -949,10 +949,29 @@ aparece medindo um por um.
   meio da falsificação acusou a sonda como REQ sem roadmap. Não medir outra coisa enquanto a sonda
   roda — e, de preferência, plantar no scratchpad.
 
-**Custo medido, para não repetir:** este gate faz um `git cat-file` por REQ (76 hoje), e encadeá-lo
-com a falsificação **estourou os 30 min** de segundo plano três vezes em 2026-10-04. A falsificação
-passou a extrair a função `censo` **do próprio gate** — fonte única, zero `git` — e só os dois casos
-de ponta a ponta pagam a varredura completa.
+**Custo medido, e a correção de um número que esta seção publicou errado.** Encadear este gate com a
+falsificação **estourou os 30 min** de segundo plano três vezes em 2026-10-04 — isso é evento
+observado e continua valendo. A falsificação passou a extrair a função `censo` **do próprio gate** —
+fonte única, zero `git` — e só os dois casos de ponta a ponta pagam a varredura completa.
+
+🔴 **O que estava errado era o número e a atribuição.** Publiquei **678 s por passada**, de UMA
+cronometragem, e atribuí o custo ao `git cat-file` por REQ. Medido em 2026-10-05, cinco passadas
+independentes: **29, 39, 42 e 40 s**. E a decomposição por tipo de processo, com o denominador
+fechando contra o gate inteiro:
+
+```
+por 76 iteracoes:  awk 7294 ms · sed+head 5636 · printf+tr 5340
+                   git cat-file 5149 · basename 3051        soma 26,5 s
+o gate inteiro: 29 s          git ls-tree UMA vez: 82 ms    ${f##*/}: 42 ms
+```
+
+Criar processo no MSYS custa **40 a 95 ms**, e é daí que vem o custo: **o `git cat-file` é 19% dele,
+não a causa.** A hipótese óbvia para a divergência — contenção — foi **testada e é falsa**: duas
+passadas concorrentes somam 60 s, 1,5× e não 20×. O que mudou entre as duas medições foi o estado da
+máquina, e isso não é verificável depois.
+
+**A lição, que é mais cara que o número:** uma passada de wall-clock nesta máquina **não é medida**.
+Rode três e escreva a **faixa**. Ver a `REQ-2026-10-05-publiquei-678s-como-o-custo-de-um-gate…`.
 
 ## Gate de REQ herdada do upstream (`scripts/check-inherited-req.sh`)
 

@@ -38,8 +38,18 @@
 #      significar "medi sobre lixo da vez passada".
 #
 # 🔴 CUSTO MEDIDO, E ONDE ELE CAI (2026-10-04). Uma passada do gate alvo custa
-# **678 s** nesta máquina — 75 `git cat-file` sobre MSYS —, então os 2 casos de
-# ponta a ponta somam ~23 min localmente. Em `ubuntu-latest`, onde o agregador
+# **29 a 42 s** nesta máquina (cinco passadas independentes em 2026-10-05), então
+# os 2 casos de ponta a ponta somam ~1,5 min localmente.
+#
+# 🔴 ESTE NÚMERO JÁ ESTEVE ERRADO AQUI, e o erro fica registrado: a primeira
+# versão dizia **678 s** e **~23 min**, a partir de UMA passada cronometrada em
+# 2026-10-04 às ~00:00. Não reproduz. A hipótese óbvia — contenção, porque o
+# cronômetro rodou logo após uma tarefa de segundo plano ser morta no limite —
+# foi TESTADA e é falsa: duas passadas concorrentes somam 60 s, 1,5x e não 20x.
+# O que mudou foi o estado da máquina, e isso não é verificável depois.
+# Uma passada de wall-clock aqui não é medida: rode três e escreva a FAIXA.
+#
+# Em `ubuntu-latest`, onde o agregador
 # `run-local-gates.sh` de fato roda (`.github/workflows/local-gates.yml`), criar
 # processo é barato e o mesmo laço custa segundos.
 #
