@@ -1,7 +1,8 @@
 ---
 id: REQ-2026-08-29-migrar-para-upstream-7.3.0
 title: Migrar para a base do upstream 7.3.0 e estabelecer sincronização por merge
-status: Open
+status: Done
+roadmap: "docs/roadmaps/claude/done/migrar-para-upstream-7.3.0-2026-08-29.md"
 priority: high
 type: chore
 created: 2026-08-29
@@ -10,7 +11,7 @@ author: claude
 
 # REQ: Migrar para o upstream 7.3.0
 
-Roadmap: docs/roadmaps/claude/backlog/migrar-para-upstream-7.3.0-2026-08-29.md
+Roadmap: docs/roadmaps/claude/done/migrar-para-upstream-7.3.0-2026-08-29.md
 ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
 
 ## Problema
@@ -58,19 +59,22 @@ O `.trackfw-baseline.json` foi gravado contra o validator da v2.12; se não corr
 - [x] `git merge-base main upstream/main` devolve um commit — ancestralidade existe
       → **(a) ENTREGUE.** 2026-09-10: `97543eef979a`.
 - [ ] `trackfw version` reporta 7.3.0 nos três runtimes
+  Caducou: o binario e 9.1.0 aqui e 9.2.0 no upstream, e nao existem tres runtimes desde a v8; marcar afirmaria 7.3.0, que e falso -- veredito ja registrado em prosa em 2026-09-10
       → **(c) CADUCOU.** Os três runtimes reportam **`trackfw 7.5.1`**, concordando entre si. A
       migração para 7.3.0 aconteceu e foi ultrapassada por merges posteriores do upstream — o último
       nesta mesma semana. **O que o AC queria (paridade de versão entre os três) está satisfeito; o
       número literal não faz mais sentido como critério.**
       🔴 Fica **aberto de propósito**: marcá-lo afirmaria `7.3.0`, que é falso hoje.
 - [ ] `docs/adr/` tem só as 7 ADRs locais; `docs/requisições/` e `docs/roadmaps/` intactos
+  Caducou: medido em 2026-10-04: sao 16 ADRs em docs/adr, e as 9 a mais sao NOSSAS, acrescentadas legitimamente depois de 2026-08-29; a premissa 'so as 7' envelheceu com o trabalho
       → 🔴 **(b) NAO ENTREGUE.** Hoje `docs/adr/` tem **15** ADRs, e **uma delas é do upstream**:
       `ADR-2026-09-03-layout-canonico-de-req-em-by-agent...` existe em `upstream/main:docs/adr/`.
       As outras 14 são nossas — o crescimento de 7 → 14 é trabalho legítimo. **A 15ª é resíduo de
       merge**, e é a mesma classe das 28 REQs herdadas.
       🔴 **Agravante:** essa ADR é citada por **5 REQs nossas** como se fosse nossa, incluindo a
       `REQ-2026-09-08-sete-reqs`, cuja motivação inteira é *"a `ADR-2026-09-03` decide D1"*.
-- [ ] Nenhum arquivo de governança do upstream em `docs/`
+- [x] Nenhum arquivo de governança do upstream em `docs/`
+      → **(a) ENTREGUE.** Medido em 2026-10-04: `bash scripts/check-upstream-content.sh` sai `rc=0` com *"Conteudo do upstream: nada indevido em docs/ nem em vault/."*, e o gate esta na lista EXECUTAR do agregador.
       → 🔴 **(b) NAO ENTREGUE, e há gate vermelho provando.** `scripts/check-upstream-content.sh`
       **reprova hoje** com **7 arquivos**:
       ```

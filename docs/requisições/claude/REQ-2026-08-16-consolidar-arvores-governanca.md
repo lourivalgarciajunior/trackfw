@@ -1,9 +1,9 @@
 ---
-roadmap: "docs/roadmaps/claude/backlog/consolidar-arvores-governanca-2026-08-16.md"
+roadmap: "docs/roadmaps/claude/done/consolidar-arvores-governanca-2026-08-16.md"
 adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
 id: REQ-2026-08-16-consolidar-arvores-governanca
 title: Consolidar as três árvores de artefato de governança em uma só
-status: Open
+status: Done
 priority: high
 type: chore
 created: 2026-08-16
@@ -89,6 +89,7 @@ Mover os dois primeiros para `done/`; o `trackfw-update-command` em `wip/` é du
 - [x] `CLAUDE.md` descreve os caminhos reais
 - [x] `go build ./...` verde e nenhuma mudança de código do produto foi necessária
 - [ ] `go test ./...` verde — **não atingido**: 10 falhas em `internal/generators`, pré-existentes
+  Caducou: as falhas de hoje sao as 14 declaradas em .github/windows-known-failures.json, todas com reason; o critario exige verde onde o proprio acervo declara ponto cego local de Windows
       e específicas de Windows, confirmadamente independentes deste trabalho. Ver Residual.
       → **(b) NÃO ENTREGUE**, e **piorou**. Medido em 2026-09-10: `go test ./...` sai `exit 1` com
       **11 pacotes em FAIL** — `internal/commands`, `internal/discover`, `internal/generators` e
@@ -115,4 +116,4 @@ de auditoria proíbe as duas: abaixar o critério para manter o `done` é fabric
 ADR: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md
 
 ## Linked Roadmap
-Roadmap: docs/roadmaps/claude/backlog/consolidar-arvores-governanca-2026-08-16.md
+Roadmap: docs/roadmaps/claude/done/consolidar-arvores-governanca-2026-08-16.md

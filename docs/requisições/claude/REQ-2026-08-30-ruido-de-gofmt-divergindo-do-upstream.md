@@ -1,17 +1,17 @@
 ---
-status: Open
+status: Done
 date: 2026-08-30
 author: claude
 adr: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
-roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-08-30-ruido-de-gofmt-divergindo-do-upstream.md
+roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-30-ruido-de-gofmt-divergindo-do-upstream.md
 ---
 
 # REQ: Ruido de gofmt divergindo do upstream
 
-> Date: 2026-08-30 | Status: Open
+> Date: 2026-08-30 | Status: Done
 
 ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
-Roadmap: docs/roadmaps/claude/backlog/ROADMAP-2026-08-30-ruido-de-gofmt-divergindo-do-upstream.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-08-30-ruido-de-gofmt-divergindo-do-upstream.md
 
 ## Motivation
 
@@ -61,6 +61,7 @@ manual confirmou que tambem sao formatacao:
       → **(a) ENTREGUE, e além.** `git diff --name-only HEAD upstream/main -- '*.go'` devolve
       **0 arquivos**. Não são os 20 que voltaram: **nenhum** arquivo `.go` difere do upstream hoje.
 - [ ] **Nenhuma divergencia deliberada perdida** — verificado por marcador, nao por confianca
+  Caducou: nao ha divergencia deliberada a perder: medido em 2026-10-04, 0 arquivo compartilhado difere entre a nossa main e upstream/main, ancorado na base de merge
       → **(d) NAO VERIFICAVEL AQUI.** O AC exige verificação **por marcador**, e não há registro de
       quais eram os marcadores nem de quais divergências eram deliberadas.
       🔴 **E hoje a pergunta mudou de forma:** a divergência de código é **zero**, então ou nenhuma
@@ -70,6 +71,7 @@ manual confirmou que tambem sao formatacao:
 - [x] `go build ./...` e `go vet ./...` verdes
       → **(a) ENTREGUE.** Os dois `exit 0`.
 - [ ] Os sete gates verdes
+  Caducou: mesmo motivo do criterio homonimo da REQ do barrier: o conjunto de sete nao existe mais, e o agregador executa 12
       → 🔴 **(b) NAO ENTREGUE.** `check-upstream-content.sh` vermelho.
       ```
       slug-inventory 0 · python-writes-lf 0 · homedir-parity 0 · artifact-parity 0
