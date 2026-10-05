@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-10-04
 req: "docs\requisições\claude/REQ-2026-10-04-o-nosso-gate-de-req-done-nao-conhece-a-forma-canonica-caducou-e-acusaria-criterio-justificado.md"
 squad: "claude"
@@ -7,7 +7,7 @@ squad: "claude"
 
 # Roadmap: o nosso gate de REQ done nao conhece a forma canonica Caducou: e acusaria criterio justificado
 
-> Created: 2026-10-04 | Status: wip
+> Created: 2026-10-04 | Status: done
 
 ## Context
 <!-- Derived from REQ: REQ-2026-10-04-o-nosso-gate-de-req-done-nao-conhece-a-forma-canonica-caducou-e-acusaria-criterio-justificado.md -->

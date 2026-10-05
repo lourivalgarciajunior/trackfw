@@ -3,7 +3,7 @@ status: Done
 date: 2026-10-04
 author: "claude"
 adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
-roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-10-04-o-nosso-gate-de-req-done-nao-conhece-a-forma-canonica-caducou-e-acusaria-criterio-justificado.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-10-04-o-nosso-gate-de-req-done-nao-conhece-a-forma-canonica-caducou-e-acusaria-criterio-justificado.md"
 ---
 
 # REQ: o nosso gate de REQ done nao conhece a forma canonica Caducou: e acusaria criterio justificado
@@ -86,4 +86,4 @@ foi escrita. O que ela governa é **de quem é a forma**; a paridade de bordas �
 
 ## Linked Roadmap
 <!-- Reference the roadmap that implements this requirement -->
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-10-04-o-nosso-gate-de-req-done-nao-conhece-a-forma-canonica-caducou-e-acusaria-criterio-justificado.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-10-04-o-nosso-gate-de-req-done-nao-conhece-a-forma-canonica-caducou-e-acusaria-criterio-justificado.md
