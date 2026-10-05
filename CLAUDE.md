@@ -727,10 +727,40 @@ pin7-noexec: 0 ocorrências em .github/windows-known-failures.json
 Ou seja: as três do Group A são **declaradas** pelo upstream; o `pin7-noexec` não é declarado em lugar
 nenhum, e não roda no nosso agregador.
 
-**Limite declarado:** o `check-validate-rule-pins.sh` **não foi reexecutado hoje**. O que esta seção
-afirma é a filiação de causa (a mesma da #421, já medida) e a fiação dos gates (medida agora) — não um
-veredito novo de execução. Quem precisar do veredito, rode o gate em worktree e escreva o resultado
-aqui.
+> ✅ **O `pin7-noexec` deixou de ser ponto cego em 2026-10-05, pelo
+> [#522](https://github.com/kgsaran/trackfw/pull/522) do upstream, que fecha a NOSSA
+> [#421](https://github.com/kgsaran/trackfw/issues/421).** O pin parou de exigir violação e passou a
+> **afirmar o comportamento guardado**: no Windows a regra declina a checagem de bit de execução por
+> desenho (`internal/validator/goos.go`), e o pin verifica esse silêncio em vez de uma violação
+> inconstruível.
+>
+> **Medido por efeito nesta máquina**, com o binário da árvore (9.2.0), depois do merge:
+>
+> ```
+> GO_BIN=bin/trackfw bash scripts/check-validate-rule-pins.sh    rc=0
+> validate-rule-pins: all 32 pins pass
+> OK [validate-rule-pins/pin7-noexec-windows-guarded]
+>    rule declines exec-bit check on windows by design (internal/validator/goos.go)
+> OK [pin8-notype] … OK [pin20-copilot-relativo-silent]       ← voltaram a rodar
+> ```
+>
+> 🔴 **O ganho maior não é o pin7: são os pins 8–20.** O `SystemExit` do pin7 abortava o bloco inteiro,
+> e treze pins do `credential-guard` nunca chegavam a rodar nesta plataforma — o achado foi **dele**, na
+> leitura da nossa medição, não nosso. A nossa medição parava no pin7.
+>
+> **Duas escolhas de desenho dele que a nossa medição não tinha**, e que vale copiar: o discriminante é
+> o **GOOS do binário sob teste**, lido por `go version -m` — imune ao nome do arquivo e à variável
+> `GOOS` do shell que chama —; e há **guarda de vacuidade**, porque antes de afirmar silêncio no
+> `noexec` o pin6 (fixture ausente) precisa ter produzido ao menos uma violação da mesma regra. Sem
+> ela, "zero violações" seria indistinguível de regra morta.
+>
+> **O que NÃO caducou:** as três falhas do Group A continuam declaradas no ratchet pelo mesmo motivo —
+> `os.Chmod` segue no-op em NTFS, e a fixture *"presente e não executável"* segue inconstruível aqui. O
+> que mudou foi o gate parar de **exigir** o que a plataforma não permite construir. A seção acima fica
+> como registro da medição que levou ao conserto.
+
+**Limite da medição acima:** ela é de **execução única**, com `GO_BIN=bin/trackfw` a partir da raiz —
+o gate trabalha todo em `mktemp -d`, conferido antes de rodar, e não escreveu na árvore.
 
 🔴 **O remédio nunca é `chmod +x` nem forçar o bit** — é ordem em vigor desde 2026-08-29, e foi manter
 o vermelho que sustentou o achado que o upstream corrigiu em 2026-09-01.
