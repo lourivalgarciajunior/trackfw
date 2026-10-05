@@ -3,7 +3,7 @@ status: Done
 date: 2026-10-05
 author: ""
 adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
-roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-10-05-publiquei-678s-como-o-custo-de-um-gate-a-partir-de-uma-passada-e-o-numero-nao-reproduz-e-o-custo-real-e-criar-processo-nao-o-git.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-10-05-publiquei-678s-como-o-custo-de-um-gate-a-partir-de-uma-passada-e-o-numero-nao-reproduz-e-o-custo-real-e-criar-processo-nao-o-git.md"
 ---
 
 # REQ: publiquei 678s como o custo de um gate a partir de uma passada e o numero nao reproduz, e o custo real e criar processo nao o git
@@ -64,7 +64,7 @@ ADR: docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito
 
 ## Linked Roadmap
 <!-- Reference the roadmap that implements this requirement -->
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-10-05-publiquei-678s-como-o-custo-de-um-gate-a-partir-de-uma-passada-e-o-numero-nao-reproduz-e-o-custo-real-e-criar-processo-nao-o-git.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-10-05-publiquei-678s-como-o-custo-de-um-gate-a-partir-de-uma-passada-e-o-numero-nao-reproduz-e-o-custo-real-e-criar-processo-nao-o-git.md
 
 ## Context
 

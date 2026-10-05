@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-10-05
 req: "REQ-2026-10-05-publiquei-678s-como-o-custo-de-um-gate-a-partir-de-uma-passada-e-o-numero-nao-reproduz-e-o-custo-real-e-criar-processo-nao-o-git"
 squad: "claude"
@@ -7,7 +7,7 @@ squad: "claude"
 
 # Roadmap: publiquei 678s como o custo de um gate a partir de uma passada e o numero nao reproduz, e o custo real e criar processo nao o git
 
-> Created: 2026-10-05 | Status: wip
+> Created: 2026-10-05 | Status: done
 
 ## Context
 
