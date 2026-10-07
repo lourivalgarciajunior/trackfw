@@ -61,6 +61,7 @@ FORA="
 check-platform-predicates|so diz algo no Windows: 14 das 20 linhas do corpus divergem entre 'esperado' e 'nativo_windows', e a linha do execbit reprovaria em ubuntu-latest por fato de NTFS. Decisao medida, escrita no CLAUDE.md
 upstream-sync|nao e gate, e ferramenta: faz merge e MODIFICA a arvore. Rodar num CI de verificacao seria absurdo
 vigia-do-upstream|nao e gate, e daemon: laco infinito que vigia o upstream e emite evento. Executa-lo aqui penduraria o agregador; e ele nao reprova nada, nao ha veredito para colher
+check-copia-do-path-esta-atras|so diz algo nesta maquina: compara o binario da arvore com a copia que o PATH entrega, e em ubuntu-latest nao existe %APPDATA%/npm nem o contorno dos shims — ZERO cenario seria exercitado. Mesmo precedente do check-platform-predicates. O instrumento que age sozinho e o passo do upstream-sync.sh, no momento em que a defasagem e criada
 run-local-gates|e o proprio agregador: executa-lo a partir de si mesmo seria recursao infinita. A guarda de completude o pegou na PRIMEIRA execucao, e esta entrada e a prova de que ela funciona
 "
 

@@ -211,6 +211,76 @@ say ""
 git diff --cached --name-only "$BASE" | sed 's/^/    /'
 say ""
 
+# ── A cópia que o PATH entrega ───────────────────────────────────────────────────
+#
+# Desde o #527 do upstream, os hooks de guard chamam `trackfw guard <nome>`
+# RESOLVIDO NO PATH. Nesta máquina o PATH entrega uma CÓPIA do binário da árvore,
+# posta em %APPDATA%/npm/trackfw.exe porque nenhuma release publicada tem `guard`
+# (roteiro no CLAUDE.md; o alarme é o check-contorno-dos-shims-caducou.sh).
+#
+# Este passo existe porque o rebuild acima refazia o bin/ e deixava a cópia atrás,
+# em silêncio, a cada sync — e a cerca de TODOS os projetos da máquina passava a
+# rodar por código velho. Em 2026-10-07 quem pegou a defasagem foi o usuário.
+#
+# 🔴 `trackfw --version` NÃO detecta isto: as duas versões dizem `9.2.0`, porque o
+# guard entrou depois daquela tag. O discriminante é o CONTEÚDO.
+#
+# Três propriedades, cada uma por uma falha medida:
+#
+#   1. Só age quando o contorno está em vigor (há shim renomeado ao lado). Em
+#      máquina sem o contorno não há cópia gerida, e copiar seria invadir o PATH
+#      de alguém.
+#   2. `cp` pode falhar com "Device or resource busy" — medido em 2026-10-07, o
+#      .exe estava em uso por uma chamada de guard que acabara de rodar. O
+#      remédio é renomear o ocupado e copiar no lugar, que o Windows permite.
+#   3. Verifica POR EFEITO depois de copiar e RESTAURA se a verificação falhar.
+#      Cópia quebrada deixa todas as cercas inertes, e falha aberta: é pior que
+#      cópia velha.
+refaz_copia_do_path() {
+	local p dst dir stamp
+	p=$(bash -lc 'command -v trackfw' 2>/dev/null) || return 0
+	[ -n "$p" ] || return 0
+	# O `[ -f ]` do MSYS responde VERDADE para o nome sem extensão de um .exe que
+	# não existe, então o .exe é tentado PRIMEIRO.
+	case "$p" in
+		*.exe) dst="$p" ;;
+		*) if [ -f "${p}.exe" ]; then dst="${p}.exe"; else dst="$p"; fi ;;
+	esac
+	[ -f "$dst" ] || return 0
+
+	local arv="bin/trackfw${GOEXE_EXT:-}"
+	[ -f "$arv" ] || arv="bin/trackfw"
+	[ -f "$arv" ] || return 0
+
+	dir=$(dirname "$dst")
+	# shellcheck disable=SC2012
+	ls "$dir" 2>/dev/null | grep -q 'pre-guard-bak' || return 0
+
+	if cmp -s "$arv" "$dst"; then
+		say "  copia do PATH    ja em dia ($dst)"
+		return 0
+	fi
+
+	stamp=$(date '+%Y%m%d-%H%M%S')
+	cp "$dst" "$dir/trackfw.exe.pre-sync-bak" 2>/dev/null \
+		|| die "não consegui guardar a cópia anterior de $dst — não troco binário de cerca sem poder voltar."
+
+	if ! cp "$arv" "$dst" 2>/dev/null; then
+		mv "$dst" "$dir/trackfw.exe.ocupado-$stamp" 2>/dev/null \
+			|| die "a cópia do PATH está ocupada e não pude renomeá-la. O PATH ficou ATRÁS — refaça à mão: cp $arv $dst"
+		cp "$arv" "$dst" 2>/dev/null \
+			|| die "renomeei o ocupado mas não consegui copiar. O PATH está SEM trackfw — restaure: mv $dir/trackfw.exe.ocupado-$stamp $dst"
+	fi
+
+	# Verificação POR EFEITO, não por versão.
+	if ! cmp -s "$arv" "$dst" || ! "$dst" guard --help >/dev/null 2>&1; then
+		cp "$dir/trackfw.exe.pre-sync-bak" "$dst" 2>/dev/null
+		die "a cópia nova não passou na verificação (conteúdo ou \`guard --help\`). RESTAUREI a anterior. Investigue antes de mexer no PATH."
+	fi
+
+	say "  copia do PATH    refeita e verificada ($dst · guard --help rc=0)"
+}
+
 # ── AC5: verificação pós-merge ───────────────────────────────────────────────────
 if [ "$SKIP_VERIFY" = "0" ]; then
 	say "upstream-sync: verificando…"
@@ -223,6 +293,7 @@ if [ "$SKIP_VERIFY" = "0" ]; then
 	if [ "$VAL_BEFORE" != "$VAL_AFTER" ]; then
 		die "o validate MUDOU ($VAL_BEFORE -> $VAL_AFTER). O merge não deveria tocar governança — investigue antes de commitar."
 	fi
+	refaz_copia_do_path
 fi
 
 # ── Commit (opcional) ────────────────────────────────────────────────────────────

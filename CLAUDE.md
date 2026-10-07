@@ -922,6 +922,81 @@ seção dos gates de PATH curado.
 
 **Os avisos do `validate` aqui foram de 3 para 5 com este sync**, e os 2 novos são exatamente estes.
 
+## A cópia do `trackfw` no PATH ficava atrás a cada sync — e o `--version` não acusa
+
+Fechado em 2026-10-07 por duas peças, e a divisão de trabalho entre elas é a decisão:
+
+| peça | o que faz | onde |
+|---|---|---|
+| passo no `upstream-sync.sh` (`refaz_copia_do_path`) | **age**, no momento em que a defasagem é criada | roda no sync |
+| `scripts/check-copia-do-path-esta-atras.sh` | **acusa**, para quem queira conferir fora desse momento | `FORA` do agregador, com motivo |
+
+🔴 **O problema:** desde o [#527](https://github.com/kgsaran/trackfw/pull/527) os hooks de guard chamam
+`trackfw guard <nome>` **resolvido no PATH**, e aqui o PATH entrega uma **cópia** do binário da árvore.
+O `upstream-sync.sh` reconstruía `bin/trackfw` e `bin/trackfw.exe` (AC5) e **não** refazia a cópia —
+então a cada sync a cerca de **todos** os projetos desta máquina passava a rodar por código velho, em
+silêncio.
+
+**E o teste óbvio não detecta.** Medido com a cópia de 06/10 22:17 e a árvore de 07/10 14:32:
+
+```
+trackfw --version  (copia velha)    trackfw 9.2.0
+trackfw --version  (arvore nova)    trackfw 9.2.0     <- MESMA string
+cmp dos dois binarios               DIFEREM (20.439.040 vs 20.459.520 bytes)
+regra nova do #528 pela copia       0 avisos          <- velho
+regra nova do #528 pela arvore      2 avisos          <- novo
+```
+
+O `--version` não se move porque o #527 e o #528 entraram **depois** da tag `v9.2.0`. O discriminante é
+o **conteúdo**, e a confirmação é por **efeito**.
+
+### Três propriedades do passo, cada uma por uma falha medida
+
+1. **Só age quando o contorno está em vigor** — há shim `*.pre-guard-bak` ao lado do destino. Em
+   máquina sem o contorno não existe cópia gerida, e copiar seria invadir o PATH de alguém.
+2. 🔴 **`cp` falha com `Device or resource busy`, e isso foi medido** — o `.exe` estava em uso por uma
+   chamada de `guard` que acabara de rodar, e a restauração falhou **deixando o PATH com o binário
+   velho**. O remédio é renomear o ocupado e copiar no lugar, que o Windows permite com `.exe` em uso.
+   Sem esse braço, o passo erraria exatamente no caso que ele existe para cobrir.
+3. **Verifica por efeito e RESTAURA se falhar** — `cmp` mais `guard --help` pelo caminho de destino.
+   Cópia quebrada é pior que cópia velha: o guard ausente faz o hook **falhar aberto**, e aí não há
+   cerca nenhuma.
+
+**Falsificado nas duas direções, com o binário velho de verdade** (não sintético):
+
+```
+copia ja igual        -> "copia do PATH ja em dia"
+copia atrasada        -> "refeita e verificada ... guard --help rc=0"
+                         cmp independente: byte a byte a arvore
+                         o gate: "em dia"
+residuo               trackfw.exe.pre-sync-bak  (backup ROLANTE, um so)
+                         nenhum trackfw.exe.ocupado-*
+```
+
+### Por que o gate fica FORA do agregador
+
+O agregador roda em `ubuntu-latest`. Lá não há `%APPDATA%/npm`, o contorno não está em vigor e **zero**
+cenário seria exercitado — gate que passa descrevendo o vazio é o defeito que o próprio
+`run-local-gates.sh` existe para fechar. Mesmo precedente, pelo mesmo motivo, do
+`check-platform-predicates.sh`.
+
+🔴 **Por isso o instrumento automático é o passo, não o gate.** O gate torna a propriedade
+*verificável*; quem a *mantém* é o passo.
+
+### Uma armadilha do MSYS que pegou o meu próprio gate
+
+A primeira versão do resolvedor testava o nome **sem extensão** primeiro, e passou:
+
+```
+ls -1 .../npm                            trackfw.exe   (nao ha 'trackfw' pelado)
+[ -f .../npm/trackfw ]                   VERDADE       <- o MSYS mente
+Test-Path -LiteralPath .../npm/trackfw   False         <- o Win32 nega
+```
+
+O gate imprimia um caminho **que não existe**, e a comparação de bytes funcionava por acidente, pelo
+mesmo fallback do MSYS. O `.exe` passou a ser tentado primeiro. É a mesma família de
+`msys-mente-sobre-o-que-criou`, agora dentro de um instrumento nosso.
+
 ## Ponto cego local de bit de execução: `pin7-noexec` e as três falhas do Group A
 
 Mesma causa da [#421](https://github.com/kgsaran/trackfw/issues/421): **`os.Chmod` é no-op em NTFS

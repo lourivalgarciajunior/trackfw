@@ -4,6 +4,64 @@
 
 ---
 
+## Sessão 2026-10-07 — claude (o matcher que nunca cobriu o PowerShell; e a cópia do PATH que ficava atrás)
+
+**FIM.** `main` em `84c0a95a`, **0 atrás** do upstream, 0 PRs abertos, kanban `0/0/0/0`,
+`validate` 0 violações · 5 avisos, `run-local-gates` 15 executados · 0 falhas.
+
+Quatro PRs nossos mesclados hoje — **#210** (matcher), **#211** (sync do #528), **#212** (sync do
+#529, ancestralidade) — e este ciclo. Uma issue aberta no upstream: a **#530**.
+
+### 🔴 O achado maior do dia veio DELE, e a nossa cerca estava descoberta há 53 dias
+
+O `matcher: "Bash"` dos hooks de guard **não cobre a ferramenta `PowerShell`**, que é a que o Claude
+Code usa no Windows. Medido por efeito, mesma árvore, mesmo comando:
+
+```
+git commit --dry-run  via Bash         PreToolUse:Bash hook error        bloqueia
+o mesmo               via PowerShell   EXECUTOU — nothing to commit, rc=1
+o mesmo, corrigido    via PowerShell   PreToolUse:PowerShell             bloqueia
+git status / git log  via PowerShell   rc=0 / rc=0                       controle negativo
+```
+
+**Não é do #527 — é de 15/08**, do `94112106` do upstream. 53 dias. Só não houve dano porque o
+`--dry-run` era de propósito; um `git commit -m x` ali teria commitado na `main` sem PR.
+
+🔴 **E a borda estreita é o que explica os 53 dias:** pela ferramenta `Bash`, o caminho usado quase
+sempre, a cerca **sempre** disparou. **O furo não aparece no caminho que se exercita** — mesma forma
+do braço do `sed` que nunca rodava em CI.
+
+### O que este ciclo entrega: a cópia do PATH deixa de ficar atrás
+
+Duas peças, com divisão de trabalho deliberada: o **passo** no `upstream-sync.sh` age no momento em
+que a defasagem é criada; o **gate** `check-copia-do-path-esta-atras.sh` acusa fora desse momento e
+fica em `FORA` do agregador com motivo, porque em `ubuntu-latest` zero cenário seria exercitado.
+
+🔴 **O número que a próxima sessão não derivaria sozinha:** `trackfw --version` diz `9.2.0` **nas
+duas** — a cópia velha e a árvore nova. O guard entrou depois da tag, então a versão não se move. O
+discriminante é `cmp`; a confirmação é por efeito.
+
+**Três defeitos meus, achados medindo e não lendo:**
+
+| | |
+|---|---|
+| `[ -f ]` do MSYS | diz VERDADE para o `trackfw` sem extensão que **não existe** (`Test-Path` = `False`) — o gate imprimia caminho inexistente e o `cmp` acertava por acidente |
+| `cp` sobre o `.exe` | falha com `Device or resource busy`, e a minha restauração falhou **deixando o PATH com o binário velho** |
+| derivar "o que ele mudou" | `git diff <nossa-main> upstream/main` responde *"o que difere"* e inclui arquivos **só nossos**; quem responde é o diff do próprio commit |
+
+### O estado dos dois lados
+
+| | |
+|---|---|
+| nosso lado | 0 PRs, kanban zerado, **17** gates só nossos (eram 16 hoje de manhã) |
+| upstream | `bad55b95`, 0 atrás; 0 PRs, **1 issue — a nossa #530** |
+| aberto entre os dois | a **#525**, sem resposta desde 04/10 20:43, e a **#530**, de hoje |
+
+**A #528 e a #529 dele fecharam a `REQ-2026-09-05`** com AC3 parcial (Kiro não medido) — é o que a
+#529 registra, e por isso aquele merge veio sem conteúdo nenhum para cá.
+
+---
+
 ## Sessão 2026-10-07 — claude (o passo 3 ganha instrumento; e a entrada que faltou da frente do alarme)
 
 **FIM.** `main` em `08640ab3` quando este ciclo abriu, 0 atrás do upstream, 0 PRs, kanban zerado,
