@@ -983,6 +983,39 @@ cenário seria exercitado — gate que passa descrevendo o vazio é o defeito qu
 🔴 **Por isso o instrumento automático é o passo, não o gate.** O gate torna a propriedade
 *verificável*; quem a *mantém* é o passo.
 
+### 🔴 Mas ele roda no CI — no job de Windows, e eu só descobri pelo vermelho
+
+A primeira versão deste trabalho afirmava *"o gate não roda em CI, por desenho"*. **Era falso**, e o
+CI cobrou: o `check-orphan-gates.sh` do **upstream** reprova todo `scripts/check-*.sh` **sem
+consumidor**, e `FORA` do agregador não conta como consumidor — a lista é deliberadamente **sem
+`.sh`**, e o gate dele procura o basename.
+
+```
+parity-other-gates   check-orphan-gates: FAIL — one or more check-*.sh scripts have no consumer
+parity               cascata: reprova porque um `needs` dele falhou
+```
+
+**E o remédio já estava escrito no nosso próprio `local-gates.yml`**, no comentário do job
+`gates-windows`, posto quando o `check-platform-predicates.sh` passou pelo mesmo aperto:
+
+> *"a saída honesta é dar a ele o consumidor que faltava, no sistema operacional para o qual ele
+> existe — não citá-lo em algum arquivo para o grep achar."*
+
+🔴 **O que o passo do Windows afirma não é "o gate rodou".** Num runner não existe `%APPDATA%/npm`
+nem o contorno, então o único veredito honesto ali é **N/A** — e o passo **reprova se a saída não
+contiver `N/A`**. Ou seja: ele afirma o AC4 (premissa ausente produz N/A nomeado, nunca veredito) num
+lugar onde a premissa está **genuinamente** ausente, em vez de num caso sintético. Medido antes de
+subir, com a árvore sem `bin/trackfw`:
+
+```
+arvore : bin/trackfw  (existe: nao)
+N/A: o binario da arvore nao existe — rode o build antes de medir
+-> N/A: nada afirmado aqui. NAO leia isto como 'em dia'.          rc=0
+```
+
+**A lição, e ela é sobre leitura, não sobre YAML:** o comentário que resolvia isto estava no arquivo
+que eu ia editar, e eu projetei o gate sem lê-lo. O custo foi um CI vermelho em dois jobs.
+
 ### Uma armadilha do MSYS que pegou o meu próprio gate
 
 A primeira versão do resolvedor testava o nome **sem extensão** primeiro, e passou:

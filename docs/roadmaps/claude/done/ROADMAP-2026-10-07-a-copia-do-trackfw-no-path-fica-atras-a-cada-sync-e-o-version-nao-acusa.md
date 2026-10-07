@@ -69,7 +69,13 @@ regressão inversa  -> se o passo copiasse sempre, o caso "ja em dia" imprimiria
   `check-contorno-dos-shims-caducou.sh`, que é de outra pergunta (release com `guard`).
 - O gate afirma **igualdade de bytes**, não que o binário do PATH funcione. Quem responde isso é o
   efeito — o hook bloqueando —, e esse teste é manual.
-- O gate não roda em CI, por desenho. Está em `FORA` com o motivo escrito.
+- 🔴 **Correção pós-CI:** este resíduo dizia *"o gate não roda em CI, por desenho"* — era
+  **falso**. O `check-orphan-gates.sh` do upstream reprova `check-*.sh` sem consumidor, e `FORA`
+  do agregador não conta (a lista é sem `.sh`, e ele procura o basename). O gate passou a rodar
+  no job `gates-windows` do `local-gates.yml`, onde o passo **reprova se a saída não contiver
+  `N/A`** — afirmando o AC4 num lugar onde a premissa está genuinamente ausente. O remédio já
+  estava escrito no comentário daquele job, e eu projetei sem lê-lo: custou dois jobs vermelhos.
+- O gate não roda no **agregador**, que é em `ubuntu-latest`. Está em `FORA` com o motivo escrito.
 
 **Acceptance criteria:**
 - [x] The four sections above answered with evidence, not a one-line assertion
