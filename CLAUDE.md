@@ -734,6 +734,24 @@ erra aqui.
 **E nenhum gate verifica a reversão.** Quando a release com `guard` sair, ela é manual; é por isso que
 o roteiro está escrito acima, e não só na memória da sessão.
 
+> ✅ **O furo acima fechou em 2026-10-06:** `scripts/check-contorno-dos-shims-caducou.sh` acende
+> exatamente quando a reversão se torna possível. Ele afirma **estado do mundo**, não desta máquina —
+> cruza a tag do upstream que contém o commit do `guard` (`782f5767`) com a versão publicada no npm —,
+> e por isso roda em `ubuntu-latest` no CI, declarado em `EXECUTAR` do `run-local-gates.sh`.
+>
+> 🔴 **A frase acima fica**, porque ela é o registro do motivo: o contorno nasceu sem alarme, e foi o
+> usuário quem pegou a falta, perguntando *"ficou algo pendente por aqui"*. Veredito de hoje:
+>
+> ```
+> nenhuma tag do upstream contem o commit do guard · publicado: 9.2.0
+> -> o contorno dos shims CONTINUA necessario.
+> ```
+>
+> **Duas guardas vieram de defeito medido no próprio gate**, e as duas valem além dele: `$?` depois de
+> um `if` é o status do **`if`**, não da condição (o caso "versão fora da forma" saía verde); e a forma
+> da leitura tem de ser validada **antes de qualquer ramo**, senão o ramo que não compara deixa passar
+> leitura-lixo — verde por acidente, com o denominador impresso errado.
+
 **Resíduo declarado:** os avisos do `validate` foram de **3 para 17** com o merge, e os 14 novos são de
 escopo **global** — o `settings.json` do Copilot CLI, os hooks do Kiro e os scripts em `~/.trackfw/`
 ainda apontando para o `.sh` antigo. O remédio que o produto sugere é `trackfw update harness`, que

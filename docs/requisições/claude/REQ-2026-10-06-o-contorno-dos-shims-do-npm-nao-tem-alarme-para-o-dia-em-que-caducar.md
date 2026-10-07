@@ -1,14 +1,14 @@
 ---
-status: Open
+status: Done
 date: 2026-10-06
 author: ""
 adr: "docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito-se-mede-nela-nao-se-contorna.md"
-roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-10-06-o-contorno-dos-shims-do-npm-nao-tem-alarme-para-o-dia-em-que-caducar.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-10-06-o-contorno-dos-shims-do-npm-nao-tem-alarme-para-o-dia-em-que-caducar.md"
 ---
 
 # REQ: o contorno dos shims do npm nao tem alarme para o dia em que caducar
 
-> Date: 2026-10-06 | Status: Open
+> Date: 2026-10-06 | Status: Done
 | Linear Issue: 
 | Jira Issue: 
 
@@ -37,17 +37,17 @@ cercas, em todos os projetos, ficam inertes de uma vez** — em silêncio.
 
 ## Acceptance Criteria
 
-- [ ] AC1 — Existe gate que fica **VERDE** enquanto nenhuma release publicada contiver o subcomando
+- [x] AC1 — Existe gate que fica **VERDE** enquanto nenhuma release publicada contiver o subcomando
       `guard`, e **VERMELHO** no dia em que contiver, enquanto o contorno ainda estiver documentado
-- [ ] AC2 — O veredito é **derivado**, não chumbado: tag do upstream que contém o commit do `guard`,
+- [x] AC2 — O veredito é **derivado**, não chumbado: tag do upstream que contém o commit do `guard`,
       cruzada com a versão publicada no npm
-- [ ] AC3 — Leitura que falhou **nunca** vira veredito verde: commit inalcançável, `npm` inacessível
+- [x] AC3 — Leitura que falhou **nunca** vira veredito verde: commit inalcançável, `npm` inacessível
       ou `CLAUDE.md` ilegível reprovam **nomeando o motivo**
-- [ ] AC4 — O gate é independente de SO, para poder rodar no CI em `ubuntu-latest` — o que ele afirma
+- [x] AC4 — O gate é independente de SO, para poder rodar no CI em `ubuntu-latest` — o que ele afirma
       é estado do MUNDO (release publicada), não estado desta máquina
-- [ ] AC5 — Falsificado nas **duas** direções, com as duas leituras injetáveis só para a sonda e com
+- [x] AC5 — Falsificado nas **duas** direções, com as duas leituras injetáveis só para a sonda e com
       aviso impresso quando injetadas, para que execução de sonda nunca passe por veredito real
-- [ ] AC6 — Declarado em `EXECUTAR` do `run-local-gates.sh`, e a guarda de completude do agregador
+- [x] AC6 — Declarado em `EXECUTAR` do `run-local-gates.sh`, e a guarda de completude do agregador
       continua fechada
 
 
@@ -60,7 +60,7 @@ ADR: docs/adr/ADR-2026-09-05-windows-e-plataforma-de-primeira-classe-e-o-defeito
 
 ## Linked Roadmap
 <!-- Reference the roadmap that implements this requirement -->
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-10-06-o-contorno-dos-shims-do-npm-nao-tem-alarme-para-o-dia-em-que-caducar.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-10-06-o-contorno-dos-shims-do-npm-nao-tem-alarme-para-o-dia-em-que-caducar.md
 
 ## Context
 
@@ -111,3 +111,14 @@ não ter olhado.
   passa descrevendo o vazio é pior que gate nenhum.
 - Não se tenta instalar a versão publicada para inspecionar se tem `guard`. A derivação por tag
   responde a mesma pergunta sem baixar nada e sem mexer no PATH durante um gate.
+
+## Onde cada AC foi entregue
+
+| AC | sitio |
+|---|---|
+| AC1 | `veredito()` em `scripts/check-contorno-dos-shims-caducou.sh`; verde hoje, vermelho com `v9.3.0`/`9.3.0` |
+| AC2 | `git tag --contains $GUARD_COMMIT` cruzado com `npm view trackfw version` — nada chumbado alem do commit |
+| AC3 | as tres guardas, falsificadas uma a uma: commit inalcancavel rc=1, npm vazio rc=1, premissa ausente relata e passa |
+| AC4 | zero dependencia de SO: afirma release publicada, nao `*.pre-guard-bak`; roda em `ubuntu-latest` |
+| AC5 | `--self-test` 10 casos · 0 falhas, e `SONDA_*` imprime `🔴 AVISO ... NAO e um veredito real` |
+| AC6 | `EXECUTAR` do `run-local-gates.sh`: 14 executados · 0 falhas, completude fechada |

@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-10-06
 req: "REQ-2026-10-06-o-contorno-dos-shims-do-npm-nao-tem-alarme-para-o-dia-em-que-caducar"
 squad: "claude"
@@ -7,7 +7,7 @@ squad: "claude"
 
 # Roadmap: o contorno dos shims do npm nao tem alarme para o dia em que caducar
 
-> Created: 2026-10-06 | Status: wip
+> Created: 2026-10-06 | Status: done
 
 ## Context
 
@@ -18,7 +18,7 @@ ele caducar** — e a propria nota do `CLAUDE.md` admite o furo.
 
 ## Acceptance Criteria
 
-- [ ] AC1 a AC6 da REQ, verificadas por efeito
+- [x] AC1 a AC6 da REQ, verificadas por efeito
 
 ## Status Legend
 ⬜ Pendente · 🔄 Em andamento · ✅ Concluído · ❌ Bloqueado
@@ -68,7 +68,7 @@ test -z "$(git tag --contains 782f5767ad1a2e1de3939a305206cd74e80c9060 2>/dev/nu
 > Dependencies: Wave 0
 
 ### ML-1A — `check-contorno-dos-shims-caducou.sh` e a declaracao no agregador
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:** `scripts/check-contorno-dos-shims-caducou.sh`, `scripts/run-local-gates.sh`, `CLAUDE.md`
 **Actions:**
 1. Gate novo: deriva a tag que contem o commit do `guard` e a versao publicada no npm, e cruza as
@@ -81,10 +81,10 @@ test -z "$(git tag --contains 782f5767ad1a2e1de3939a305206cd74e80c9060 2>/dev/nu
    sem apagar a frase, porque ela e o registro do motivo.
 
 **Acceptance criteria:**
-- [ ] AC1 a AC6 da REQ
-- [ ] `--self-test` verde, com os dois lados exercitados
-- [ ] `run-local-gates.sh` continua com a guarda de completude fechada e o novo gate executado
-- [ ] Sabotagem: tirada a guarda do commit inalcancavel, o self-test reprova
+- [x] AC1 a AC6 da REQ
+- [x] `--self-test` verde, com os dois lados exercitados
+- [x] `run-local-gates.sh` continua com a guarda de completude fechada e o novo gate executado
+- [x] Sabotagem: tirada a guarda do commit inalcancavel, o self-test reprova
 
 **Gates da wave:**
 ```bash
@@ -92,3 +92,26 @@ bash scripts/check-contorno-dos-shims-caducou.sh --self-test
 bash scripts/check-contorno-dos-shims-caducou.sh
 grep -q 'check-contorno-dos-shims-caducou.sh' scripts/run-local-gates.sh
 ```
+
+## Medicao do ML-1A
+
+```
+--self-test                    10 caso(s) · 0 falha(s)
+mundo de hoje                  nenhuma tag contem 782f5767 · publicado 9.2.0 -> VERDE
+release futura simulada        v9.3.0 / 9.3.0 -> VERMELHO, com o roteiro de 5 passos
+commit inalcancavel            sabotado NO LUGAR -> rc=1 nomeando o motivo
+premissa ausente no CLAUDE.md  marca removida -> relata e passa (rc=0)
+npm so com espacos             rc=1 "veio VAZIA (ou so espacos)"
+run-local-gates                14 executado(s) · 0 falha(s)  (eram 13)
+```
+
+🔴 **Dois defeitos meus que o proprio self-test pegou**, e os dois estao escritos no gate:
+
+1. `$?` depois de um `if` e o status do **`if`**, nao da condicao — o caso "versao fora da forma"
+   saia VERDE, leitura invalida virando veredito.
+2. Sem tag, o `publicado` **nao era validado em lugar nenhum**: leitura-lixo ou so-espacos saia
+   verde, com o veredito certo por acidente e o denominador impresso errado.
+
+🔴 **E uma armadilha de medicao, da lista que o CLAUDE.md ja documenta:** a primeira falsificacao da
+guarda 1 rodou a copia sabotada de `/tmp`, e ela reprovou por `ROOT_DIR` virar `/` — exit code certo
+pelo motivo errado. Refeita no lugar, com backup e `cmp` provando a restauracao.
