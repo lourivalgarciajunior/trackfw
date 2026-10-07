@@ -847,10 +847,40 @@ Medido nas três configurações possíveis, com o PATH em 9.1.0:
 |---|---|
 | binário da árvore (9.2.0 + merge) | `push` rc=2 · `status` rc=0 — **correto** |
 | binário do PATH (9.1.0 do npm) | **TUDO rc=1 → falha ABERTA** |
-| invólucro `.sh` de 13 linhas | TUDO rc=2 → **bloquearia `git status`** |
+| invólucro `.sh` de 13 linhas, **com o PATH em 9.1.0** | TUDO rc=2 → bloquearia `git status` |
 
-A terceira linha é a que impede o remédio preguiçoso: apontar o hook de volta para o `.sh` **não**
-serve, porque ele falha FECHADO em tudo quando o `guard` não existe.
+A terceira linha é a que impedia o remédio preguiçoso **naquele dia**: com o PATH em 9.1.0, apontar o
+hook de volta para o `.sh` não resolvia, porque a guarda dele sobre `guard --help` dispara e tudo vira
+2.
+
+> 🔴 **E essa linha pode ser lida ao contrário — foi por isso que ela ganhou a condição.** Ela NÃO é
+> propriedade do invólucro; é o comportamento dele **sob PATH degradado**, que é justamente o que se
+> quer (falhar fechado). Com o binário são, o invólucro está correto. Medido em 2026-10-07 com a
+> **9.3.1** no PATH, com os payloads reais:
+>
+> | | `git push origin main` | `git status` |
+> |---|---|---|
+> | invólucro, binário presente | rc=**2** | rc=**0** |
+> | invólucro, `PATH=/usr/bin:/bin` | rc=2 | rc=2 (fail-closed) |
+>
+> **Por que isto importa agora, e não é higiene de texto:** a [#535 do
+> upstream](https://github.com/kgsaran/trackfw/issues/535) propõe exatamente *"fazer os hooks
+> chamarem o invólucro"*, e a linha sem condição soaria como argumento contra. É o contrário — o
+> invólucro é a opção **certa**, porque ele sonda o **subcomando** e não só o binário:
+>
+> ```
+> linha 4   command -v trackfw          || exit 2
+> linha 8   trackfw guard --help        || exit 2      <- este pega o binario VELHO
+> ```
+>
+> 🔴 **E o modo de falha "binário velho" é o que o `command -v` sozinho não pega**: ausente dá **127**,
+> velho dá **1**, e os dois desligam o guard porque só **2** bloqueia. O `1` vem de comando de topo
+> desconhecido — remedido na forma em 2026-10-07: `trackfw naoexiste` → rc=1, enquanto
+> `trackfw guard naoexiste` → rc=2, que é o despacho interno do guard falhando fechado, de propósito.
+>
+> A medição foi levada à #535. **E o erro de redação é nosso:** tabela cujas linhas compartilham uma
+> condição implícita mente quando uma linha é citada sozinha — mesma família do
+> `_force_utf8_output`, dos "8 mascarados" e da lista de scripts só nossos.
 
 🔴 **Nenhuma versão publicada tem `guard`**: o `npm latest` é **9.2.0** e o #527 entrou **depois**
 daquela tag. Então não há `npm i -g` que resolva — medido em 2026-10-06.
