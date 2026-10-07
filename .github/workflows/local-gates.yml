@@ -76,6 +76,23 @@ jobs:
         # eram zero.
         run: go build -o bin/trackfw ./cmd/trackfw
 
+      - name: Pôr o MESMO binário no PATH, para a regra de harness do #527
+        # A regra nova do upstream (PR #527, mesclada em 2026-10-06) resolve
+        # `trackfw` no PATH, porque o hook passou a chamar `trackfw guard <nome>`
+        # em vez do `.sh`. Sem o binário no PATH ela acusa
+        # "trackfw binary not found in PATH — the hook will fail open" e o
+        # `validate` sai 1 — medido neste PR, duas violações em runner limpo.
+        #
+        # É a forma do PRÓPRIO upstream, não invenção nossa: `trackfw-gate.yml` e
+        # `trackfw-validate.yml` compilam direto para /usr/local/bin e chamam
+        # `trackfw validate`. Os dois passaram no mesmo PR em que este job
+        # reprovou — a diferença era só esta.
+        #
+        # 🔴 É o MESMO binário desta árvore, copiado. A regra de medir com o
+        # binário da árvore (acima) continua valendo: não há instalação de
+        # terceiro no PATH, há uma cópia do que acabou de ser compilado.
+        run: sudo cp bin/trackfw /usr/local/bin/trackfw
+
       - name: Gates locais do fork
         run: bash scripts/run-local-gates.sh
 
