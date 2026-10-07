@@ -4,6 +4,93 @@
 
 ---
 
+## Sessão 2026-10-05/06 — claude (a vigia ganha issue nova; o #527 chega e deixa a cerca INERTE; a seção do `jq` caduca medida)
+
+**FIM de quatro ciclos.** `main` em `24938d28`, 0 atrás do upstream, 0 PRs, 1 branch (só a `main`),
+kanban `backlog 0 · analyzing 0 · wip 0 · blocked 0`, `validate` **0 violações · 3 avisos**.
+
+🔴 **Esta entrada existe porque o arquivo ficou três dias sem ser tocado** — o último commit nele era
+de 2026-10-03 10:14, e no meio passaram quatro ciclos fechados (PRs #204, #205, #206 e o
+`update harness`). O `CLAUDE.md` pede atualização ao iniciar **e** ao encerrar; quem pegou a falta foi
+o usuário perguntando *"ficou algo pendente por aqui"*, não gate nenhum.
+
+### Ciclo 1 — a vigia não via issue nova (PR #204)
+
+A vigia cobria commit na `main`, PR (inclusive novo) e comentário de outro autor. **Issue criada tinha
+cobertura ZERO.** Medido por efeito: a #526 do upstream foi aberta às 17:27 e a vigia, armada às 17:41
+e viva às 18:06, não emitiu nada — quem a achou foi a leitura avulsa do re-arme.
+
+Entraram `snap_issues`, `diff_issues` e `RE_ISSUES`. Três decisões, cada uma com caso que reprova se
+alguém a desfizer: `select(.pull_request == null)` (o `/issues` devolve PR na mesma lista), **sem**
+filtro de autor ao contrário do `diff_com` (a #526 era da nossa conta, de outra sessão), e janela de
+30 com as duas propriedades desiguais declaradas. `check-vigia-forma` foi de 19 para **31 casos**, e
+as três sabotagens reprovaram nomeando o caso, com a árvore restaurada byte a byte depois de cada uma.
+
+🔴 **O teste contra a API real achou o que a fixture não mostrava:** dos 15 primeiros itens do
+`/issues`, **13 eram PR**. Com `per_page=15` sobravam 2 issues na janela.
+
+### Ciclo 2 — o sync pós-#527, e a cerca ficou inerte (PR #205)
+
+`upstream-sync.sh` **abortou de propósito** (`rc=1`) com `validate 0 -> 2`. As duas violações não eram
+de governança: eram a regra nova do #527 acusando que o `trackfw` do **PATH** não tem `guard`.
+
+```
+binario da arvore (9.2.0+merge)   push rc=2 · status rc=0      correto
+binario do PATH (9.1.0 do npm)    TUDO rc=1                    FALHA ABERTA
+involucro .sh de 13 linhas        TUDO rc=2                    bloquearia git status
+```
+
+A terceira linha é a que impede o remédio preguiçoso. E **nenhuma versão publicada tem `guard`**: o
+`npm latest` é 9.2.0 e o #527 entrou depois da tag. Por decisão do usuário, o binário compilado foi
+para `%APPDATA%/npm/trackfw.exe` e os três shims do npm foram **movidos** para `*.pre-guard-bak`.
+
+🔴 **Armadilha de resolução:** no PowerShell o `.ps1` **ganha** do `.exe` na mesma pasta. Copiar só o
+`.exe` deixou o `--version` em 9.1.0 — o sombreamento só funcionou depois de mover os shims.
+
+E o CI reprovou pela mesma causa: o job `gates-locais` chamava `./bin/trackfw validate` por caminho.
+Reproduzido local nas duas direções (PATH com `trackfw`: 0 violações; PATH curado `/usr/bin:/bin`: as
+mesmas 2 do runner), e consertado com a forma do **próprio upstream**, que compila para
+`/usr/local/bin` em `trackfw-gate.yml` e `trackfw-validate.yml`.
+
+### Ciclo 3 — a seção do `jq` caducou, com medição (PR #206)
+
+A seção pedia *"medida de novo, não apagada por fé"*. Medido no PowerShell, que é o ambiente real do
+hook: os três git bloqueados saem `rc=2`, o `git status` sai `rc=0`, e **o multilinha — mecanismo da
+nossa #507 — passou de `rc=0` para `rc=2`**.
+
+```
+git diff --numstat CLAUDE.md     91  0     <- 91 adicoes, ZERO remocoes
+```
+
+O `0` é o número que importa: o AC exigia acrescentar sem apagar, e contar ocorrências de texto não
+provaria isso. Entraram também a armadilha do PowerShell, o roteiro de reversão dos shims, e o censo
+re-derivado (6 `jq` em `scaffold.go`, eram 16; o `sed` sobre `tool_input` vive hoje **só** em
+`internal/pathguard/testdata/corpus-pre-fix/`).
+
+### Ciclo 4 — `update harness`: as sete cercas globais
+
+`updated=14 skipped=21 missing=0 failed=0`. O `.sh` global foi de **34.947 para 571 bytes**. Avisos do
+`validate`: **17 → 3**. Backup dos 9 originais em
+`~/.claude/projects/C--dev-ferramentas-trackfw-main/backup-harness-20261006-2255/`.
+
+Cerca global medida por efeito, com controle negativo: `push` rc=2, `commit` rc=2, `status` rc=0.
+
+### 🔴 O risco que fica, e não tem gate
+
+As sete cercas globais passaram a depender de o `trackfw` do **PATH** ter `guard`, e o que satisfaz
+isso hoje é um binário **compilado localmente**. Um `npm i -g trackfw` antes de sair release com
+`guard` recria os shims e derruba **todas as cercas, em todos os projetos, de uma vez**. O sinal de
+alarme é o `validate` voltando a acusar `trackfw binary not found in PATH`; o roteiro de reversão está
+no `CLAUDE.md`.
+
+### Pendente ao fim do ciclo
+
+**Do nosso lado: nada de trabalho.** Do lado do upstream, um item só: a
+[#525](https://github.com/kgsaran/trackfw/discussions/525), com 0 comentários desde 04/10 20:43 — a
+fila dele zerou com o #527, e a nossa #507 foi fechada como `COMPLETED` em 03/10.
+
+---
+
 ## Sessão 2026-09-11 — claude (ML-1H: o lint enxerga os três runtimes, e a costura se reconhece pela origem)
 
 **INÍCIO.** O ML-1H foi criado na reabertura da REQ da onda-2: o lint de predicado de SO via seis
