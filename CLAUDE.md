@@ -784,26 +784,35 @@ faz aviso deixar de ser lido, e é **exatamente** o defeito que levamos ao upstr
 **Os três consertos entraram como ML na REQ vigente, não como REQ nova** — mesma causa, e o roadmap
 voltou de `done/` para `wip/` para isso, que é o que a Regra Dura de Causa Raiz manda.
 
-### A pasta do npm, depois da limpeza
+### A pasta do npm, limpa — a sobra foi para quarentena e o usuário a apagou
 
 ```
 %APPDATA%/npm/
-  trackfw  trackfw.cmd  trackfw.ps1     <- os shims da 9.3.1, em uso pelos tres shells
-  _trackfw-sobra-20261007/              <- quarentena: 6 arquivos, nada no caminho de resolucao
+  trackfw  trackfw.cmd  trackfw.ps1     <- os shims da 9.3.1, e so eles
 ```
 
-**Por que a sobra saiu do diretório de `bin` e não foi apagada.** Arquivo naquele diretório participa
-da **resolução de nome** — foi um `.exe` ali que manteve o `cmd.exe` na 9.2.0 depois do `npm i -g`. Já
-numa subpasta, nenhum shell o alcança. Os seis estão em quarentena e **são reproduzíveis**: três são
-shims da 9.1.0 (`npm i -g trackfw@9.1.0` refaz) e três são binários compilados
-(`go build -o bin/trackfw.exe ./cmd/trackfw` no commit certo refaz).
+**O caminho foi em dois passos, de propósito.** Os seis arquivos de sobra foram primeiro **movidos**
+para uma subpasta e só depois apagados, pelo usuário. 🔴 **Mover já resolvia o risco, e isso foi
+medido:** arquivo no diretório de `bin` participa da **resolução de nome** — foi um `.exe` ali que
+manteve o `cmd.exe` na **9.2.0** depois do `npm i -g trackfw@9.3.0`, enquanto bash e PowerShell já
+estavam na 9.3.0. Numa subpasta, nenhum shell o alcança; apagar foi arrumação, não conserto.
 
-🔴 **Apagar é decisão do usuário, e continua sendo.** O comando é
-`rm -rf "$APPDATA/npm/_trackfw-sobra-20261007"`.
+Os seis eram reproduzíveis: três shims da 9.1.0 (`npm i -g trackfw@9.1.0` refaz) e três binários
+compilados (`go build -o bin/trackfw.exe ./cmd/trackfw` no commit certo refaz).
 
-**Medido depois de mover**, porque mexer em diretório de resolução pede prova e não confiança:
+🔴 **Comando de limpeza em PowerShell, não em bash.** O terminal daqui é PowerShell: `rm -rf` falha
+(`rm` é alias de `Remove-Item`, que não aceita `-rf`) e `$APPDATA` não existe (é `$env:APPDATA`). A
+forma que funciona:
+
+```powershell
+Remove-Item -Recurse -Force "$env:APPDATA\npm\_<pasta>"
+```
+
+**Medido depois de mover e depois de apagar**, porque mexer perto de diretório de resolução pede prova
+e não confiança:
 
 ```
+os tres shims       presentes
 git bash · powershell · cmd.exe     9.3.1 nos tres
 guard git-branch   push rc=2 · status rc=0
 hook real          PreToolUse:Bash bloqueia
