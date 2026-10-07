@@ -784,18 +784,56 @@ faz aviso deixar de ser lido, e é **exatamente** o defeito que levamos ao upstr
 **Os três consertos entraram como ML na REQ vigente, não como REQ nova** — mesma causa, e o roadmap
 voltou de `done/` para `wip/` para isso, que é o que a Regra Dura de Causa Raiz manda.
 
-### O que sobrou na pasta do npm, declarado
+### A pasta do npm, limpa — a sobra foi para quarentena e o usuário a apagou
 
 ```
-trackfw  trackfw.cmd  trackfw.ps1              <- os shims da 9.3.0, em uso
-trackfw.exe.revertido-20261007-1610            <- a copia da arvore, fora do caminho
-trackfw.pre-guard-bak  trackfw.cmd.pre-guard-bak  trackfw.ps1.pre-guard-bak
-trackfw.exe.bak-20261007-1434  trackfw.exe.pre-sync-bak
+%APPDATA%/npm/
+  trackfw  trackfw.cmd  trackfw.ps1     <- os shims da 9.3.1, e so eles
 ```
 
-Os cinco últimos são **sobra** e podem ser apagados a qualquer momento — os shims `.pre-guard-bak`
-apontam para a 9.1.0, que já não está instalada. Ficam porque apagar arquivo do usuário não é decisão
-de gate, e porque o detector corrigido **já os ignora**.
+**O caminho foi em dois passos, de propósito.** Os seis arquivos de sobra foram primeiro **movidos**
+para uma subpasta e só depois apagados, pelo usuário. 🔴 **Mover já resolvia o risco, e isso foi
+medido:** arquivo no diretório de `bin` participa da **resolução de nome** — foi um `.exe` ali que
+manteve o `cmd.exe` na **9.2.0** depois do `npm i -g trackfw@9.3.0`, enquanto bash e PowerShell já
+estavam na 9.3.0. Numa subpasta, nenhum shell o alcança; apagar foi arrumação, não conserto.
+
+Os seis eram reproduzíveis: três shims da 9.1.0 (`npm i -g trackfw@9.1.0` refaz) e três binários
+compilados (`go build -o bin/trackfw.exe ./cmd/trackfw` no commit certo refaz).
+
+🔴 **Comando de limpeza em PowerShell, não em bash.** O terminal daqui é PowerShell: `rm -rf` falha
+(`rm` é alias de `Remove-Item`, que não aceita `-rf`) e `$APPDATA` não existe (é `$env:APPDATA`). A
+forma que funciona:
+
+```powershell
+Remove-Item -Recurse -Force "$env:APPDATA\npm\_<pasta>"
+```
+
+**Medido depois de mover e depois de apagar**, porque mexer perto de diretório de resolução pede prova
+e não confiança:
+
+```
+os tres shims       presentes
+git bash · powershell · cmd.exe     9.3.1 nos tres
+guard git-branch   push rc=2 · status rc=0
+hook real          PreToolUse:Bash bloqueia
+alarme / gate      rc=0 / rc=0  (nada a vigiar / N/A)
+```
+
+### ✅ E o passo do sync deixou de sair em silêncio (2026-10-07)
+
+O `refaz_copia_do_path` tinha **cinco** `return 0` mudos, e um sync que não diz nada sobre a cópia do
+PATH é indistinguível de um sync que **não executou o passo** — justamente o estado pós-reversão, o
+mais importante de todos para quem lê. Pior: o gate irmão imprimia `N/A` com a razão, então os dois
+instrumentos contavam quantidades **diferentes** de verdade sobre o mesmo fato.
+
+```
+return 0 no corpo                          5   (antes e depois — nao e o numero que muda)
+return 0 COM `say` imediatamente antes     0 de 5  ->  5 de 5, conferido por awk um a um
+no estado real   "copia do PATH    N/A: o contorno dos shims nao esta em vigor"
+```
+
+🔴 **A verificação foi por contagem retorno-a-retorno, não por `grep`.** Um `grep say` no arquivo
+provaria apenas que a palavra existe — e era isso que estava "verdade" antes do conserto também.
 
 ## 🔴 O ponto cego MUDOU DE LUGAR: de "sem `jq`" para "sem `guard` no PATH"
 
