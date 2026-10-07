@@ -204,3 +204,27 @@ jobs:
 
       - name: Predicados de plataforma (só faz sentido no Windows)
         run: bash scripts/check-platform-predicates.sh
+
+      # O check-copia-do-path-esta-atras.sh compara o binário da árvore com a
+      # cópia que o PATH entrega. Num runner não há `%APPDATA%/npm` nem o contorno
+      # dos shims, então ele NÃO pode dizer "em dia" — e é isso que este passo
+      # afirma.
+      #
+      # 🔴 Rodá-lo aqui só para dar consumidor ao check-orphan-gates seria o atalho
+      # que o comentário acima recusa. O que este passo afirma é o AC4 da REQ:
+      # premissa ausente produz **N/A nomeado**, nunca veredito. E afirma num lugar
+      # onde a premissa está genuinamente ausente, em vez de num caso sintético.
+      - name: Cópia do PATH — self-test, e N/A declarado onde a premissa não existe
+        run: |
+          bash scripts/check-copia-do-path-esta-atras.sh --self-test
+          out=$(bash scripts/check-copia-do-path-esta-atras.sh)
+          printf '%s\n' "$out"
+          case "$out" in
+            *N/A*)
+              echo "ok: declarou N/A, que e o unico veredito honesto num runner sem o contorno"
+              ;;
+            *)
+              echo "::error::o gate NAO declarou N/A num runner sem o contorno dos shims — leia a saida acima"
+              exit 1
+              ;;
+          esac
