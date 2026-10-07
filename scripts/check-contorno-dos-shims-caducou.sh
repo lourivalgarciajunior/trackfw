@@ -101,8 +101,14 @@ veredito() {
   # acidente — e o denominador impresso, errado. Ver a memoria
   # "verde sem denominador nao e evidencia".
   local limpo
-  limpo=$(printf '%s' "$pub" | tr -d " 	
-")
+  # A classe POSIX cobre espaco, TAB, CR, NL, FF e VT sem nenhuma contrabarra,
+  # e a forma importa. A versao anterior desta linha foi escrita a mao com
+  # sequencias de escape; elas foram comidas no transporte e o arquivo ficou com
+  # TAB e NEWLINE literais. 🔴 O CR foi entao removido pela NORMALIZACAO DO GIT
+  # no commit, em silencio: o blob commitado deixou de tirar justamente o CR que
+  # o npm do Windows emite. O self-test passou nas DUAS versoes, porque nenhum
+  # caso dele carregava CR — a diferenca so apareceu contando bytes do blob.
+  limpo=$(printf '%s' "$pub" | tr -d '[:space:]')
   if [ -z "$limpo" ]; then
     echo "  GUARDA: a versao publicada no npm veio VAZIA (ou so espacos)." >&2
     echo "  Rede fora faria o gate concluir 'nao ha release' — verde por cegueira." >&2
@@ -133,7 +139,13 @@ veredito() {
   # o que a guarda 2 existe para impedir. E `local rc=$?` piora: o proprio
   # `local` mexe em `$?`.
   local cmp
-  compara_versao "$pub" "$tag"; cmp=$?
+  # 🔴 A comparacao usa o valor LIMPO, nao o cru. A primeira versao validava
+  # `limpo` e comparava `$pub`: com CR de verdade o terceiro componente saia
+  # "0" mais CR, nao-numerico, e o gate devolvia "nao da para decidir" em vez
+  # do veredito. Quem pegou foi o caso de CR do self-test; o meu teste manual
+  # anterior tinha dado certo porque o escape foi comido no transporte e o
+  # valor chegou limpo — acerto por acidente.
+  compara_versao "$limpo" "${tag#v}"; cmp=$?
   if [ "$cmp" -eq 2 ]; then
     echo "  GUARDA: versao fora da forma vX.Y.Z — tag='$tag' publicado='$pub'." >&2
     return 2
@@ -171,10 +183,25 @@ if [ "${1:-}" = "--self-test" ]; then
   caso 2 "versao fora da forma vX.Y.Z"                         "v9.3.0"  "nove"
   caso 2 "SEM tag e publicado-lixo tambem recusa"              ""        "lixo"
   caso 2 "SEM tag e publicado so com espacos"                  ""        " "
+  # 13 e o CR. Construido por awk para nao depender de UMA contrabarra: foi
+  # assim que a versao anterior deste bloco se perdeu, com o escape virando CR
+  # literal que o git normalizou no commit.
+  CR=$(awk 'BEGIN{printf "%c", 13}')
+  # GUARDA DE VACUIDADE do proprio caso: se o CR vier vazio, os dois casos
+  # abaixo viram duplicata dos de cima e passam sem afirmar nada.
+  if [ "${#CR}" -ne 1 ]; then
+    echo "GUARDA: o CR da sonda tem ${#CR} byte(s), esperado 1 - caso vacuo" >&2
+    exit 1
+  fi
+  # 🔴 Este caso existe porque o blob COMMITADO deixou de tirar o CR por
+  # normalizacao do git, e nenhum caso do self-test o carregava — o verde era
+  # cego para a unica sujeira que o npm do Windows realmente emite.
+  caso 1 "publicado com CR ainda decide VERMELHO"              "v9.3.0"  "9.3.0$CR"
+  caso 0 "publicado com CR e anterior decide VERDE"            "v9.4.0"  "9.3.0$CR"
 
   echo ""
-  if [ "$N" -lt 10 ]; then
-    echo "GUARDA DE VACUIDADE: $N caso(s), esperado ao menos 10" >&2
+  if [ "$N" -lt 12 ]; then
+    echo "GUARDA DE VACUIDADE: $N caso(s), esperado ao menos 12" >&2
     exit 1
   fi
   echo "check-contorno-dos-shims-caducou --self-test: $N caso(s) · $BAD falha(s)"
