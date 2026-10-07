@@ -49,6 +49,7 @@ check-req-marcador-ancorado.sh
 measure-os-predicate-sites.sh
 check-vigia-forma.sh
 check-req-done-caducou-falsify.sh
+check-contorno-dos-shims-caducou.sh
 "
 
 # ---------------------------------------------------------------------------
