@@ -253,8 +253,17 @@ refaz_copia_do_path() {
 	[ -f "$arv" ] || return 0
 
 	dir=$(dirname "$dst")
-	# shellcheck disable=SC2012
-	ls "$dir" 2>/dev/null | grep -q 'pre-guard-bak' || return 0
+	# 🔴 O contorno está em vigor quando os shims estão MOVIDOS — não quando há
+	# sobra de backup. A primeira versão testava "existe algum *.pre-guard-bak", e
+	# sobra de reversão satisfaz isso: o `npm i -g` escreve shims novos e os
+	# `.pre-guard-bak` FICAM. Medido em 2026-10-07, logo após reverter para a
+	# 9.3.0: o detector velho dizia "em vigor", e este passo teria sobrescrito o
+	# SHIM BASH do npm com um `.exe`, reinstalando o contorno sem ninguém pedir.
+	#
+	# O `.ps1` é o marcador canônico: é ele que ganha do `.exe` no PowerShell, e
+	# tem extensão, logo o `[ -f ]` do MSYS não mente sobre ele.
+	[ -f "$dir/trackfw.ps1.pre-guard-bak" ] || return 0
+	[ -f "$dir/trackfw.ps1" ] && return 0
 
 	if cmp -s "$arv" "$dst"; then
 		say "  copia do PATH    ja em dia ($dst)"

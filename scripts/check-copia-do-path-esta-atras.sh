@@ -102,6 +102,31 @@ resolve_destino() {
   return 0
 }
 
+# contorno_em_vigor <dir> -> imprime sim|nao
+#
+# 🔴 A PRIMEIRA VERSAO ESTAVA ERRADA, e o erro apareceu no dia da reversao.
+# Ela testava "existe algum *.pre-guard-bak na pasta", e sobra de reversao
+# satisfaz isso: o `npm i -g` escreve shims novos e os .pre-guard-bak FICAM.
+#
+# Medido em 2026-10-07, logo depois de reverter para a 9.3.0 publicada:
+#
+#   contorno em vigor (detector velho)   sim      <- ERRADO
+#   veredito                             ATRAS    <- falso positivo
+#   remedio impresso    cp bin/trackfw.exe .../npm/trackfw
+#                       ^ isso sobrescreveria o SHIM BASH do npm com um .exe,
+#                         reinstalando o contorno sem ninguem pedir
+#
+# A definicao do contorno e que os shims estao MOVIDOS, nao que existe backup.
+# Entao: o bak presente E o shim real AUSENTE. O `.ps1` e o marcador canonico —
+# e ele que ganha do `.exe` no PowerShell, e tem extensao, logo o `[ -f ]` do
+# MSYS nao mente sobre ele.
+contorno_em_vigor() {
+  local d="$1"
+  [ -f "$d/trackfw.ps1.pre-guard-bak" ] || { printf 'nao'; return 0; }
+  [ -f "$d/trackfw.ps1" ] && { printf 'nao'; return 0; }
+  printf 'sim'
+}
+
 # ─── AUTO-TESTE ──────────────────────────────────────────────────────────────
 if [ "${1:-}" = "--self-test" ]; then
   N=0; BAD=0
@@ -130,6 +155,34 @@ if [ "${1:-}" = "--self-test" ]; then
   caso 2 "valor fora do dominio"                         sim sim sim talvez
 
   echo ""
+  echo "== o DETECTOR DO CONTORNO, contra pastas reais =="
+  # 🔴 Estes quatro casos existem por um falso positivo MEDIDO: no dia da
+  # reversao, a sobra dos *.pre-guard-bak fez o detector velho dizer "em vigor",
+  # o gate gritou ATRAS e o remedio impresso sobrescreveria o shim do npm.
+  # Caso sintetico aqui e legitimo porque o que se afirma e a LEITURA DA PASTA,
+  # e a pasta e construtivel.
+  TMPD=$(mktemp -d 2>/dev/null) || TMPD=""
+  if [ -n "$TMPD" ]; then
+    cdcaso() { # <esperado> <rotulo> <arquivos...>
+      local esp="$1" rot="$2"; shift 2
+      local d="$TMPD/c$N"
+      mkdir -p "$d"
+      for f in "$@"; do : > "$d/$f"; done
+      local got; got=$(contorno_em_vigor "$d")
+      N=$((N+1))
+      if [ "$got" = "$esp" ]; then printf '  ok   %s\n' "$rot"
+      else BAD=$((BAD+1)); printf '  FAIL %s — esperado %s, obtido %s\n' "$rot" "$esp" "$got"; fi
+    }
+    cdcaso sim "shims movidos: so o bak"                 trackfw.ps1.pre-guard-bak trackfw.exe
+    cdcaso nao "APOS REVERSAO: bak E shim real juntos"   trackfw.ps1.pre-guard-bak trackfw.ps1 trackfw.cmd
+    cdcaso nao "instalacao limpa do npm: so os shims"    trackfw.ps1 trackfw.cmd trackfw
+    cdcaso nao "pasta vazia"
+    rm -rf "$TMPD" 2>/dev/null
+  else
+    printf '  (nao consegui criar diretorio temporario — casos nao exercitados)\n'
+  fi
+
+  echo ""
   echo "== o resolvedor de destino, contra o ambiente REAL =="
   # Guarda de vacuidade do proprio resolvedor: se ele devolver caminho, o arquivo
   # tem de existir. Devolver caminho inexistente seria pior que devolver nada.
@@ -143,8 +196,8 @@ if [ "${1:-}" = "--self-test" ]; then
   fi
 
   echo ""
-  if [ "$N" -lt 9 ]; then
-    echo "GUARDA: $N caso(s), esperado ao menos 9" >&2
+  if [ "$N" -lt 13 ]; then
+    echo "GUARDA: $N caso(s), esperado ao menos 13" >&2
     exit 1
   fi
   echo "check-copia-do-path-esta-atras --self-test: $N caso(s) · $BAD falha(s)"
@@ -164,12 +217,10 @@ DST=$(resolve_destino)
 ARV_EX=nao; [ -f "$ARV" ] && ARV_EX=sim
 DST_EX=nao; [ -n "$DST" ] && DST_EX=sim
 
-# O contorno esta em vigor quando ha shim renomeado ao lado do destino.
+# O contorno esta em vigor quando os shims estao MOVIDOS — nao quando ha sobra.
 CONT=nao
 if [ -n "$DST" ]; then
-  d=$(dirname "$DST")
-  # shellcheck disable=SC2012
-  if ls "$d" 2>/dev/null | grep -q "$MARCA_CONTORNO"; then CONT=sim; fi
+  CONT=$(contorno_em_vigor "$(dirname "$DST")")
 fi
 
 IGUAIS=nao

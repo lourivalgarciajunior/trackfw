@@ -703,6 +703,100 @@ cenário vacuo. O ponto cego é real, mas nunca vira verde falso.
 > existe e por que a #507 foi aberta. Mesma forma do `_force_utf8_output`, dos "8 mascarados" e do
 > `pin7-noexec`.
 
+## ✅ O contorno dos shims do npm foi REVERTIDO em 2026-10-07 — e o alarme é quem avisou
+
+<!-- contorno-dos-shims: REVERTIDO em 2026-10-07 -->
+
+🔴 **A linha de comentário acima é contrato, não decoração.** O
+`scripts/check-contorno-dos-shims-caducou.sh` procura a marca `contorno-dos-shims` com o valor
+vigiar — e na forma completa do comentário, não em prosa. Quem reinstalar o contorno troca o valor
+daquela linha; quem só escrever sobre ele
+não liga o alarme de volta.
+
+**O que aconteceu, na ordem.** A `v9.3.0` foi tageada às **14:59** de 2026-10-07 e publicada no npm,
+e ela **contém** o commit do `guard` (`782f5767`). O alarme — que entrou no PR #208 na véspera, às
+23:52, porque o usuário perguntou *"ficou algo pendente por aqui"* — disparou no primeiro dia em que
+havia o que disparar:
+
+```
+check-contorno-dos-shims-caducou:
+  tag com guard: v9.3.0 · publicado: 9.3.0  -> publicado JA CONTEM o guard
+  🔴 O CONTORNO DOS SHIMS CADUCOU — reverta.
+```
+
+### A reversão, medida — e a ordem é melhor que a do roteiro
+
+O roteiro mandava renomear os shims de volta **antes** do `npm i -g`. 🔴 **Isso abre uma janela com a
+cerca inerte**, porque os shims renomeados apontam para a **9.1.0**, que não tem `guard`. A ordem
+executada foi: **instalar a 9.3.0 primeiro**, com o `.exe` da árvore ainda no lugar — assim em nenhum
+instante há binário sem `guard` à frente.
+
+**Três shells, três regras de resolução — e o `cmd.exe` é o discriminante que o roteiro não previa:**
+
+| shell | o que resolve | antes de tirar o `.exe` | depois |
+|---|---|---|---|
+| Git Bash | `trackfw` (shim POSIX, sem extensão) | 9.3.0 | 9.3.0 |
+| PowerShell | `trackfw.ps1` | 9.3.0 | 9.3.0 |
+| `cmd.exe` | `trackfw.exe` — **`PATHEXT` põe `.EXE` antes de `.CMD`** | 🔴 **9.2.0** | 9.3.0 |
+
+Ou seja: depois do `npm i -g`, bash e PowerShell já usavam a versão publicada e **o `cmd.exe` ainda
+usava a cópia da árvore**. A reversão só se completa quando o `.exe` sai do caminho — e ele foi
+**renomeado**, não apagado (`trackfw.exe.revertido-20261007-1610`), para ser reversível.
+
+**O passo 4, que o alarme trava como obrigatório**, pelo binário publicado resolvido no PATH:
+
+```
+payload                                      rc
+git push origin main          (Bash)          2   BLOQUEIA
+git commit -m x               (Bash)          2   BLOQUEIA
+git status                    (Bash)          0   passa     <- controle negativo
+git push origin main          (PowerShell)    2   BLOQUEIA
+```
+
+E pelo **hook de verdade**, nas duas ferramentas: `git commit --dry-run` dá
+`PreToolUse:Bash hook error` e `PreToolUse:PowerShell hook error`; `git status` e `git log` saem rc=0.
+
+### 🔴 A reversão quebrou dois instrumentos NOSSOS, e os dois tinham o mesmo defeito
+
+O detector de *"o contorno está em vigor"* testava **"existe algum `*.pre-guard-bak` na pasta"**. Sobra
+de reversão satisfaz isso: o `npm i -g` escreve shims novos e os backups **ficam**. Medido logo após
+reverter:
+
+```
+check-copia-do-path-esta-atras   contorno em vigor: sim   -> ATRAS      <- FALSO POSITIVO
+remedio que ele imprimia         cp bin/trackfw.exe .../npm/trackfw
+                                 ^ sobrescreveria o SHIM BASH do npm com um .exe,
+                                   reinstalando o contorno sem ninguem pedir
+refaz_copia_do_path (no sync)    o MESMO detector -> teria feito isso em silencio
+```
+
+**A definição correta do contorno é que os shims estão MOVIDOS**, não que existe backup: o bak
+presente **e** o shim real **ausente**. O marcador canônico é o `.ps1` — é ele que ganha do `.exe` no
+PowerShell, e tem extensão, logo o `[ -f ]` do MSYS não mente sobre ele.
+
+🔴 **E o alarme tinha um terceiro defeito, da mesma família:** a premissa dele era a presença da
+string `pre-guard-bak` no `CLAUDE.md`. Mas o **registro histórico** cita essa string, e registro é para
+ficar — então, uma vez revertido, o alarme ficaria **vermelho para sempre**. Ruído permanente é o que
+faz aviso deixar de ser lido, e é **exatamente** o defeito que levamos ao upstream na
+[#530](https://github.com/kgsaran/trackfw/issues/530), cometido aqui. A premissa passou a ser a
+**declaração explícita** no topo desta seção.
+
+**Os três consertos entraram como ML na REQ vigente, não como REQ nova** — mesma causa, e o roadmap
+voltou de `done/` para `wip/` para isso, que é o que a Regra Dura de Causa Raiz manda.
+
+### O que sobrou na pasta do npm, declarado
+
+```
+trackfw  trackfw.cmd  trackfw.ps1              <- os shims da 9.3.0, em uso
+trackfw.exe.revertido-20261007-1610            <- a copia da arvore, fora do caminho
+trackfw.pre-guard-bak  trackfw.cmd.pre-guard-bak  trackfw.ps1.pre-guard-bak
+trackfw.exe.bak-20261007-1434  trackfw.exe.pre-sync-bak
+```
+
+Os cinco últimos são **sobra** e podem ser apagados a qualquer momento — os shims `.pre-guard-bak`
+apontam para a 9.1.0, que já não está instalada. Ficam porque apagar arquivo do usuário não é decisão
+de gate, e porque o detector corrigido **já os ignora**.
+
 ## 🔴 O ponto cego MUDOU DE LUGAR: de "sem `jq`" para "sem `guard` no PATH"
 
 **Isto é estado novo de 2026-10-06, e nenhuma seção anterior o previa.** O hook deixou de executar um
@@ -743,12 +837,18 @@ o roteiro está escrito acima, e não só na memória da sessão.
 > e por isso roda em `ubuntu-latest` no CI, declarado em `EXECUTAR` do `run-local-gates.sh`.
 >
 > 🔴 **A frase acima fica**, porque ela é o registro do motivo: o contorno nasceu sem alarme, e foi o
-> usuário quem pegou a falta, perguntando *"ficou algo pendente por aqui"*. Veredito de hoje:
+> usuário quem pegou a falta, perguntando *"ficou algo pendente por aqui"*. Veredito **de 2026-10-06**:
 >
 > ```
 > nenhuma tag do upstream contem o commit do guard · publicado: 9.2.0
 > -> o contorno dos shims CONTINUA necessario.
 > ```
+>
+> ✅ **Esse veredito CADUCOU em 2026-10-07**, e é a seção
+> *"O contorno dos shims do npm foi REVERTIDO"*, acima, que descreve o estado atual. O alarme virou
+> no dia seguinte, quando a `v9.3.0` saiu às 14:59 contendo o `guard`. **A citação fica datada em vez
+> de apagada** — é o registro de que o alarme funcionou —, mas não leia o bloco de código acima como
+> estado de hoje.
 >
 > **Duas guardas vieram de defeito medido no próprio gate**, e as duas valem além dele: `$?` depois de
 > um `if` é o status do **`if`**, não da condição (o caso "versão fora da forma" saía verde); e a forma

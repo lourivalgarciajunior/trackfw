@@ -60,7 +60,22 @@ cd "$ROOT_DIR" || exit 1
 # O commit que introduziu `trackfw guard`. Chumbado de proposito: e um ponto
 # fixo da historia do upstream, nao um valor que envelhece.
 GUARD_COMMIT=782f5767ad1a2e1de3939a305206cd74e80c9060
-MARCA_CONTORNO='pre-guard-bak'   # o que prova que o contorno esta documentado
+# 🔴 A MARCA MUDOU em 2026-10-07, no dia da reversao, e por um defeito de desenho.
+# Ela era 'pre-guard-bak' — a string que o roteiro usa. Mas o REGISTRO historico do
+# contorno tambem cita essa string, e registro e para ficar: com a marca antiga o
+# alarme continuaria VERMELHO depois de revertido, para sempre. Ruido permanente e
+# o que faz aviso deixar de ser lido — e e exatamente o defeito que levamos ao
+# upstream na issue #530, cometido aqui.
+#
+# A premissa passou a ser DECLARACAO EXPLICITA, nao presenca de string em prosa.
+MARCA_CONTORNO='<!-- contorno-dos-shims: ATIVO -->'
+
+# contorno_declarado <arquivo> -> imprime sim|nao
+contorno_declarado() {
+  local f="$1"
+  [ -r "$f" ] || { printf 'ilegivel'; return 0; }
+  if grep -q "$MARCA_CONTORNO" "$f"; then printf 'sim'; else printf 'nao'; fi
+}
 
 # As duas leituras do mundo, injetaveis SO para a sonda. Quando injetadas, o
 # gate imprime aviso — execucao de sonda nunca pode passar por veredito real.
@@ -200,8 +215,41 @@ if [ "${1:-}" = "--self-test" ]; then
   caso 0 "publicado com CR e anterior decide VERDE"            "v9.4.0"  "9.3.0$CR"
 
   echo ""
-  if [ "$N" -lt 12 ]; then
-    echo "GUARDA DE VACUIDADE: $N caso(s), esperado ao menos 12" >&2
+  echo "== A PREMISSA: declaracao explicita, nao presenca de string em prosa =="
+  # 🔴 Estes quatro casos existem por um defeito MEDIDO em 2026-10-07: a marca era
+  # 'pre-guard-bak', e o REGISTRO historico do contorno cita essa string. Depois de
+  # reverter, o alarme continuaria VERMELHO para sempre — ruido permanente, que e o
+  # defeito que levamos ao upstream na #530 e que eu repeti aqui.
+  TMPP=$(mktemp -d 2>/dev/null) || TMPP=""
+  if [ -n "$TMPP" ]; then
+    pcaso() { # <esperado> <rotulo> <conteudo>
+      local esp="$1" rot="$2" conteudo="$3"
+      local f="$TMPP/p$N.md"
+      printf '%s\n' "$conteudo" > "$f"
+      local got; got=$(contorno_declarado "$f")
+      N=$((N+1))
+      if [ "$got" = "$esp" ]; then printf '  ok   %s\n' "$rot"
+      else BAD=$((BAD+1)); printf '  FAIL %s — esperado %s, obtido %s\n' "$rot" "$esp" "$got"; fi
+    }
+    pcaso sim "declarado ATIVO, na forma completa"      "<!-- contorno-dos-shims: ATIVO -->"
+    pcaso nao "declarado REVERTIDO"                     "<!-- contorno-dos-shims: REVERTIDO em 2026-10-07 -->"
+    pcaso nao "REGISTRO historico citando pre-guard-bak" "renomeie os tres *.pre-guard-bak tirando o sufixo"
+    pcaso nao "PROSA citando a marca sem a forma"       "a marca contorno-dos-shims com valor ATIVO"
+    pcaso nao "arquivo sem nenhuma marca"               "texto qualquer"
+    N=$((N+1))
+    if [ "$(contorno_declarado "$TMPP/nao-existe.md")" = "ilegivel" ]; then
+      printf '  ok   arquivo ilegivel devolve "ilegivel", nao "nao"\n'
+    else
+      BAD=$((BAD+1)); printf '  FAIL arquivo ilegivel nao foi distinguido de ausente\n'
+    fi
+    rm -rf "$TMPP" 2>/dev/null
+  else
+    printf '  (nao consegui criar diretorio temporario — casos nao exercitados)\n'
+  fi
+
+  echo ""
+  if [ "$N" -lt 18 ]; then
+    echo "GUARDA DE VACUIDADE: $N caso(s), esperado ao menos 18" >&2
     exit 1
   fi
   echo "check-contorno-dos-shims-caducou --self-test: $N caso(s) · $BAD falha(s)"
@@ -212,16 +260,18 @@ fi
 # ─── EXECUCAO ────────────────────────────────────────────────────────────────
 echo "check-contorno-dos-shims-caducou:"
 
-# GUARDA 3 — premissa: o contorno ainda esta documentado?
-if [ ! -r CLAUDE.md ]; then
-  echo "  FALHA: CLAUDE.md ilegivel — nao da para saber se o contorno esta documentado." >&2
-  exit 1
-fi
-if ! grep -q "$MARCA_CONTORNO" CLAUDE.md; then
-  echo "  o CLAUDE.md nao documenta mais o contorno dos shims ('$MARCA_CONTORNO' ausente)."
-  echo "  -> alguem o aposentou. Nada a vigiar: este gate pode ser retirado."
-  exit 0
-fi
+# GUARDA 3 — premissa: o contorno ainda esta DECLARADO ativo?
+case "$(contorno_declarado CLAUDE.md)" in
+  ilegivel)
+    echo "  FALHA: CLAUDE.md ilegivel — nao da para saber se o contorno esta declarado." >&2
+    exit 1
+    ;;
+  nao)
+    echo "  o CLAUDE.md nao declara mais o contorno ativo ('$MARCA_CONTORNO' ausente)."
+    echo "  -> ele foi revertido ou aposentado. Nada a vigiar."
+    exit 0
+    ;;
+esac
 
 # GUARDA 1 — o commit do guard tem de ser alcancavel, senao `--contains` mente.
 if ! git cat-file -e "${GUARD_COMMIT}^{commit}" 2>/dev/null; then
