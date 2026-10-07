@@ -1,14 +1,14 @@
 ---
-status: Open
+status: Done
 date: 2026-10-07
 author: ""
 adr: "docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-trackfw.md"
-roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-10-07-o-handoff-fica-uma-rodada-atras-porque-o-passo-e-manual-e-sem-gate.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-10-07-o-handoff-fica-uma-rodada-atras-porque-o-passo-e-manual-e-sem-gate.md"
 ---
 
 # REQ: o handoff fica uma rodada atras porque o passo e manual e sem gate
 
-> Date: 2026-10-07 | Status: Open
+> Date: 2026-10-07 | Status: Done
 | Linear Issue: 
 | Jira Issue: 
 
@@ -35,16 +35,16 @@ obrigatório cuja única salvaguarda é memória humana falha por construção �
 
 ## Acceptance Criteria
 
-- [ ] AC1 — Existe gate que **reprova** quando o diff move roadmap para `done/` e **não** toca o
+- [x] AC1 — Existe gate que **reprova** quando o diff move roadmap para `done/` e **não** toca o
       `docs/agents-working-context.md`
-- [ ] AC2 — O veredito é ancorado na **base de merge**, nunca em dois pontos — é a terceira vez que o
+- [x] AC2 — O veredito é ancorado na **base de merge**, nunca em dois pontos — é a terceira vez que o
       dois-pontos engana neste fork
-- [ ] AC3 — Falsificado contra os **casos reais**: o diff da PR #208 reprova e o da #207 passa
-- [ ] AC4 — Leitura que falhou nunca vira verde: sem a ref de comparação, o gate reprova **nomeando o
+- [x] AC3 — Falsificado contra os **casos reais**: o diff da PR #208 reprova e o da #207 passa
+- [x] AC4 — Leitura que falhou nunca vira verde: sem a ref de comparação, o gate reprova **nomeando o
       motivo**
-- [ ] AC5 — Diff sem roadmap indo para `done/` passa, e diff vazio (rodando na própria `main`) passa
+- [x] AC5 — Diff sem roadmap indo para `done/` passa, e diff vazio (rodando na própria `main`) passa
       **dizendo que passou por vacuidade**, não em silêncio
-- [ ] AC6 — Declarado em `EXECUTAR` do `run-local-gates.sh`, com a guarda de completude fechada
+- [x] AC6 — Declarado em `EXECUTAR` do `run-local-gates.sh`, com a guarda de completude fechada
 
 
 ## Linked ADR
@@ -56,7 +56,7 @@ ADR: docs/adr/ADR-2026-09-05-o-repositorio-do-trackfw-e-governado-pelo-proprio-t
 
 ## Linked Roadmap
 <!-- Reference the roadmap that implements this requirement -->
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-10-07-o-handoff-fica-uma-rodada-atras-porque-o-passo-e-manual-e-sem-gate.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-10-07-o-handoff-fica-uma-rodada-atras-porque-o-passo-e-manual-e-sem-gate.md
 
 ## Context
 
@@ -89,3 +89,14 @@ Medido contra as duas PRs de ontem, pela base de merge:
 - Não se mexe no `CLAUDE.md` para afrouxar a regra. A regra está certa; o que faltava era instrumento.
 - Não se tenta cobrir o *"ao iniciar"* da mesma exigência: início de ciclo não tem assinatura no diff
   de um PR fechado, e inventar uma produziria gate que reprova por adivinhação.
+
+## Onde cada AC foi entregue
+
+| AC | sitio |
+|---|---|
+| AC1 | `veredito()` em `scripts/check-handoff-cobre-o-ciclo.sh` — rc=1 com done>0 e handoff=0 |
+| AC2 | `git merge-base HEAD "$BASE_REF"`, com o motivo do dois-pontos escrito ao lado |
+| AC3 | os dois SHAs no `--self-test`: `2a97172e` reprova, `8415b22e` passa |
+| AC4 | ref ausente e base de merge ausente reprovam nomeando; contagem nao-numerica devolve rc=2 |
+| AC5 | diff sem roadmap em `done/` passa; diff vazio passa **dizendo** "por vacuidade, nao por verificacao" |
+| AC6 | `EXECUTAR` do `run-local-gates.sh`: 15 executados · 0 falhas, completude fechada |

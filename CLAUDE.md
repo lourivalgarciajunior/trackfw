@@ -331,6 +331,9 @@ Chain: `ADR → REQ → ROADMAP` · States: `backlog / analyzing / wip / blocked
    ✓ `trackfw validate` enforces this via `branch_has_wip_roadmap` rule (v2.7.0+)
 2. **Before starting:** run `trackfw context` · read `docs/agents-working-context.md`
 3. **After finishing:** update `docs/agents-working-context.md` with what changed
+   ✓ `scripts/check-handoff-cobre-o-ciclo.sh` cobra isto desde 2026-10-07: diff que move
+     roadmap para `done/` sem tocar o handoff REPROVA. O passo falhou duas vezes em 24 h antes
+     do gate existir, e nas duas quem pegou foi o usuário — nenhum instrumento olhava.
 4. **Before PR:** `trackfw validate` must pass
 5. **ML lifecycle — mandatory:**
    - Starting a ML: edit roadmap `**Status:** ⬜ Pendente` → `**Status:** 🔄 Em andamento` + commit.
