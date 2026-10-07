@@ -122,3 +122,62 @@ bash scripts/check-copia-do-path-esta-atras.sh
 bash -n scripts/upstream-sync.sh
 bash scripts/run-local-gates.sh
 ```
+
+### ML-1B — O detector do contorno confundia SOBRA com VIGÊNCIA (reaberto por mesma causa)
+
+**Status:** ✅ Concluído
+**Por que o escopo original não previu:** o ML-1A foi construído **com o contorno em vigor**, e nesse
+estado *"existe `*.pre-guard-bak` na pasta"* e *"o contorno está em vigor"* são indistinguíveis. O
+estado que os separa — **sobra depois da reversão** — só passou a existir em 2026-10-07 às 16:10,
+quando a `v9.3.0` tornou a reversão possível e ela foi feita. 🔴 Não foi descuido de enumeração: era
+um estado que **não existia** quando o ML-1A fechou.
+
+**Files affected:**
+- `scripts/check-copia-do-path-esta-atras.sh` (função `contorno_em_vigor` + 4 casos)
+- `scripts/upstream-sync.sh` (mesma correção em `refaz_copia_do_path`)
+- `scripts/check-contorno-dos-shims-caducou.sh` (a premissa vira declaração explícita + 6 casos)
+- `CLAUDE.md`
+
+**O defeito, medido logo após a reversão:**
+
+```
+check-copia-do-path-esta-atras   contorno em vigor: sim   -> ATRAS     <- FALSO POSITIVO
+remedio impresso                 cp bin/trackfw.exe .../npm/trackfw
+                                 ^ sobrescreveria o SHIM BASH do npm com um .exe
+refaz_copia_do_path              o MESMO detector -> faria isso NO PROXIMO SYNC, em silencio
+```
+
+🔴 **O segundo é o grave:** o gate apenas gritaria errado; o passo do sync **reinstalaria o contorno**
+sem ninguém pedir. Por isso o sync do dia foi **adiado até este conserto**.
+
+**E um terceiro sítio, da mesma família, no alarme:** a premissa dele era a presença da string
+`pre-guard-bak` no `CLAUDE.md`. O **registro histórico** cita essa string, então, revertido o contorno,
+o alarme ficaria **vermelho para sempre**. Ruído permanente é o defeito que levamos ao upstream na
+#530 — cometido aqui. A premissa virou **declaração explícita**, na forma completa do comentário.
+
+🔴 **E a prosa da própria seção nova continha a marca**, o que religaria o alarme. Por isso a marca é
+a forma **completa** (`<!-- … -->`) e há caso de self-test afirmando que **prosa citando a marca sem a
+forma não conta**.
+
+**O que este ML afirma, por artefato novo** (Regra Dura de Reconciliação):
+
+| artefato | a conclusão do ML que ele afirma |
+|---|---|
+| 4 casos de `contorno_em_vigor` contra pastas reais | que **sobra ≠ vigência**: bak + shim real juntos dá `nao` |
+| 6 casos de `contorno_declarado` | que a premissa é **declaração**, e que prosa citando a marca não conta |
+| o alarme rodado de verdade | `-> ele foi revertido ou aposentado. Nada a vigiar.` rc=0 |
+| `refaz_copia_do_path` exercitada no estado real | no-op silencioso; o shim POSIX do npm segue intacto |
+
+**Acceptance criteria:**
+- [x] O detector passa a exigir **bak presente E shim real ausente**, nos dois sítios
+- [x] O alarme deixa de depender de string em prosa; a premissa é declaração explícita
+- [x] Falsificado contra o estado REAL pós-reversão, não contra caso sintético
+- [x] Os self-tests crescem: 10 → 14 casos num gate, 12 → 18 no alarme, 0 falhas
+
+**Gates da wave:**
+```bash
+bash scripts/check-copia-do-path-esta-atras.sh --self-test
+bash scripts/check-contorno-dos-shims-caducou.sh --self-test
+bash scripts/check-contorno-dos-shims-caducou.sh
+bash -n scripts/upstream-sync.sh
+```

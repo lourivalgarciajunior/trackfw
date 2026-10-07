@@ -4,6 +4,77 @@
 
 ---
 
+## Sessão 2026-10-07 (tarde) — claude (o alarme acendeu, o contorno caiu, e a reversão quebrou dois instrumentos nossos)
+
+**FIM.** `main` em `c0967639` + este ciclo, **3 atrás** do upstream (sync pendente, adiado de
+propósito — ver abaixo), 0 PRs abertos antes deste, `validate` 0 violações · 5 avisos.
+
+### 🔴 O alarme de ontem disparou hoje, no primeiro dia em que havia o que disparar
+
+A `v9.3.0` saiu às **14:59** contendo o commit do `guard` (`782f5767`) e o npm publicou `9.3.0`. O
+`check-contorno-dos-shims-caducou.sh`, que entrou no PR #208 na véspera às 23:52 **porque o usuário
+perguntou *"ficou algo pendente por aqui"***, acusou a caducidade. O contorno dos shims foi
+**revertido** e verificado por efeito.
+
+🔴 **E eu quase publiquei o alarme como VERDE:** rodei `bash alarme | tail` e li `rc=0` — era o `rc`
+do **`tail`**. Sem cano, `rc=1`. A memória `cano-mascara-exit-code` me pegou pela quarta vez.
+
+### O número que a próxima sessão não derivaria sozinha: três shells, três regras
+
+```
+depois do `npm i -g trackfw@9.3.0`, com o .exe da arvore ainda na pasta:
+  git bash     trackfw        (shim POSIX)   9.3.0
+  powershell   trackfw.ps1                   9.3.0
+  cmd.exe      trackfw.exe                   9.2.0   <- PATHEXT poe .EXE antes de .CMD
+```
+
+A reversão **não estava completa** até o `.exe` sair do caminho, e o único shell que acusava era o
+`cmd.exe`. O roteiro do `CLAUDE.md` não previa isso. **E a ordem foi invertida de propósito:** instalar
+a 9.3.0 **antes** de renomear os shims, porque os shims renomeados apontam para a 9.1.0 **sem `guard`**
+— fazer na ordem escrita abriria uma janela com a cerca inerte.
+
+### 🔴 A reversão quebrou dois instrumentos que eu mesclei horas antes
+
+O detector de *"contorno em vigor"* testava **"existe algum `*.pre-guard-bak`"**. Sobra de reversão
+satisfaz isso:
+
+```
+check-copia-do-path-esta-atras   -> ATRAS, falso positivo
+remedio que ele imprimia         cp bin/trackfw.exe .../npm/trackfw
+                                 ^ sobrescreveria o SHIM BASH do npm
+refaz_copia_do_path (no sync)    o MESMO detector -> faria isso em silencio
+```
+
+**Por isso o sync dos 3 commits foi ADIADO** até o conserto: rodá-lo antes reinstalaria o contorno sem
+ninguém pedir. A definição correta é **bak presente E shim real ausente**, e o marcador canônico é o
+`.ps1`.
+
+**Um terceiro sítio, da mesma família, no alarme:** a premissa dele era a string `pre-guard-bak` no
+`CLAUDE.md` — que o **registro histórico** cita. Revertido o contorno, o alarme ficaria vermelho **para
+sempre**: o mesmo defeito que levamos ao upstream na #530, cometido aqui. Virou declaração explícita,
+`<!-- contorno-dos-shims: … -->`. 🔴 **E a prosa da seção nova continha a marca**, o que religaria o
+alarme — por isso a marca é a forma completa do comentário, com caso de self-test afirmando que prosa
+não conta.
+
+Os três consertos entraram como **ML-1B na REQ vigente**, com o roadmap voltando de `done/` para
+`wip/` — Regra Dura de Causa Raiz, e o escopo do ML-1A não os previu porque **o estado que separa
+sobra de vigência não existia** quando ele fechou.
+
+### O lado do Kleber, e ele andou muito
+
+| | |
+|---|---|
+| **#530 (nossa)** | **CLOSED/COMPLETED** às 16:06, ~2h30 depois de aberta |
+| **#533** | a correção, mesclada; ele reabriu a `REQ-2026-09-05` com **ML-5F** em vez de REQ nova, e adotou o discriminante que propusemos |
+| #531 · #532 | bump para 9.3.0 (14:59) e ressalvas de Windows no README |
+| #525 | **ainda sem resposta** — 1 comentário, o nosso, de 13:56 |
+
+Da resposta dele, o que vale guardar: *"A medição em fixture limpa, o `HOME` isolado para desarmar o
+dedup e a falsificação inconclusiva declarada fizeram toda a diferença."* **Declarar o inconclusivo
+foi o que deu lastro ao relato**, não escondê-lo.
+
+---
+
 ## Sessão 2026-10-07 — claude (o matcher que nunca cobriu o PowerShell; e a cópia do PATH que ficava atrás)
 
 **FIM.** `main` em `84c0a95a`, **0 atrás** do upstream, 0 PRs abertos, kanban `0/0/0/0`,
