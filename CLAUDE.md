@@ -835,6 +835,55 @@ que é o que uma sessão nova herda.
 destravar trabalho, nem para medir. Em 2026-10-02 o `git worktree remove` recusou um worktree e o
 caminho foi `core.longpaths`, não o `--force` que o hook bloqueia; o mesmo critério vale aqui.
 
+## 🔴 E o matcher nunca cobriu a ferramenta `PowerShell` — 53 dias de porta aberta
+
+**Isto não é consequência do #527.** O #527 trocou o **conteúdo** do hook; o que estava errado é a
+**porta pela qual ele é chamado**, e está errada desde **2026-08-15 08:47**, no
+[#169](https://github.com/kgsaran/trackfw/pull/169) do upstream — *"bloqueio técnico de git bruto por
+subagente nos 7 runtimes"*, o commit que introduziu `"matcher": "Bash"`.
+
+No Windows o Claude Code roda comando pela ferramenta **`PowerShell`**, e o matcher é casado contra o
+**nome da ferramenta**. Medido por efeito em 2026-10-07, mesma árvore, mesmo comando, só a ferramenta
+mudando:
+
+| | resultado |
+|---|---|
+| `git commit --dry-run` pela ferramenta **Bash** | `PreToolUse:Bash hook error` — bloqueia |
+| o mesmo pela ferramenta **PowerShell** | 🔴 **EXECUTOU** — `nothing to commit`, rc=1 |
+| o mesmo pela **PowerShell**, com o matcher corrigido | `PreToolUse:PowerShell hook error` — bloqueia |
+| `git status` e `git log` pela **PowerShell**, corrigido | rc=0 e rc=0 — **controle negativo** |
+
+🔴 **Só não houve dano porque o `--dry-run` era de propósito.** Um `git commit -m x` ali teria
+commitado na `main` **sem PR** — exatamente o que a cerca existe para impedir.
+
+**Precisão importa, e a borda é estreita:** a cerca **não** estava inerte em geral. Pela ferramenta
+`Bash`, que é o caminho usado quase sempre, ela sempre disparou. O descoberto era o caminho
+`PowerShell` — e é por isso que 53 dias passaram sem ninguém notar: **o furo não aparece no caminho
+que se exercita.** Medir a cerca pelo caminho confortável é o mesmo erro de forma do braço do `sed`
+que nunca era exercitado em CI.
+
+**O achado é do mantenedor**, no [#528](https://github.com/kgsaran/trackfw/pull/528) (ML-5A), medido
+com transcript em VM. A correção aqui é **byte a byte a dele** — conferida contra o blob do head
+`aa9faab4`, com `cmp` idêntico —, então a divergência de produto é temporária e **convergente**:
+quando o #528 mesclar, o sync não acha conflito.
+
+**E o ML-5D dele NÃO nos atinge**, medido no mesmo dia. Ele relata um `trackfw` velho em `~/bin`,
+posto na frente do PATH pelo perfil de login do Git Bash, fazendo o hook falhar aberto:
+
+```
+~/bin                        so trackfw-go.exe        <- nome DIFERENTE, nao sombreia
+bash -lc 'command -v'        %APPDATA%/npm/trackfw    -> 9.2.0
+`guard --help` nesse         rc=0, imprime a ajuda    <- e o .exe da arvore, COM guard
+```
+
+O contorno dos shims continua de pé, com os três `*.pre-guard-bak` intactos.
+
+**O `~/.claude/settings.json` tinha os mesmos dois matchers**, e ali a exposição é maior — ele governa
+todos os outros projetos. Foi corrigido **fora do git**, por ser arquivo do usuário (backup em
+`settings.json.pre-matcher-20261007-1315`; LF preservado, 0 bytes CR antes e depois). 🔴 **Limite
+declarado:** essa metade foi verificada por **leitura e validade de JSON**, não por efeito — aqui o
+settings do projeto cobre o mesmo matcher, então medir o global exige sessão em outro projeto.
+
 ## Ponto cego local de bit de execução: `pin7-noexec` e as três falhas do Group A
 
 Mesma causa da [#421](https://github.com/kgsaran/trackfw/issues/421): **`os.Chmod` é no-op em NTFS
