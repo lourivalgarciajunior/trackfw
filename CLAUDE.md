@@ -884,6 +884,44 @@ todos os outros projetos. Foi corrigido **fora do git**, por ser arquivo do usu�
 declarado:** essa metade foi verificada por **leitura e validade de JSON**, não por efeito — aqui o
 settings do projeto cobre o mesmo matcher, então medir o global exige sessão em outro projeto.
 
+### Resíduo do sync do #528: dois avisos que o próprio produto produz e não limpa
+
+O `validate` do #528 ganhou a regra `validateClaudeGuardHookMatcherWarningsInFile`
+(`internal/validator/validator_credential_guard.go`), que avisa para **todo** grupo de hook com
+comando de guard cujo matcher não contenha `PowerShell`. O nosso `.claude/settings.json` já está
+corrigido nos dois grupos de shell — e **os avisos continuam**, porque apontam para os grupos
+`"Read"` e `"Write|Edit"`, que são do guard de **credencial** e cujo matcher é deliberadamente outro
+(`ADR-2026-08-06` emenda 7, que existe porque extração por leitura direta nunca passava pelo hook).
+
+**Medido por efeito em 2026-10-07, com o MESMO binário nas duas direções, em fixture limpa:**
+
+```
+init limpo, dedup ARMADO (guards globais instalados)   0 grupos com guard   <- INCONCLUSIVO
+init limpo, dedup desarmado (HOME isolado)             6 grupos com guard
+   PreToolUse e PostToolUse:  Bash|PowerShell · Read · Write|Edit
+validate sobre essa saida                              2 avisos "PowerShell is not covered"
+trackfw update  (o remedio que a mensagem sugere)      settings.json NAO muda um byte (cmp)
+validate depois do update                              os MESMOS 2 avisos
+```
+
+🔴 **O aviso dispara na saída canônica do próprio produto, e o remédio que ele indica não o limpa** —
+então em projeto de Windows ele nunca vai a zero. É ruído permanente, não sinal, e ruído permanente é
+o que faz aviso deixar de ser lido.
+
+**O limite honesto, e ele desarma a leitura alarmista:** o remédio é **inerte, não danoso**. O
+`update` **não** migra o grupo `Read` para `Bash|PowerShell` — o que destruiria a cobertura do tool
+`Read` que a emenda 7 acrescentou de propósito. A primeira leitura da mensagem sugeria esse risco; a
+medição o afasta.
+
+🔴 **E a primeira tentativa de falsificação foi INCONCLUSIVA por contaminação de ambiente.** Com os
+guards globais instalados nesta máquina, o `init` omite os grupos de projeto por dedup
+(`ROADMAP-2026-08-17` Wave 2/ML-2B, para o guard não disparar duas vezes). Sem isolar o `HOME`, a
+fixture não reproduz o que se quer medir — e a leitura ingênua seria *"o produto não escreve esses
+grupos"*, que é falso. Mesma classe da armadilha do controle contaminado pelo PATH, já registrada na
+seção dos gates de PATH curado.
+
+**Os avisos do `validate` aqui foram de 3 para 5 com este sync**, e os 2 novos são exatamente estes.
+
 ## Ponto cego local de bit de execução: `pin7-noexec` e as três falhas do Group A
 
 Mesma causa da [#421](https://github.com/kgsaran/trackfw/issues/421): **`os.Chmod` é no-op em NTFS
