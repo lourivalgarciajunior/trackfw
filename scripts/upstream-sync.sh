@@ -236,21 +236,38 @@ say ""
 #   3. Verifica POR EFEITO depois de copiar e RESTAURA se a verificação falhar.
 #      Cópia quebrada deixa todas as cercas inertes, e falha aberta: é pior que
 #      cópia velha.
+# 🔴 NENHUM caminho deste passo sai em silêncio, e isso é decisão de 2026-10-07.
+# A primeira versão dava `return 0` muda em cinco pontos — e um sync que não diz
+# nada é indistinguível de um sync que não rodou o passo. Este repositório trata
+# silêncio como defeito: é a mesma forma de "verde sem denominador não é
+# evidência", aqui no lado da ferramenta em vez do gate.
+#
+# O irmão `check-copia-do-path-esta-atras.sh` já imprime `N/A` com a razão; sem
+# estas linhas, a ferramenta e o gate discordavam sobre o quanto se deve contar
+# ao leitor sobre o MESMO estado.
 refaz_copia_do_path() {
 	local p dst dir stamp
-	p=$(bash -lc 'command -v trackfw' 2>/dev/null) || return 0
-	[ -n "$p" ] || return 0
+	if ! p=$(bash -lc 'command -v trackfw' 2>/dev/null) || [ -z "$p" ]; then
+		say "  copia do PATH    N/A: o PATH nao resolve 'trackfw' — nada a refazer"
+		return 0
+	fi
 	# O `[ -f ]` do MSYS responde VERDADE para o nome sem extensão de um .exe que
 	# não existe, então o .exe é tentado PRIMEIRO.
 	case "$p" in
 		*.exe) dst="$p" ;;
 		*) if [ -f "${p}.exe" ]; then dst="${p}.exe"; else dst="$p"; fi ;;
 	esac
-	[ -f "$dst" ] || return 0
+	if [ ! -f "$dst" ]; then
+		say "  copia do PATH    N/A: '$p' nao e um arquivo legivel — nada a comparar"
+		return 0
+	fi
 
 	local arv="bin/trackfw${GOEXE_EXT:-}"
 	[ -f "$arv" ] || arv="bin/trackfw"
-	[ -f "$arv" ] || return 0
+	if [ ! -f "$arv" ]; then
+		say "  copia do PATH    N/A: o binario da arvore nao existe — nada a copiar"
+		return 0
+	fi
 
 	dir=$(dirname "$dst")
 	# 🔴 O contorno está em vigor quando os shims estão MOVIDOS — não quando há
@@ -262,8 +279,10 @@ refaz_copia_do_path() {
 	#
 	# O `.ps1` é o marcador canônico: é ele que ganha do `.exe` no PowerShell, e
 	# tem extensão, logo o `[ -f ]` do MSYS não mente sobre ele.
-	[ -f "$dir/trackfw.ps1.pre-guard-bak" ] || return 0
-	[ -f "$dir/trackfw.ps1" ] && return 0
+	if [ ! -f "$dir/trackfw.ps1.pre-guard-bak" ] || [ -f "$dir/trackfw.ps1" ]; then
+		say "  copia do PATH    N/A: o contorno dos shims nao esta em vigor — nada a refazer"
+		return 0
+	fi
 
 	if cmp -s "$arv" "$dst"; then
 		say "  copia do PATH    ja em dia ($dst)"

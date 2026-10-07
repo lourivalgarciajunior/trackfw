@@ -4,6 +4,73 @@
 
 ---
 
+## Sessão 2026-10-07 (fim) — claude (os dois resíduos declarados foram fechados no mesmo dia)
+
+**FIM.** `main` em `b9848e0c` + este ciclo, **0 atrás** do upstream, 0 PRs antes deste, kanban
+`0/0/0/0`, `validate` **0 violações · 3 avisos** — o número mais baixo desde que o merge do #527 o
+levou a 17 na véspera.
+
+Seis PRs nossos mesclados hoje: **#210** (matcher), **#211**, **#212**, **#215** (syncs), **#213** (a
+cópia do PATH), **#214** (sobra ≠ vigência). Uma issue nossa aberta e fechada no upstream: a **#530**.
+
+### O que este ciclo fecha: os dois resíduos que eu tinha DECLARADO em vez de consertar
+
+**1. O passo do sync saía em silêncio.** Cinco `return 0` mudos. Um sync que não diz nada sobre a
+cópia do PATH é indistinguível de um sync que **não executou o passo** — e esse era o estado
+pós-reversão, o mais importante para quem lê. Pior: o gate irmão imprimia `N/A` com a razão, então os
+dois instrumentos contavam quantidades **diferentes** de verdade sobre o mesmo fato.
+
+🔴 **O número que a próxima sessão não derivaria sozinha, e a forma de verificar:**
+
+```
+return 0 no corpo da funcao                5   (antes e depois — nao e o numero que muda)
+return 0 COM `say` imediatamente antes     0 de 5  ->  5 de 5
+a verificacao                              awk, retorno a retorno — NAO `grep say`
+```
+
+Um `grep say` provaria só que a palavra existe no arquivo — e isso já era "verdade" **antes** do
+conserto. O que afirma a propriedade é a contagem retorno-a-retorno.
+
+**2. A sobra na pasta do npm foi para quarentena, não apagada.** Seis arquivos em
+`%APPDATA%/npm/_trackfw-sobra-20261007/`.
+
+🔴 **Por que sair do diretório de `bin` já resolve o risco:** arquivo ali participa da **resolução de
+nome** — foi um `.exe` naquele diretório que manteve o `cmd.exe` na **9.2.0** depois do
+`npm i -g trackfw@9.3.0`, enquanto bash e PowerShell já estavam na 9.3.0. Numa subpasta, nenhum shell
+o alcança. Os seis são reproduzíveis: três shims da 9.1.0 e três binários compilados.
+
+**Apagar continua sendo decisão do usuário**, com o comando escrito no `CLAUDE.md`.
+
+### O global desta máquina subiu para 9.3.1, e isso fechou um ponto cego de escopo
+
+```
+git bash · powershell · cmd.exe        9.3.1 nos tres
+validate PELO GLOBAL                   avisos 'PowerShell is not covered': 2 -> 0
+                                       total: 3
+```
+
+🔴 **Isto fecha o resíduo de escopo global** que a nota do `CLAUDE.md` declarava desde 06/10 — os 14
+avisos de escopo global que ficaram "fora por decisão de escopo". Eles saíram pela via certa: **o
+produto corrigiu a causa**, a partir da nossa #530.
+
+### O estado dos dois lados
+
+| | |
+|---|---|
+| nosso lado | 0 atrás, 0 PRs, 17 gates só nossos, `validate` 0 · 3 |
+| upstream | `cacfef06` · 9.3.1 publicada · 0 PRs · 0 issues |
+| aberto entre os dois | a **#525**, 1 comentário (o nosso) de **04/10 13:56** — três dias sem resposta |
+
+### A lição do dia, e ela não é técnica
+
+O erro que mais custou foi de **leitura**, três vezes: a resposta já estava escrita no arquivo que eu
+ia editar. O comentário do job `gates-windows` (que me custou dois jobs vermelhos), a tabela da
+`ADR-2026-09-05-windows` (que era a ADR certa a vincular), e a memória `o-instrumento-mente` **dele**,
+que descreve o `| tail` comendo o `rc` — erro que eu cometi **duas vezes hoje**, uma delas sobre o
+próprio alarme dos shims, e que quase virou "o alarme está verde".
+
+---
+
 ## Sessão 2026-10-07 (tarde) — claude (o alarme acendeu, o contorno caiu, e a reversão quebrou dois instrumentos nossos)
 
 **FIM.** `main` em `c0967639` + este ciclo, **3 atrás** do upstream (sync pendente, adiado de

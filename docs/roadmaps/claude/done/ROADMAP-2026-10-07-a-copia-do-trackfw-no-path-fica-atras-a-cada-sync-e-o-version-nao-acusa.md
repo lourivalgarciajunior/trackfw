@@ -166,7 +166,7 @@ forma não conta**.
 | 4 casos de `contorno_em_vigor` contra pastas reais | que **sobra ≠ vigência**: bak + shim real juntos dá `nao` |
 | 6 casos de `contorno_declarado` | que a premissa é **declaração**, e que prosa citando a marca não conta |
 | o alarme rodado de verdade | `-> ele foi revertido ou aposentado. Nada a vigiar.` rc=0 |
-| `refaz_copia_do_path` exercitada no estado real | no-op silencioso; o shim POSIX do npm segue intacto |
+| `refaz_copia_do_path` exercitada no estado real | no-op; o shim POSIX do npm segue intacto — **era silencioso, e o ML-1C fechou isso** |
 
 **Acceptance criteria:**
 - [x] O detector passa a exigir **bak presente E shim real ausente**, nos dois sítios
@@ -180,4 +180,52 @@ bash scripts/check-copia-do-path-esta-atras.sh --self-test
 bash scripts/check-contorno-dos-shims-caducou.sh --self-test
 bash scripts/check-contorno-dos-shims-caducou.sh
 bash -n scripts/upstream-sync.sh
+```
+
+### ML-1C — Nenhum caminho do passo sai em silêncio (resíduo declarado do ML-1B, fechado)
+
+**Status:** ✅ Concluído
+**Origem:** resíduo **declarado** no ML-1B e no corpo do PR #215 — *"o `refaz_copia_do_path` sai em
+silêncio quando o contorno não está em vigor"*. Fechado por ordem do usuário no mesmo dia, em vez de
+ficar de registro.
+
+**Files affected:** `scripts/upstream-sync.sh`, `CLAUDE.md`, `docs/agents-working-context.md`
+
+**O defeito.** O passo tinha **cinco** `return 0` mudos. Um sync que não diz nada sobre a cópia do PATH
+é indistinguível de um sync que **não executou o passo** — e esse era exatamente o estado depois da
+reversão, o mais importante de todos para o leitor entender.
+
+🔴 **E havia discordância entre instrumentos sobre o MESMO estado:** o gate irmão imprime
+`N/A: o contorno dos shims nao esta em vigor` com a frase *"NAO leia isto como 'em dia'"*, enquanto a
+ferramenta calava. Dois instrumentos sobre o mesmo fato, dizendo quantidades diferentes de verdade ao
+leitor.
+
+**O conserto, verificado por contagem e não por leitura:**
+
+```
+return 0 no corpo da funcao          5      (antes e depois — nao e o numero que muda)
+return 0 COM `say` imediatamente antes:
+  antes    0 de 5
+  depois   5 de 5                    conferido por awk, um por um
+exercicio no estado real   "copia do PATH    N/A: o contorno dos shims nao esta em vigor"
+```
+
+**O que este ML afirma, por artefato novo** (Regra Dura de Reconciliação):
+
+| artefato | a conclusão do ML que ele afirma |
+|---|---|
+| a verificação por `awk`, retorno a retorno | que **todos** os cinco caminhos falam — não que "existe `say` no arquivo", que era o que um `grep` ingênuo provaria |
+| a execução no estado real pós-reversão | que o caminho que mais importa — contorno fora de vigor — é o que passou a falar |
+
+**Acceptance criteria:**
+- [x] Nenhum `return 0` do passo sai sem dizer o motivo — 5 de 5, conferidos um a um
+- [x] A mensagem usa a mesma forma do gate irmão (`N/A: <razão>`), para os dois concordarem
+- [x] Exercitado no estado REAL pós-reversão, não em caso sintético
+- [x] `bash -n` passa e o sync continua inteiro
+
+**Gates da wave:**
+```bash
+bash -n scripts/upstream-sync.sh
+bash scripts/check-copia-do-path-esta-atras.sh --self-test
+bash scripts/check-contorno-dos-shims-caducou.sh --self-test
 ```
