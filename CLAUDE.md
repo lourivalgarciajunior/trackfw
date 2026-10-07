@@ -923,11 +923,26 @@ o roteiro está escrito acima, e não só na memória da sessão.
 > da leitura tem de ser validada **antes de qualquer ramo**, senão o ramo que não compara deixa passar
 > leitura-lixo — verde por acidente, com o denominador impresso errado.
 
-**Resíduo declarado:** os avisos do `validate` foram de **3 para 17** com o merge, e os 14 novos são de
-escopo **global** — o `settings.json` do Copilot CLI, os hooks do Kiro e os scripts em `~/.trackfw/`
-ainda apontando para o `.sh` antigo. O remédio que o produto sugere é `trackfw update harness`, que
-escreve em arquivo **do usuário**, fora deste repositório: fica fora por decisão de escopo, não por
-esquecimento.
+> ✅ **Este resíduo foi PAGO, em dois movimentos — e o parágrafo abaixo ficou falso no mesmo dia em
+> que foi escrito.** Ele dizia que o remédio *"fica fora por decisão de escopo"*, e o remédio foi
+> rodado horas depois. Fica datado, porque é o registro de que a dívida existiu:
+>
+> | quando | o que fechou | medido |
+> |---|---|---|
+> | 2026-10-06 | `trackfw update harness` — 7 CLIs de agente migrados (14 atualizados, 21 ignorados, 0 falhas) | avisos **17 → 3** |
+> | 2026-10-07 | o sync da 9.3.1, com a correção da nossa [#530](https://github.com/kgsaran/trackfw/issues/530) | **5 → 3**, e `PowerShell is not covered` de 2 → 0 **pelo binário global** |
+>
+> 🔴 **A segunda linha fechou o escopo global pela via certa:** não foi contorno nosso, foi o produto
+> corrigindo a causa. Medido pelo `trackfw` do PATH, não pelo da árvore — que é o que responde "todos
+> os projetos desta máquina", e não só este.
+>
+> **Veredito de hoje:** `validate` **0 violações · 3 avisos**, e os 3 são isenções declaradas por
+> corte (`req_has_roadmap` e `req_done_open_criteria`), com `0 enforced`.
+
+**Resíduo declarado em 2026-10-06, desde então pago:** os avisos do `validate` foram de **3 para 17**
+com o merge, e os 14 novos eram de escopo **global** — o `settings.json` do Copilot CLI, os hooks do
+Kiro e os scripts em `~/.trackfw/` ainda apontando para o `.sh` antigo. O remédio que o produto sugere
+é `trackfw update harness`, que escreve em arquivo **do usuário**, fora deste repositório.
 
 **No CI isto também custou um conserto**, e vale registrar porque a causa é a mesma: o job
 `gates-locais` chamava `./bin/trackfw validate` por caminho, e a regra nova resolve `trackfw` no
@@ -1793,19 +1808,28 @@ caro, e gate que não termina não é gate.
 
 Como os outros, é **nosso**, e **não tem alvo no `Makefile`** pelo mesmo motivo dos demais.
 
-### O resíduo declarado: o roadmap de `backlog/`
+### O resíduo declarado: o roadmap que hoje está em `abandoned/`
+
+> 🔴 **Esta seção dizia `backlog/` e ficou errada por quatro dias.** O roadmap foi para
+> `abandoned/` em **2026-10-03 15:33**, no commit `a5f19c64` — *"varredura de caducidade dos 11
+> roadmaps parados, com veredito medido em cada"* —, com veredito **`(c) caducou`** escrito no próprio
+> arquivo. Ele já diz lá: *"Fica como está, agora em `abandoned/`, onde gate vermelho não é
+> contradição."*
+>
+> **O que NÃO mudou:** o `8` continua no bloco de gates, de propósito, e continua reprovando por
+> premissa velha. O estado do roadmap mudou; a decisão sobre o critério, não.
 
 O bloco do `…2026-08-29-atualizar-para-a-upstream-main…` teve a **forma** corrigida (4 linhas → 1,
-sem `<(...)`, que não é POSIX e morre sob `dash` no CI do upstream). O gate agora **reprova por motivo
-real**: a colisão que ele exige ser 8 hoje é **914**, porque o roadmap é de 29/08 e a premissa
-envelheceu com os merges.
+sem `<(...)`, que não é POSIX e morre sob `dash` no CI do upstream). O gate **reprova por motivo
+real**: a colisão que ele exige ser 8 era **914** quando medida, porque o roadmap é de 29/08 e a
+premissa envelheceu com os merges.
 
 🔴 **O `8` não foi trocado por `914`.** Ajustar o critério para caber no estado atual é fabricar
-histórico — a mesma saída que o `check-req-done-com-criterio-aberto.sh` recusa. O roadmap está em
-`backlog/`, então gate vermelho ali não é contradição: é trabalho não feito, agora com o sinal
-legível. E **o barrier não alcança `backlog/`**, então esse bloco é o único dos cinco cuja correção
-não pôde ser verificada por efeito pelo produto — medido rodando a linha direto: `sh -n` rc=0 (forma
-boa), execução rc=1 (premissa velha).
+histórico — a mesma saída que o `check-req-done-com-criterio-aberto.sh` recusa. Com o roadmap em
+`abandoned/`, gate vermelho ali não é contradição: é trabalho **não feito e assim declarado**, com o
+sinal legível. E **o barrier não alcança nem `backlog/` nem `abandoned/`**, então esse bloco é o único
+dos cinco cuja correção não pôde ser verificada por efeito pelo produto — medido rodando a linha
+direto: `sh -n` rc=0 (forma boa), execução rc=1 (premissa velha).
 
 ## Gate de marcador de REQ ancorado (`scripts/check-req-marcador-ancorado.sh`)
 
