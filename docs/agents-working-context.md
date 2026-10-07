@@ -4,6 +4,81 @@
 
 ---
 
+## Sessão 2026-10-07 — claude (o passo 3 ganha instrumento; e a entrada que faltou da frente do alarme)
+
+**FIM.** `main` em `08640ab3` quando este ciclo abriu, 0 atrás do upstream, 0 PRs, kanban zerado,
+`validate` 0 violações · 3 avisos.
+
+🔴 **Esta entrada existe por duas razões, e a segunda é pior que a primeira.** A primeira: a frente do
+alarme (PRs #207 e #208, 5 commits entre 23:04 e 23:52 de 06/10) **ficou sem registro** — a entrada
+anterior foi escrita às 23:04 e o trabalho fechou depois dela. A segunda: **a entrada anterior foi
+escrita exatamente para consertar essa lacuna, e a lacuna reabriu no ciclo seguinte.**
+
+Duas vezes em 24 horas, e **nas duas quem pegou foi o usuário** — não o `validate`, não o `barrier`,
+não os catorze gates locais. Nenhum deles olhava para isso.
+
+### O que ficou sem registro: a frente do alarme (#208)
+
+O contorno dos shims do npm sustenta **sete cercas globais** e nada acusava o dia em que caducasse — a
+própria nota do `CLAUDE.md` admitia o furo. O gate novo afirma **estado do mundo**, não desta máquina:
+cruza a tag do upstream que contém o commit do `guard` (`782f5767`) com a versão publicada no npm.
+
+```
+nenhuma tag do upstream contem o commit do guard · publicado: 9.2.0
+-> o contorno dos shims CONTINUA necessario.
+```
+
+Checar `*.pre-guard-bak` na máquina foi **recusado**: num runner não há nenhum, e o gate passaria
+descrevendo o vazio com mensagem que soa como boa notícia.
+
+🔴 **Quatro defeitos meus nesse gate, três achados DEPOIS do primeiro commit**, que passou o
+self-test e mesmo assim entrou quebrado:
+
+| | |
+|---|---|
+| `$?` depois de um `if` | é o status do **`if`**, não da condição — o caso "versão fora da forma" saía VERDE |
+| a linha de limpeza | chegou quebrada (escape comido), e o git **normalizou o CR embora**, em silêncio |
+| a comparação | usava o valor **cru** — e meu teste manual deu certo **por acidente** |
+| o caso do CR | era vácuo em potencial: `printf '\r'` virou CR literal que o git removeria |
+
+**A prova que faltou da primeira vez, e que agora é procedimento:**
+`git show :<arquivo> | cmp` contra a árvore, e o self-test rodado sobre o **conteúdo exato do blob**.
+
+### O que este ciclo entrega: instrumento para o passo 3
+
+`scripts/check-handoff-cobre-o-ciclo.sh`. O discriminante é a **assinatura de fechar ciclo**: um
+roadmap saindo de `wip/` e entrando em `done/`. Não "o PR é grande", não "passou tempo" — nenhum dos
+dois é verificável.
+
+Falsificado contra os **casos reais**, por SHA, e não contra sintéticos:
+
+```
+2a97172e (#208, o alarme)    done=1 handoff=0   -> REPROVA
+8415b22e (#207, a entrada)   done=0 handoff=1   -> passa
+```
+
+A #208 é o diff que escapou na vida real; é ela que dá sentido ao gate. O `--self-test` tem **guarda
+de vacuidade em dois níveis** — o total e os casos reais em particular —, porque perder os dois SHAs
+deixaria o gate verde sobre só os sintéticos, que são justamente os que não pegaram nada.
+
+**Resíduo declarado:** o gate verifica **presença**, não conteúdo — um PR que toque o arquivo com uma
+linha vazia passa. E o *"ao iniciar"* da mesma exigência fica fora: início de ciclo não tem assinatura
+no diff, e inventar uma daria gate que reprova por adivinhação.
+
+### O estado dos dois lados ao fim deste ciclo
+
+| | |
+|---|---|
+| nosso lado | 0 PRs, 0 REQs `Open`, kanban zerado, 16 gates só nossos (eram 13 anteontem) |
+| upstream | `782f5767` de 06/10 21:00; 0 PRs, 0 issues; a fila dele zerou com o #527 |
+| único item aberto entre os dois | a **#525**, 0 comentários desde 04/10 20:43 |
+
+E a vigia do upstream rodou **doze janelas** durante a noite sem um único evento, com três suspensões
+de máquina medidas pelo par `42`/`1` — a leitura avulsa do re-arme é o que cobre essas janelas, porque
+o pulso dorme junto.
+
+---
+
 ## Sessão 2026-10-05/06 — claude (a vigia ganha issue nova; o #527 chega e deixa a cerca INERTE; a seção do `jq` caduca medida)
 
 **FIM de quatro ciclos.** `main` em `24938d28`, 0 atrás do upstream, 0 PRs, 1 branch (só a `main`),

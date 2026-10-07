@@ -50,6 +50,7 @@ measure-os-predicate-sites.sh
 check-vigia-forma.sh
 check-req-done-caducou-falsify.sh
 check-contorno-dos-shims-caducou.sh
+check-handoff-cobre-o-ciclo.sh
 "
 
 # ---------------------------------------------------------------------------
