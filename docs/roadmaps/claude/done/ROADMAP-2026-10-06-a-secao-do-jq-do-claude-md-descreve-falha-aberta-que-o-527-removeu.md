@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-10-06
 req: "REQ-2026-10-06-a-secao-do-jq-do-claude-md-descreve-falha-aberta-que-o-527-removeu"
 squad: "claude"
@@ -7,7 +7,7 @@ squad: "claude"
 
 # Roadmap: a secao do jq do CLAUDE.md descreve falha aberta que o 527 removeu
 
-> Created: 2026-10-06 | Status: wip
+> Created: 2026-10-06 | Status: done
 
 ## Context
 
@@ -18,7 +18,7 @@ cego mudou de lugar — de "sem `jq`" para "sem `guard` no PATH".**
 
 ## Acceptance Criteria
 
-- [ ] AC1 a AC6 da REQ, verificadas por efeito
+- [x] AC1 a AC6 da REQ, verificadas por efeito
 
 ## Status Legend
 ⬜ Pendente · 🔄 Em andamento · ✅ Concluído · ❌ Bloqueado
@@ -68,7 +68,7 @@ test "$(grep -c 'jq' internal/generators/scaffold.go)" -le 6
 > Dependencies: Wave 0
 
 ### ML-1A — A secao caduca COM a medicao, e o ponto cego novo entra
-**Status:** ⬜ Pendente
+**Status:** ✅ Concluído
 **Files affected:** `CLAUDE.md`
 **Actions:**
 1. Bloco de caducidade no topo da secao do `jq`, com a tabela de rc medida no PowerShell e as duas
@@ -81,9 +81,9 @@ test "$(grep -c 'jq' internal/generators/scaffold.go)" -le 6
 5. Os 14 avisos novos declarados como residuo de escopo global.
 
 **Acceptance criteria:**
-- [ ] AC1 a AC6 da REQ
-- [ ] Nenhuma linha removida da secao antiga — so acrescentada
-- [ ] Toda tabela de rc no arquivo tem controle negativo ao lado
+- [x] AC1 a AC6 da REQ
+- [x] Nenhuma linha removida da secao antiga — so acrescentada
+- [x] Toda tabela de rc no arquivo tem controle negativo ao lado
 
 **Gates da wave:**
 ```bash
@@ -91,3 +91,16 @@ grep -q 'pre-guard-bak' CLAUDE.md
 grep -q 'corpus-pre-fix' CLAUDE.md
 test "$(grep -c 'falha ABERTA' CLAUDE.md)" -ge 1
 ```
+
+## Medicao do ML-1A
+
+```
+git diff --numstat CLAUDE.md     91  0   <- 91 adicoes, ZERO remocoes
+secao antiga intacta             "Medido em 2026-10-02 e reportado na" presente
+                                 "strip_heredoc_bodies" presente
+gates da wave                    pre-guard-bak ok · corpus-pre-fix ok
+                                 "falha ABERTA" com 2 ocorrencias (era 1)
+```
+
+O `0` de remocoes e o numero que importa: o AC2 do roadmap exigia acrescentar sem apagar, e contar
+ocorrencias de texto nao provaria isso — o `numstat` prova.

@@ -1,14 +1,14 @@
 ---
-status: Open
+status: Done
 date: 2026-10-06
 author: ""
 adr: "docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md"
-roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-10-06-a-secao-do-jq-do-claude-md-descreve-falha-aberta-que-o-527-removeu.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-10-06-a-secao-do-jq-do-claude-md-descreve-falha-aberta-que-o-527-removeu.md"
 ---
 
 # REQ: a secao do jq do CLAUDE.md descreve falha aberta que o 527 removeu
 
-> Date: 2026-10-06 | Status: Open
+> Date: 2026-10-06 | Status: Done
 | Linear Issue: 
 | Jira Issue: 
 
@@ -30,18 +30,18 @@ ficar escrito: o ponto cego mudou de lugar, de "sem `jq`" para "sem `guard` no P
 
 ## Acceptance Criteria
 
-- [ ] AC1 — A secao do `jq` e marcada como caducada **com a medicao que a aposentou**, no formato que
+- [x] AC1 — A secao do `jq` e marcada como caducada **com a medicao que a aposentou**, no formato que
       este arquivo ja usa para o `_force_utf8_output`, os "8 mascarados" e o `pin7-noexec` — registro
       mantido, nunca apagado
-- [ ] AC2 — O ponto cego NOVO fica escrito: hook resolve `trackfw` no PATH, e PATH sem `guard`
+- [x] AC2 — O ponto cego NOVO fica escrito: hook resolve `trackfw` no PATH, e PATH sem `guard`
       significa cerca inerte — com a medicao das tres configuracoes
-- [ ] AC3 — A armadilha de resolucao do PowerShell (`.ps1` ganha do `.exe` na mesma pasta) entra, com
+- [x] AC3 — A armadilha de resolucao do PowerShell (`.ps1` ganha do `.exe` na mesma pasta) entra, com
       a consequencia pratica de que copiar o `.exe` nao sombreia nada
-- [ ] AC4 — Fica escrito que os shims do npm estao MOVIDOS para `*.pre-guard-bak` e que isso **se
+- [x] AC4 — Fica escrito que os shims do npm estao MOVIDOS para `*.pre-guard-bak` e que isso **se
       reverte** quando sair release com `guard`, com o comando da reversao
-- [ ] AC5 — A afirmacao de que o padrao `jq`-ou-`sed` sobre `tool_input` tem **sitio unico** e
+- [x] AC5 — A afirmacao de que o padrao `jq`-ou-`sed` sobre `tool_input` tem **sitio unico** e
       re-derivada, nao copiada: o que sobrou e onde
-- [ ] AC6 — Nenhuma afirmacao nova entra sem ter sido medida nesta frente, e os numeros antigos ficam
+- [x] AC6 — Nenhuma afirmacao nova entra sem ter sido medida nesta frente, e os numeros antigos ficam
       ao lado dos novos com data
 
 ## Linked ADR
@@ -53,7 +53,7 @@ ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
 
 ## Linked Roadmap
 <!-- Reference the roadmap that implements this requirement -->
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-10-06-a-secao-do-jq-do-claude-md-descreve-falha-aberta-que-o-527-removeu.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-10-06-a-secao-do-jq-do-claude-md-descreve-falha-aberta-que-o-527-removeu.md
 
 ## Context
 
@@ -124,3 +124,14 @@ pm` deixou o `Get-Command trackfw` apontando para `trackfw.ps1` e o `--version` 
   `validate` ficam declarados, nao resolvidos aqui.
 - Nao se mexe em `.claude/settings.json` para apontar de volta ao `.sh`: medido, o involucro falha
   FECHADO em tudo e bloquearia `git status`.
+
+## Onde cada AC foi entregue
+
+| AC | sitio no `CLAUDE.md` |
+|---|---|
+| AC1 | bloco `✅ CADUCOU em 2026-10-06` no topo da secao do `jq`, com a tabela de rc e as duas linhas do multilinha |
+| AC2 | secao nova *"O ponto cego MUDOU DE LUGAR"*, com as tres configuracoes medidas |
+| AC3 | *"Armadilha de resolucao, medida"* — o `.ps1` ganha do `.exe`, e copiar so o `.exe` nao sombreia |
+| AC4 | os tres `*.pre-guard-bak` nomeados e o roteiro de reversao escrito |
+| AC5 | o censo re-derivado: 6 `jq` em `scaffold.go` (eram 16), `sed` sobre `tool_input` so em `corpus-pre-fix` |
+| AC6 | `git diff --numstat` = 91/0 — nada apagado; e o conserto do CI entrou com a reproducao nas duas direcoes |

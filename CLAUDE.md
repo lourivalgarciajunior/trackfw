@@ -658,6 +658,97 @@ cenário vacuo. O ponto cego é real, mas nunca vira verde falso.
 
 ## Ponto cego local: sem `jq`, a cerca de git falha ABERTA
 
+> ✅ **CADUCOU em 2026-10-06, pelo [#527](https://github.com/kgsaran/trackfw/pull/527) do upstream, que
+> removeu a causa na raiz** — e esta é a medição que a aposenta, porque a própria seção pedia medição
+> em vez de fé. Os guards de shell viraram **subcomando Go** (`trackfw guard git-branch` e
+> `trackfw guard credential`), e o `.sh` gerado passou a ser um invólucro de 13 linhas.
+>
+> **Medido por efeito no PowerShell**, que é o ambiente REAL do hook — a linha dele usa
+> `$LASTEXITCODE`, então medir em Git Bash responderia outra pergunta:
+>
+> ```
+> git push origin main                rc=2  BLOQUEIA
+> git commit -m x                     rc=2  BLOQUEIA
+> git checkout -b feat/x              rc=2  BLOQUEIA
+> git status                          rc=0  passa          <- controle negativo
+> echo oi  LF  git push origin main   rc=2  BLOQUEIA       <- era rc=0 sem jq
+> echo oi  LF  git commit -m x        rc=2  BLOQUEIA       <- era rc=0 sem jq
+> ```
+>
+> (`LF` acima é o `\n` **literal** dentro do JSON do payload, que é exatamente o que o fallback por
+> `sed` não desescapava.)
+>
+> 🔴 **As duas últimas linhas são o mecanismo da #507**, o que faz desta tabela a falsificação da
+> seção inteira e não só uma nota de versão: comando na **segunda linha** de um multilinha passava
+> porque o desescape não acontecia. Sem fallback, bloqueia.
+>
+> **E o `sed` sobre `tool_input` não foi apagado — foi congelado**, o que é prova a favor:
+>
+> ```
+> scaffold.go                       6 ocorrências de `jq`  (eram 16)
+>   attention-signal                o irmão que SEMPRE fez o certo — fallback por python3
+>   comentário + lista de inspetores do credential (cat|head|tail|jq|grep)
+> sed sobre tool_input, ao vivo     NENHUM
+> sed sobre tool_input, congelado   internal/pathguard/testdata/corpus-pre-fix/…scaffold.go.txt
+> ```
+>
+> O guard em Go lê o payload com `encoding/json` e `map[string]json.RawMessage` em todos os níveis,
+> case-sensitive e **last-wins** — com teste afirmando que um payload com `command` e `Command` no
+> mesmo objeto **nega**, fechado.
+>
+> 🔴 **A seção abaixo fica como registro**, e não por hábito: é ela que explica por que o invólucro
+> existe e por que a #507 foi aberta. Mesma forma do `_force_utf8_output`, dos "8 mascarados" e do
+> `pin7-noexec`.
+
+## 🔴 O ponto cego MUDOU DE LUGAR: de "sem `jq`" para "sem `guard` no PATH"
+
+**Isto é estado novo de 2026-10-06, e nenhuma seção anterior o previa.** O hook deixou de executar um
+`.sh` autocontido e passou a chamar `trackfw guard <nome>`, **resolvido no PATH**. Então a cerca agora
+depende de qual `trackfw` o PATH entrega — e no merge ela ficou **inerte nesta máquina**.
+
+Medido nas três configurações possíveis, com o PATH em 9.1.0:
+
+| | resultado |
+|---|---|
+| binário da árvore (9.2.0 + merge) | `push` rc=2 · `status` rc=0 — **correto** |
+| binário do PATH (9.1.0 do npm) | **TUDO rc=1 → falha ABERTA** |
+| invólucro `.sh` de 13 linhas | TUDO rc=2 → **bloquearia `git status`** |
+
+A terceira linha é a que impede o remédio preguiçoso: apontar o hook de volta para o `.sh` **não**
+serve, porque ele falha FECHADO em tudo quando o `guard` não existe.
+
+🔴 **Nenhuma versão publicada tem `guard`**: o `npm latest` é **9.2.0** e o #527 entrou **depois**
+daquela tag. Então não há `npm i -g` que resolva — medido em 2026-10-06.
+
+**O que foi feito nesta máquina, e como se reverte.** O binário compilado da árvore foi para
+`%APPDATA%/npm/trackfw.exe` e os três shims do npm foram **movidos**, não apagados — eles viraram
+`trackfw.pre-guard-bak`, `trackfw.cmd.pre-guard-bak` e `trackfw.ps1.pre-guard-bak`. Para reverter
+quando sair release com `guard`: renomeie os três de volta tirando o sufixo, apague o
+`trackfw.exe` que foi copiado para lá, e instale a versão publicada com `npm i -g trackfw@<versao>`.
+
+🔴 **Armadilha de resolução, medida:** no PowerShell o **`.ps1` ganha do `.exe` na mesma pasta**.
+Copiar só o `.exe` deixou o `Get-Command trackfw` apontando para `trackfw.ps1` e o `--version` em
+**9.1.0** — o sombreamento só funcionou depois de mover os shims. Quem assumir a ordem do `PATHEXT`
+erra aqui.
+
+**E nenhum gate verifica a reversão.** Quando a release com `guard` sair, ela é manual; é por isso que
+o roteiro está escrito acima, e não só na memória da sessão.
+
+**Resíduo declarado:** os avisos do `validate` foram de **3 para 17** com o merge, e os 14 novos são de
+escopo **global** — o `settings.json` do Copilot CLI, os hooks do Kiro e os scripts em `~/.trackfw/`
+ainda apontando para o `.sh` antigo. O remédio que o produto sugere é `trackfw update harness`, que
+escreve em arquivo **do usuário**, fora deste repositório: fica fora por decisão de escopo, não por
+esquecimento.
+
+**No CI isto também custou um conserto**, e vale registrar porque a causa é a mesma: o job
+`gates-locais` chamava `./bin/trackfw validate` por caminho, e a regra nova resolve `trackfw` no
+**PATH** — em runner limpo não há nenhum, então o `validate` saiu 1 com duas violações
+*"trackfw binary not found in PATH"*. Reproduzido local nas duas direções (PATH com `trackfw`: 0
+violações; PATH curado `/usr/bin:/bin`: as mesmas 2 do runner). A forma adotada é a do **próprio
+upstream**, que compila para `/usr/local/bin` em `trackfw-gate.yml` e `trackfw-validate.yml` — os dois
+passaram no mesmo PR em que o nosso job reprovou, e a diferença era só esta.
+
+
 > ✅ **Nesta máquina o ponto cego fechou.** Medido em 2026-10-05: `jq` está no `PATH`
 > (`jq-1.8.2`, instalado em 2026-10-02), então o braço do `sed` **não é mais exercitado aqui**. O
 > mecanismo descrito abaixo continua verdadeiro para qualquer máquina sem `jq`, e por isso a seção
