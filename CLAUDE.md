@@ -788,8 +788,13 @@ voltou de `done/` para `wip/` para isso, que é o que a Regra Dura de Causa Raiz
 
 ```
 %APPDATA%/npm/
-  trackfw  trackfw.cmd  trackfw.ps1     <- os shims da 9.3.1, e so eles
+  trackfw  trackfw.cmd  trackfw.ps1     <- os shims da versao publicada, e so eles
 ```
+
+🔴 **A versão não é nomeada de propósito.** Esta linha dizia *"os shims da 9.3.1"* e ficou errada
+em **menos de 24 h**, com a 9.3.3. O que vale é derivar: `trackfw --version` em cada shell, ou
+`npm ls -g --depth=0`. Mesmo diagnóstico da regra da tripla, que também apodreceu por chumbar
+número — ver a seção dos avisos de escopo global.
 
 **O caminho foi em dois passos, de propósito.** Os seis arquivos de sobra foram primeiro **movidos**
 para uma subpasta e só depois apagados, pelo usuário. 🔴 **Mover já resolvia o risco, e isso foi
@@ -882,8 +887,21 @@ hook de volta para o `.sh` não resolvia, porque a guarda dele sobre `guard --he
 > condição implícita mente quando uma linha é citada sozinha — mesma família do
 > `_force_utf8_output`, dos "8 mascarados" e da lista de scripts só nossos.
 
-🔴 **Nenhuma versão publicada tem `guard`**: o `npm latest` é **9.2.0** e o #527 entrou **depois**
-daquela tag. Então não há `npm i -g` que resolva — medido em 2026-10-06.
+> ✅ **CADUCOU em 2026-10-07, e o parágrafo abaixo HOJE É FALSO.** Ele diz que não há `npm i -g`
+> que resolva — e **há**: a `v9.3.0` saiu às 14:59 de 2026-10-07 contendo o commit do `guard`, e
+> hoje o `npm latest` é **9.3.3**. Medido em 2026-10-08:
+> ```
+> npm view trackfw version              9.3.3
+> git tag --contains 782f5767           v9.3.0  v9.3.1  v9.3.2  v9.3.3
+> ```
+> 🔴 **Marcado com bloco, não com data no rodapé.** A forma anterior — afirmação em presente com
+> `medido em <data>` no fim — é a mais fraca que este arquivo usa, e foi exatamente ela que fez a
+> linha sobreviver um dia inteiro dizendo o contrário do certo. Quem lesse o parágrafo hoje
+> **desistiria da ação correta**. A reversão está descrita na seção *"O contorno dos shims do npm
+> foi REVERTIDO"*, acima.
+
+**Registro de 2026-10-06:** nenhuma versão publicada tinha `guard` — o `npm latest` era **9.2.0** e
+o #527 entrou **depois** daquela tag. Não havia `npm i -g` que resolvesse.
 
 **O que foi feito nesta máquina, e como se reverte.** O binário compilado da árvore foi para
 `%APPDATA%/npm/trackfw.exe` e os três shims do npm foram **movidos**, não apagados — eles viraram
