@@ -113,6 +113,7 @@ internal/pathguard/pathguard.go|Beneath recusa o resultado de filepath.Rel que s
 internal/sync/sync.go|torna absoluto o caminho da REQ contra a raiz antes da guarda de escrita; produto do upstream, entrou com o #397 em 2026-09-22
 internal/validator/branchlink.go|torna absoluto o roadmap_dir relativo do trackfw.yaml contra a raiz resolvida antes da GuardedWrite; mesma forma do adr.go, produto do upstream, entrou com o #446 em 2026-09-27
 internal/discover/discover.go|resolveDeclared ancora no rootDir o diretorio declarado no trackfw.yaml, respeitando caminho absoluto e til, antes de contar os ADRs pelo ponto unico; codigo NOSSO, entrou com o nosso PR #498 em 2026-10-02 e so foi visto no sync porque este gate nao existe em upstream/main
+internal/guard/credential.go|credResolveArg junta o caminho vindo do PAYLOAD da ferramenta com o baseCwd quando IsAbs diz relativo; produto do upstream, entrou com o #543 em 2026-10-08. 🔴 EXPLORABILIDADE NAO MEDIDA: a hipotese e que caminho POSIX do Git Bash (/c/...) de false no IsAbs do Windows e o join produza caminho errado, fazendo a camada 2 nao varrer o arquivo. Tres tentativas de medicao sairam malformadas (conversao de caminho do MSYS nas tres), e nenhum numero foi publicado. Declarado aqui para o ratchet seguir honesto; a medicao e trabalho a parte
 "
 
 esta_no_baseline() {
