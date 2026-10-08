@@ -498,6 +498,14 @@ tem. **Antes da poda eram 135 refs entrando nesse laço, não 5.**
 podadas antes de o segundo consumidor ser descoberto, e as branches já não existem no remoto. Está
 medido o **mecanismo** e o estado de **agora**.
 
+**Levado ao upstream na [#547](https://github.com/kgsaran/trackfw/issues/547).** Duas coisas que a
+issue carrega e que a medição daqui não tinha: o **controle negativo** — `upstream/main` **não**
+avisa, porque já está mesclada em `origin/main`, logo o predicado funciona e está aplicado sobre a
+**população errada** — e a razão de o ramo sobreviver: **nenhuma fixture de teste devolve remote que
+não seja o `origin`** (`push_test.go` e três sítios do `ship_test.go`, zero ocorrências de
+`upstream/`). Mesma forma do braço do `sed` sem `jq` da #507: o caminho que não se exercita é o que
+guarda o defeito.
+
 **Isto reforça a correção em vez de contradizê-la** — o defeito deixa de ser só "leitura avulsa do
 agente" e passa a ter consumidor no produto, visível ao usuário a cada push. O sítio é do upstream,
 então vira **issue**, não correção local, pelo escopo negativo de sempre.

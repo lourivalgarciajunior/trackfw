@@ -158,7 +158,7 @@ vez de contradizê-la.
 escopo negativo da REQ manda que achado ali vire **issue**, não correção local. 🔴 **Não virou
 checkbox de propósito** — inventar critério para o trabalho seguinte faria este roadmap fechar com
 critério aberto, que é o defeito que o `check-req-done-com-criterio-aberto.sh` existe para recusar.
-A issue se abre com a medição desta seção.
+✅ **Aberta: [#547](https://github.com/kgsaran/trackfw/issues/547)**, com esta medição, o controle negativo (`upstream/main` **não** avisa — o predicado funciona, está aplicado sobre a população errada) e a prova de que **nenhuma fixture de teste devolve remote que não seja o `origin`**, que é por que o ramo sobreviveu.
 
 **Limite declarado:** 🔴 **a contagem de avisos ANTES da poda não é re-mensurável.** As 131 refs
 foram podadas antes de o segundo consumidor ser descoberto, e as branches não existem mais no

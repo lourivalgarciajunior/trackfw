@@ -82,7 +82,7 @@ trackfw push   4 avisos "appears to have unmerged changes vs origin/main"
 antes da poda  135 refs entravam nesse laco, nao 5
 ```
 
-Falso positivo do produto, visível a cada push. Vira **issue**, não correção local. 🔴 **A contagem
+Falso positivo do produto, visível a cada push. **Aberta a [#547](https://github.com/kgsaran/trackfw/issues/547)** — com o controle negativo (`upstream/main` **não** avisa: o predicado funciona, a população está errada) e a razão de sobreviver: **zero fixture com remote não-`origin`**. 🔴 **A contagem
 de avisos antes da poda não é re-mensurável** — as refs já foram podadas e as branches não existem
 mais no remoto; está medido o mecanismo e o estado de agora.
 
@@ -110,7 +110,7 @@ redirecionamento que eu declarei como não investigada — ela está no título 
 |---|---|
 | nosso | `6b67a16a`, 0 atrás, kanban `0/0/0/0` depois deste PR |
 | upstream | `357250a9` (16:51), 0 PRs, 1 issue — a nossa **#544** |
-| aberto | **#544** aceita e **em implementação** — 5 commits em `fix/credential-guard-caminho-git-bash-windows`, de 16:52 a 19:33, ML-3A a ML-3E da `REQ-2026-10-06` reaberta · **#525** sem resposta desde 07/10 13:56 |
+| aberto | **#544** aceita e **em implementação** — 5 commits em `fix/credential-guard-caminho-git-bash-windows`, de 16:52 a 19:33, ML-3A a ML-3E da `REQ-2026-10-06` reaberta · **#547** aberta hoje (multi-remote no `detectPendingSquashMerges`) · **#525** sem resposta desde 07/10 13:56 |
 
 **Seis contribuições aceitas em três dias:** #507, #530, o comentário da #535, #538, #542 (fechada
 pelo #545) e #544.
