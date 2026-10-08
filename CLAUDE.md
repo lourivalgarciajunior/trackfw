@@ -939,18 +939,33 @@ o roteiro está escrito acima, e não só na memória da sessão.
 > **Veredito de hoje:** `validate` **0 violações · 3 avisos**, e os 3 são isenções declaradas por
 > corte (`req_has_roadmap` e `req_done_open_criteria`), com `0 enforced`.
 >
-> 🔴 **E ACONTECEU DE NOVO às 19:54 do mesmo dia — terceiro movimento, mesma forma.** O sync do #536
-> trocou a linha dos hooks pela polyglot do D11, e o `validate` saltou **3 → 15**: os 12 novos são os
-> 7 CLIs de **escopo global** ainda com a linha antiga. Mesmo mecanismo, mesmo remédio
-> (`trackfw update harness`), mesmo lugar (arquivo do usuário, fora deste repositório).
+> 🔴 **E ACONTECEU DE NOVO, duas vezes mais.** Terceiro movimento às 19:54 de 2026-10-07 (o sync do
+> #536 trocou a linha pela polyglot do D11: `validate` **3 → 15**, os 12 novos de escopo global) e
+> **quarto** às 08:41 de 2026-10-08 (o sync da 9.3.3 com a nossa #538: **3 → 13 → 3**).
 >
-> **A sequência importa, e foi medida antes de propor:** a `9.3.1` saiu às 16:20 e o D11 entrou no
-> #536, mesclado às **19:39** — então rodar o harness com a 9.3.1 **reescreveria a linha velha**. A
-> ordem é `npm i -g trackfw@9.3.2` **e depois** `update harness`.
+> ### 🔴 A REGRA, e ela NÃO leva número de versão
 >
-> **O padrão, agora com três ocorrências, é o que vale guardar:** toda vez que o upstream muda a
-> *forma* da linha de hook, os 7 CLIs globais ficam atrás e o `validate` acusa. Não é defeito nem
-> esquecimento — é consequência de o escopo global viver fora do git. O que muda é só quantos avisos.
+> ```
+> 1  sync                     o validate sobe: os CLIs globais ficam com a linha anterior
+> 2  npm i -g trackfw@<a versao que CONTEM a linha nova>
+> 3  trackfw update harness   os avisos voltam ao piso (hoje 3, isencoes por corte)
+> 4  prova por efeito         bloqueia por Bash E por PowerShell; inofensivo passa
+> ```
+>
+> **O passo 2 é derivado, nunca chumbado.** A tag que contém o commit da linha nova é o que decide:
+> `git tag --contains <commit>` cruzado com `npm view trackfw version`. Rodar o harness com versão
+> **anterior** reescreve a linha **velha** — que é exatamente o acidente que esta nota existe para
+> impedir.
+>
+> 🔴 **Esta nota já errou por isso.** Entre 2026-10-07 e 2026-10-08 ela dizia, como instrução, *"a
+> ordem é `npm i -g trackfw@9.3.2`"* — e **13 horas depois** a versão certa era a 9.3.3. Número
+> chumbado numa regra apodrece por construção: é o mesmo diagnóstico que este arquivo faz da lista
+> de scripts enumerada à mão (*"a lista NÃO se escreve à mão — ela se deriva"*), agora aplicado a
+> uma sequência de comandos.
+>
+> **O padrão, com quatro ocorrências em dois dias:** toda vez que o upstream muda a *forma* da linha
+> de hook, os CLIs globais ficam atrás e o `validate` acusa. Não é defeito nem esquecimento — é
+> consequência de o escopo global viver **fora do git**. O que muda é só quantos avisos.
 
 **Resíduo declarado em 2026-10-06, desde então pago:** os avisos do `validate` foram de **3 para 17**
 com o merge, e os 14 novos eram de escopo **global** — o `settings.json` do Copilot CLI, os hooks do
