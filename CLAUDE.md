@@ -1555,6 +1555,48 @@ Hoje o resíduo declarado é **2 checkboxes** em `REQ-roadmap-ai-generation-2026
 um template de roadmap embutido na REQ. São placeholder, não critério — e o gate não adivinha isso,
 ele aponta.
 
+### 🔴 Os 22 avisos de `req_done_open_criteria` são TODOS herdados — zero nossos
+
+Medido em 2026-10-08, e a derivação **reconcilia com o próprio `validate`**:
+
+```
+84 REQs varridas · 77 Done · 22 com caixa aberta na secao de AC   <- o numero do validate
+   HERDADAS do upstream   22
+   NOSSAS                  0
+as 28 herdadas com `upstream_origin:` no frontmatter:  28 de 28
+```
+
+**Este registro existe porque a pergunta foi feita e quase virou trabalho errado.** Numa varredura de
+*"o que está pendente"*, o aviso foi lido como dívida nossa, e a resposta seria fechar 22 critérios de
+REQ **de outro repositório**. 🔴 **As três saídas da regra estão fechadas para REQ herdada:** marcar
+`[x]` exige nomear o sítio de entrega que não é nossa; `Caducou:` afirma caducidade de critério
+alheio; remover ou mover está vetado pela `REQ-2026-09-09` (*"elas ficam onde estão, e a procedência
+passa a ser declarada no próprio arquivo"*).
+
+**E o aviso não é dívida escondida — é decisão do produto.** O código diz, literalmente:
+
+```go
+// 🔴 This is a FORWARD cutoff: the rule is new, retroactive charging is prohibited.
+const reqDoneOpenCriteriaCutoff = "2026-10-04"
+```
+
+No repositório dele a mesma medição de 2026-10-04 acusou **126** REQs, todas anteriores ao corte, com
+**0 individuais**. Ninguém vai voltar e fechar 126 critérios.
+
+**Por que o nosso gate diz ZERO e o `validate` diz 22, sem que haja contradição:** o
+`check-req-done-com-criterio-aberto.sh` exclui herdada **por construção** (deriva por
+`git cat-file -e upstream/main:docs/req/<basename>`), e o `validate` não tem esse conceito — o produto
+não conhece `upstream_origin`, que é invenção nossa (`git grep upstream_origin upstream/main` não acha
+nada). **Os dois estão certos; respondem perguntas diferentes.**
+
+Levado ao upstream na [#542](https://github.com/kgsaran/trackfw/issues/542), com duas saídas e o
+tamanho do pedido declarado: isentar por procedência declarada é **conceito novo** no produto, e a
+alternativa barata é só decompor o número agregado.
+
+🔴 **A regra para a próxima varredura:** o número do `req_done_open_criteria` **não** é indicador de
+dívida nossa. Quem quiser o nosso número roda o gate; ele imprime o denominador e exclui as herdadas.
+
+
 **Ele também exige a PROCEDÊNCIA no frontmatter de cada uma das 28** —
 `upstream_origin: "kgsaran/trackfw:docs/req/<basename>"`. É a decisão do ML-2A da mesma REQ, tomada
 depois que a medição fechou as saídas: remover está vetado em 28 de 28 (26 pelo snapshot congelado do
