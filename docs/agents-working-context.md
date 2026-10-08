@@ -4,6 +4,119 @@
 
 ---
 
+## Sessão 2026-10-08 (noite) — claude (o #545 fechou a nossa #542; e o meu instrumento de "ele evoluiu?" media cemitério)
+
+**FIM.** `main` em `6b67a16a` depois do **#227**, **0 atrás** do upstream, `validate` 0 violações ·
+3 avisos. Este ciclo tem **dois** PRs: o **#227** (sync do #545) e o que carrega esta entrada.
+
+### O #545 implementou a nossa #542 — e a previsão foi escrita antes de rodar
+
+```
+antes   22 Done REQ(s) with open criteria exempt ... 0 enforced
+depois  22 Done REQ(s) ... exempt ... (22 inherited from upstream/main), 0 enforced
+```
+
+O discriminante que ele adotou é o **derivado** — o arquivo existe no ramo padrão do remote
+`upstream` —, a mesma forma do nosso `check-inherited-req.sh`, **sem campo novo no frontmatter**. A
+saída 1 (isentar herdada) ficou fora de escopo por decisão dele. O `validate` depois do merge
+imprime o nosso número **com o nosso denominador**: `22 ... (22 inherited ...), 0 enforced, 77 Done
+REQ(s) scanned`.
+
+🔴 **E uma regra minha caducou em 8 horas.** Eu havia escrito, nessa mesma manhã, *"quem quiser o
+nosso número roda o gate"*. Agora a decomposição se lê direto no `validate`. Datei em vez de apagar,
+e ela ficou com a distinção que sobrevive: **o produto informa, o gate decide** — o gate é o único
+que **exclui** herdada do veredito. Foi a **terceira** vez em dois dias que texto meu caducou pelo
+meu próprio trabalho posterior (as outras: a versão chumbada na regra da tripla, e a nota de "NÃO
+MEDIDA" no baseline do lint de SO). A forma que funciona nas três é a mesma: **datar e explicar, não
+apagar**.
+
+### 🔴 O instrumento "branches do upstream por data" media CEMITÉRIO — e são 4 instrumentos, não 1
+
+Na pergunta *"ve se kleber evoluiu"* (a décima quarta em três dias), comparei a leitura local com a
+API no mesmo instante:
+
+```
+refs locais de refs/remotes/upstream     135
+branches reais em kgsaran/trackfw          4
+podados                                  131          4 + 131 = 135
+```
+
+**As quatro mais novas da leitura local deram 404 na API, uma a uma.** O `git fetch` **não poda por
+padrão**, e o mantenedor apaga a branch ao mesclar: então a leitura ordenava o cemitério no topo.
+
+🔴 **Não houve relato errado, e isso não é o instrumento funcionando** — é redundância: o head e a
+lista de PRs concordavam em "nada novo", então a leitura de branches não foi o discriminante. Numa
+pergunta em que ela fosse, uma branch mesclada e apagada entraria como trabalho em curso. É o mesmo
+sintoma das 14 branches `upstream-pr/*`, e **causa outra** — nenhuma das duas correções fecha a
+outra, medição escrita na REQ.
+
+**O conserto, e o sítio que eu nomeei errado ao propô-lo:** eu disse *"`--prune` dentro do
+`upstream-sync.sh`"*. O script **não faz `fetch`**, de propósito — script que muda o estado que ele
+mede deixa de ser medição. Então o passo novo liga `remote.<remote>.prune` (**configuração, zero
+rede**), o que faz o **próximo** fetch podar, inclusive o avulso digitado fora do sync, que é onde o
+defeito morde; e o `--prune` foi para a **sequência documentada**, que conserta a passada corrente.
+
+```
+fetch normal, config vazia      ref sintetica SOBREVIVE   <- o defeito
+o passo                         "LIGADA agora (era 'vazio')"
+o MESMO fetch normal            PODADA
+5 return 0 · 5 com `say` antes  (awk, retorno-a-retorno — nao `grep say`)
+```
+
+A ref sintética foi plantada por `git fetch upstream main:refs/remotes/upstream/<nome>`: o
+`git update-ref` é **bloqueado pelo hook**, e contornar continua vetado.
+
+🔴 **Alteração fora do git, declarada:** a falsificação ligou `remote.upstream.prune=true` **neste
+clone**. É config local, não versionada — clone novo nasce sem ela, e é por isso que o passo roda a
+cada sync em vez de ser instrução de instalação.
+
+### 🔴 E o PRODUTO lê esses refs — achado no push deste próprio trabalho
+
+A primeira análise concluiu *"nenhum gate nosso é afetado"*, derivando de `git grep` em
+`scripts/`. Estreito: `detectPendingSquashMerges` (`internal/commands/ship.go`) roda
+`git branch -r --no-merged origin/main` — **todo** remote-tracking — e só tira o prefixo `origin/`.
+
+```
+trackfw push   4 avisos "appears to have unmerged changes vs origin/main"
+               os 4 nomeiam branch do UPSTREAM, com 0 commits nossos
+antes da poda  135 refs entravam nesse laco, nao 5
+```
+
+Falso positivo do produto, visível a cada push. **Aberta a [#547](https://github.com/kgsaran/trackfw/issues/547)** — com o controle negativo (`upstream/main` **não** avisa: o predicado funciona, a população está errada) e a razão de sobreviver: **zero fixture com remote não-`origin`**. 🔴 **A contagem
+de avisos antes da poda não é re-mensurável** — as refs já foram podadas e as branches não existem
+mais no remoto; está medido o mecanismo e o estado de agora.
+
+### 🔴 E o Kleber ANDOU — 5 commits na #544, descobertos pelo fetch com `--prune`
+
+```
+16:52  chore(req): fecha a REQ-2026-10-08 (#545) e REABRE a REQ-2026-10-06 pela #544
+18:02  docs(seguranca): ML-3A — formas de caminho Windows na 2a camada
+18:39  fix(guard): /c/... E o redirecionamento C:\... varridos na 2a camada
+19:10  docs(seguranca): red-team da Wave 3 — libera com ressalva
+19:33  fix(guard): ADS nomeado varre o arquivo base e pwsh entra na excecao do PowerShell (ML-3E)
+```
+
+Branch `fix/credential-guard-caminho-git-bash-windows`. 🔴 **A leitura das 19:17 dizia "nenhuma
+branch nasceu" e estava CERTA**: o último commit é de 19:33, e a branch só apareceu no fetch
+seguinte. O que a poda deu não foi corrigir aquele relato — foi trazer a branch nova **no mesmo
+comando** que limpou o cemitério.
+
+**Ele implementou as duas metades da issue**, inclusive a *"observação mais fraca"* do
+redirecionamento que eu declarei como não investigada — ela está no título do commit das 18:39.
+
+### O estado dos dois lados
+
+| | |
+|---|---|
+| nosso | `6b67a16a`, 0 atrás, kanban `0/0/0/0` depois deste PR |
+| upstream | `357250a9` (16:51), 0 PRs, 1 issue — a nossa **#544** |
+| aberto | **#544** aceita e **em implementação** — 5 commits em `fix/credential-guard-caminho-git-bash-windows`, de 16:52 a 19:33, ML-3A a ML-3E da `REQ-2026-10-06` reaberta · **#547** aberta hoje (multi-remote no `detectPendingSquashMerges`) · **#525** sem resposta desde 07/10 13:56 |
+
+**Seis contribuições aceitas em três dias:** #507, #530, o comentário da #535, #538, #542 (fechada
+pelo #545) e #544.
+
+---
+
 ## Sessão 2026-10-08 — claude (a 9.3.3 com a nossa #538; e o handoff ficou 8 PRs atrás)
 
 **FIM.** `main` em `ac7d1bcf`, **0 atrás** do upstream, 0 PRs, kanban `0/0/0/0`, `validate`
