@@ -1611,8 +1611,25 @@ Levado ao upstream na [#542](https://github.com/kgsaran/trackfw/issues/542), com
 tamanho do pedido declarado: isentar por procedência declarada é **conceito novo** no produto, e a
 alternativa barata é só decompor o número agregado.
 
-🔴 **A regra para a próxima varredura:** o número do `req_done_open_criteria` **não** é indicador de
-dívida nossa. Quem quiser o nosso número roda o gate; ele imprime o denominador e exclui as herdadas.
+> ✅ **O PRODUTO passou a dizer isto, em 2026-10-08 — pelo PR #545, que implementa esta medição.** O
+> aviso deixou de ser um número só:
+>
+> ```
+> antes   22 Done REQ(s) with open criteria exempt ... 0 enforced
+> depois  22 Done REQ(s) ... exempt ... (22 inherited from upstream/main), 0 enforced
+> ```
+>
+> E o discriminante que ele adotou é o **derivado** — o arquivo existe no ramo padrão do remote
+> `upstream` —, a mesma forma do nosso `check-inherited-req.sh`, **sem campo novo no frontmatter**.
+> A saída 1 (isentar herdada) ficou **fora de escopo** por decisão dele, declarada na issue.
+>
+> 🔴 **Então a regra abaixo mudou de peso**, e fica registrada porque explica por que a issue foi
+> aberta: hoje a decomposição se lê direto no `validate`. O gate continua sendo o único que
+> **exclui** herdada do veredito e imprime o denominador — o produto *informa*, o gate *decide*.
+
+🔴 **A regra de 2026-10-08, antes do #545:** o número do `req_done_open_criteria` **não** é
+indicador de dívida nossa. Quem quiser o nosso número roda o gate; ele imprime o denominador e
+exclui as herdadas.
 
 
 **Ele também exige a PROCEDÊNCIA no frontmatter de cada uma das 28** —
