@@ -470,6 +470,38 @@ já ligada (idempotente), ligada só por `fetch.prune` global (**não** reescrev
 `return 0` têm `say` imediatamente antes, conferido retorno-a-retorno por `awk`** — não por
 `grep say`, que provaria apenas que a palavra existe. É a lição do passo irmão, no mesmo arquivo.
 
+#### 🔴 E o PRODUTO também lê esses refs — achado no push deste próprio trabalho
+
+A primeira análise concluiu *"nenhum gate nosso é afetado"*, derivando de `git grep` em `scripts/`.
+O escopo estava **estreito**: quem mais lê os refs de rastreamento é o **próprio `trackfw`**.
+
+```
+internal/commands/ship.go  detectPendingSquashMerges
+  git branch -r --no-merged origin/main      <- TODOS os remote-tracking, nao so os do origin
+  shortName = TrimPrefix(candidate, "origin/")   <- 'upstream/foo' atravessa COM o prefixo
+  evaluateBranchWithForge(..., "origin/"+shortName, ...)  -> 'origin/upstream/foo', inexistente
+```
+
+**Medido com a poda já feita** — e o `upstream/` no texto do aviso é o próprio delator:
+
+```
+trackfw push    4 avisos "appears to have unmerged changes vs origin/main"
+                os 4 nomeiam branch do UPSTREAM
+origin/fix/criterio-de-adr-por-prefixo existe?   NAO
+commits NOSSOS naquela branch                      0
+```
+
+Falso positivo puro: o comando avisa sobre trabalho que não é nosso, em branch que o `origin` não
+tem. **Antes da poda eram 135 refs entrando nesse laço, não 5.**
+
+🔴 **Limite declarado: a contagem de avisos ANTES da poda não é re-mensurável.** As 131 refs foram
+podadas antes de o segundo consumidor ser descoberto, e as branches já não existem no remoto. Está
+medido o **mecanismo** e o estado de **agora**.
+
+**Isto reforça a correção em vez de contradizê-la** — o defeito deixa de ser só "leitura avulsa do
+agente" e passa a ter consumidor no produto, visível ao usuário a cada push. O sítio é do upstream,
+então vira **issue**, não correção local, pelo escopo negativo de sempre.
+
 ## Não rode `make parity-rest` na raiz deste fork
 
 > ✅ **Resolvido em 2026-09-17 pelo [#381](https://github.com/kgsaran/trackfw/pull/381) do upstream,

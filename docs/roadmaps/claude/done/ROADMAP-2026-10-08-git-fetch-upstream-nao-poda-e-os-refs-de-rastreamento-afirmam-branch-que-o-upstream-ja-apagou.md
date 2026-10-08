@@ -40,6 +40,11 @@ check-inherited-req.sh           usa upstream/main — idem
 check-contorno-dos-shims…        usa tags, nao branches
 ```
 
+> 🔴 **CORRIGIDO no ML-1B, no mesmo dia: esta conclusão estava ESTREITA.** Ela derivou de um
+> `git grep` em `scripts/`, e quem também lê os refs de rastreamento é o **próprio produto**
+> (`detectPendingSquashMerges`, em `internal/commands/ship.go`). Fica como registro do que a
+> varredura alcançou — e do que ela não alcançou.
+
 🔴 **Conclusão que inverte a leitura ingênua: nenhum gate nosso é afetado.** O único consumidor de
 "branches do upstream" é a **leitura avulsa do agente** ao responder *"o Kleber evoluiu?"* — por isso
 o defeito sobreviveu: ele não tem sítio em arquivo nenhum. É instrumento de sessão, não de CI.
@@ -111,4 +116,58 @@ depois do passo, MESMO fetch -> PODADA
 bash -n scripts/upstream-sync.sh
 test 5 = "$(awk '/^poda_refs_de_rastreamento\(\) \{/,/^\}/' scripts/upstream-sync.sh | grep -c 'return 0')"
 grep -q 'git fetch upstream --prune' CLAUDE.md
+```
+
+### ML-1B — A enumeração do ML-0A ficou ESTREITA: o PRODUTO também lê `refs/remotes`
+**Status:** ✅ Concluído
+**Files affected:** `CLAUDE.md` (parágrafo novo); nenhum arquivo de produto — o sítio é do upstream
+**Actions:**
+
+🔴 **Correção datada do ML-0A, não apagamento.** A seção 1 dele concluiu *"nenhum gate nosso é
+afetado"* derivando de `git grep` em **`scripts/`**. O escopo estava estreito: quem mais lê os refs
+de rastreamento é o **próprio `trackfw`**, e o achado apareceu **no push deste trabalho**, não na
+análise.
+
+```
+internal/commands/ship.go  detectPendingSquashMerges
+  git branch -r --no-merged origin/main      <- TODOS os remote-tracking, nao so os do origin
+  shortName = TrimPrefix(candidate, "origin/")   <- 'upstream/foo' atravessa com o prefixo
+  evaluateBranchWithForge(..., "origin/"+shortName, ...)  -> 'origin/upstream/foo', que nao existe
+```
+
+**Medido agora, com a poda já feita:**
+
+```
+trackfw push   4 avisos "appears to have unmerged changes vs origin/main"
+               os 4 nomeiam branch do UPSTREAM, nao do origin
+origin/fix/criterio-de-adr-por-prefixo existe?        NAO
+commits NOSSOS em upstream/fix/criterio-de-adr…       0
+```
+
+Ou seja: **falso positivo puro** — o comando avisa sobre trabalho que não é nosso, em branch que o
+`origin` não tem. Antes da poda eram **135 refs** entrando nesse laço em vez de 5.
+
+**O que isto muda na leitura do defeito:** ele deixa de ser só "a leitura avulsa do agente" e passa
+a ter um consumidor **no produto**, visível ao usuário a cada `trackfw push`. Reforça a correção em
+vez de contradizê-la.
+
+**Acceptance criteria:**
+- [x] O segundo consumidor está nomeado por símbolo e medido por efeito
+- [x] A conclusão estreita do ML-0A está **datada e explicada**, não apagada
+**Residual declarado, e NÃO escrito como critério:** o defeito é do **produto do upstream**, e o
+escopo negativo da REQ manda que achado ali vire **issue**, não correção local. 🔴 **Não virou
+checkbox de propósito** — inventar critério para o trabalho seguinte faria este roadmap fechar com
+critério aberto, que é o defeito que o `check-req-done-com-criterio-aberto.sh` existe para recusar.
+A issue se abre com a medição desta seção.
+
+**Limite declarado:** 🔴 **a contagem de avisos ANTES da poda não é re-mensurável.** As 131 refs
+foram podadas antes de o segundo consumidor ser descoberto, e as branches não existem mais no
+remoto para refetch. O que está medido é o **mecanismo** (o laço itera todo remote-tracking) e o
+estado de **agora** (4 avisos, 4 falsos).
+
+**Gates da wave:**
+```bash
+# each line runs as a separate sh -c — see docs/cli-parity.md rule 5
+grep -q 'detectPendingSquashMerges' internal/commands/ship.go
+grep -q 'trackfw push' CLAUDE.md
 ```

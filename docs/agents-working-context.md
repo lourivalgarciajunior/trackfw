@@ -70,13 +70,47 @@ A ref sintética foi plantada por `git fetch upstream main:refs/remotes/upstream
 clone**. É config local, não versionada — clone novo nasce sem ela, e é por isso que o passo roda a
 cada sync em vez de ser instrução de instalação.
 
+### 🔴 E o PRODUTO lê esses refs — achado no push deste próprio trabalho
+
+A primeira análise concluiu *"nenhum gate nosso é afetado"*, derivando de `git grep` em
+`scripts/`. Estreito: `detectPendingSquashMerges` (`internal/commands/ship.go`) roda
+`git branch -r --no-merged origin/main` — **todo** remote-tracking — e só tira o prefixo `origin/`.
+
+```
+trackfw push   4 avisos "appears to have unmerged changes vs origin/main"
+               os 4 nomeiam branch do UPSTREAM, com 0 commits nossos
+antes da poda  135 refs entravam nesse laco, nao 5
+```
+
+Falso positivo do produto, visível a cada push. Vira **issue**, não correção local. 🔴 **A contagem
+de avisos antes da poda não é re-mensurável** — as refs já foram podadas e as branches não existem
+mais no remoto; está medido o mecanismo e o estado de agora.
+
+### 🔴 E o Kleber ANDOU — 5 commits na #544, descobertos pelo fetch com `--prune`
+
+```
+16:52  chore(req): fecha a REQ-2026-10-08 (#545) e REABRE a REQ-2026-10-06 pela #544
+18:02  docs(seguranca): ML-3A — formas de caminho Windows na 2a camada
+18:39  fix(guard): /c/... E o redirecionamento C:\... varridos na 2a camada
+19:10  docs(seguranca): red-team da Wave 3 — libera com ressalva
+19:33  fix(guard): ADS nomeado varre o arquivo base e pwsh entra na excecao do PowerShell (ML-3E)
+```
+
+Branch `fix/credential-guard-caminho-git-bash-windows`. 🔴 **A leitura das 19:17 dizia "nenhuma
+branch nasceu" e estava CERTA**: o último commit é de 19:33, e a branch só apareceu no fetch
+seguinte. O que a poda deu não foi corrigir aquele relato — foi trazer a branch nova **no mesmo
+comando** que limpou o cemitério.
+
+**Ele implementou as duas metades da issue**, inclusive a *"observação mais fraca"* do
+redirecionamento que eu declarei como não investigada — ela está no título do commit das 18:39.
+
 ### O estado dos dois lados
 
 | | |
 |---|---|
 | nosso | `6b67a16a`, 0 atrás, kanban `0/0/0/0` depois deste PR |
 | upstream | `357250a9` (16:51), 0 PRs, 1 issue — a nossa **#544** |
-| aberto | **#544** aceita; implementação dele, num ML novo da `REQ-2026-10-06` reaberta, **destravada** desde o merge do #545 às 16:51 · **#525** sem resposta desde 07/10 13:56 |
+| aberto | **#544** aceita e **em implementação** — 5 commits em `fix/credential-guard-caminho-git-bash-windows`, de 16:52 a 19:33, ML-3A a ML-3E da `REQ-2026-10-06` reaberta · **#525** sem resposta desde 07/10 13:56 |
 
 **Seis contribuições aceitas em três dias:** #507, #530, o comentário da #535, #538, #542 (fechada
 pelo #545) e #544.

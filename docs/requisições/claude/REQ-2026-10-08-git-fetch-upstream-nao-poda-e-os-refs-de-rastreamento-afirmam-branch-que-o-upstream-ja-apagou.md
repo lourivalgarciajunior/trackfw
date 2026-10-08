@@ -39,6 +39,12 @@ já terminou, e uma branch mesclada e apagada se apresenta como trabalho em curs
       ✅ seção `## Por que isto NÃO é ML da REQ-2026-10-05`, abaixo, com o teste da Regra Dura
       aplicado nas duas direções.
 
+- [x] AC6 — O segundo consumidor dos refs — o **produto** — está nomeado e medido
+      ✅ `detectPendingSquashMerges` (`internal/commands/ship.go`) itera **todo** remote-tracking e
+      só tira o prefixo `origin/`: `trackfw push` emite **4** avisos nomeando branch do **upstream**,
+      em que temos **0** commits e que o `origin` não tem. Achado **no push deste trabalho**, não na
+      análise — e a conclusão estreita do ML-0A ficou **datada e explicada**, não apagada.
+
 ## Linked ADR
 <!-- Reference the ADR that governs this requirement -->
 ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
