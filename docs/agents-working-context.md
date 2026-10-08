@@ -4,6 +4,85 @@
 
 ---
 
+## Sessão 2026-10-08 (noite) — claude (o #545 fechou a nossa #542; e o meu instrumento de "ele evoluiu?" media cemitério)
+
+**FIM.** `main` em `6b67a16a` depois do **#227**, **0 atrás** do upstream, `validate` 0 violações ·
+3 avisos. Este ciclo tem **dois** PRs: o **#227** (sync do #545) e o que carrega esta entrada.
+
+### O #545 implementou a nossa #542 — e a previsão foi escrita antes de rodar
+
+```
+antes   22 Done REQ(s) with open criteria exempt ... 0 enforced
+depois  22 Done REQ(s) ... exempt ... (22 inherited from upstream/main), 0 enforced
+```
+
+O discriminante que ele adotou é o **derivado** — o arquivo existe no ramo padrão do remote
+`upstream` —, a mesma forma do nosso `check-inherited-req.sh`, **sem campo novo no frontmatter**. A
+saída 1 (isentar herdada) ficou fora de escopo por decisão dele. O `validate` depois do merge
+imprime o nosso número **com o nosso denominador**: `22 ... (22 inherited ...), 0 enforced, 77 Done
+REQ(s) scanned`.
+
+🔴 **E uma regra minha caducou em 8 horas.** Eu havia escrito, nessa mesma manhã, *"quem quiser o
+nosso número roda o gate"*. Agora a decomposição se lê direto no `validate`. Datei em vez de apagar,
+e ela ficou com a distinção que sobrevive: **o produto informa, o gate decide** — o gate é o único
+que **exclui** herdada do veredito. Foi a **terceira** vez em dois dias que texto meu caducou pelo
+meu próprio trabalho posterior (as outras: a versão chumbada na regra da tripla, e a nota de "NÃO
+MEDIDA" no baseline do lint de SO). A forma que funciona nas três é a mesma: **datar e explicar, não
+apagar**.
+
+### 🔴 O instrumento "branches do upstream por data" media CEMITÉRIO — e são 4 instrumentos, não 1
+
+Na pergunta *"ve se kleber evoluiu"* (a décima quarta em três dias), comparei a leitura local com a
+API no mesmo instante:
+
+```
+refs locais de refs/remotes/upstream     135
+branches reais em kgsaran/trackfw          4
+podados                                  131          4 + 131 = 135
+```
+
+**As quatro mais novas da leitura local deram 404 na API, uma a uma.** O `git fetch` **não poda por
+padrão**, e o mantenedor apaga a branch ao mesclar: então a leitura ordenava o cemitério no topo.
+
+🔴 **Não houve relato errado, e isso não é o instrumento funcionando** — é redundância: o head e a
+lista de PRs concordavam em "nada novo", então a leitura de branches não foi o discriminante. Numa
+pergunta em que ela fosse, uma branch mesclada e apagada entraria como trabalho em curso. É o mesmo
+sintoma das 14 branches `upstream-pr/*`, e **causa outra** — nenhuma das duas correções fecha a
+outra, medição escrita na REQ.
+
+**O conserto, e o sítio que eu nomeei errado ao propô-lo:** eu disse *"`--prune` dentro do
+`upstream-sync.sh`"*. O script **não faz `fetch`**, de propósito — script que muda o estado que ele
+mede deixa de ser medição. Então o passo novo liga `remote.<remote>.prune` (**configuração, zero
+rede**), o que faz o **próximo** fetch podar, inclusive o avulso digitado fora do sync, que é onde o
+defeito morde; e o `--prune` foi para a **sequência documentada**, que conserta a passada corrente.
+
+```
+fetch normal, config vazia      ref sintetica SOBREVIVE   <- o defeito
+o passo                         "LIGADA agora (era 'vazio')"
+o MESMO fetch normal            PODADA
+5 return 0 · 5 com `say` antes  (awk, retorno-a-retorno — nao `grep say`)
+```
+
+A ref sintética foi plantada por `git fetch upstream main:refs/remotes/upstream/<nome>`: o
+`git update-ref` é **bloqueado pelo hook**, e contornar continua vetado.
+
+🔴 **Alteração fora do git, declarada:** a falsificação ligou `remote.upstream.prune=true` **neste
+clone**. É config local, não versionada — clone novo nasce sem ela, e é por isso que o passo roda a
+cada sync em vez de ser instrução de instalação.
+
+### O estado dos dois lados
+
+| | |
+|---|---|
+| nosso | `6b67a16a`, 0 atrás, kanban `0/0/0/0` depois deste PR |
+| upstream | `357250a9` (16:51), 0 PRs, 1 issue — a nossa **#544** |
+| aberto | **#544** aceita; implementação dele, num ML novo da `REQ-2026-10-06` reaberta, **destravada** desde o merge do #545 às 16:51 · **#525** sem resposta desde 07/10 13:56 |
+
+**Seis contribuições aceitas em três dias:** #507, #530, o comentário da #535, #538, #542 (fechada
+pelo #545) e #544.
+
+---
+
 ## Sessão 2026-10-08 — claude (a 9.3.3 com a nossa #538; e o handoff ficou 8 PRs atrás)
 
 **FIM.** `main` em `ac7d1bcf`, **0 atrás** do upstream, 0 PRs, kanban `0/0/0/0`, `validate`

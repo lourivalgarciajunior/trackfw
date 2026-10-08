@@ -87,9 +87,55 @@ cd "$ROOT"
 die() { echo "upstream-sync: $*" >&2; exit 1; }
 say() { printf '%s\n' "$*"; }
 
+# ── Poda dos refs de rastreamento do remote ──────────────────────────────────────
+# 🔴 `git fetch` NÃO poda por padrão. Branch que o upstream apaga ao mesclar sobrevive como
+# ref local de rastreamento, e a leitura de "branches do upstream por data" — um dos quatro
+# instrumentos usados para responder "o upstream andou?" — passa a medir CEMITÉRIO.
+#
+# Medido em 2026-10-08, comparando a leitura local com a API do GitHub:
+#
+#   refs locais de upstream   135        branches reais no GitHub   4
+#   as 4 mais novas do top-8 local: 404 na API, todas
+#
+# O passo é de CONFIGURAÇÃO, não de rede, e isso é desenho: o `git fetch` acontece ANTES
+# deste script, de propósito (script que muda o estado que ele mede deixa de ser medição).
+# Ligar `remote.<remote>.prune` faz o PRÓXIMO fetch podar — inclusive o avulso que alguém
+# digita fora daqui, que é justamente onde o defeito morde.
+#
+# Ele AGE em vez de só avisar, pela mesma divisão de trabalho já escrita para a cópia do
+# PATH: o passo mantém a propriedade, o gate a torna verificável. Aviso que ninguém executa
+# foi o que custou a leitura errada de 2026-10-08.
+poda_refs_de_rastreamento() {
+	local remote por_remote por_global efetivo
+	remote="${REF%%/*}"
+	if [ "$remote" = "$REF" ]; then
+		say "  poda de refs     N/A: --ref '$REF' nao nomeia remote — nada a configurar"
+		return 0
+	fi
+	if ! git config --get "remote.$remote.url" >/dev/null 2>&1; then
+		say "  poda de refs     N/A: '$remote' nao e remote configurado — nada a configurar"
+		return 0
+	fi
+	por_remote="$(git config --get "remote.$remote.prune" 2>/dev/null || true)"
+	por_global="$(git config --get fetch.prune 2>/dev/null || true)"
+	efetivo="${por_remote:-$por_global}"
+	if [ "$efetivo" = "true" ]; then
+		say "  poda de refs     ja ligada (remote.$remote.prune='${por_remote:-vazio}' fetch.prune='${por_global:-vazio}')"
+		return 0
+	fi
+	if ! git config "remote.$remote.prune" true 2>/dev/null; then
+		say "  poda de refs     FALHEI ao ligar remote.$remote.prune — rode 'git fetch $remote --prune' a mao"
+		return 0
+	fi
+	say "  poda de refs     LIGADA agora: remote.$remote.prune=true (era '${efetivo:-vazio}')"
+	say "                   o proximo 'git fetch $remote' poda; para esta passada, 'git fetch $remote --prune'"
+	return 0
+}
+
 # ── Pré-condições ────────────────────────────────────────────────────────────────
 [ -z "$(git status --porcelain)" ] || die "árvore suja. Commite ou guarde antes de sincronizar."
-git rev-parse --verify --quiet "$REF" >/dev/null || die "ref não existe: $REF (fez 'git fetch upstream'?)"
+git rev-parse --verify --quiet "$REF" >/dev/null || die "ref não existe: $REF (fez 'git fetch upstream --prune'?)"
+poda_refs_de_rastreamento
 
 BASE="$(git rev-parse HEAD)"
 BASE_SHORT="$(git rev-parse --short HEAD)"

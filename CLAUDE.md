@@ -381,7 +381,7 @@ trackfw e o usa para governar a si mesmo; ele não é a linha principal do produ
 **Atualizar — use o script, não o `git merge` cru:**
 
 ```bash
-git fetch upstream
+git fetch upstream --prune
 ./bin/trackfw branch new chore/<slug>
 scripts/upstream-sync.sh
 ```
@@ -411,6 +411,64 @@ e reteve 37; `6b3ba49` trouxe 42 e reteve 10.
 merges históricos mais dois controles negativos. A propriedade verificada é a **invariante** —
 retido ⊆ `docs/` ∪ `vault/`, e todo o resto trazido —, não a contagem: a contagem à mão errou nos
 dois casos.
+
+### 🔴 `git fetch` não poda — e a leitura de "branches do upstream" media CEMITÉRIO
+
+Medido em 2026-10-08, comparando a leitura local com a API do GitHub no mesmo instante:
+
+```
+refs locais de refs/remotes/upstream     135
+branches reais em kgsaran/trackfw          4
+podados por `git remote prune upstream`  131
+```
+
+🔴 **E não eram refs antigas e inócuas: eram as MAIS NOVAS.** As quatro primeiras linhas do
+`for-each-ref` ordenado por data — `feat/req-done-open-criteria-decompoe-herdadas`,
+`fix/credential-guard-nao-cobre-windsurf-e-amazon-q`, `chore/release-9.3.3` e
+`fix/…-saida-nao-zero-no-powershell` — davam **404** na API, todas. O mantenedor apaga a branch ao
+mesclar; a leitura local via o cemitério e o ordenava no topo.
+
+**O custo é de leitura, e é o mesmo já registrado neste arquivo** na seção das 14 branches
+`upstream-pr/*`: *"o acervo de branches **afirmava quatorze propostas pendentes** ao upstream.
+Nenhuma estava pendente."* Lá eram branches nossas que ninguém apagou; aqui são refs de
+rastreamento que o `git fetch` não poda. Mesmo sintoma — acervo de branches afirmando trabalho vivo
+que não existe — e, pelo teste da Regra Dura, **causa outra**: apagar as 14 não poda ref de
+rastreamento, e podar ref de rastreamento não apaga branch que existe no remoto. Nenhuma das duas
+correções fecha a outra.
+
+**Não houve relato errado hoje, e isso não é o instrumento funcionando** — é redundância: o head e a
+lista de PRs concordavam em "nada novo", então a leitura de branches não foi o discriminante. Numa
+pergunta em que ela fosse, uma branch mesclada e apagada entraria como trabalho em curso.
+
+| peça | o que faz | onde |
+|---|---|---|
+| passo `poda_refs_de_rastreamento` no `upstream-sync.sh` | **age**: liga `remote.<remote>.prune` | roda no sync |
+| a sequência documentada acima | leva `--prune` para a passada corrente | quem sincroniza |
+
+🔴 **O passo é de CONFIGURAÇÃO, não de rede, e isso é desenho.** O `git fetch` acontece **antes**
+do script, de propósito — script que muda o estado que ele mede deixa de ser medição, que é a mesma
+razão pela qual o `check-inherited-req.sh` não faz `fetch` sozinho. Ligar a chave faz o **próximo**
+fetch podar, inclusive o avulso digitado fora do sync, que é exatamente onde o defeito morde.
+
+**Ele age em vez de só avisar**, pela divisão já escrita para a cópia do PATH: o passo mantém a
+propriedade, o gate a torna verificável. Aviso que ninguém executa foi o que custou a leitura de
+hoje.
+
+**Falsificado nas duas direções, com o remoto REAL e uma ref sintética** (plantada por
+`git fetch upstream main:refs/remotes/upstream/<nome>`, não por `git update-ref`, que o hook bloqueia
+— e contornar o hook continua vetado):
+
+```
+fetch normal, config vazia      a ref sintetica SOBREVIVE   <- o defeito
+o passo                         "LIGADA agora: remote.upstream.prune=true (era 'vazio')"
+o MESMO fetch normal            a ref sintetica e PODADA    ->  135 ... 5 -> 4
+```
+
+E os cinco caminhos do passo, exercitados um a um em repositório temporário: config ausente (liga),
+já ligada (idempotente), ligada só por `fetch.prune` global (**não** reescreve a do remote),
+`--ref` sem barra (N/A nomeado) e `--ref` com remote inexistente (N/A nomeado). 🔴 **Os cinco
+`return 0` têm `say` imediatamente antes, conferido retorno-a-retorno por `awk`** — não por
+`grep say`, que provaria apenas que a palavra existe. É a lição do passo irmão, no mesmo arquivo.
 
 ## Não rode `make parity-rest` na raiz deste fork
 
