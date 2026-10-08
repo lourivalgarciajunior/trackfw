@@ -4,6 +4,98 @@
 
 ---
 
+## Sessão 2026-10-08 — claude (a 9.3.3 com a nossa #538; e o handoff ficou 8 PRs atrás)
+
+**FIM.** `main` em `ac7d1bcf`, **0 atrás** do upstream, 0 PRs, kanban `0/0/0/0`, `validate`
+0 violações · 3 avisos. Versões alinhadas: árvore **9.3.3** · global **9.3.3** · npm **9.3.3**.
+
+Quatro PRs hoje — **#220** (sync da 9.3.3), **#221** (a regra com versão chumbada), **#222** (os 22
+avisos são herdados), **#223** (duas linhas descrevendo versão que mudou) — e uma issue nova no
+upstream, a **#542**.
+
+### 🔴 A nossa #538 virou produto em menos de 12 horas
+
+```
+07/10 20:11  aberta         20:28  ele reabre a REQ e abre o ML-6C   (20 min)
+07/10 21:01  D11 revista: toda saida != 0 vira 2 tambem em PS        (33 min)
+08/10 01:13  PR 540         08:09  mesclada, CLOSED/COMPLETED
+08/10 08:20  publicada na 9.3.3
+```
+
+Os casos **`RC=1`** e **`RC=3`** são teste no produto agora
+(`internal/generators/fail_closed_d11_behavior_test.go`), com o comentário dele registrando *"sem ele
+`RC=1` → exit 1, não 2"*. Era o pedido da issue: a propriedade estava **afirmada onde vale e sem
+medição onde falha**.
+
+### O número que a próxima sessão não derivaria: a tripla, e por que a ordem é derivada
+
+```
+1  sync                     o validate sobe (os CLIs globais ficam com a linha anterior)
+2  npm i -g trackfw@<a versao que CONTEM a linha nova>
+3  trackfw update harness   os avisos voltam ao piso
+4  prova por efeito         bloqueia por Bash E por PowerShell; inofensivo passa
+```
+
+🔴 **O passo 2 NÃO leva número.** A nota do `CLAUDE.md` dizia *"`npm i -g trackfw@9.3.2`"* e ficou
+errada em **13 horas** — o quarto movimento pedia 9.3.3. Hoje o passo é derivado:
+`git tag --contains <commit>` cruzado com `npm view trackfw version`.
+
+Medições do dia: `3 → 13 → 3` avisos (sync → harness), `updated=10 skipped=25 failed=0`.
+
+### 🔴 Os 22 avisos de `req_done_open_criteria` são TODOS herdados — zero nossos
+
+```
+84 REQs · 77 Done · 22 com caixa aberta na secao de AC   <- reconcilia com o validate
+   HERDADAS 22  ·  NOSSAS 0
+```
+
+A pergunta *"vamos resolver isso em definitivo"* teria produzido **22 critérios marcados em REQ do
+Kleber**. As três saídas da regra estão fechadas para herdada, e o próprio código do produto diz
+*"FORWARD cutoff: retroactive charging is prohibited"* — no repo dele a medição deu **126**. Levado à
+#542 com o tamanho do pedido declarado: isentar por procedência é **conceito novo**, não reuso de
+campo.
+
+### 🔴 E este ciclo ficou 8 PRs sem entrada — o gate não alcança, e não há limiar honesto
+
+A última entrada antes desta é de **07/10 16:58**. Entre ela e agora: **10 merges na `main`** — 8 PRs
+(#216 a #223) e 2 merges de upstream. O `check-handoff-cobre-o-ciclo.sh` **não falhou**: o
+discriminante dele é *roadmap saindo de `wip/` para `done/`*, e **nenhum dos oito moveu roadmap**.
+
+**Tentei derivar um limiar para cobrir este caso e a medição recusou:**
+
+```
+dos ultimos 20 PRs, quantos tocaram o handoff:   5 COM  ·  15 SEM   -> nao tocar e a NORMA (3:1)
+janelas historicas de merges entre entradas:     3 · 6 · 2 · 24 · 151
+```
+
+Um limiar teria de ficar **acima de 24** para não disparar sobre janela histórica normal — e aí seria
+**cego** para os 8 de hoje. Abaixo disso, dispararia na maioria dos PRs, que é o que o próprio gate
+original declarou como motivo de não cobrar todos (*"faria o gate ser desligado na primeira semana"*).
+
+🔴 **Conclusão escrita para não se tentar de novo:** o handoff **não é gate-ável por contagem**. O
+unidade da exigência é o *ciclo*, e ciclo não tem assinatura no diff — nem no início (já declarado no
+ML-1A) nem no fim. O que funcionou nas três vezes em que a lacuna foi pega foi **o usuário
+perguntando** *"o que está pendente"*.
+
+**E um erro meu de medição no caminho:** publiquei *"13 PRs, a maior lacuna do acervo"*. Os dois
+números estavam errados — comparei `mergedAt` em **UTC** com data de commit em **-03:00**, misturando
+fusos numa comparação de string. É `relatar-hora-em-local-nao-utc` aplicado ao lugar errado: não era
+relato, era **comparação**.
+
+### O estado dos dois lados
+
+| | |
+|---|---|
+| nosso | `ac7d1bcf`, 0 atrás, 0 PRs, 19 scripts só nossos (15 gates) |
+| upstream | `5e6b7459` (08:20), 0 PRs, 1 issue — a nossa **#542** |
+| aberto | **#542** (proposta de escopo, sem resposta) · **#525** (sem resposta desde 07/10 13:56) |
+| do usuário | 15 backups em `~/.*` (24 KB), reproduzíveis pelo `update harness` |
+
+**Quatro contribuições aceitas em dois dias:** #507, #530, o comentário da #535 e a #538 — esta com
+ciclo completo em menos de 12 h.
+
+---
+
 ## Sessão 2026-10-07 (fim) — claude (os dois resíduos declarados foram fechados no mesmo dia)
 
 **FIM.** `main` em `b9848e0c` + este ciclo, **0 atrás** do upstream, 0 PRs antes deste, kanban
