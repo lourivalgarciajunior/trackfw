@@ -547,6 +547,36 @@ branches `upstream-pr/*`, os 131 refs do `upstream`, e agora o `origin`. O que m
 
 #### 🔴 E o PRODUTO também lê esses refs — achado no push deste próprio trabalho
 
+> ✅ **CORRIGIDO no upstream em 2026-10-09 pelo [#549](https://github.com/kgsaran/trackfw/pull/549), que fecha a NOSSA [#547](https://github.com/kgsaran/trackfw/issues/547)** — e o que está abaixo
+> descreve o defeito, não o estado de hoje. **Medido por efeito com o MESMO comando nas duas
+> pontas**, antes e depois do sync:
+> 
+> ```
+> trackfw push, binario 9.4.0 (com o defeito)    4 avisos, os 4 nomeando branch do UPSTREAM
+> trackfw push, binario reconstruido do merge    0 avisos
+> ```
+> 
+> 🔴 **O `--dry-run` NÃO mede isto:** o `detectPendingSquashMerges` roda **fora** do dry-run, e por
+> ali dá `0` nas **duas** pontas — verde pelo motivo errado. Eu tentei por ali primeiro.
+> 
+> **Ele implementou a saída 1 e um caso que a nossa issue não tinha:**
+> 
+> ```
+> - if candidate == "" || strings.Contains(candidate, "HEAD")
+> + refName, _, _ := strings.Cut(candidate, " -> ")
+> + if _, after, ok := strings.Cut(refName, "/"); ok && after == "HEAD"
+> ```
+> 
+> O `Contains` silenciava **qualquer** branch cujo nome contenha `HEAD` (`origin/fix/HEADER-parse`,
+> no exemplo dele). E a Wave 0 dele concluiu **sítio único** — varreu `branch prune`, `validate` e
+> `status` —, o que **fecha a enumeração que eu havia declarado como limite** na issue: eu reportei
+> o sítio que o `push` me mostrou e disse que não tinha varrido os outros.
+> 
+> 🔴 **O bloco abaixo fica como registro**, pelo mesmo motivo dos outros: é ele que explica por que
+> a issue existiu, e documentação que descreve defeito inexistente faz o próximo leitor procurar
+> conflito onde não há — mas **não leia o presente dele como estado de hoje**.
+
+
 A primeira análise concluiu *"nenhum gate nosso é afetado"*, derivando de `git grep` em `scripts/`.
 O escopo estava **estreito**: quem mais lê os refs de rastreamento é o **próprio `trackfw`**.
 

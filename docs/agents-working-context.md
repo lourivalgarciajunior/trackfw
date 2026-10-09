@@ -4,6 +4,57 @@
 
 ---
 
+## Sessão 2026-10-09 — claude (a #547 fechada e provada por efeito; e o loop achou lacuna FORA da varredura, três vezes)
+
+**FIM.** A lista de PRs se deriva (`gh pr list --state merged`). O que **não** se deriva é a forma
+deste ciclo: ele foi um **laço de varredura**, autorizado como tal, e cada passada achou algo
+**menor** que a anterior.
+
+### ✅ A nossa #547 fechou — e o `--dry-run` teria dado verde pelo motivo errado
+
+```
+trackfw push, binario 9.4.0 (com o defeito)    4 avisos, os 4 nomeando branch do UPSTREAM
+trackfw push, binario reconstruido do merge    0 avisos
+```
+
+🔴 **O `--dry-run` não mede isto:** o `detectPendingSquashMerges` roda **fora** dele, e por ali dá
+`0` nas **duas** pontas. Eu tentei por ali primeiro, vi `0` e **não** registrei como corrigido —
+o que vale é o `push` real, antes e depois, com o mesmo comando.
+
+**Ele implementou a saída 1 e um caso que a nossa issue não tinha:** o
+`strings.Contains(candidate, "HEAD")` silenciava qualquer branch com `HEAD` no nome. E a Wave 0
+dele concluiu **sítio único**, varrendo `branch prune`, `validate` e `status` — fechando a
+enumeração que eu havia declarado como **limite** na issue. Declarar o limite é o que fez o limite
+ser fechado por quem podia.
+
+### 🔴 O laço: a varredura veio limpa TRÊS vezes, e a lacuna estava fora dela
+
+| passada | o que apareceu |
+|---|---|
+| limpa | **gate de ROADMAP `done` com ML pendente** não existia — havia só o de REQ. A premissa ingênua acusaria **17 legítimos** (15 herdados + 2 declarados desde agosto) |
+| limpa | **4 scripts só nossos sem seção no `CLAUDE.md`** — e um era o gate mesclado minutos antes |
+| limpa | a seção da #547 descrevia o defeito **em presente**, e ele já não existia |
+
+Cada achado virou **item novo da varredura** quando era derivável: ela foi de **14** para **15**
+itens (o 15º é *scripts nossos documentados*, derivado por `git ls-tree`, porque a lista escrita à
+mão já ficou errada por um mês — dizia 5, eram 16, com um apagado dentro).
+
+🔴 **E o que ela NÃO cobre está declarado nela mesma:** prosa velha. Um lint de frase proibida foi
+**recusado** — o handoff *cita* as frases erradas para explicá-las, e o lint acusaria o próprio
+registro, que é o defeito da #530. Contra prosa velha o que funciona é a regra de escrita.
+
+### 🔴 Um defeito de método meu, que a varredura pegou sem mentir
+
+Numa passada ela disse `run-local-gates: nao rodou` — **não** `ok`. Causa: **duas execuções do
+agregador ao mesmo tempo**, a minha e a de um laço em segundo plano. É
+`medicao-longa-vai-para-worktree-proprio` aplicado ao agregador: não medir outra coisa enquanto a
+sonda roda. Rodado sozinho, `16 executados · 0 falhas`.
+
+**O desenho que salvou a leitura:** a varredura reporta `nao rodou` quando a extração falha, em vez
+de concluir `0 falhas`. Fosse o contrário, uma colisão de processo apareceria como acervo limpo.
+
+---
+
 ## Sessão 2026-10-08 (noite) — claude (o #545 fechou a nossa #542; e o meu instrumento de "ele evoluiu?" media cemitério)
 
 **FIM.** 🔴 **A lista de PRs saiu daqui: ela é derivável e eu a deixei velha DUAS vezes nesta
