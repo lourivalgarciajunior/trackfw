@@ -49,7 +49,23 @@ PRODUTO_EM_DOCS="docs/cli-parity.md"
 # para quem sincroniza decidir se há chave nova que nos interesse. A retenção é provada
 # por efeito junto com docs/.
 # Ver REQ-2026-09-18-upstream-sync-retem-o-trackfw-yaml-do-fork-como-retem-docs.
-GOVERNANCA_FORA_DE_DOCS="trackfw.yaml"
+#
+# CLAUDE.md entrou em 2026-10-09, pela MESMA causa e com a mesma decisao. O #550 do
+# upstream reescreveu o protocolo GERADO (AGENTS.md, GEMINI.md, README.md e o CLAUDE.md
+# da raiz) e colidiu com o nosso, que havia sido reescrito duas horas antes no nosso
+# PR #240 -- o sync abortou com "conflito de PRODUTO", exatamente onde a previsao
+# escrita no nosso PR #242 dizia que abortaria, e so ali: os outros cinco conflitos do
+# merge de ensaio eram governanca dele, resolvidos por retencao de docs/.
+#
+# 🔴 O nosso CLAUDE.md NAO e o template gerado: sao ~2000 linhas de medicao nossa, com as
+# regras duras, os pontos cegos medidos e as armadilhas pagas. A ADR-2026-08-29 decide
+# que governanca e local, e isto e governanca -- a mesma leitura que trouxe o
+# trackfw.yaml para ca. O que o upstream muda no CLAUDE.md DELE e template; o nosso e
+# acervo.
+#
+# E reter continua nao sendo ignorar: o diff dele e IMPRESSO quando ele toca o arquivo,
+# que e como se decide trazer a mao uma melhoria substantiva.
+GOVERNANCA_FORA_DE_DOCS="trackfw.yaml CLAUDE.md"
 
 set -euo pipefail
 

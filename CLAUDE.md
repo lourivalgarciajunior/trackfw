@@ -339,11 +339,22 @@ Chain: `ADR → REQ → ROADMAP` · States: `backlog / analyzing / wip / blocked
    **imprime** que criou o roadmap — a prática seguiu a saída do comando, não este texto.
    🔴 **O `roadmap new` continua certo no caso para o qual existe:** roadmap avulso, sem REQ nova,
    ou segundo roadmap de uma REQ. O que está vetado é rodá-lo sobre um slug que já existe.
-   > O upstream está corrigindo a causa na branch `fix/req-nasce-orfa-roadmap-new-sobrescreve`
-   > (ML-6A a ML-6D da `REQ-2026-09-09` dele, reaberta em 2026-10-09 07:53, com 697 linhas de
-   > teste novo em `roadmap_idempotent_ac8_test.go`): o `roadmap new` passa a **não** sobrescrever e
-   > o protocolo **gerado** deixa de mandar rodá-lo depois do `req new`. Quando entrar, esta nota
-   > vira registro — **meça por efeito antes de apagá-la**.
+   > ✅ **CORRIGIDO no produto em 2026-10-09, pelo [#550](https://github.com/kgsaran/trackfw/pull/550)
+   > (publicado na 9.4.1), e a nota pedia medição antes de ser apagada — medi.** Com o binário
+   > **9.4.1**, no mesmo roteiro de sonda em projeto temporário:
+   > ```
+   > roadmap new no MESMO titulo ->
+   >   "ja existe em docs/roadmaps/backlog/… (criada por `trackfw req new`?)
+   >    — nada sobrescrito; use --force para recriar"
+   > antes 50 linhas, marca presente   depois 50 linhas, marca presente
+   > ```
+   > Em 9.4.0 o mesmo roteiro dava **52 → 57 linhas, marca AUSENTE**. O defeito acabou; **a
+   > sequência acima fica**, porque ela é a certa de qualquer forma — `req new` já cria o roadmap,
+   > e rodar `roadmap new` em seguida agora só imprime aviso.
+   >
+   > 🔴 **E a convergência foi medida, não suposta:** o diff do `CLAUDE.md` dele, impresso pelo
+   > próprio sync, troca a mesma linha pela mesma sequência. A nossa é um superconjunto — ela leva
+   > `--agent` (obrigatório com três namespaces) e `./bin/trackfw`. **Nada a trazer à mão.**
    ❌ Never create a branch before REQ + ROADMAP are in wip/
    ❌ Never defer REQ/ROADMAP creation to a future task — they are prerequisites, not deliverables
    ✓ `trackfw validate` enforces this via `branch_has_wip_roadmap` rule (v2.7.0+)
