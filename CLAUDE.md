@@ -1721,6 +1721,68 @@ máquina, e isso não é verificável depois.
 **A lição, que é mais cara que o número:** uma passada de wall-clock nesta máquina **não é medida**.
 Rode três e escreva a **faixa**. Ver a `REQ-2026-10-05-publiquei-678s-como-o-custo-de-um-gate…`.
 
+## Gate de ROADMAP `done` com ML pendente (`scripts/check-roadmap-done-com-ml-pendente.sh`)
+
+Irmão do `check-req-done-com-criterio-aberto.sh`, no outro acervo: acusa roadmap **nosso** em
+`done/` com ML que não está `✅ Concluído` e que **não declara** o fechamento retroativo.
+
+```bash
+git fetch upstream --prune && bash scripts/check-roadmap-done-com-ml-pendente.sh
+bash scripts/check-roadmap-done-com-ml-pendente.sh --self-test
+```
+
+🔴 **A premissa ingênua está medida e RECUSADA — ela acusaria 17 legítimos.** Medido em
+2026-10-08, com os quatro baldes reconciliando:
+
+```
+varridos em done/     88
+sem ML pendente       71
+herdados do upstream  15   <- derivado por git cat-file, nao allowlist
+fechamento DECLARADO   2   <- os nossos, declarados em PROSA desde 2026-08-16
+ACUSADOS               0          71 + 15 + 2 + 0 = 88
+```
+
+A leitura ingênua marcaria **14 MLs** (3 + 11) como concluídos em dois roadmaps de junho — e os
+dois dizem, por escrito desde agosto, que os MLs **nunca foram executados** e que o fechamento foi
+por **inspeção do entregável**. Marcar seria **inverter o registro**, a mesma saída que o gate de
+REQ recusa.
+
+**A forma canônica da declaração é MARCA, nunca prosa:**
+
+```
+<!-- fechamento-retroativo: <data> — <por que, e onde esta o entregavel> -->
+```
+
+🔴 Procurar *"de propósito"* deixaria o gate **vermelho para sempre**, porque o registro histórico
+cita a frase — o defeito que levamos ao upstream na
+[#530](https://github.com/kgsaran/trackfw/issues/530) e que o
+`check-contorno-dos-shims-caducou.sh` já pagou aqui. Aplicado **de saída** desta vez.
+
+**Três saídas, e a terceira está recusada por escrito:** marque `✅` um a um se foram executados;
+declare a marca nomeando o sítio se o fechamento foi por inspeção; **marcar `✅` sem execução não
+é saída** — é afirmar entrega que não houve.
+
+**Duas guardas de vacuidade**, e a segunda é a que importa: varrer **zero** roadmap reprova; e
+**zero herdados** reprova, porque em 2026-10-08 eram 15 — zero ali é derivação quebrada, não
+acervo limpo. Como os outros, é **nosso**, está em `EXECUTAR` do agregador (o consumidor que o
+`check-orphan-gates.sh` do upstream exige) e **não tem alvo no `Makefile`**.
+
+🔴 **O self-test tem passo próprio no `local-gates.yml` por um motivo medido:** o acervo tem **0
+acusados**, então **nenhuma forma de recusa é exercitada por ele** — e `🔄 Em andamento` e
+`❌ Bloqueado` em `done/` não têm nenhum caso real. São 14 casos sintéticos, com piso de vacuidade
+em 14.
+
+### Os dois instrumentos da vigia, e o arnês de falsificação
+
+Três scripts nossos que esta seção documenta porque **nenhuma outra o fazia** — e script sem
+seção é script que a próxima sessão não sabe que existe:
+
+| script | o que é |
+|---|---|
+| `vigia-do-upstream.sh` | **daemon**, não gate: laço que vigia o upstream e emite evento. Declarado `FORA` do agregador — executá-lo penduraria o laço, e ele não produz veredito. 🔴 **Hoje ele NÃO está armado**, por decisão do usuário em 2026-10-07 (*"por hora 2"*: checagem manual). As armadilhas dele — ordem do `comm`, órfãs por expiração, o `ps` do MSYS ser cego para elas — estão na memória `vigia-do-upstream-comm-exige-ordem`, não aqui |
+| `check-vigia-forma.sh` | o gate **da forma** do daemon: roda no agregador e afirma a estrutura do script, não o comportamento do laço |
+| `check-req-done-caducou-falsify.sh` | o arnês que exercita o `check-req-done-com-criterio-aberto.sh` contra casos plantados. Ele extrai a função `censo` **do próprio gate** — fonte única —, e foi essa extração que derrubou o custo de 678 s publicados por engano para a faixa de 29–42 s |
+
 ## Gate de REQ herdada do upstream (`scripts/check-inherited-req.sh`)
 
 A `ADR-2026-08-29` decide que **a governança do upstream não é importada**. Vinte e oito REQs do
