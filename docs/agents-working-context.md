@@ -186,8 +186,9 @@ versão publicada que contém o commit* — com o número saindo de `npm view` c
 
 ### O estado dos dois lados
 
-🔴 **Sem retrato de estado, pela regra que este ciclo acabou de escrever** (`CLAUDE.md`, protocolo
-item 3). Nosso lado, lado dele e status de issue são **deriváveis**:
+🔴 **Sem afirmação de estado em presente, pela regra que este ciclo escreveu** (`CLAUDE.md`,
+protocolo item 3) — e a regra foi **corrigida duas vezes dentro deste mesmo ciclo**, abaixo. Nosso
+lado, lado dele e status de issue são **deriváveis**:
 
 ```
 git rev-parse HEAD · trackfw validate · gh pr list
@@ -203,13 +204,23 @@ tabela já eram falsas.**
 | `#547` **aberta hoje** | **implementada às 21:59**, red-team aprovado às 22:03 |
 | *"Seis contribuições aceitas em três dias"* | contagem errada — ver a seção seguinte |
 
-As três saíram. O que **não** se deriva fica:
+As três saíram. 🔴 **E a regra, como eu a escrevi, era incompleta — ela me fez apagar contexto útil
+e manter a célula errada.** A forma que funciona não é *"estado não entra"*; é:
+
+> **Datado e no passado não envelhece. Presente envelhece.**
+
+O que ficou, reescrito nessa forma — observação com hora, não pendência em presente:
 
 | | |
 |---|---|
-| na mão dele | a **#547** com correção pronta e red-team aprovado às **22:03**, **PR ainda não aberto**. A Wave 0 dele concluiu **sítio único** (varreu `branch prune`, `validate` e `status`) — isso **fecha a enumeração que eu deixei declarada como limite** — e ele achou, ao lado do meu achado, um caso que eu não vi: `strings.Contains(candidate, "HEAD")` descarta por **substring**, então `fix/HEADER-parsing` era silenciosamente ignorada |
-| **#525** | Discussion de planejamento: **1 comentário, o meu**, de 07/10 13:56. Sem resposta — e é a única coisa que depende dele e **não** tem instrumento nosso |
-| na mão do usuário | as branches locais mescladas; `fetch.prune` cuida de `refs/remotes/*`, branch **local** é decisão de quem a criou, e o instrumento que as limparia (`trackfw branch prune`) é do produto e estava na vizinhança do defeito da #547 |
+| dele, às 22:03 | a correção da **#547** ficou pronta e o red-team aprovou; o PR não havia sido aberto ainda. A Wave 0 dele concluiu **sítio único** (varreu `branch prune`, `validate` e `status`), o que **fecha a enumeração que eu deixei declarada como limite** — e ele achou, ao lado do meu achado, um caso que eu não vi: `strings.Contains(candidate, "HEAD")` descarta por **substring**, então `fix/HEADER-parsing` era silenciosamente ignorada |
+| **#525** | Discussion de planejamento, comentada por mim em 07/10 13:56. É a única frente que depende dele e **não** tem instrumento nosso — por isso aparece aqui mesmo sendo derivável: o que não se deriva é *que ninguém a vigia* |
+| branch local | `fetch.prune` cuida de `refs/remotes/*`; branch **local** é decisão de quem a criou, e o instrumento que as limparia (`trackfw branch prune`) é do produto e estava na vizinhança do defeito da #547. Derive com `git branch --merged main` |
+
+🔴 **A célula que sobrou era a prova de que eu havia aplicado a regra pela metade:** removi as três
+que falavam **dele** e mantive a que falava do **usuário**, porque olhei o *raciocínio* da célula —
+que não se deriva — e não vi que ela também **afirmava estado** (*"as branches existem"*), que se
+deriva. Trinta minutos depois o usuário as apagou e a célula ficou falsa.
 
 ### 🔴 E eu publiquei a contagem de contribuições errada — somei um PR DELE
 

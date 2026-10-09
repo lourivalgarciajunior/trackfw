@@ -349,6 +349,18 @@ Chain: `ADR → REQ → ROADMAP` · States: `backlog / analyzing / wip / blocked
      `grep` do título antes de commitar, e recuperei de `git show main:<arquivo>`. **Confira o que
      está DENTRO do range antes de substituir**, ou delimite pelo fim real do bloco; é a mesma
      família do dois-pontos contra base de merge — âncora que não está onde se pensa.
+   🔴 **E a formulação "derivável não entra" era INCOMPLETA — ela me fez apagar contexto útil e**
+     **manter a célula errada.** Em 2026-10-08 eu removi três células que falavam do mantenedor e
+     **mantive** a que falava do usuário, porque olhei o *raciocínio* (que não se deriva) e não vi
+     que a célula também **afirmava estado**; trinta minutos depois ela era falsa. A forma que
+     funciona é mais simples e não pede julgamento:
+
+     > **Datado e no passado não envelhece. Presente envelhece.**
+
+     *"às 22:03 a correção ficou pronta e o PR não havia sido aberto"* continua verdade para
+     sempre; *"o PR não está aberto"* apodrece sozinho. Quando o estado em presente for
+     indispensável, escreva **ao lado** como derivá-lo (`git branch --merged main`,
+     `gh issue list`), e quem lê confere em vez de acreditar.
 4. **Before PR:** `trackfw validate` must pass
 5. **ML lifecycle — mandatory:**
    - Starting a ML: edit roadmap `**Status:** ⬜ Pendente` → `**Status:** 🔄 Em andamento` + commit.
