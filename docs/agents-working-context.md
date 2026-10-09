@@ -104,12 +104,52 @@ comando** que limpou o cemitério.
 **Ele implementou as duas metades da issue**, inclusive a *"observação mais fraca"* do
 redirecionamento que eu declarei como não investigada — ela está no título do commit das 18:39.
 
+### ✅ A #544 fechou em 2h53 — e a 9.4.0 saiu no mesmo movimento
+
+```
+17:31  #544 aberta
+20:37  PR #546 mesclado -> #544 CLOSED        (2h53 do relato ao conserto)
+20:56  PR #548 mesclado -> v9.4.0, publicada no npm
+```
+
+**Sync de `0835ff5a`**: 9 arquivos de produto trazidos, 10 de governança retidos (de 19). O passo
+novo falou no sync real: `poda de refs  ja ligada`. 🔴 **A tripla NÃO foi necessária, e isso foi
+MEDIDO, não presumido**: `0` ocorrências de `LASTEXITCODE` no diff de `internal/generators/`, e o
+`validate` ficou em 3 avisos antes e depois. O global foi para 9.4.0 porque a **cerca de todos os
+projetos** resolve o binário do PATH, e na 9.3.3 ela não vê `/c/...` — a versão é **derivada**
+(`git tag --contains 52fff536` -> `v9.4.0`, cruzado com `npm view trackfw version`).
+
+**O conserto dele, provado por efeito nas seis formas** — e o controle de forma é o que torna a
+medição válida:
+
+```
+                         antes (9.3.3)   depois (9.4.0)
+C:\...  nativo               DETECTA        DETECTA
+C:/...  barra normal         DETECTA        DETECTA
+/c/...  Git Bash             nao            DETECTA   <- a nossa #544
+/C/...  maiuscula            nao            DETECTA
+echo oi > C:\...             nao            DETECTA   <- a 'observacao mais fraca'
+echo oi > /c/...          NAO MEDIDO        DETECTA   <- so medi a forma C:\ antes
+camada 1 (chave no payload)  rc=2           rc=2      <- controle positivo
+git status                   rc=0           rc=0      <- controle negativo
+MESMO comando, arquivo SEM chave            rc=0      <- controle de FORMA
+```
+
+🔴 **Uma celula diz NAO MEDIDO de proposito.** Na sonda da manha eu exercitei o redirecionamento
+**só** na forma `C:\...`; a forma `/c/...` nunca passou pela 9.3.3. Inferir "também não detectava"
+seria plausível e **não medido** — e esta tabela já pagou por célula preenchida por dedução.
+
+🔴 **O último controle é o que separa medição de coincidência:** sem ele, "detecta `/c/...`"
+poderia ser o guard reagindo à **forma do caminho** em vez de ao **conteúdo do arquivo**. Com ele,
+a camada 2 está provada lendo o arquivo. E a prova final é **pelo binário global**, não pelo da
+árvore — é o global que o hook de todos os projetos resolve.
+
 ### O estado dos dois lados
 
 | | |
 |---|---|
 | nosso | `6b67a16a`, 0 atrás, kanban `0/0/0/0` depois deste PR |
-| upstream | `357250a9` (16:51), 0 PRs, 1 issue — a nossa **#544** |
+| upstream | `0835ff5a` (20:56), **v9.4.0** publicada, 0 PRs, 1 issue — a nossa **#547** |
 | aberto | **#544** aceita e **em implementação** — 5 commits em `fix/credential-guard-caminho-git-bash-windows`, de 16:52 a 19:33, ML-3A a ML-3E da `REQ-2026-10-06` reaberta · **#547** aberta hoje (multi-remote no `detectPendingSquashMerges`) · **#525** sem resposta desde 07/10 13:56 |
 
 **Seis contribuições aceitas em três dias:** #507, #530, o comentário da #535, #538, #542 (fechada
