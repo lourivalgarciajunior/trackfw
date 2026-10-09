@@ -106,29 +106,44 @@ say() { printf '%s\n' "$*"; }
 # PATH: o passo mantém a propriedade, o gate a torna verificável. Aviso que ninguém executa
 # foi o que custou a leitura errada de 2026-10-08.
 poda_refs_de_rastreamento() {
-	local remote por_remote por_global efetivo
-	remote="${REF%%/*}"
-	if [ "$remote" = "$REF" ]; then
-		say "  poda de refs     N/A: --ref '$REF' nao nomeia remote — nada a configurar"
+	local remotes r por_remote por_global efetivo nao_cobertos recusados n
+	remotes="$(git remote 2>/dev/null || true)"
+	if [ -z "$remotes" ]; then
+		say "  poda de refs     N/A: nenhum remote configurado — nada a cobrir"
 		return 0
 	fi
-	if ! git config --get "remote.$remote.url" >/dev/null 2>&1; then
-		say "  poda de refs     N/A: '$remote' nao e remote configurado — nada a configurar"
-		return 0
-	fi
-	por_remote="$(git config --get "remote.$remote.prune" 2>/dev/null || true)"
+	n=0; nao_cobertos=""; recusados=""
 	por_global="$(git config --get fetch.prune 2>/dev/null || true)"
-	efetivo="${por_remote:-$por_global}"
-	if [ "$efetivo" = "true" ]; then
-		say "  poda de refs     ja ligada (remote.$remote.prune='${por_remote:-vazio}' fetch.prune='${por_global:-vazio}')"
+	for r in $remotes; do
+		n=$((n + 1))
+		por_remote="$(git config --get "remote.$r.prune" 2>/dev/null || true)"
+		efetivo="${por_remote:-$por_global}"
+		[ "$efetivo" = "true" ] && continue
+		# `remote.<r>.prune = false` GANHA de fetch.prune: ligar o global nao cobre este.
+		if [ "$por_remote" = "false" ]; then
+			recusados="$recusados $r"
+		else
+			nao_cobertos="$nao_cobertos $r"
+		fi
+	done
+	if [ -z "$nao_cobertos" ] && [ -z "$recusados" ]; then
+		say "  poda de refs     ja cobre os $n remote(s) (fetch.prune='${por_global:-vazio}')"
 		return 0
 	fi
-	if ! git config "remote.$remote.prune" true 2>/dev/null; then
-		say "  poda de refs     FALHEI ao ligar remote.$remote.prune — rode 'git fetch $remote --prune' a mao"
+	if [ -n "$nao_cobertos" ] && ! git config fetch.prune true 2>/dev/null; then
+		say "  poda de refs     FALHEI ao ligar fetch.prune — rode 'git fetch --all --prune' a mao"
 		return 0
 	fi
-	say "  poda de refs     LIGADA agora: remote.$remote.prune=true (era '${efetivo:-vazio}')"
-	say "                   o proximo 'git fetch $remote' poda; para esta passada, 'git fetch $remote --prune'"
+	if [ -n "$nao_cobertos" ]; then
+		say "  poda de refs     fetch.prune=true LIGADA agora — cobre os $n remote(s), nao um por vez"
+		say "                   descobertos ate agora:$nao_cobertos"
+	fi
+	if [ -n "$recusados" ]; then
+		say "  poda de refs     🔴 AINDA DESCOBERTO:$recusados — 'remote.<r>.prune=false' ganha do global"
+		say "                   remedio: git config --unset remote.<r>.prune, por remote"
+		return 0
+	fi
+	say "                   para a passada de agora: git fetch --all --prune"
 	return 0
 }
 

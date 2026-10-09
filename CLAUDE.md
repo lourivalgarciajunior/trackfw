@@ -442,7 +442,7 @@ pergunta em que ela fosse, uma branch mesclada e apagada entraria como trabalho 
 
 | peça | o que faz | onde |
 |---|---|---|
-| passo `poda_refs_de_rastreamento` no `upstream-sync.sh` | **age**: liga `remote.<remote>.prune` | roda no sync |
+| passo `poda_refs_de_rastreamento` no `upstream-sync.sh` | **age**: liga `fetch.prune`, que cobre **todos** os remotes (ML-1C) | roda no sync |
 | a sequência documentada acima | leva `--prune` para a passada corrente | quem sincroniza |
 
 🔴 **O passo é de CONFIGURAÇÃO, não de rede, e isso é desenho.** O `git fetch` acontece **antes**
@@ -469,6 +469,54 @@ já ligada (idempotente), ligada só por `fetch.prune` global (**não** reescrev
 `--ref` sem barra (N/A nomeado) e `--ref` com remote inexistente (N/A nomeado). 🔴 **Os cinco
 `return 0` têm `say` imediatamente antes, conferido retorno-a-retorno por `awk`** — não por
 `grep say`, que provaria apenas que a palavra existe. É a lição do passo irmão, no mesmo arquivo.
+
+#### 🔴 ML-1C: o passo cobria SÓ o `upstream`, e o `origin` já estava com o defeito — 60 min depois
+
+A primeira versão derivava o remote de `$REF` (`upstream/main`), então **por construção nunca tocava
+o `origin`**. Medido na varredura de *"o que ficou pendente"*, uma hora depois de eu declarar a
+Wave 0 fechada:
+
+```
+remote.upstream.prune  true
+remote.origin.prune    VAZIO          <- nao coberto, por construcao
+origin/chore/sync-do-546-o-c-barra-na-segunda-camada   ref local EXISTE
+  a mesma branch no GitHub                              404   (o --delete-branch do merge a apagou)
+```
+
+**O passo passou a ligar `fetch.prune`**, que cobre **todos** os remotes — inclusive os que ainda não
+existem —, em vez de um por vez. É a mesma preferência que este arquivo já aplica a listas: *"a lista
+NÃO se escreve à mão — ela se deriva"*.
+
+🔴 **E ele enumera os remotes com `git remote`, nunca `origin` e `upstream` chumbados.** Falsificado
+em seis direções, em repositório temporário: nenhum remote (N/A nomeado), dois descobertos (liga e
+**nomeia quais eram**), já coberto (idempotente), um coberto por chave própria e o outro não,
+`remote.<r>.prune=false` (ver abaixo) e **três** remotes com o terceiro acrescentado depois — este
+último é o que prova que a classe fechou, e não um remote.
+
+**A premissa do caminho 5 foi falsificada por efeito, com o remoto real, nas duas direções** — ela
+não veio da documentação do git:
+
+```
+fetch.prune=true  +  remote.upstream.prune=false   ref sintetica SOBREVIVE  <- a chave do remote GANHA
+fetch.prune=true  +  a chave do remote removida    ref sintetica PODADA
+```
+
+Por isso o passo **não** afirma cobertura quando há `false` explícito: ele diz `🔴 AINDA DESCOBERTO`
+nomeando o remote, e dá o `--unset` como remédio. Declarar cobertura que o git não entrega seria
+verde falso.
+
+**E o resíduo do `origin` foi fechado por efeito, com `fetch` sem flag nenhuma:**
+
+```
+$ git fetch origin
+ - [deleted]  (none) -> origin/chore/sync-do-546-o-c-barra-na-segunda-camada
+refs de origin: 2 -> 1
+```
+
+**Mesma causa, mesma REQ, ML novo** — o roadmap voltou de `done/` para `wip/` para isto, que é o que
+a Regra Dura de Causa Raiz manda. 🔴 **Terceira ocorrência do mesmo sintoma em um dia:** as 14
+branches `upstream-pr/*`, os 131 refs do `upstream`, e agora o `origin`. O que muda a cada vez é só
+**quem** deixou de podar.
 
 #### 🔴 E o PRODUTO também lê esses refs — achado no push deste próprio trabalho
 
@@ -987,16 +1035,24 @@ hook de volta para o `.sh` não resolvia, porque a guarda dele sobre `guard --he
 
 > ✅ **CADUCOU em 2026-10-07, e o parágrafo abaixo HOJE É FALSO.** Ele diz que não há `npm i -g`
 > que resolva — e **há**: a `v9.3.0` saiu às 14:59 de 2026-10-07 contendo o commit do `guard`, e
-> hoje o `npm latest` é **9.3.3**. Medido em 2026-10-08:
+> **há versão publicada que o contém** — e o número se DERIVA, não se escreve. Medido em 2026-10-08
+> às 09h a 9.3.3 e às 21h a **9.4.0**, no mesmo dia:
 > ```
-> npm view trackfw version              9.3.3
-> git tag --contains 782f5767           v9.3.0  v9.3.1  v9.3.2  v9.3.3
+> npm view trackfw version              9.4.0   (era 9.3.3 pela manha)
+> git tag --contains 782f5767           v9.3.0 v9.3.1 v9.3.2 v9.3.3 v9.4.0
 > ```
 > 🔴 **Marcado com bloco, não com data no rodapé.** A forma anterior — afirmação em presente com
 > `medido em <data>` no fim — é a mais fraca que este arquivo usa, e foi exatamente ela que fez a
 > linha sobreviver um dia inteiro dizendo o contrário do certo. Quem lesse o parágrafo hoje
 > **desistiria da ação correta**. A reversão está descrita na seção *"O contorno dos shims do npm
 > foi REVERTIDO"*, acima.
+>
+> 🔴 **E este bloco cometeu o MESMO defeito que critica, em horas.** Ele dizia *"**hoje** o `npm
+> latest` é 9.3.3"* — e às 20:56 do mesmo dia saiu a 9.4.0. **`hoje` num arquivo que sobrevive ao dia**
+> é a mesma falha que o número chumbado: as duas afirmam presente e envelhecem sem aviso. O que vale
+> é a parte **derivável** — *existe versão publicada que contém o commit* —, e o número sai de
+> `npm view trackfw version` cruzado com `git tag --contains`.
+> 
 
 **Registro de 2026-10-06:** nenhuma versão publicada tinha `guard` — o `npm latest` era **9.2.0** e
 o #527 entrou **depois** daquela tag. Não havia `npm i -g` que resolvesse.

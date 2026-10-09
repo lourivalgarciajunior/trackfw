@@ -144,11 +144,40 @@ poderia ser o guard reagindo à **forma do caminho** em vez de ao **conteúdo do
 a camada 2 está provada lendo o arquivo. E a prova final é **pelo binário global**, não pelo da
 árvore — é o global que o hook de todos os projetos resolve.
 
+### 🔴 ML-1C: a minha própria poda cobria SÓ o `upstream` — 60 min depois
+
+A varredura de *"o que ficou pendente"* pegou: o passo derivava o remote de `$REF`, então o
+`origin` **nunca** seria tocado, e já tinha ref velha.
+
+```
+remote.upstream.prune  true
+remote.origin.prune    VAZIO    <- descoberto POR CONSTRUCAO
+origin/chore/sync-do-546…   ref local EXISTE  ·  no GitHub 404
+git fetch origin (SEM flag)  - [deleted] …  refs de origin 2 -> 1
+```
+
+Passou a ligar **`fetch.prune`** (cobre todos, inclusive remote futuro) e a enumerar por
+`git remote`. 🔴 **A premissa de precedência foi medida POR EFEITO**, não lida na documentação:
+com `remote.<r>.prune=false` a ref **sobrevive** mesmo com `fetch.prune=true`; removida a chave,
+**poda**. Por isso o passo diz `AINDA DESCOBERTO` em vez de afirmar cobertura que o git não entrega.
+
+**Terceira ocorrência do mesmo sintoma em um dia** — as 14 `upstream-pr/*`, os 131 refs do
+`upstream`, o `origin`. Muda só **quem** deixou de podar; por isso a correção foi para a **classe**.
+
+### 🔴 E um bloco do `CLAUDE.md` cometeu o defeito que ele critica, em horas
+
+Ele dizia *"**hoje** o `npm latest` é 9.3.3"* — e às 20:56 do mesmo dia saiu a **9.4.0**. O bloco
+existe para dizer que *"afirmação em presente com data no rodapé é a forma mais fraca que este
+arquivo usa"*. 🔴 **`hoje` num arquivo que sobrevive ao dia é a mesma falha que o número
+chumbado:** as duas afirmam presente e envelhecem sem aviso. Ficou a parte **derivável** — *existe
+versão publicada que contém o commit* — com o número saindo de `npm view` cruzado com
+`git tag --contains`.
+
 ### O estado dos dois lados
 
 | | |
 |---|---|
-| nosso | `6b67a16a`, 0 atrás, kanban `0/0/0/0` depois deste PR |
+| nosso | `2fdc1d56` + este PR, 0 atrás, **9.4.0** nas três pontas, `fetch.prune=true` |
 | upstream | `0835ff5a` (20:56), **v9.4.0** publicada, 0 PRs, 1 issue — a nossa **#547** |
 | aberto | **#544** aceita e **em implementação** — 5 commits em `fix/credential-guard-caminho-git-bash-windows`, de 16:52 a 19:33, ML-3A a ML-3E da `REQ-2026-10-06` reaberta · **#547** aberta hoje (multi-remote no `detectPendingSquashMerges`) · **#525** sem resposta desde 07/10 13:56 |
 

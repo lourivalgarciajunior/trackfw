@@ -90,6 +90,9 @@ test 0 = "$(git grep -c -e 'refs/remotes/upstream' -- scripts | wc -l)"
 **Status:** ✅ Concluído
 **Files affected:** `scripts/upstream-sync.sh`, `CLAUDE.md`
 **Actions:**
+> 🔴 **CORRIGIDO no ML-1C: derivar do `$REF` deixava o `origin` DESCOBERTO por construção.**
+> O passo passou a ligar `fetch.prune` e a enumerar por `git remote`. Fica como registro.
+
 1. `poda_refs_de_rastreamento`: deriva o remote de `$REF`, lê `remote.<remote>.prune` e `fetch.prune`,
    liga a primeira quando nenhuma vale, e **diz** o que encontrou e o que fez.
 2. A sequência documentada no `CLAUDE.md` passa a `git fetch upstream --prune`.
@@ -170,4 +173,66 @@ estado de **agora** (4 avisos, 4 falsos).
 # each line runs as a separate sh -c — see docs/cli-parity.md rule 5
 grep -q 'detectPendingSquashMerges' internal/commands/ship.go
 grep -q 'trackfw push' CLAUDE.md
+```
+
+### ML-1C — A poda cobria SÓ o `upstream`; o `origin` estava descoberto por construção
+**Status:** ✅ Concluído
+**Files affected:** `scripts/upstream-sync.sh`, `CLAUDE.md`
+**Actions:**
+
+🔴 **O ML-1A derivava o remote de `$REF`** (`upstream/main`), então o `origin` **nunca** seria
+tocado. Medido na varredura de *"o que ficou pendente"*, **60 minutos** depois de eu declarar a
+Wave 0 fechada:
+
+```
+remote.upstream.prune  true
+remote.origin.prune    VAZIO     <- descoberto POR CONSTRUCAO
+origin/chore/sync-do-546-o-c-barra-na-segunda-camada   ref local EXISTE
+  a mesma branch no GitHub                              404
+```
+
+1. O passo passou a ligar **`fetch.prune`**, que cobre todos os remotes — inclusive os que ainda não
+   existem — em vez de um por vez.
+2. Enumera por **`git remote`**, nunca `origin`/`upstream` chumbados.
+3. Quando há `remote.<r>.prune=false`, **não afirma cobertura**: diz `🔴 AINDA DESCOBERTO` nomeando
+   o remote e dá o `--unset` como remédio.
+
+**Falsificado em seis direções** (repositório temporário): nenhum remote → N/A nomeado; dois
+descobertos → liga e **nomeia quais eram**; já coberto → idempotente; um por chave própria e o outro
+não; `false` explícito → avisa que segue descoberto; **três** remotes com o terceiro acrescentado
+depois → já coberto, que é o caso que prova que a **classe** fechou.
+
+**A premissa de precedência foi medida POR EFEITO, com o remoto real, nas duas direções** — não lida
+na documentação do git:
+
+```
+fetch.prune=true + remote.upstream.prune=false   ref sintetica SOBREVIVE  <- a do remote GANHA
+fetch.prune=true + chave do remote removida      ref sintetica PODADA
+```
+
+**E o resíduo do `origin` fechou por efeito, com `fetch` sem flag nenhuma:**
+
+```
+git fetch origin
+ - [deleted]  (none) -> origin/chore/sync-do-546-o-c-barra-na-segunda-camada
+refs de origin: 2 -> 1
+```
+
+**Acceptance criteria:**
+- [x] O passo cobre todos os remotes e os enumera por derivação
+- [x] O caso em que o git **recusa** a cobertura é dito, não escondido
+- [x] A premissa de precedência está medida por efeito, nas duas direções
+- [x] Os 5 `return 0` têm `say` imediatamente antes (awk, retorno-a-retorno)
+
+**Residual declarado:** a chave continua **config local do clone**. Clone novo nasce sem ela — por
+isso o passo roda a cada sync. 🔴 **Terceira ocorrência do mesmo sintoma em um dia** (as 14
+`upstream-pr/*`, os 131 refs do `upstream`, o `origin`): o que muda a cada vez é só **quem** deixou
+de podar, e é por isso que a correção foi para a **classe**, não para o remote.
+
+**Gates da wave:**
+```bash
+# each line runs as a separate sh -c — see docs/cli-parity.md rule 5
+grep -q 'fetch.prune' scripts/upstream-sync.sh
+test 5 = "$(awk '/^poda_refs_de_rastreamento\(\) \{/,/^\}/' scripts/upstream-sync.sh | grep -c 'return 0')"
+test 0 = "$(awk '/^poda_refs_de_rastreamento\(\) \{/,/^\}/' scripts/upstream-sync.sh | grep -c 'remote.origin')"
 ```
