@@ -96,6 +96,19 @@ jobs:
       - name: Gates locais do fork
         run: bash scripts/run-local-gates.sh
 
+      - name: Self-test do gate de roadmap done com ML pendente
+        # O agregador acima ja exercita o caminho REAL deste gate. Este passo exercita o
+        # CLASSIFICADOR — as 14 formas de status e de marca —, que o acervo de hoje nao
+        # cobre: ele tem 0 acusados, entao nenhuma das formas de recusa e exercitada por ele.
+        #
+        # 🔴 Guarda de vacuidade sobre o denominador, pelo mesmo motivo do ratchet abaixo:
+        # self-test que exercita zero caso sai 0 e pareceria verde. O gate falha sozinho se
+        # forem menos de 14 casos, e este passo confere a frase do denominador.
+        run: |
+          set -euo pipefail
+          bash scripts/check-roadmap-done-com-ml-pendente.sh --self-test | tee "$RUNNER_TEMP/rd-self-test.txt"
+          grep -qE '^self-test: [1-9][0-9]* de [1-9][0-9]* caso\(s\) passaram$' "$RUNNER_TEMP/rd-self-test.txt"
+
       - name: Self-test do ratchet de Windows do upstream
         # 🔴 Sem este passo o self-test NAO roda em lugar nenhum do nosso CI. O `Makefile` o
         # chama no `parity-rest`, mas o nosso `parity-other-gates` morre na linha 78, antes de

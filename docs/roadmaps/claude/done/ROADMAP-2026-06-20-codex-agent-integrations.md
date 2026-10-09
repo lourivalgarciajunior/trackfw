@@ -11,6 +11,8 @@ squad: ""
 
 REQ: REQ-2026-06-20-attention-hooks-agent-clis.md
 
+<!-- fechamento-retroativo: 2026-08-16 — por inspeção do entregável (`codex.*` e `hooks.*` nos geradores, ver o parágrafo abaixo); os MLs nunca foram executados e permanecem ⬜ de propósito -->
+
 > **Fechado retroativamente em 2026-08-16.** Ficou preso em `wip/` porque o repo não tinha
 > `trackfw.yaml` e o CLI, no default `flat`, enxergava só `docs/roadmaps/{wip,done}/`. A REQ
 > linkada também não existia e foi reconstruída na mesma data. O entregável está presente nos
