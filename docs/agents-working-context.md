@@ -6,8 +6,19 @@
 
 ## Sessão 2026-10-08 (noite) — claude (o #545 fechou a nossa #542; e o meu instrumento de "ele evoluiu?" media cemitério)
 
-**FIM.** `main` em `6b67a16a` depois do **#227**, **0 atrás** do upstream, `validate` 0 violações ·
-3 avisos. Este ciclo tem **dois** PRs: o **#227** (sync do #545) e o que carrega esta entrada.
+**FIM.** Os PRs deste ciclo, **até esta entrada**: **#227** (sync do #545), **#228** (a poda dos
+refs de rastreamento), **#229** (sync do #546, que trouxe a **9.4.0**), **#230** (o ML-1C, a poda
+que cobria só o `upstream`) e **#231**, que carrega esta correção. A lista se confere com
+`gh pr list --state merged`. E **duas** contribuições aceitas no upstream no mesmo intervalo: a
+**#544**, fechada em **2h53** com as duas metades implementadas, e a **#547**, triada em ~1 h.
+
+🔴 **Sem contagem no começo da frase, de propósito.** A primeira versão desta correção escreveu
+*"Quatro PRs neste ciclo"* — e o PR que a carrega faz **cinco**. O defeito que esta entrada
+cometeu tentou se repetir na própria linha que o conserta.
+
+🔴 **Esta entrada NÃO repete SHA nem "estado final" — e a razão é um defeito que ela mesma
+cometeu**; está na última seção. Estado é **derivável** (`git rev-parse HEAD`, `trackfw validate`,
+`gh pr list`); o que não se deriva, e por isso mora aqui, são as medições e os motivos.
 
 ### O #545 implementou a nossa #542 — e a previsão foi escrita antes de rodar
 
@@ -177,12 +188,38 @@ versão publicada que contém o commit* — com o número saindo de `npm view` c
 
 | | |
 |---|---|
-| nosso | `2fdc1d56` + este PR, 0 atrás, **9.4.0** nas três pontas, `fetch.prune=true` |
+| nosso | 0 atrás, 0 PRs, kanban `0/0/0/0`, **9.4.0** nas três pontas, `fetch.prune=true` · SHA se deriva |
 | upstream | `0835ff5a` (20:56), **v9.4.0** publicada, 0 PRs, 1 issue — a nossa **#547** |
 | aberto | **#544** aceita e **em implementação** — 5 commits em `fix/credential-guard-caminho-git-bash-windows`, de 16:52 a 19:33, ML-3A a ML-3E da `REQ-2026-10-06` reaberta · **#547** aberta hoje (multi-remote no `detectPendingSquashMerges`) · **#525** sem resposta desde 07/10 13:56 |
 
 **Seis contribuições aceitas em três dias:** #507, #530, o comentário da #535, #538, #542 (fechada
 pelo #545) e #544.
+
+### 🔴 E esta entrada declarou `FIM` no meio do ciclo — terceira vez hoje que afirmo presente
+
+Ela foi escrita depois do **#227** e dizia, em presente: *"`main` em `6b67a16a` … este ciclo tem
+**dois** PRs"*. Três PRs depois:
+
+```
+o que a entrada afirmava   main 6b67a16a  ·  2 PRs
+o real, 3 horas depois     main aeaa6e21  ·  4 PRs
+```
+
+🔴 **O defeito não é o número — é a forma, e é a MESMA das outras duas de hoje:** a versão chumbada
+na regra da tripla, e o *"**hoje** o `npm latest` é 9.3.3"* que ficou falso em 8 horas. As três
+afirmam **presente** em arquivo que sobrevive ao momento.
+
+**E o gate não alcança, por desenho conhecido:** o `check-handoff-cobre-o-ciclo.sh` disparou quando
+o roadmap foi para `done/`, foi **satisfeito**, e os três PRs seguintes **não moveram roadmap**. É a
+conclusão que o `CLAUDE.md` já escreveu — *"o handoff não é gate-ável por contagem"* —, agora com o
+custo do outro lado: não na **falta** de entrada, mas na entrada que **envelhece**.
+
+🔴 **A regra que fica, e ela é de FORMA, não de disciplina:** o que é **derivável** não entra no
+handoff como afirmação de estado — SHA, contagem de PR, número de aviso saem de `git rev-parse`,
+`gh pr list` e `trackfw validate` a qualquer momento, e escritos aqui só envelhecem. O handoff
+carrega o que **não** se deriva: a medição, o motivo, e o que a próxima sessão não reconstruiria.
+Número medido **com data e propósito** continua valendo (`135 refs → 4`); o que sai é o retrato de
+estado em presente.
 
 ---
 
