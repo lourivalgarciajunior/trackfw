@@ -6,11 +6,18 @@
 
 ## Sessão 2026-10-08 (noite) — claude (o #545 fechou a nossa #542; e o meu instrumento de "ele evoluiu?" media cemitério)
 
-**FIM.** Os PRs deste ciclo, **até esta entrada**: **#227** (sync do #545), **#228** (a poda dos
-refs de rastreamento), **#229** (sync do #546, que trouxe a **9.4.0**), **#230** (o ML-1C, a poda
-que cobria só o `upstream`) e **#231**, que carrega esta correção. A lista se confere com
-`gh pr list --state merged`. E **duas** contribuições aceitas no upstream no mesmo intervalo: a
-**#544**, fechada em **2h53** com as duas metades implementadas, e a **#547**, triada em ~1 h.
+**FIM.** 🔴 **A lista de PRs saiu daqui: ela é derivável e eu a deixei velha DUAS vezes nesta
+mesma entrada** — primeiro parando no #227, depois no #231.
+
+```
+gh pr list --repo lourivalgarciajunior/trackfw --state merged
+```
+
+O que **não** se deriva é do que o ciclo tratou, e ele tem uma forma só: **cada PR consertou algo
+que o anterior deixou**. O sync do #545; a poda dos refs, que o sync revelou; a poda que cobria
+só um remote; a forma do handoff; e a regra apagando o meu próprio texto. Duas contribuições
+aceitas no upstream no mesmo intervalo: a **#544**, fechada em **2h53** com as duas metades
+implementadas, e a **#547**, triada em ~1 h e implementada em 41 min.
 
 🔴 **Sem contagem no começo da frase, de propósito.** A primeira versão desta correção escreveu
 *"Quatro PRs neste ciclo"* — e o PR que a carrega faz **cinco**. O defeito que esta entrada
@@ -183,6 +190,47 @@ arquivo usa"*. 🔴 **`hoje` num arquivo que sobrevive ao dia é a mesma falha q
 chumbado:** as duas afirmam presente e envelhecem sem aviso. Ficou a parte **derivável** — *existe
 versão publicada que contém o commit* — com o número saindo de `npm view` cruzado com
 `git tag --contains`.
+
+### A autorização de merge virou permanente, e os limites NÃO mudaram
+
+Em 2026-10-08 o usuário autorizou **mesclar PR com CI verde sem pedir por PR**. Até ali cada
+merge esperava um *"mescla o N"*, e numa noite de sete PRs isso era o passo mais lento do ciclo.
+
+🔴 **A autorização é sobre PEDIR, não sobre o critério.** O texto canônico está no
+`~/.claude/CLAUDE.md` — carregado em toda sessão, de todo projeto — com os limites inteiros:
+conjunto **completo** (e o total conferido, não "zero pendente"), **head** conferido a cada
+passada, **`attempt`** de cada run, vermelho fora do conjunto conhecido **não** mescla, e diff que
+toca produto espera as suítes de Windows. Não se estende a outro repositório nem ao upstream.
+
+### A varredura virou instrumento — e ela declara o que NÃO cobre
+
+A pergunta *"o que ficou pendente dos dois lados"* achou algo **dez vezes** neste dia, e cada
+passada minha era digitada na hora e mais estreita que a anterior. Virou script, com **14 itens
+derivados**, fora do repositório — em `~/.claude/projects/<projeto>/tools/varredura.sh`, que é onde
+ferramenta que se chama de novo deve morar:
+
+```
+arvore limpa · md fora do commit · atras do upstream · PRs abertos · validate
+run-local-gates · go build · kanban em transito · attention · versoes alinhadas
+poda cobre os remotes · branch local mesclada · memoria arquivos x index · memoria links
+```
+
+🔴 **Fica fora do repositório por medida, não por comodidade:** metade dos itens fala da
+**máquina** (versão global do npm, `fetch.prune`, a pasta de memória), e num runner limpo eles
+não existem — gate que passa descrevendo o vazio é o defeito que o `run-local-gates.sh` existe
+para fechar. Mesmo precedente do `check-copia-do-path-esta-atras.sh`.
+
+🔴 **E ela se pegou errando na primeira execução:** contava `[[ "$x" == y ]]` e `[[:space:]]`
+como link de memória quebrado — dois falsos positivos —, consertado ignorando cerca de código e
+código inline.
+
+**O que ela NÃO cobre, declarado:** *prosa velha*. Nenhum dos dez achados do dia era estado de
+máquina; eram **frases minhas** que envelheceram. Um lint de frase proibida foi considerado e
+**recusado**: esta entrada **cita** as frases erradas para explicá-las, então o lint acusaria o
+próprio registro — que é exatamente o defeito do alarme cuja premissa era uma string em prosa, e
+que levamos ao upstream na [#530](https://github.com/kgsaran/trackfw/issues/530). Ruído
+permanente é o que faz aviso deixar de ser lido. **A forma que funciona contra prosa velha é a
+regra de escrita** — datado e no passado —, não um gate.
 
 ### O estado dos dois lados
 
