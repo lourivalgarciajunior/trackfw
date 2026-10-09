@@ -359,6 +359,99 @@ que levamos ao upstream na [#530](https://github.com/kgsaran/trackfw/issues/530)
 permanente é o que faz aviso deixar de ser lido. **A forma que funciona contra prosa velha é a
 regra de escrita** — datado e no passado —, não um gate.
 
+### Três syncs em pouco mais de uma hora — e o instrumento detectou um deles antes de mim
+
+`#550`/`#551` (9.4.1) · `#552` · `#553` (9.4.2), mesclados aqui como #243, #245 e #246. **Nos três
+a tripla foi MEDIDA e dispensada** — `0` ocorrências de `LASTEXITCODE` no diff de
+`internal/generators/` —, nunca presumida. A versão do global saiu sempre **derivada**
+(`git tag --contains <commit>` cruzado com `npm view`).
+
+🔴 **O item "versões alinhadas" da varredura disparou sozinho, pela primeira vez:**
+
+```
+PENDENTE  atras do upstream     1 commit(s)
+PENDENTE  versoes alinhadas     arvore=9.4.1 global=9.4.1 npm=9.4.2
+```
+
+Ele existia desde a primeira passada e até então só **confirmava**. A release dele saiu entre duas
+passadas, e foi o item que me disse — antes de eu perguntar. **É a diferença entre um item que
+descreve e um que detecta, e só se sabe qual é qual quando o mundo se move.**
+
+**E o `CLAUDE.md` não apareceu nos dois últimos syncs, que é o comportamento certo:** a retenção do
+ML-1B só imprime quando ele toca o arquivo. 🔴 **Silêncio ali é ausência de DIFF, não de passo** —
+distinção que só é legível porque o passo tem veredito nomeado nos outros casos, que foi o conserto
+do nosso #216.
+
+### 🔴 Terceira falha do mesmo tipo: comando entregue ao usuário não roda no shell dele
+
+Entreguei a varredura como `bash ~/.claude/.../varredura.sh` e o terminal respondeu *"O termo
+'bash' não é reconhecido"*.
+
+```
+Get-Command bash   ->  nao acha nada
+o binario existe   ->  no bin do Git em $env:ProgramFiles, FORA do PATH
+```
+
+🔴 **As duas primeiras foram tradução errada** (`rm -rf`, `grep | xargs`); **esta não tinha
+tradução** — o shell dele não tem bash, então um comando que **começa** com `bash` está errado por
+construção. A memória sobre isso existia desde a véspera, escrita por mim.
+
+**Por isso o remédio virou artefato, não regra:** `tools/varredura.ps1`, que resolve o binário por
+caminhos derivados de `$env:ProgramFiles` e repassa o `$LASTEXITCODE` — e **testado no PowerShell
+antes de ser entregue**, que é o passo que faltou nas três vezes. Regra que falhou três vezes
+contra a memória não se reforça escrevendo-a de novo; se põe num arquivo que roda.
+
+**E uma quarta falha ao escrever a correção:** o `\b` de `bin/bash.exe` virou **backspace** no
+caminho heredoc → Python, e a memória ficou com `Gitinash.exe`. A saída que funciona é **não
+escrever o caminho** — dizer onde ele fica e deixar o código derivar.
+
+**E a concorrência da varredura voltou**, uma hora depois de eu registrá-la: disparei uma passada
+sobre outra ainda em curso, parei com `TaskStop` e re-rodei sozinha. O resultado não mentiu, e de
+novo **foi o desenho que salvou, não a disciplina**.
+
+### 🔴 O agregador deu dois vereditos para a mesma árvore — e o cego era o meu FILTRO
+
+```
+1a passada   16 executados - 1 REPROVOU
+2a e 3a      16 executados - 0 falhas     (rc=0 nas duas)
+```
+
+Rodei três vezes antes de concluir, que é a regra que este arquivo já escreve para wall-clock
+(*"uma passada nesta máquina não é medida"*), aqui aplicada a veredito. **Mas o achado não é a
+intermitência — é que eu não consegui nomear o gate, e a culpa era minha:**
+
+```
+o que o script imprime por gate que reprova:   printf '  FAIL %-38s exit=%s'
+o que eu filtrei para achar:                   grep -iE 'falh|✗'
+```
+
+🔴 **O nome ESTAVA impresso e o meu filtro o jogou fora** — procurei a palavra portuguesa num
+script que imprime a inglesa. Então o veredito daquela passada é **inatribuível por defeito de
+leitura**, não por silêncio do instrumento, e a saída de duas passadas limpas **não o explica**:
+ele pode ter sido real e transitório, e eu teria descartado o nome do mesmo jeito.
+
+**O remédio é mecânico, não de atenção:** guardar a saída inteira (`> arquivo`) antes de ler o
+`tail`, e filtrar por `FAIL`, que é o que o script escreve. Ler gate pela cauda é a mesma família
+de `cano-mascara-exit-code`: o sinal existe, e a forma de olhar o apaga.
+
+**E com o filtro certo a causa saiu na primeira tentativa — não era gate intermitente:**
+
+```
+FAIL check-req-done-com-criterio-aberto   exit=2
+     sed: can't read …/docs/requisicoes/claude/ZZ-SONDA-CADUCOU-ok.md: No such file or directory
+```
+
+🔴 **`ZZ-SONDA-CADUCOU-*` é a sonda que o `check-req-done-caducou-falsify.sh` planta no `req_dir`
+REAL** — e ele está no mesmo `EXECUTAR`, oito posições depois. Com **dois agregadores rodando ao
+mesmo tempo** (os meus, de novo), o harness de um planta e apaga a sonda enquanto o gate do outro
+a lista e tenta lê-la. Sozinho, `16 executados · 0 falhas`, `rc=0`.
+
+**O `CLAUDE.md` já tinha isto escrito, com estas palavras:** *"Sonda que planta REQ no `req_dir`
+real contamina medição concorrente"* — e a nota vinha de um `validate` rodado no meio da
+falsificação, em 2026-10-04. O que é novo é o **par**: dois agregadores, não um agregador e uma
+medição avulsa. **Terceira vez no dia que a minha concorrência produz leitura errada**, e a
+primeira em que ela produziu um VERMELHO em vez de um branco.
+
 ### O estado dos dois lados
 
 🔴 **Sem afirmação de estado em presente, pela regra que este ciclo escreveu** (`CLAUDE.md`,
