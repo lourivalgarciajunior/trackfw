@@ -1253,8 +1253,13 @@ passaram no mesmo PR em que o nosso job reprovou, e a diferença era só esta.
 > para subcomandos Go — `trackfw guard git-branch` e `trackfw guard credential` —, com corpus de
 > paridade de 170 cenários. O commit de 2026-10-05 10:35 diz, literalmente, *"LF separa segmento"*:
 > é o mecanismo da nossa #507. Sem `.sh`, não há `jq` nem fallback por `sed` para falhar aberto.
-> **A branch ainda não foi mesclada** — quando for, esta seção caduca inteira e deve ser medida de
-> novo, não apagada por fé.
+> ✅ **Ela foi mesclada em 2026-10-06, como o [#527](https://github.com/kgsaran/trackfw/pull/527)**
+> — e a medição que esta linha pedia **está no topo desta própria seção**, feita no PowerShell, que
+> é o ambiente real do hook. 🔴 **Esta frase ficou dizendo "ainda não foi mesclada" por três dias,**
+> **dentro de uma seção cujo cabeçalho já declarava a caducidade** — contradição interna no mesmo
+> texto, achada em 2026-10-09 derivando o estado de cada PR citado (`gh pr view`: 15 citados, 15
+> MERGED). A lição é de forma: **promessa em futuro sobre evento do upstream apodrece**, e a única
+> que não apodrece é a datada no passado.
 
 🔴 **Medido em 2026-10-02 e reportado na [#507](https://github.com/kgsaran/trackfw/issues/507).** Em
 máquina sem `jq`, o `scripts/trackfw-git-branch-guard.sh` — o hook `PreToolUse` que bloqueia
@@ -1337,8 +1342,10 @@ que nunca era exercitado em CI.
 
 **O achado é do mantenedor**, no [#528](https://github.com/kgsaran/trackfw/pull/528) (ML-5A), medido
 com transcript em VM. A correção aqui é **byte a byte a dele** — conferida contra o blob do head
-`aa9faab4`, com `cmp` idêntico —, então a divergência de produto é temporária e **convergente**:
-quando o #528 mesclar, o sync não acha conflito.
+`aa9faab4`, com `cmp` idêntico —, então a divergência de produto era temporária e **convergente**.
+✅ **O #528 mesclou em 2026-10-07 e a previsão se confirmou:** o sync não achou conflito no
+`.claude/settings.json`, exatamente porque a nossa correção era byte a byte a dele. O `cmp` antes
+do merge é o que tornou a previsão verificável em vez de esperança.
 
 **E o ML-5D dele NÃO nos atinge**, medido no mesmo dia. Ele relata um `trackfw` velho em `~/bin`,
 posto na frente do PATH pelo perfil de login do Git Bash, fazendo o hook falhar aberto:
