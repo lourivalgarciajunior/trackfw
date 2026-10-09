@@ -27,6 +27,46 @@ dele concluiu **sítio único**, varrendo `branch prune`, `validate` e `status` 
 enumeração que eu havia declarado como **limite** na issue. Declarar o limite é o que fez o limite
 ser fechado por quem podia.
 
+### ✅ A tarde: o #550 entrou, a previsão bateu, e o `CLAUDE.md` virou governança retida
+
+O upstream mesclou o **#550** às 11:12 e publicou a **9.4.1** (#551) às 11:31. O sync abortou:
+
+```
+upstream-sync: CLAUDE.md
+conflito de PRODUTO remanescente. Resolva a mao. Arvore devolvida.   rc=1
+```
+
+🔴 **A previsão do nosso #242 — escrita de manhã, por merge de ensaio em worktree descartável —
+nomeou esse arquivo e só ele**, e disse que os outros cinco conflitos do ensaio eram governança
+dele, resolvidos por retenção de `docs/`. Bateu nos dois.
+
+**O conserto foi de causa:** `GOVERNANCA_FORA_DE_DOCS="trackfw.yaml"` → `"trackfw.yaml CLAUDE.md"`.
+Segunda vez que um arquivo compartilhado que é, na verdade, **governança local** colidiu — o
+`trackfw.yaml` em 2026-09-18, o `CLAUDE.md` agora. 🔴 **E entrou sem uma linha de lógica nova:** o
+laço do script já iterava a variável, então a prova de retenção e a impressão do diff dele passaram
+a valer por construção — **o teste de que o ML-1A resolveu a classe, e não o caso.** Virou **ML-1B**
+na `REQ-2026-09-18`, com o roadmap de volta para `wip/` e depois `done/`.
+
+🔴 **E isso foi um achado da varredura seguinte, não do trabalho:** eu enviei a retenção dentro do
+PR do sync, como `chore/`, **sem artefato de governança** — enquanto a retenção do `trackfw.yaml`,
+a irmã idêntica, tem REQ e roadmap desde setembro. A Regra Dura de Causa Raiz manda ML na REQ
+vigente, e eu não a apliquei na hora.
+
+**A convergência com ele foi medida, não suposta** — o diff dele, impresso pela retenção nova,
+troca a mesma linha pela mesma sequência que escrevemos no #240. A nossa é superconjunto (`--agent`,
+`./bin/trackfw`). Nada a trazer à mão.
+
+**E a nota do #240 pedia medição antes de ser apagada:**
+
+```
+9.4.1   roadmap new no mesmo titulo -> "ja existe … nada sobrescrito; use --force"
+        50 linhas antes e depois, marca presente
+9.4.0   o mesmo roteiro             -> 52 -> 57 linhas, marca AUSENTE
+```
+
+Tripla **não** necessária, medido: `0` ocorrências de `LASTEXITCODE` no diff dos geradores. O
+global subiu por alinhamento, com a versão **derivada** — `9.4.1` nas três pontas.
+
 ### 🔴 O laço: a varredura veio limpa TRÊS vezes, e a lacuna estava fora dela
 
 | passada | o que apareceu |
