@@ -805,8 +805,23 @@ Reportado no upstream como sítio da mesma causa:
 
 > **Atualização de 2026-09-16 (v8).** `check-ship-force-parity.sh` e `check-push-force-parity.sh`
 > **foram removidos** pelo upstream. O `check-release-tag-parity.sh` continua, agora Go-only, e ainda
-> faz `ln -s "$REAL_PYTHON3" "$RUNTIME_BIN/python3"` (linha 116) — o bloqueio 1 abaixo tem onde
-> ocorrer, mas **não foi re-medido** nesta máquina depois da v8. A tabela é de 2026-09-09.
+> faz `ln -s "$REAL_PYTHON3" "$RUNTIME_BIN/python3"` — o bloqueio 1 abaixo tem onde ocorrer.
+>
+> ✅ **RE-MEDIDO em 2026-10-09, e o bloqueio 1 reproduz EXATAMENTE** — rodado de dentro de
+> `scripts/`, que é a única forma válida (de fora, o `ROOT_DIR` derivado do próprio caminho faz o
+> script sair 1 **pelo motivo errado**, o que já aconteceu três vezes em 2026-09-09):
+>
+> ```
+> bash ./check-release-tag-parity.sh      rc=1
+> ln: failed to create symbolic link '…/runtimebin/python3': Permission denied
+> ```
+>
+> 🔴 **E a #307 está FECHADA desde 2026-09-24** — fechá-la não fez o ramo rodar aqui, e isso não é
+> contradição: a causa é **ambiente desta máquina** (o `python3` resolve para o *app execution
+> alias* da Windows Store, que é ele próprio um symlink), não defeito do gate. O que o fechamento
+> dela significa é que o **mantenedor** encerrou a frente; o ponto cego local continua, agora com
+> medição fresca em vez de caveat. A tabela de cenários abaixo é de 2026-09-09.
+
 
 `check-ship-force-parity.sh`, `check-push-force-parity.sh` e `check-release-tag-parity.sh` **não
 verificam nada no Windows daqui.** Não é "alguns cenários falham": é **zero cenário executado**.
@@ -1071,9 +1086,9 @@ hook de volta para o `.sh` não resolvia, porque a guarda dele sobre `guard --he
 > | invólucro, binário presente | rc=**2** | rc=**0** |
 > | invólucro, `PATH=/usr/bin:/bin` | rc=2 | rc=2 (fail-closed) |
 >
-> **Por que isto importa agora, e não é higiene de texto:** a [#535 do
-> upstream](https://github.com/kgsaran/trackfw/issues/535) propõe exatamente *"fazer os hooks
-> chamarem o invólucro"*, e a linha sem condição soaria como argumento contra. É o contrário — o
+> **Por que isto importou, em 2026-10-07, e não era higiene de texto:** a [#535 do
+> upstream](https://github.com/kgsaran/trackfw/issues/535) — **hoje fechada** — propunha *"fazer os
+> hooks chamarem o invólucro"*, e a linha sem condição soaria como argumento contra. É o contrário — o
 > invólucro é a opção **certa**, porque ele sonda o **subcomando** e não só o binário:
 >
 > ```
