@@ -325,7 +325,25 @@ Chain: `ADR → REQ → ROADMAP` · States: `backlog / analyzing / wip / blocked
 
 ### Agent Protocol
 1. **Before any implementation (mandatory):** create governance artifacts FIRST, then branch:
-   `trackfw req new "title"` → `trackfw roadmap new "title"` → `trackfw roadmap move <name> wip` → `git checkout -b feat/<branch>`
+   `trackfw req new --agent <a> "title"` → `trackfw roadmap move <name> wip` → `./bin/trackfw branch new feat/<slug>`
+   🔴 **NÃO rode `roadmap new` depois de `req new`: o `req new` JÁ cria e vincula o roadmap, e o**
+   **`roadmap new` SOBRESCREVE em silêncio.** Medido por efeito em 2026-10-09, com o binário 9.4.0,
+   em projeto temporário (nunca no acervo real — sonda no `req_dir` de verdade contamina medição):
+   ```
+   req new "sonda"        -> created REQ + ✓ created ROADMAP + ✓ linked
+   (escrevi conteudo real no roadmap)   52 linhas, marca presente
+   roadmap new "sonda"   -> "✓ created"  (sem aviso nenhum)
+                            57 linhas, marca AUSENTE  <- o conteudo sumiu
+   ```
+   O caminho antigo era a sequência escrita aqui, e ela só não custou nada porque o `req new`
+   **imprime** que criou o roadmap — a prática seguiu a saída do comando, não este texto.
+   🔴 **O `roadmap new` continua certo no caso para o qual existe:** roadmap avulso, sem REQ nova,
+   ou segundo roadmap de uma REQ. O que está vetado é rodá-lo sobre um slug que já existe.
+   > O upstream está corrigindo a causa na branch `fix/req-nasce-orfa-roadmap-new-sobrescreve`
+   > (ML-6A a ML-6D da `REQ-2026-09-09` dele, reaberta em 2026-10-09 07:53, com 697 linhas de
+   > teste novo em `roadmap_idempotent_ac8_test.go`): o `roadmap new` passa a **não** sobrescrever e
+   > o protocolo **gerado** deixa de mandar rodá-lo depois do `req new`. Quando entrar, esta nota
+   > vira registro — **meça por efeito antes de apagá-la**.
    ❌ Never create a branch before REQ + ROADMAP are in wip/
    ❌ Never defer REQ/ROADMAP creation to a future task — they are prerequisites, not deliverables
    ✓ `trackfw validate` enforces this via `branch_has_wip_roadmap` rule (v2.7.0+)
