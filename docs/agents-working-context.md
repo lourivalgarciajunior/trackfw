@@ -191,6 +191,42 @@ chumbado:** as duas afirmam presente e envelhecem sem aviso. Ficou a parte **der
 versão publicada que contém o commit* — com o número saindo de `npm view` cruzado com
 `git tag --contains`.
 
+### 🔴 Havia gate para REQ `done` com critério aberto e NENHUM para ROADMAP `done` com ML pendente
+
+A varredura veio limpa nos 14 itens e **ainda havia lacuna** — fora deles. A premissa ingênua
+(*"ML ⬜ em roadmap `done/` é contradição"*) casa **17** arquivos, e **os 17 são legítimos**:
+
+```
+varridos em done/     88
+sem ML pendente       71
+herdados do upstream  15   <- derivado por git cat-file, nao allowlist
+fechamento DECLARADO   2   <- os nossos, declarados em PROSA desde 2026-08-16
+ACUSADOS               0          71 + 15 + 2 + 0 = 88, reconcilia
+```
+
+🔴 **A medição recusou o trabalho que a pergunta sugeria — segunda vez no mesmo dia.** A leitura
+ingênua marcaria **14 MLs** (3 + 11) como concluídos em dois roadmaps de junho, e os dois dizem,
+por escrito desde agosto, que os MLs **nunca foram executados** e que o fechamento foi por
+**inspeção do entregável**. Marcar seria inverter o registro. (A primeira vez foram os 22 avisos
+de `req_done_open_criteria`, todos herdados.)
+
+**O gate entregue** (`scripts/check-roadmap-done-com-ml-pendente.sh`) tem a premissa como
+**marca explícita** — `<!-- fechamento-retroativo: … -->` —, nunca prosa: procurar *"de
+propósito"* deixaria o gate vermelho para sempre, porque o registro histórico cita a frase. É a
+lição da #530 e do `check-contorno-dos-shims-caducou.sh`, aplicada de saída em vez de depois.
+
+**Três coisas que a construção corrigiu em mim, e as três são de medição:**
+
+| | |
+|---|---|
+| a 1ª falsificação | apaguei as **linhas 1–3** e a marca estava na **6**: o gate seguiu verde *corretamente*, e eu quase registrei isso como "não detecta". O conserto foi apagar a **linha da marca**, por `grep -v` |
+| o gate da Wave 0 | afirmei que as **quatro** formas de status existem no acervo e pus como gate — **reprovou**: o acervo exercita **duas**. O protocolo declara quatro |
+| o link da ADR | chutei um nome de arquivo (`…-layout-de-artefatos-de-governanca`) e o `validate` pegou: a ADR real é `…-layout-canonico-de-req-em-by-agent…` |
+
+🔴 **A segunda linha é a que justifica o self-test:** `🔄 Em andamento` e `❌ Bloqueado` em
+`done/` **não têm nenhum caso real** que os exercite, então o acervo não prova o classificador.
+Daí os 14 casos sintéticos, com piso de vacuidade em 14 e passo próprio no `local-gates.yml`.
+
 ### A autorização de merge virou permanente, e os limites NÃO mudaram
 
 Em 2026-10-08 o usuário autorizou **mesclar PR com CI verde sem pedir por PR**. Até ali cada

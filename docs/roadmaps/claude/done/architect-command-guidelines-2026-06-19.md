@@ -3,6 +3,8 @@
 > Criado em: 2026-06-19 | Status: ✅ Done
 > REQ: `docs/requisições/claude/REQ-2026-06-19-architect-command-guidelines.md`
 
+<!-- fechamento-retroativo: 2026-08-16 — por inspeção do entregável nos geradores (ver o parágrafo abaixo); os MLs nunca foram executados e permanecem ⬜ de propósito -->
+
 > **Fechado retroativamente em 2026-08-16.** Este roadmap ficou preso em `wip/` porque o repo
 > não tinha `trackfw.yaml` e o CLI, rodando no default `flat`, não enxergava
 > `docs/roadmaps/claude/`. O entregável está presente nos três runtimes —
