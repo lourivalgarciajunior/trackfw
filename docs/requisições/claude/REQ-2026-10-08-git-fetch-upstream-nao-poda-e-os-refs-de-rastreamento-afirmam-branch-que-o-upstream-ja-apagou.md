@@ -45,6 +45,13 @@ já terminou, e uma branch mesclada e apagada se apresenta como trabalho em curs
       em que temos **0** commits e que o `origin` não tem. Achado **no push deste trabalho**, não na
       análise — e a conclusão estreita do ML-0A ficou **datada e explicada**, não apagada.
 
+- [x] AC7 — A poda cobre **todos** os remotes, não o que o `$REF` nomeia
+      ✅ ML-1C: o passo passou a ligar `fetch.prune` e a enumerar por `git remote`. O `origin` estava
+      **descoberto por construção** e já tinha ref velha (`origin/chore/sync-do-546…`, **404** na API);
+      fechado por efeito com `git fetch origin` **sem flag**: `2 → 1` refs. Falsificado em **seis**
+      direções, e a premissa de precedência (`remote.<r>.prune=false` ganha de `fetch.prune`) foi
+      medida **por efeito com o remoto real**, nas duas direções — não lida na documentação.
+
 ## Linked ADR
 <!-- Reference the ADR that governs this requirement -->
 ADR: docs/adr/ADR-2026-08-29-adotar-upstream-como-base.md
