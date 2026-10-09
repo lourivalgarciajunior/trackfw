@@ -343,6 +343,12 @@ Chain: `ADR → REQ → ROADMAP` · States: `backlog / analyzing / wip / blocked
      o motivo, e o que a próxima sessão não reconstruiria. Número medido **com data e propósito**
      continua valendo (`135 refs → 4`); o que sai é o retrato de estado em presente — mesma família
      do `hoje` e da versão chumbada, as outras duas do mesmo dia.
+   🔴 **E substituir um bloco "até a próxima âncora" come o que foi acrescentado no meio.** Ao
+     aplicar a regra acima, eu troquei a tabela de estado por um range que ia até o `---` da entrada
+     — e **apaguei a seção que justificava a própria regra**, inserida ali minutos antes. Peguei por
+     `grep` do título antes de commitar, e recuperei de `git show main:<arquivo>`. **Confira o que
+     está DENTRO do range antes de substituir**, ou delimite pelo fim real do bloco; é a mesma
+     família do dois-pontos contra base de merge — âncora que não está onde se pensa.
 4. **Before PR:** `trackfw validate` must pass
 5. **ML lifecycle — mandatory:**
    - Starting a ML: edit roadmap `**Status:** ⬜ Pendente` → `**Status:** 🔄 Em andamento` + commit.

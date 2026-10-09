@@ -186,14 +186,47 @@ versão publicada que contém o commit* — com o número saindo de `npm view` c
 
 ### O estado dos dois lados
 
+🔴 **Sem retrato de estado, pela regra que este ciclo acabou de escrever** (`CLAUDE.md`, protocolo
+item 3). Nosso lado, lado dele e status de issue são **deriváveis**:
+
+```
+git rev-parse HEAD · trackfw validate · gh pr list
+gh issue list --repo kgsaran/trackfw --author lourivalgarciajunior --state all
+```
+
+**E a prova de que a regra não é decorativa: vinte minutos depois de ela entrar, TRÊS células desta
+tabela já eram falsas.**
+
+| a célula dizia | o real, no mesmo dia |
+|---|---|
+| `#544` aceita e **em implementação**, 5 commits | **fechada às 20:37**, publicada na 9.4.0 |
+| `#547` **aberta hoje** | **implementada às 21:59**, red-team aprovado às 22:03 |
+| *"Seis contribuições aceitas em três dias"* | contagem errada — ver a seção seguinte |
+
+As três saíram. O que **não** se deriva fica:
+
 | | |
 |---|---|
-| nosso | 0 atrás, 0 PRs, kanban `0/0/0/0`, **9.4.0** nas três pontas, `fetch.prune=true` · SHA se deriva |
-| upstream | `0835ff5a` (20:56), **v9.4.0** publicada, 0 PRs, 1 issue — a nossa **#547** |
-| aberto | **#544** aceita e **em implementação** — 5 commits em `fix/credential-guard-caminho-git-bash-windows`, de 16:52 a 19:33, ML-3A a ML-3E da `REQ-2026-10-06` reaberta · **#547** aberta hoje (multi-remote no `detectPendingSquashMerges`) · **#525** sem resposta desde 07/10 13:56 |
+| na mão dele | a **#547** com correção pronta e red-team aprovado às **22:03**, **PR ainda não aberto**. A Wave 0 dele concluiu **sítio único** (varreu `branch prune`, `validate` e `status`) — isso **fecha a enumeração que eu deixei declarada como limite** — e ele achou, ao lado do meu achado, um caso que eu não vi: `strings.Contains(candidate, "HEAD")` descarta por **substring**, então `fix/HEADER-parsing` era silenciosamente ignorada |
+| **#525** | Discussion de planejamento: **1 comentário, o meu**, de 07/10 13:56. Sem resposta — e é a única coisa que depende dele e **não** tem instrumento nosso |
+| na mão do usuário | as branches locais mescladas; `fetch.prune` cuida de `refs/remotes/*`, branch **local** é decisão de quem a criou, e o instrumento que as limparia (`trackfw branch prune`) é do produto e estava na vizinhança do defeito da #547 |
 
-**Seis contribuições aceitas em três dias:** #507, #530, o comentário da #535, #538, #542 (fechada
-pelo #545) e #544.
+### 🔴 E eu publiquei a contagem de contribuições errada — somei um PR DELE
+
+Eu escrevi *"oito contribuições … **#546 (por via da #544)** … e #547"* e depois *"nono item aceito"*.
+O **#546 é o PR dele que implementa a nossa #544**: contá-lo soma a **mesma** contribuição duas
+vezes.
+
+```
+issues nossas CRIADAS desde 06/10            5   (#530 #538 #542 #544 #547)
+PRs nossos abertos la nesses 3 dias          0
+por ACEITACAO, contando artefato NOSSO       7   #507, comentario #535, #530,
+                                                 #538, #542, #544, #547
+```
+
+**Sete.** 🔴 **E a definição tem de vir junto:** "três dias" por *criação* dá **5**, por *aceitação*
+dá **7**. Foi a contagem sem definição que me deixou somar um PR dele — mesma família de
+`comparar-por-nome-nao-por-contagem`, aqui no numerador em vez de no denominador.
 
 ### 🔴 E esta entrada declarou `FIM` no meio do ciclo — terceira vez hoje que afirmo presente
 
@@ -220,7 +253,6 @@ handoff como afirmação de estado — SHA, contagem de PR, número de aviso sae
 carrega o que **não** se deriva: a medição, o motivo, e o que a próxima sessão não reconstruiria.
 Número medido **com data e propósito** continua valendo (`135 refs → 4`); o que sai é o retrato de
 estado em presente.
-
 ---
 
 ## Sessão 2026-10-08 — claude (a 9.3.3 com a nossa #538; e o handoff ficou 8 PRs atrás)
