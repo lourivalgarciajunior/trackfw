@@ -26,6 +26,11 @@ upstream mudar o arquivo.
 - [x] **AC1** — o `upstream-sync.sh` retém o `trackfw.yaml` da base, inclusive em conflito, e a
       retenção é provada por efeito junto com `docs/` e `vault/`.
 - [x] **AC2** — quando o upstream muda o arquivo, o sync imprime o diff dele.
+- [x] **AC4** (ML-1B, 2026-10-09) — a retenção vale para **todo** arquivo compartilhado que seja
+      governança local, não só o `trackfw.yaml`. O `CLAUDE.md` entrou pela **mesma causa** — o #550
+      do upstream reescreveu o protocolo gerado e colidiu com o nosso — e entrou **sem lógica
+      nova**: o laço já iterava a variável, então AC1 e AC2 passaram a valer para ele por
+      construção. 🔴 **É o teste de que o ML-1A resolveu a classe, e não o caso.**
 - [x] **AC3** — a falsificação ganha o merge real do #393 como terceiro caso, e um sync sem a
       retenção reprova nele.
 - [x] **AC4** — o sync do #393 passa com o `validate` igual antes e depois.

@@ -66,3 +66,61 @@ upstream o muda em linhas que colidem com as nossas; o controle afirma que, sem 
 merge não passa.
 
 **AC4 — sync real do #393 (2026-09-18).** `upstream-sync.sh` sobre `9651f905`: 22 de produto trazidos, 20 retidos, `trackfw.yaml` retido com o diff do upstream impresso; `validate` 0 antes · 0 depois, e `No violations found` com o binário do #393.
+
+### ML-1B — o `CLAUDE.md` entra na retenção, pela MESMA causa
+**Status:** ✅ Concluído
+**Files affected:** `scripts/upstream-sync.sh`
+**Actions:**
+
+🔴 **Mesma causa, mesma REQ, ML novo — e o roadmap voltou de `done/` para `wip/` para isto.** Em
+2026-10-09 o [#550](https://github.com/kgsaran/trackfw/pull/550) do upstream reescreveu o protocolo
+**gerado** (`AGENTS.md`, `GEMINI.md`, `README.md` e o `CLAUDE.md` da raiz) e colidiu com o nosso,
+reescrito duas horas antes no nosso PR #240. O sync abortou com a MESMA mensagem de 2026-09-18:
+
+```
+upstream-sync: CLAUDE.md
+upstream-sync: conflito de PRODUTO remanescente. Resolva a mao. Arvore devolvida.   rc=1
+```
+
+**A mudança é de um token, e o mecanismo já existia:**
+
+```
+GOVERNANCA_FORA_DE_DOCS="trackfw.yaml"  ->  "trackfw.yaml CLAUDE.md"
+```
+
+O laço do script já iterava a variável (`for g in $GOVERNANCA_FORA_DE_DOCS`), então a prova de
+retenção por efeito (AC1) e a impressão do diff dele (AC2) passaram a valer para o novo arquivo
+**sem uma linha de lógica nova** — o que é o teste de que o ML-1A resolveu a classe, e não o caso.
+
+**Por que o `CLAUDE.md` é governança, e não produto:** são ~2000 linhas de medição nossa — as
+regras duras, os pontos cegos medidos, as armadilhas pagas. O do upstream é **template gerado**;
+o nosso é **acervo**. A `ADR-2026-08-29` decide que governança é local, e é a mesma leitura que
+trouxe o `trackfw.yaml` para cá.
+
+**Medição — 2026-10-09:**
+
+```
+sync ANTES do ML    rc=1, aborta nomeando CLAUDE.md (e so ele)
+sync DEPOIS do ML   produto trazido 25 - governanca retida 9 (de 34)
+                    ⚠ o upstream mudou governanca que este fork RETEM (CLAUDE.md). O diff dele:
+                      - req new -> roadmap new -> roadmap move -> git checkout -b
+                      + req new -> roadmap move <name> wip -> trackfw branch new <type>/<slug>
+                    Retido o nosso.
+validate            0 violacoes antes - 0 depois
+```
+
+🔴 **E a previsão desta colisão estava escrita ANTES**, no nosso PR #242, por merge de ensaio em
+worktree descartável: ela nomeou o `CLAUDE.md` como o único conflito que o sync não resolve, e os
+outros cinco como governança dele retida por `docs/`. Bateu nos dois.
+
+**Acceptance criteria:**
+- [x] O arquivo entra na retenção sem lógica nova, provando que o ML-1A resolveu a classe
+- [x] O diff dele é impresso (AC2 vale para o arquivo novo, por construção)
+- [x] A convergência com o texto dele foi **medida**, não suposta — nada a trazer à mão
+
+**Gates da wave:**
+```bash
+# each line runs as a separate sh -c — see docs/cli-parity.md rule 5
+grep -q 'GOVERNANCA_FORA_DE_DOCS="trackfw.yaml CLAUDE.md"' scripts/upstream-sync.sh
+bash -n scripts/upstream-sync.sh
+```
