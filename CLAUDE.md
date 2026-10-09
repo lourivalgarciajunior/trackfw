@@ -334,6 +334,15 @@ Chain: `ADR → REQ → ROADMAP` · States: `backlog / analyzing / wip / blocked
    ✓ `scripts/check-handoff-cobre-o-ciclo.sh` cobra isto desde 2026-10-07: diff que move
      roadmap para `done/` sem tocar o handoff REPROVA. O passo falhou duas vezes em 24 h antes
      do gate existir, e nas duas quem pegou foi o usuário — nenhum instrumento olhava.
+   🔴 **O que é DERIVÁVEL não entra como afirmação de estado.** SHA, contagem de PR e número de
+     aviso saem de `git rev-parse HEAD`, `gh pr list` e `trackfw validate` a qualquer momento;
+     escritos no handoff, só envelhecem. Em 2026-10-08 uma entrada declarou **`FIM`** com
+     *"`main` em 6b67a16a … este ciclo tem **dois** PRs"* e, **três PRs depois**, afirmava o
+     contrário do real — e o gate acima **não alcança**, porque ele dispara no roadmap indo para
+     `done/` e nenhum dos três moveu roadmap. O handoff carrega o que **não** se deriva: a medição,
+     o motivo, e o que a próxima sessão não reconstruiria. Número medido **com data e propósito**
+     continua valendo (`135 refs → 4`); o que sai é o retrato de estado em presente — mesma família
+     do `hoje` e da versão chumbada, as outras duas do mesmo dia.
 4. **Before PR:** `trackfw validate` must pass
 5. **ML lifecycle — mandatory:**
    - Starting a ML: edit roadmap `**Status:** ⬜ Pendente` → `**Status:** 🔄 Em andamento` + commit.
