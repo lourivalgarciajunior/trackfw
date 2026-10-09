@@ -439,6 +439,36 @@ proporção produto/governança e verifica que o `validate` não mexeu. Não com
 padrão: o commit carrega a medição, e quem mede é quem escreve. Aborta e devolve a árvore se sobrar
 conflito de produto ou se a retenção não puder ser provada.
 
+### 🔴 Previsão escrita ANTES do evento: o sync do #550 vai conflitar no `CLAUDE.md`
+
+O [#550](https://github.com/kgsaran/trackfw/pull/550) do upstream (aberto em 2026-10-09 09:57)
+torna o `roadmap new` idempotente **e reescreve o protocolo gerado** — `AGENTS.md`, `GEMINI.md`,
+`README.md` e o **`CLAUDE.md` da raiz**. Nós reescrevemos o **mesmo bloco** no nosso PR #240, duas
+horas antes, depois de medir a sobrescrita por efeito.
+
+**Medido por merge de ensaio, em worktree descartável, antes de ele mesclar:**
+
+```
+git merge --no-commit --no-ff <branch dele>   ->  rc=1, 6 conflitos
+  CLAUDE.md                                      <- o unico que o sync NAO retem
+  docs/agents-working-context.md                 } retidos por docs/,
+  docs/req/REQ-2026-09-09-…  docs/req/REQ-2026-10-08-…   } resolvidos pelo
+  docs/roadmaps/claude/done/…  docs/roadmaps/wip/…        } upstream-sync.sh
+```
+
+🔴 **Cinco dos seis são da governança dele e o `upstream-sync.sh` os resolve por retenção** — é
+justamente o que o script existe para fazer, e é por isso que o ensaio foi com `git merge` **cru**:
+ele mostra o conjunto inteiro, e a diferença entre os dois números é o valor do script.
+
+**O que sobra para decidir à mão é um arquivo: o `CLAUDE.md`.** Quando o #550 mesclar, mantenha o
+**nosso** texto do Agent Protocol — ele carrega a medição por efeito e as especificidades locais
+(`--agent` obrigatório com três namespaces, `./bin/trackfw branch new`) — e traga à mão qualquer
+melhoria substantiva do dele. 🔴 **Não resolva por "aceitar o deles"**: a nossa versão é a que
+diz por que a sequência mudou.
+
+**Esta previsão está datada e é falsificável:** se o sync não conflitar no `CLAUDE.md`, ela estava
+errada e o motivo tem de ser escrito — provavelmente porque ele editou linhas que nós não tocamos.
+
 **Por que não `git merge` direto.** Com `roadmap_namespacing: by_agent`, o git detecta os roadmaps
 flat do upstream (`docs/roadmaps/wip/`) como **renomeação** dos nossos (`docs/roadmaps/claude/done/`)
 e produz uma enxurrada de `rename/delete` — **23 conflitos** no merge de `4f0ad33`. Resolver um a um
