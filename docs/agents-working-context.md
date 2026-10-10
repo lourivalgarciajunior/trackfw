@@ -4,6 +4,28 @@
 
 ---
 
+## Sessão 2026-10-10 (tarde) — claude (previsão medida sobre a regra nova dele, antes de a branch virar PR)
+
+**FIM.** Às 16:38 havia **nove commits** na branch `fix/remover-a-entrada-pretooluse-nao-e-detectado`
+do upstream, sem PR, com a regra `guard_wiring_removed`. Em vez de esperar o merge, compilei o
+binário **da branch dele** e rodei o `validate` na nossa árvore: saída **idêntica byte a byte** à do
+9.4.2, e **quatro sondas** separaram "fiação íntegra" de "regra inerte". A tabela, a âncora nos dois
+workflows e o merge de ensaio (3 conflitos, **produto zero**) estão no `CLAUDE.md`, na seção
+*"Previsão escrita ANTES do evento: a `guard_wiring_removed` dele NÃO vai acusar nada aqui"*.
+
+🔴 **O que não se deriva, e por isso fica aqui:** a sonda do `.claude/settings.local.json` foi a
+única que achou **superfície nova nossa**. O arquivo não existe hoje; se nascer com
+`disableAllHooks: true`, o `validate` **local** sai 1 e o **CI não vê**, porque ele não é rastreado
+e a regra o checa só no disco (D7 do ADR dele). É a primeira vez que uma regra do produto afirma
+algo sobre arquivo fora do git nesta árvore.
+
+**E a escolha de onde plantar as sondas foi deliberada:** no worktree da branch dele, nunca na
+árvore viva — mexer no `.claude/settings.json` real desliga a nossa própria cerca enquanto a medição
+roda, e o `CLAUDE.md` já registra o caso irmão ("sonda que planta REQ no `req_dir` real contamina
+medição concorrente").
+
+---
+
 ## Sessão 2026-10-09 — claude (a #547 fechada e provada por efeito; e o loop achou lacuna FORA da varredura, três vezes)
 
 **FIM.** A lista de PRs se deriva (`gh pr list --state merged`). O que **não** se deriva é a forma
