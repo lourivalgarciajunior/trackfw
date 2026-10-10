@@ -480,6 +480,44 @@ diz por que a sequência mudou.
 **Esta previsão está datada e é falsificável:** se o sync não conflitar no `CLAUDE.md`, ela estava
 errada e o motivo tem de ser escrito — provavelmente porque ele editou linhas que nós não tocamos.
 
+### `.claude/agent-memory/` NÃO entra na retenção — e a razão é a proporção, medida
+
+Em 2026-10-10 o sync do #554 trouxe **2 arquivos de produto**, e os dois eram memória de agente
+**dele** (`zeus-tf`). 🔴 **A previsão que eu havia escrito dizia `produto = 0`** — o commit é
+`docs(governance)` —, e errou porque `.claude/agent-memory/` fica **fora** de `docs/` e `vault/`.
+
+A pergunta seguinte é se o diretório deveria ser retido, como o `trackfw.yaml` e o `CLAUDE.md`. A
+medição diz **não**:
+
+```
+no nosso HEAD      116        em ambos    107
+no upstream/main   108        so nossos     9        so dele     1
+```
+
+**107 de 116 são dele, e nós nunca os editamos.** Retenção é por caminho, tudo-ou-nada: reter o
+diretório **congelaria** a memória dos agentes dele, que é justamente o que queremos continuar
+recebendo. O `trackfw.yaml` e o `CLAUDE.md` são o inverso — lá o conteúdo é **nosso** e o dele é
+template.
+
+🔴 **O limite fica declarado:** os **9** são nossos de verdade — notas do `hades-tf` sobre o
+red-team do **trackfw-radar**, criadas aqui em 2026-09-23 (`32c64466`), com **0 commits** no
+histórico do upstream. Se ele algum dia criar um arquivo com um desses caminhos, o sync **aborta
+com "conflito de PRODUTO"** — alto e visível, como o `CLAUDE.md` fez em 2026-10-09 —, e aí a
+decisão se revisita com o caso na mão.
+
+#### 🔴 Três instrumentos errados numa medição de dez minutos
+
+| o que usei | por que mentiu |
+|---|---|
+| `git diff HEAD..upstream/main` para ver "o que o commit toca" | dois-pontos responde *"o que ele tem que nós não temos"* — 859 arquivos de `docs/`. O certo é o diff **do commit** |
+| `git cat-file -e upstream/main:.claude/...` | **conversão de caminho do MSYS**: disse `nao` para 116 de 116, e o `ls-tree` lista os mesmos arquivos. `MSYS_NO_PATHCONV=1` conserta |
+| o campo **autor** do último commit de cada arquivo | merge no fork leva a **nossa** identidade, não a origem do conteúdo — `lourivalgarciajunior` em 9 de 9, inclusive nos que são dele |
+
+A `msys-mente-sobre-o-que-criou` já registrava o segundo **com `.github`**; `.claude` é a segunda
+grafia do mesmo defeito. O discriminante que funcionou foi **comparar duas listas de `ls-tree`**,
+e para a origem, `git log upstream/main -- <caminho>`: **0 commits** é a prova de que o arquivo
+nunca existiu lá.
+
 **Por que não `git merge` direto.** Com `roadmap_namespacing: by_agent`, o git detecta os roadmaps
 flat do upstream (`docs/roadmaps/wip/`) como **renomeação** dos nossos (`docs/roadmaps/claude/done/`)
 e produz uma enxurrada de `rename/delete` — **23 conflitos** no merge de `4f0ad33`. Resolver um a um
