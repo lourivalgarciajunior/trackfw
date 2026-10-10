@@ -480,6 +480,76 @@ diz por que a sequência mudou.
 **Esta previsão está datada e é falsificável:** se o sync não conflitar no `CLAUDE.md`, ela estava
 errada e o motivo tem de ser escrito — provavelmente porque ele editou linhas que nós não tocamos.
 
+### 🔴 Previsão escrita ANTES do evento: a `guard_wiring_removed` dele NÃO vai acusar nada aqui
+
+Em 2026-10-10, entre 10:06 e 15:45, o upstream empurrou **nove commits** na branch
+`fix/remover-a-entrada-pretooluse-nao-e-detectado` — **ainda sem PR** —, com +4.135 linhas e uma
+regra nova de `validate`: `guard_wiring_removed` (`internal/validator/validator_guard_wiring.go`,
+744 linhas). A `ADR-2026-10-10-a-fiacao-do-guard-e-ancorada-no-origin-main-por-tupla…` decide que a
+**fiação** do hook — a entrada que chama o guard — passa a ser comparada contra a cópia em
+**`origin/main`**, pela tupla `(arquivo, evento, matcher, guard)`, e que a remoção é **violação
+mesmo em lenient**.
+
+**Medido por efeito com o binário DELE, compilado da branch e rodado na NOSSA árvore** — não lido do
+diff:
+
+```
+validate, binario 9.4.2 da arvore      0 violacoes · 3 avisos   rc=0
+validate, binario da branch (ML-2B)    0 violacoes · 3 avisos   rc=0
+diff das duas saidas                   IDENTICAS
+mencoes a `wiring` na saida nova       0
+```
+
+🔴 **E silêncio tem duas causas, então as quatro sondas separam "fiação íntegra" de "regra
+inerte"** — plantadas no worktree da branch dele, nunca na árvore viva, porque mexer no
+`.claude/settings.json` real desliga a nossa própria cerca:
+
+| sonda | rc | veredito |
+|---|---|---|
+| fiação intacta (base) | 0 | silenciosa — **o nosso caso** |
+| grupo `PreToolUse` / `Bash\|PowerShell` apagado | 1 | **2 violações**, nomeando `git-branch` e `credential` |
+| comando trocado por `true` | 1 | **2 violações** — matcher intacto não salva |
+| `.claude/settings.local.json` com `disableAllHooks: true` | 1 | **1 violação**, declarada *"not tracked by git (no anchor)"* |
+| matcher **alargado** para `Bash\|PowerShell\|Zsh` | 0 | silenciosa — **controle negativo** |
+
+A quarta linha é a que vale guardar: o `settings.local.json` **não existe aqui** (conferido), e o
+gerador nunca o escreve — mas se um dia ele aparecer com a chave ligada, o `validate` **local** sai
+1 e o CI **não vê**, porque o arquivo não é rastreado. Veredito disk-only, por decisão D7 do ADR dele.
+
+**E a âncora existe nos dois lugares onde o nosso `validate` roda**, que é a pergunta que decide se
+o CI vira vermelho:
+
+```
+local-gates.yml / gates-locais     actions/checkout@v4 com fetch-depth: 0    -> origin/main presente
+trackfw-gate.yml e -validate.yml   passo "ML-1A (severity anchor)", com
+                                   git fetch --depth=1 origin +refs/heads/main:...  -> presente
+```
+
+Os dois workflows compartilhados **já** buscavam `origin/main` desde a âncora de severidade da
+`ADR-2026-09-17`, e a regra nova reaproveita o mesmo `loadOriginMainAnchor`. Sem ref de `origin`
+buscado ela fica **em silêncio**; com ref buscado e nenhum casando com a branch padrão, **falha
+fechada** (R4b do ADR dele).
+
+**Merge de ensaio, em worktree descartável, antes de ele abrir o PR:**
+
+```
+git merge --no-commit --no-ff <branch dele>   ->  rc=1, 3 conflitos
+  docs/agents-working-context.md        } os tres sao retidos por docs/ e vault/,
+  docs/req/REQ-2026-09-02-…             } logo resolvidos pelo upstream-sync.sh
+  vault/notes/index.md                  }
+conflito de PRODUTO                        ZERO
+```
+
+🔴 **Nenhum arquivo para decidir à mão** — é a diferença deste caso com o do #550, que trouxe o
+`CLAUDE.md` e exigiu julgamento. Aqui os seis arquivos de `internal/validator/` entram inteiros,
+porque a nossa divergência de produto é zero.
+
+**A previsão, datada e falsificável:** quando esta branch mesclar e o sync entrar, o `validate`
+daqui continua **0 violações · 3 avisos** e o `guard_wiring_removed` não imprime nada. Se imprimir,
+a previsão estava errada e o motivo tem de ser escrito — os dois candidatos já estão nomeados: um
+`settings.local.json` nascido no meio do caminho, ou a nossa fiação divergindo da que a `main`
+guarda.
+
 ### `.claude/agent-memory/` NÃO entra na retenção — e a razão é a proporção, medida
 
 Em 2026-10-10 o sync do #554 trouxe **2 arquivos de produto**, e os dois eram memória de agente
