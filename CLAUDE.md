@@ -482,6 +482,37 @@ errada e o motivo tem de ser escrito — provavelmente porque ele editou linhas 
 
 ### 🔴 Previsão escrita ANTES do evento: a `guard_wiring_removed` dele NÃO vai acusar nada aqui
 
+> ✅ **CONFIRMADA em 2026-10-11, e o código MUDOU no meio — foi re-medida no que mesclou.**
+> Ele mesclou o [#557](https://github.com/kgsaran/trackfw/pull/557) às 19:16 de 10/10 e publicou a
+> **9.4.3** (#558, 19:36). 🔴 **A regra não é a que eu medi:** entre o `8f5f760f` da branch e a
+> `main`, o `validator_guard_wiring.go` levou **+135 −23**, por dois furos que o red-team **dele**
+> achou — R-1 (extração de comando recursiva deixava esconder o guard num campo de metadado e
+> neutralizar o executável) e R-2 (campo `type` ≠ `command`, que o CLI não executa). A extração
+> passou a ser **por esquema** — aninhado, plano e Kiro —, com falha fechada para caminho de hook
+> sem esquema registrado.
+>
+> **Medido depois do sync, com o binário 9.4.3 da árvore:**
+>
+> ```
+> validate                        0 violacoes · 3 avisos   rc=0
+> mencoes a `wiring` na saida     0
+> run-local-gates                 16 executado(s) · 0 falha(s)
+> ```
+>
+> 🔴 **E o registro abaixo tinha um defeito de forma: ele não fixava o SHA do que foi medido.**
+> Dizia *"o binário dele, compilado da branch"* — e branch anda. Sem o `8f5f760f` escrito, a
+> previsão seria "confirmada" sobre código que mudou no meio, e eu não teria como saber. **Medição
+> de branch alheia leva o SHA**, pela mesma razão que número de versão não se chumba: o nome do
+> ponteiro não é o que se mediu.
+>
+> **E o sync abortou na primeira passada, por leitura que NÃO reproduz:** `validate 1 antes · 0
+> depois`, com o script recusando seguir. O `1` não voltou em nenhuma das cinco medições seguintes
+> — binário de `762e7fea` em worktree limpo (0), o mesmo binário na árvore principal (0), a
+> sequência exata do baseline refeita à mão (0), três passadas no worktree (0, 0, 0) — e a segunda
+> passada do sync deu `0 antes · 0 depois`. **Causa desconhecida, declarada**, como no caso dos
+> 678 s: uma passada desta máquina não é medida. O que funcionou foi o **desenho do script** —
+> ele recusou commitar uma mudança de governança que não sabia explicar.
+
 Em 2026-10-10, entre 10:06 e 15:45, o upstream empurrou **nove commits** na branch
 `fix/remover-a-entrada-pretooluse-nao-e-detectado` — **ainda sem PR** —, com +4.135 linhas e uma
 regra nova de `validate`: `guard_wiring_removed` (`internal/validator/validator_guard_wiring.go`,
