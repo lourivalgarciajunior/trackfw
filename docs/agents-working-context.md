@@ -4,6 +4,39 @@
 
 ---
 
+## Sessão 2026-10-11 — claude (a previsão liquidada, e o instrumento que recusou seguir)
+
+**FIM.** O sync do #557/#558 entrou (`f935f531`, 9.4.3) e a previsão de ontem **se confirmou** —
+mas não no código que eu havia medido. O detalhe está no `CLAUDE.md`, no bloco ✅ em cima da
+própria previsão.
+
+🔴 **Três coisas que não se derivam, e por isso ficam aqui:**
+
+1. **Medição de branch alheia leva o SHA.** O registro de ontem dizia *"o binário dele, compilado
+   da branch"*, sem o `8f5f760f`. A branch andou **+135 −23** na própria regra antes de mesclar,
+   por dois furos do red-team dele, e sem o SHA escrito eu teria declarado "confirmada" sobre
+   outro código. Mesma família do número de versão chumbado: **o nome do ponteiro não é o que se
+   mediu.**
+
+2. **O sync abortou por leitura que não reproduz, e isso é o desenho funcionando.** `validate 1
+   antes · 0 depois` na primeira passada, com o script recusando commitar. Cinco medições depois
+   o `1` não voltou, e a segunda passada deu `0 antes · 0 depois`. **Causa desconhecida,
+   declarada** — a mesma conclusão honesta dos 678 s. Não inventei mecanismo para o número.
+
+3. **O `bash.exe.stackdump` na raiz travou a segunda passada**, porque a pré-condição do script é
+   `git status --porcelain` vazio — e untracked conta. Ele foi **movido**, não apagado, para o
+   scratchpad. Detrito de crash do MSYS na raiz do repo é o bastante para o sync recusar; vale
+   saber antes de procurar defeito no script.
+
+**E uma issue DELE que nos atinge sem ser nossa:** a
+[#556](https://github.com/kgsaran/trackfw/issues/556) mede um `trackfw push` parado **70 minutos**
+no `git fetch origin --prune` do passo de squash-merge — `exec.Command` sem contexto nem prazo, em
+quatro sítios (`push`, `ship`, `branch prune`, `release`). Nós usamos `trackfw push` em todo
+ciclo. Se um push daqui pendurar, **é esse o mecanismo** e o remédio imediato é matar o `ssh`, não
+o `trackfw`: no caso dele o `push` concluiu normalmente depois disso.
+
+---
+
 ## Sessão 2026-10-10 (tarde) — claude (previsão medida sobre a regra nova dele, antes de a branch virar PR)
 
 **FIM.** Às 16:38 havia **nove commits** na branch `fix/remover-a-entrada-pretooluse-nao-e-detectado`
