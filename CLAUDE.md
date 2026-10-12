@@ -813,6 +813,48 @@ guarda o defeito.
 agente" e passa a ter consumidor no produto, visível ao usuário a cada push. O sítio é do upstream,
 então vira **issue**, não correção local, pelo escopo negativo de sempre.
 
+## 🔴 Não rode `trackfw update` na raiz deste fork — ele apaga 62 linhas de medição do `CLAUDE.md`
+
+Medido por efeito em 2026-10-12, com o binário **9.4.3**, em **worktree descartável** e com o
+comando **real**, não com o `--dry-run`:
+
+```
+trackfw update --dry-run    updated=4 · skipped=2 · missing=0 · failed=0
+trackfw update (real)       8 arquivos tocados
+  CLAUDE.md      -62        <- a medicao inteira do bloco de regras
+  AGENTS.md      +2 -1
+  GEMINI.md      +2 -1
+  trackfw.yaml   +1         <- acrescenta `- ~/.trackfw/adr` em adr_dirs
+  .claude/settings.json · .codex/hooks.json · .gemini/settings.json
+  .github/workflows/trackfw-validate.yml      <- so fim de linha (LF -> CRLF)
+```
+
+🔴 **O `--dry-run` NÃO avisa, e isso não é defeito dele:** `updated=4` quer dizer *"eu
+reescreveria"*, não *"o conteúdo mudaria"*. A distância entre as duas leituras é de **62 linhas**, e
+só o comando real a mostra. Ler `updated` como "nada a perder" é a mesma classe do `rc` depois de um
+cano: o sinal existe e responde outra pergunta.
+
+**O que se perde são as linhas DENTRO do bloco de regras injetado** — o Agent Protocol com a medição
+por efeito do `roadmap new` sobrescrevendo em silêncio, a cobrança do
+`check-handoff-cobre-o-ciclo.sh`, e a regra *"Datado e no passado não envelhece. Presente
+envelhece."*. O `update` troca o bloco pelo **template canônico**, que é o trabalho dele; o nosso
+bloco é um **superconjunto** com medição local, e superconjunto não sobrevive a template.
+
+**Mesma família do `make parity-rest`, com a diferença que importa:** lá havia **defeito** — um gate
+rodava o `init` no cwd e reescrevia o `trackfw.yaml` (#366, corrigido pelo #381). Aqui **não há
+defeito**: o `update` faz exatamente o que promete e documenta. O que faltava era o aviso de que,
+**neste fork**, o preço é a medição.
+
+**Se algum dia for necessário rodar** — por exemplo para trazer forma nova de linha de hook —, a
+receita é a do conflito de `CLAUDE.md` do #550: rode em **worktree**, compare o bloco de regras
+linha a linha, e traga à mão só o que é novo. 🔴 Nunca "aceitar o deles".
+
+**E o escopo global é outro comando, e esse está em dia:** `trackfw update harness --dry-run`
+(2026-10-12) devolve `updated=0 · skipped=35 · missing=1 · failed=0`. O único `missing` é o
+`windsurf-credential-guard` (`~/.codeium/windsurf/hooks.json`) — o Windsurf **não está instalado
+nesta máquina**, então é ausência, não defasagem, e `--install-missing` ali só criaria hook para um
+CLI que ninguém usa.
+
 ## Não rode `make parity-rest` na raiz deste fork
 
 > ✅ **Resolvido em 2026-09-17 pelo [#381](https://github.com/kgsaran/trackfw/pull/381) do upstream,
