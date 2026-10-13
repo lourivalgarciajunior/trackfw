@@ -894,6 +894,60 @@ Medido nas duas direções antes de remover a pasta, com o mesmo teste:
 A linha de cima é o que justificava o contorno; a de baixo é o que o aposenta. Sem a segunda, remover
 seria fé; sem a primeira, eu não saberia se algum dia fez falta.
 
+## O agregador custa ~470 s nesta máquina, e o custo está decomposto (2026-10-13)
+
+Medido porque o usuário perguntou *"verifica se travou"* depois de desligar o computador no meio de
+uma varredura. **Não havia travamento:** refeita sem cano, com relógio, a varredura inteira saiu
+`rc=0` em **583 s**, sem nada pendente.
+
+🔴 **O que criou a dúvida foi um `| tail -8` no comando de segundo plano.** O `tail` só escreve
+quando o cano fecha, então o arquivo de saída ficou com **0 bytes** enquanto tudo andava bem — saída
+que não aparece é indistinguível de trabalho que não anda. Com `> arquivo`, as dez primeiras linhas
+estariam prontas. É a mesma família de `cano-mascara-exit-code`, agora apagando o **progresso** em
+vez do `rc`. (E a notificação da tarefa que o desligamento matou chegou como
+`completed (exit code 0)`, com o arquivo vazio: **interrupção externa também vira zero**.)
+
+**A decomposição, e o denominador fecha:**
+
+```
+run-local-gates          470 e 480 s   (duas passadas · 81% da varredura)
+  os 16 gates, somados   445 s
+  derivacao do agregador  25 s   (20 so nossos derivados de 90 em scripts/)   445 + 25 = 470
+validate                  16 s   (duas leituras na varredura; 16,2 e 16,4 s)
+go build ./...           4,8 s
+gh pr list · git fetch   1,3 s · 1,5 s
+```
+
+🔴 **O agregador tem DUAS passadas, de propósito** — 470 e 480 s. Uma só não seria medida, pela
+mesma regra que esta seção invoca mais abaixo; a decomposição por gate, essa sim, é de **uma**
+passada, e está declarada como tal.
+
+**Por gate, uma passada, em ms:**
+
+| gate | ms | | gate | ms |
+|---|---|---|---|---|
+| `check-os-predicate-classification` | **105 802** | | `check-roadmap-done-com-ml-pendente` | 19 296 |
+| `check-req-done-caducou-falsify` | **99 359** | | `check-vigia-forma` | 17 669 |
+| `check-req-done-com-criterio-aberto` | 44 793 | | `measure-os-predicate-sites` | 11 778 |
+| `check-upstream-sync-falsify` | 40 934 | | `check-req-marcador-ancorado` | 2 592 |
+| `check-req-layout` | 37 722 | | `check-upstream-content` | 2 519 |
+| `check-gates-uma-linha-por-comando` | 35 228 | | `check-handoff-cobre-o-ciclo` | 1 934 |
+| `check-inherited-req` | 22 007 | | `check-referential-integrity` | 1 731 |
+| | | | `check-slug-inventory` · `check-contorno-dos-shims-caducou` | 767 · 715 |
+
+Os dois primeiros são **44% do agregador**.
+
+🔴 **Isto NÃO é declarado como regressão, e a razão é a regra desta casa: uma passada de wall-clock
+nesta máquina não é medida.** O único número prévio no registro é o do
+`check-req-done-com-criterio-aberto` — **29 a 42 s**, cinco passadas em 2026-10-05 —, e hoje ele deu
+**44,8 s**, logo acima da faixa, o que cabe no crescimento do acervo. Para afirmar regressão
+faltariam três passadas e a faixa; o que está afirmado aqui é **onde** o tempo está, não que ele
+tenha piorado.
+
+**Por que o número vale escrito:** sem ele, a próxima sessão lê dez minutos de silêncio como
+travamento — foi exatamente o que aconteceu. E o remédio imediato não é otimizar gate: é **nunca
+pôr cano entre o comando e o arquivo** em segundo plano.
+
 ## Gate de layout de REQ (`scripts/check-req-layout.sh`)
 
 A `ADR-2026-09-03` D1 decide que **REQ não tem dimensão de estado** — `backlog`/`wip`/`done` são
