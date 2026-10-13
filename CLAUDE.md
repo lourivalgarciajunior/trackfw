@@ -2230,6 +2230,79 @@ vetado, inclusive para isto**. No local foi `git branch -D` e não `-d`: elas n�
 
 Detalhe e tabela por branch na `REQ-2026-10-05-as-14-branches-upstream-pr-sao-todas-terminais`.
 
+## ✅ Desde a 9.5.0 existe rota governada para apagar branch remota — medida aqui
+
+A seção acima diz que a remoção das 14 branches foi por `MSYS_NO_PATHCONV=1 gh api -X DELETE`,
+porque `git push --delete` é bloqueado pelo hook e **contornar o hook continua vetado**. Isso
+descrevia o estado de 2026-10-05, quando **não havia terceira porta**.
+
+O [#559](https://github.com/kgsaran/trackfw/pull/559) do upstream (mesclado em 2026-10-12 17:42,
+publicado na **9.5.0**) criou a porta: `trackfw branch prune --remote --apply` apaga no `origin`
+**apenas** a branch integrada por PR mergeado, **condicionada ao tip avaliado** (lease). E o guard
+passou a **apontá-la** em vez de só negar.
+
+🔴 **Medido por efeito com o binário 9.5.0 da árvore, sem cano entre o comando e o `rc`** — as três
+grafias de remoção, mais dois controles positivos e dois negativos:
+
+```
+rc=2  git push origin --delete chore/x     <- aponta `branch prune --remote --apply`
+rc=2  git push origin :chore/x             <- aponta a rota nova
+rc=2  git push origin +:chore/x            <- aponta a rota nova
+rc=2  git push origin main                 <- mensagem GENERICA, sem a rota
+rc=2  git push origin v9.9.9               <- tag: generica (nao e remocao de branch)
+rc=2  git commit -m x
+rc=0  git status
+rc=0  git log
+```
+
+As duas últimas são o controle negativo; a quarta e a quinta são o que prova que o detector
+**discrimina** em vez de casar `push` com substring.
+
+🔴 **E o `rc` da primeira medição saiu errado por `| head -2` entre o comando e o `$?`** — sexta
+ocorrência da mesma lição neste repositório, cometida com ela escrita na memória. O `rc=0` que
+apareceu era do `head`. A forma que funciona está acima: redirecionar para arquivo, rodar sem cano,
+ler o `rc` na linha seguinte.
+
+**O que muda na prática:** para apagar branch remota, use o comando. O `gh api -X DELETE` continua
+sendo a saída para o que o comando **não** cobre — branch que não vem de PR mergeado, como eram as
+`upstream-pr/*` do upstream, que nunca foram PRs do nosso `origin`. 🔴 **O veto ao contorno do hook
+não mudou**, e agora tem menos pretexto.
+
+### O prazo das operações de rede, e a nossa margem
+
+A mesma 9.5.0 fecha a [#556](https://github.com/kgsaran/trackfw/issues/556) dele — um `trackfw push`
+dele ficou **70 min** pendurado num `git fetch` sem prazo. Dois controles, com padrão:
+`TRACKFW_NETWORK_TIMEOUT` (60 s, metadados) e `TRACKFW_PUSH_TIMEOUT` (30 min, transferência), teto de
+24 h.
+
+**Medido por efeito, com o binário da árvore:**
+
+```
+fetch de metadados DAQUI, 3 passadas por remote
+  origin    1687 · 1446 · 2310 ms      upstream  1631 · 1199 · 1175 ms
+  -> margem de 26x a 50x contra os 60 s
+
+TRACKFW_NETWORK_TIMEOUT=1ms   "could not fetch origin (git fetch timed out after 1ms
+                               (TRACKFW_NETWORK_TIMEOUT)) — evaluating with possibly stale data"
+                              e o gh: "gh timed out after 1ms (TRACKFW_NETWORK_TIMEOUT)"   rc=0
+TRACKFW_NETWORK_TIMEOUT=abc   "is invalid (...); using default 1m0s"                        rc=0
+TRACKFW_NETWORK_TIMEOUT=48h   "exceeds maximum 24h; using default 1m0s"                     rc=0
+```
+
+O estouro **nomeia a variável** e o comando **prossegue** — é o contrato que ele documenta para
+`push`, `ship` e `prune`. Para `release tag` é **falha fechada**, e nos POSTs de tag/ref a mensagem
+declara *"remote state is uncertain"*.
+
+🔴 **Resíduo dele que é do nosso shell:** o **RS-2** diz que, no estouro, o `ssh` **neto fica órfão**
+— medido na VM dele em Git Bash (retorna em ~10 s, o `ssh` falso segue vivo) e **PowerShell não
+medido**. O nosso terminal é PowerShell. Não é bloqueante para nós (o comando retorna), mas se
+aparecer `ssh` pendurado depois de um estouro, a causa está nomeada.
+
+**Observação pequena, não levada como issue:** com valor inválido o aviso sai **duas vezes** por
+comando no `branch prune`, porque dois sítios leem a variável e cada leitura avisa. Não é ruído
+permanente — só aparece com valor errado, que se corrige —, então não tem a forma da
+[#530](https://github.com/kgsaran/trackfw/issues/530).
+
 ## Ratchet de Windows do upstream: onde roda, e por que fica fora do agregador
 
 O gate que confere as listas de falha **por nome** é o `scripts/check-windows-known-failures.py` do

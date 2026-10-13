@@ -4,6 +4,41 @@
 
 ---
 
+## Sessão 2026-10-12 (noite) — claude (a 9.5.0, e o que ELE mediu sobre o nosso Windows)
+
+**FIM.** O sync do #559/#560 entrou (`a1cc6e93`, **9.5.0** — minor, não patch): **37 de produto,
+15 retidos**, `validate 0 → 0`. A medição do que isso muda aqui está no `CLAUDE.md`, nas duas
+seções novas sobre a rota de remoção de branch remota e o prazo de rede.
+
+🔴 **Esperar o PR em vez de medir a branch foi a decisão certa, e tem número:** entre 14:51 e
+17:31 a branch dele andou **quatro vezes** (`475cde37` → `9b756c88` → `64b1abb2` → `ead18e6a` →
+`78f63381`), 12 MLs num dia. Eu li o `cli-parity.md` às 15:34 e o texto da mensagem de estouro
+**já não era aquele** — o ML-2B a passou para inglês. Ontem eu paguei por medir ponteiro; hoje
+paguei zero por não medir.
+
+🔴 **E errei o `rc` outra vez pelo cano, com a lição escrita na memória.** No primeiro controle do
+guard usei `| head -2` entre o comando e o `$?` e li `rc=0` onde era 2 — **sexta ocorrência**. A
+forma que funciona está no `CLAUDE.md`: payload para arquivo, comando sem cano, `rc` na linha
+seguinte.
+
+### O que ELE mediu sobre o nosso ambiente, e que vale ler antes de confiar no verde
+
+A branch `docs/medicao-suporte-windows-9.5.0` (ainda fora da `main`) traz censo x64 + VM ARM64,
+**com correções do arquiteto aos relatórios dos próprios agentes**. Três coisas que mudam leitura:
+
+1. **O verde do `windows-full-suites` não é zero falhas:** são **14 testes Go** falhando na `main`
+   em 9.5.0 — os 14 da lista conhecida —, e **5 das causas são `INFER`**, escritas em 2026-09-10 e
+   nunca medidas. Verde = *"nenhuma falha nova"*. Nós lemos esse job em todo PR de produto.
+2. 🔴 **`thirdparty_artifact_has_provenance` não discrimina íntegro de adulterado no Windows:**
+   install aprovado **acusa** violação, e no caso adulterado a violação esperada **não aparece**.
+   É o fluxo que o nosso `CLAUDE.md` documenta para skill de terceiro.
+3. **RS-2:** no estouro do prazo o `ssh` **neto fica órfão** — medido em Git Bash na VM dele,
+   **PowerShell não medido**, e PowerShell é o nosso terminal.
+
+**Nada disso vira issue nossa:** os três são achados dele, já escritos no acervo dele, com remédio
+declarado. O valor aqui é saber que *"o CI de Windows passou"* carrega 14 falhas toleradas.
+
+---
 ## Sessão 2026-10-11 — claude (a previsão liquidada, e o instrumento que recusou seguir)
 
 **FIM.** O sync do #557/#558 entrou (`f935f531`, 9.4.3) e a previsão de ontem **se confirmou** —
