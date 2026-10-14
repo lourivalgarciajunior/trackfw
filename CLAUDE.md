@@ -1678,6 +1678,52 @@ seção dos gates de PATH curado.
 
 **Os avisos do `validate` aqui foram de 3 para 5 com este sync**, e os 2 novos são exatamente estes.
 
+## `HOME` ≠ `%USERPROFILE%` desliga a cerca GLOBAL em silêncio — aqui a exposição é zero, medida
+
+Achado **dele**, medido em VM nos três terminais e mesclado em 2026-10-14 pelo
+[#561](https://github.com/kgsaran/trackfw/pull/561)
+(`docs/portabilidade/2026-10-14-guard-global-home-userprofile-vm.md`, 408 linhas). É o **item 1** da
+tabela de suporte a Windows dele, que um dia antes estava declarado *"não medido"*.
+
+**O mecanismo, e ele é de sistema operacional:**
+
+```
+HOME != USERPROFILE
+  trackfw instala o guard   em  HOME/.claude/settings.json
+  trackfw AUDITA            em  HOME/.claude/settings.json   -> 0 violacoes, "saude"
+  o Claude Code LE          em  USERPROFILE/.claude/settings.json  -> NAO EXISTE
+```
+
+O binário nativo resolve o home pela API do Windows e **ignora `HOME`**; o `trackfw` segue a
+variável. 🔴 **Guard instalado do ponto de vista do trackfw e ausente do ponto de vista do consumidor
+real** — e o `validate` diz que está tudo bem. Ele confirmou com `claude --debug-file` em Git Bash,
+PowerShell e `cmd.exe`: *"Broken symlink or missing file encountered for settings.json at path:
+C:\Users\Lab\.claude\settings.json"*.
+
+**Medido nesta máquina em 2026-10-14, e a exposição é ZERO:**
+
+```
+HOME                  /c/Users/louri
+USERPROFILE           C:\Users\louri
+realpath dos dois     c:\users\louri        <- o MESMO diretorio
+guard global          1 arquivo · 4 grupos com `trackfw guard`
+```
+
+O Git Bash usa a forma POSIX **do mesmo diretório**, então não há divergência física — exatamente
+como no padrão da VM dele.
+
+🔴 **O limite é o que importa: a condição é de CONFIGURAÇÃO, não de plataforma.** Basta alguém
+apontar `HOME` para outro lugar — o caso do issue #216 que ele cita — e a cerca de **todos** os
+projetos desta máquina fica inerte **sem que nada acuse**. A comparação que detecta é a de caminho
+**real**, não a das strings: aqui `/c/Users/louri` e `C:\Users\louri` são textos diferentes e o mesmo
+diretório, então comparar literal daria divergência falsa.
+
+**Não virou gate nosso**, e por duas razões: o sítio é do produto e ele já está consertando (branch
+`fix/guard-global-segue-o-home-que-o-agente-le`, ADR *"o guard global é gravado e auditado no home
+que aquele CLI lê"*, com aviso de divergência); e um gate que compara duas variáveis num estado que
+hoje é correto passaria descrevendo o vazio. O que fica é a **derivação escrita acima**, para quem
+precisar refazer em dois comandos.
+
 ## A cópia do `trackfw` no PATH ficava atrás a cada sync — e o `--version` não acusa
 
 Fechado em 2026-10-07 por duas peças, e a divisão de trabalho entre elas é a decisão:

@@ -4,6 +4,28 @@
 
 ---
 
+## Sessão 2026-10-14 — claude (o sync vazio, e a exposição que ELE mediu e aqui é zero)
+
+**FIM.** O sync do #561 (`a4500f15`) é o primeiro desta série com **produto 0 e 8 retidos de 8**:
+a árvore ficou **idêntica** à anterior (`git diff --cached --quiet` passou), então o commit é um
+merge sem conteúdo. Isso é o `upstream-sync.sh` fazendo exatamente o trabalho dele — o diff era
+todo `docs/`, e a previsão escrita antes de rodar bateu.
+
+🔴 **O que não se deriva, e por isso fica aqui:** ele mediu em VM, nos três terminais, que
+`HOME ≠ USERPROFILE` deixa a cerca **global** inerte com o `validate` reportando saúde — guard
+instalado onde o trackfw olha e ausente onde o Claude Code lê. **Aqui a exposição é ZERO**, e a
+medição está no `CLAUDE.md`: os dois resolvem para o mesmo diretório real.
+
+**A parte que vale para a próxima sessão é o discriminante, não o veredito.** `HOME` é
+`/c/Users/louri` e `USERPROFILE` é `C:\Users\louri` — **textos diferentes, mesmo diretório**.
+Comparar as strings daria divergência falsa; o que decide é `realpath` dos dois, normalizado.
+Mesma família do `[ -f ]` do MSYS: a forma do caminho não é o caminho.
+
+**E não abri gate para isso, de propósito:** o sítio é do produto, ele já tem branch e ADR para
+corrigir, e um gate comparando duas variáveis num estado hoje correto passaria descrevendo o
+vazio — que é o defeito que o `run-local-gates.sh` existe para fechar.
+
+---
 ## Sessão 2026-10-12 (noite) — claude (a 9.5.0, e o que ELE mediu sobre o nosso Windows)
 
 **FIM.** O sync do #559/#560 entrou (`a1cc6e93`, **9.5.0** — minor, não patch): **37 de produto,
