@@ -4,6 +4,46 @@
 
 ---
 
+## Sessão 2026-10-15 (noite) — claude (sync do #565, e a previsão errou o DENOMINADOR dela mesma)
+
+**FIM.** Sync do **#565** do upstream (`8b040300`, mesclado por ele às 19:52): o ML-W1 da
+`REQ-2026-09-03` dele — chave de proveniência de terceiros calculada com raiz e destino na **mesma
+forma canônica**, porque no Windows o `EvalSymlinks` expande o nome curto 8.3 (`RUNNER~1`) e o
+destino do manifesto ficava na forma curta: o `filepath.Rel` não produzia a chave e **o artefato
+íntegro caía no ramo i**. Falso positivo — falha fechada, não brecha.
+
+```
+produto trazido  4   ·  governanca retida  4 (de 8 no merge)  ·  validate 0 antes · 0 depois
+ratchet de Windows   active 14 -> 12   ·   removed 24 -> 26   (removal_note: "corrected")
+divergencia de produto, ancorada na base   so .github/workflows/local-gates.yml, que e NOSSO
+```
+
+🔴 **A previsão que eu escrevi antes do merge acertou três de quatro, e o erro foi de coerência
+interna, não de leitura do upstream.** Eu escrevi *"3 de produto, 4 retidos, validate 0 → 0, e a
+nossa exposição no ratchet cai de 14 para 12"*. Os três últimos bateram. O primeiro errou:
+**foram 4**, porque eu esqueci o `.github/windows-known-failures.json` — que é exatamente o arquivo
+que a minha própria quarta afirmação exigia que mudasse. Se a exposição cai de 14 para 12, a lista
+muda; e a lista mora em `.github/`, que **não** é retido por `docs/` nem por `vault/`.
+
+**A lição é de método:** previsão com vários números se **confere contra ela mesma** antes de
+subir. A contradição estava dentro da frase, e não precisava do evento para aparecer. É a mesma
+família do `.claude/agent-memory/` em 2026-10-10 — *"a previsão dizia `produto = 0` e errou porque
+o diretório fica FORA de `docs/` e `vault/`"*; segunda ocorrência, agora com `.github/`.
+
+**E o vermelho do CI dele era a prova de que a correção funcionou**, não regressão: o
+`windows-full-suites` reprovou pela regra **D6** — *"entrada resolvida tem de ser aposentada no
+mesmo PR"* —, porque os dois testes de terceiros **passaram** estando na lista de falhas conhecidas
+(`12 observed / 14 active ... [-2 resolvido]`). Os outros 19 checks estavam verdes. Ler aquele
+vermelho como defeito teria invertido o sinal.
+
+**Leitura do vigia que fica declarada, com a causa NÃO determinada:** o
+`tools/espera-upstream-pr.sh` foi armado às ~18:35 com ciclo de 90 s e imprimiu **zero linhas de
+progresso** — ou seja, a primeira passada do laço já viu `MERGED`, às 20:29, 37 min depois do merge.
+Ou o processo só começou ali, ou a máquina dormiu no meio. Uma passada não distingue os dois, e é a
+mesma classe já registrada no pulso da vigia (*"não distingue morreu de a máquina dormiu"*). O que
+está medido é que o **veredito** saiu certo, conferido contra a API no mesmo instante.
+
+---
 ## Sessão 2026-10-15 (fim) — claude (a 9.6.0, e a previsão de "efeito nulo" que errou na letra)
 
 **FIM.** Sync da **9.6.0** (`ac80b006`): release pura — **5 de produto, 1 retido**, `validate 0 → 0`.
