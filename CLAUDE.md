@@ -1680,6 +1680,42 @@ seção dos gates de PATH curado.
 
 ## `HOME` ≠ `%USERPROFILE%` desliga a cerca GLOBAL em silêncio — aqui a exposição é zero, medida
 
+### ✅ CONFIRMADO em 2026-10-15, com a regra `home_divergence_windows` no produto
+
+Ele mesclou o [#562](https://github.com/kgsaran/trackfw/pull/562) às 10:27 e fechou a REQ pelo
+[#563](https://github.com/kgsaran/trackfw/pull/563) às 13:20 — **45 arquivos de produto** no sync,
+`validate 0 antes · 0 depois`.
+
+🔴 **E silêncio tem duas causas, então a sonda separa "premissa satisfeita" de "regra inerte"** —
+com `HOME` apontado para outro lugar **só no processo da medição**, nunca no ambiente:
+
+```
+HOME normal      rc=0 · 3 avisos · 0 ocorrencias de "differs from the OS home"   <- o nosso caso
+HOME divergente  rc=0 · 4 avisos · 1 ocorrencia                                  <- a regra esta VIVA
+```
+
+A mensagem dele é mais honesta que a nossa medição de ontem: ela **nomeia os dois caminhos**,
+declara *"Claude Code reads the OS home (measured)"*, diz que os CLIs **inferidos** (Codex, Gemini,
+Cursor, Copilot, Kiro) ficam sob `HOME` **até serem medidos**, e que o **Windsurf não foi medido**.
+É **aviso**, não violação — `rc=0` nas duas direções.
+
+🔴 **O meu contador saiu errado na primeira passada, e a causa é de forma.** Eu contei
+`grep -ciE 'divergen|inert'` — o vocabulário do **nome** da regra — e a mensagem diz *"differs from
+the OS home"*. O contador devolveu **0** com o aviso impresso duas linhas acima. Mesma família do
+`grep -iE 'falh|✗'` que jogou fora a linha `FAIL <gate> exit=2` porque o script escreve a palavra em
+inglês: **o discriminante é o texto medido, nunca a palavra que eu suponho que ele usa.**
+
+**O dia dele vale como forma, não só como conteúdo:** 14 commits em 6 h, e **dois bloqueios de
+revisão** — `hefesto-tf` (B1: *"o aviso chama guard ativo de inerte"*; B2: *"skill global sob
+`HOME`"*) e `hades-tf` (R-3: *"relato de inerte com `CLAUDE_CONFIG_DIR`"*). Os três achados são a
+**mesma classe** — afirmar "inerte" sobre guard que está ativo —, e os dois revisores recusaram. O B2
+é *"mesma causa, outro sítio"* e virou **ML na REQ vigente**, não REQ nova: a Regra Dura de Causa
+Raiz aplicada no repositório dele.
+
+**E ele declara a CARGA DA MÁQUINA ao lado do `make quality EXIT=0` (347 OK / 0 FAIL, carga 8,3).**
+Vale copiar: é a resposta direta ao que nos custou os 678 s e os 583 s — número de wall-clock sem o
+estado da máquina ao lado não é medida.
+
 Achado **dele**, medido em VM nos três terminais e mesclado em 2026-10-14 pelo
 [#561](https://github.com/kgsaran/trackfw/pull/561)
 (`docs/portabilidade/2026-10-14-guard-global-home-userprofile-vm.md`, 408 linhas). É o **item 1** da

@@ -4,6 +4,35 @@
 
 ---
 
+## Sessão 2026-10-15 — claude (a previsão do HOME confirmada, e o contador que procurou a palavra errada)
+
+**FIM.** Sync do #562/#563 (`409baec6`): **45 de produto, 10 retidos**, `validate 0 → 0`. A regra
+`home_divergence_windows` entrou e **não diz nada aqui** — confirmando a previsão de ontem.
+
+🔴 **O que não se deriva, e é a razão de a previsão valer:** silêncio tem duas causas, e a sonda
+as separa. Com `HOME` apontado para outro lugar **só no processo da medição**, a regra acusa:
+
+```
+HOME normal      rc=0 · 3 avisos · 0 ocorrencias de "differs from the OS home"
+HOME divergente  rc=0 · 4 avisos · 1 ocorrencia          <- a regra esta VIVA
+```
+
+🔴 **E o meu contador saiu errado na primeira passada, por procurar a palavra que eu supus.** Contei
+`grep -ciE 'divergen|inert'` — o vocabulário do **nome** da regra — e a mensagem dela diz *"differs
+from the OS home"*. O contador devolveu **0** com o aviso impresso duas linhas acima da contagem.
+Mesma família do `grep -iE 'falh|✗'` sobre script que escreve `FAIL`: **o discriminante é o texto
+medido, nunca a palavra que eu imagino que ele usa.** Refeito, a contagem bate nas duas direções.
+
+**Duas coisas da forma DELE que vale copiar, e as duas estão no `CLAUDE.md`:**
+
+1. **Dois revisores bloquearam o próprio trabalho dele no mesmo dia** — `hefesto-tf` (B1/B2) e
+   `hades-tf` (R-3) —, e os três achados são a **mesma classe**: dizer "inerte" sobre guard que
+   está ativo. O B2 (*"skill global sob HOME"*) é mesma causa em outro sítio e virou **ML na REQ
+   vigente**, não REQ nova.
+2. **Ele declara a carga da máquina ao lado do `make quality EXIT=0`** (347 OK / 0 FAIL, carga 8,3).
+   É a resposta direta ao que nos custou os 678 s e os 583 s.
+
+---
 ## Sessão 2026-10-14 — claude (o sync vazio, e a exposição que ELE mediu e aqui é zero)
 
 **FIM.** O sync do #561 (`a4500f15`) é o primeiro desta série com **produto 0 e 8 retidos de 8**:
