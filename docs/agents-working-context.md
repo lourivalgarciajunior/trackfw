@@ -4,6 +4,78 @@
 
 ---
 
+## Sessão 2026-10-15 (tarde) — claude (o ratchet reprovou, e eu li os dois sítios em bloco)
+
+**FIM.** O sync do #562 trouxe `internal/agentconfig/agentconfig.go` e o
+`check-os-predicate-classification.sh` reprovou com **2 sítios**. A `REQ-2026-10-15` fecha a
+correção, e o roadmap foi para `done/` com os dois MLs ✅.
+
+🔴 **O erro que vale guardar não é o do gate — é o meu: eu li os dois sítios EM BLOCO e declarei
+os dois como falso positivo.** A medição desmentiu metade:
+
+| sítio | eu disse | o real |
+|---|---|---|
+| `:89` `return runtime.GOOS` | falso positivo | **certo** — é o seam do `effectiveGOOS()` |
+| `:282` `filepath.IsAbs(cleaned)` | falso positivo | 🔴 **errado** — é a MESMA forma dos 9 do baseline |
+
+**O que desmentiu foi comparar com a forma dos sítios JÁ DECLARADOS**, não reler a ADR: o
+`IsAbs(clean)` do `credential.go` e o `IsAbs(f)` do `sync.go` são a mesma construção. E o
+`credential.go` carrega explorabilidade **medida** nessa forma (`/c/...` rc=0, `C:\...` rc=2, por
+causa da letra de unidade). Tratar o `:282` como seam teria **afrouxado o ratchet** na classe que
+já custou a issue #544.
+
+🔴 **E a pergunta que eu fiz ao usuário carregava a leitura errada**, o que mudou o que ele
+autorizou: ele escolheu *"consertar o classificador"* para dois sítios, e só um era. O resultado
+ficou certo — classe nova para o seam, baseline para o `IsAbs` — mas a opção foi apresentada sobre
+premissa meio falsa. **Antes de oferecer opções, conferir a premissa de cada uma.**
+
+**O método que funcionou, em uma frase:** antes de declarar sítio novo como classe nova, confira se
+ele tem a forma de algum sítio **já declarado** — se tiver, é a mesma classe, e tratá-lo como nova
+afrouxa o instrumento.
+
+🔴 **E o backtick me pegou dentro do arquivo que a memória deveria proteger:** o motivo do baseline
+levou `` `!filepath.IsAbs(clean)` ``, o `BASELINE` é string de aspas duplas, e o bash executou —
+`rc=2`, `syntax error near unexpected token`. Nenhuma das nove entradas anteriores usa backtick, e
+agora o motivo registra por quê.
+
+**E chutei o nome da ADR de novo** (`ADR-2026-09-09-predicado-de-so-em-sitio-de-classificacao.md`),
+que tem sufixo longo. O `validate` pegou, como na vez anterior — o instrumento funciona, o hábito
+não: derive o nome com `ls docs/adr/ | grep`, nunca escreva de memória.
+
+**Limite declarado, e é maior que esta REQ:** o `effectiveGOOS() ==` — a comparação de verdade —
+é **invisível** ao gate, porque não usa nenhum dos nove predicados. **2 ocorrências medidas**,
+as duas no mesmo arquivo. Fica fora por escopo, com o número de partida escrito na REQ.
+
+---
+## Sessão 2026-10-15 — claude (a previsão do HOME confirmada, e o contador que procurou a palavra errada)
+
+**FIM.** Sync do #562/#563 (`409baec6`): **45 de produto, 10 retidos**, `validate 0 → 0`. A regra
+`home_divergence_windows` entrou e **não diz nada aqui** — confirmando a previsão de ontem.
+
+🔴 **O que não se deriva, e é a razão de a previsão valer:** silêncio tem duas causas, e a sonda
+as separa. Com `HOME` apontado para outro lugar **só no processo da medição**, a regra acusa:
+
+```
+HOME normal      rc=0 · 3 avisos · 0 ocorrencias de "differs from the OS home"
+HOME divergente  rc=0 · 4 avisos · 1 ocorrencia          <- a regra esta VIVA
+```
+
+🔴 **E o meu contador saiu errado na primeira passada, por procurar a palavra que eu supus.** Contei
+`grep -ciE 'divergen|inert'` — o vocabulário do **nome** da regra — e a mensagem dela diz *"differs
+from the OS home"*. O contador devolveu **0** com o aviso impresso duas linhas acima da contagem.
+Mesma família do `grep -iE 'falh|✗'` sobre script que escreve `FAIL`: **o discriminante é o texto
+medido, nunca a palavra que eu imagino que ele usa.** Refeito, a contagem bate nas duas direções.
+
+**Duas coisas da forma DELE que vale copiar, e as duas estão no `CLAUDE.md`:**
+
+1. **Dois revisores bloquearam o próprio trabalho dele no mesmo dia** — `hefesto-tf` (B1/B2) e
+   `hades-tf` (R-3) —, e os três achados são a **mesma classe**: dizer "inerte" sobre guard que
+   está ativo. O B2 (*"skill global sob HOME"*) é mesma causa em outro sítio e virou **ML na REQ
+   vigente**, não REQ nova.
+2. **Ele declara a carga da máquina ao lado do `make quality EXIT=0`** (347 OK / 0 FAIL, carga 8,3).
+   É a resposta direta ao que nos custou os 678 s e os 583 s.
+
+---
 ## Sessão 2026-10-14 — claude (o sync vazio, e a exposição que ELE mediu e aqui é zero)
 
 **FIM.** O sync do #561 (`a4500f15`) é o primeiro desta série com **produto 0 e 8 retidos de 8**:

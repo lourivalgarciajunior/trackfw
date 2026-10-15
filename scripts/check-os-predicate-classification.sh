@@ -113,6 +113,7 @@ internal/pathguard/pathguard.go|Beneath recusa o resultado de filepath.Rel que s
 internal/sync/sync.go|torna absoluto o caminho da REQ contra a raiz antes da guarda de escrita; produto do upstream, entrou com o #397 em 2026-09-22
 internal/validator/branchlink.go|torna absoluto o roadmap_dir relativo do trackfw.yaml contra a raiz resolvida antes da GuardedWrite; mesma forma do adr.go, produto do upstream, entrou com o #446 em 2026-09-27
 internal/discover/discover.go|resolveDeclared ancora no rootDir o diretorio declarado no trackfw.yaml, respeitando caminho absoluto e til, antes de contar os ADRs pelo ponto unico; codigo NOSSO, entrou com o nosso PR #498 em 2026-10-02 e so foi visto no sync porque este gate nao existe em upstream/main
+internal/agentconfig/agentconfig.go|ClaudeConfigDirWithSource recusa CLAUDE_CONFIG_DIR relativo por filepath.IsAbs sobre o valor da variavel de ambiente; produto do upstream, entrou com o #562 em 2026-10-15 (ML-2D, do red-team R-3). MESMA FORMA dos nove acima -- IsAbs sobre caminho que vem de fora (env, payload, trackfw.yaml) --, e por isso ENTRA em vez de virar classe nova: eu li este sitio como entrada externa e portanto nao-classificacao, e a medicao do baseline desmentiu, porque o IsAbs(clean) do credential.go e o IsAbs(f) do sync.go sao a mesma coisa. 🔴 E a primeira redacao deste motivo levava BACKTICK, que o bash executou dentro do BASELINE de aspas duplas (rc=2, syntax error) -- nenhuma das nove entradas acima usa backtick, e agora esta escrito por que. 🔴 E o credential.go carrega explorabilidade MEDIDA exatamente nesta forma: /c/... sai rc=0 e C:\... sai rc=2, porque IsAbs exige letra de unidade no Windows. O sitio :89 do mesmo arquivo NAO esta aqui: aquele e seam (getter), e o classificador passou a reconhece-lo
 internal/guard/credential.go|credResolveArg junta o caminho vindo do PAYLOAD da ferramenta com o baseCwd quando IsAbs diz relativo; produto do upstream, entrou com o #543 em 2026-10-08. 🔴 EXPLORABILIDADE MEDIDA E CONFIRMADA no mesmo dia, as 17h: mesmo arquivo e mesma chave, so a forma do caminho mudando — C:\...\ e C:/.../ saem rc=2 (DETECTA), /c/.../ e /C/.../ saem rc=0 (NAO detecta, e sem nem avisar no stderr). O discriminante e a LETRA DE UNIDADE, nao a barra: IsAbs exige nome de volume no Windows. Em Git Bash o caminho e /c/... por padrao, que e a forma que um agente escreve. Reportado em kgsaran/trackfw#544 com os controles (vacuidade: o caminho Windows DETECTA; positivo: camada 1 bloqueia). ARMADILHA DE MEDICAO, para nao repetir: rc=0 NAO significa 'nao detectou' — em modo warn o guard detecta e retorna 0, e a deteccao vive no STDERR; o default difere por caminho de codigo (warn num sitio, block noutro). Quatro tentativas minhas erraram antes: tres por conversao de caminho do MSYS e uma por ler so o rc
 "
 
@@ -134,7 +135,25 @@ eh_d1_travessia() {  # D1: o predicado recebe um valor de ERRO
   printf '%s' "$1" | grep -qE 'IsNotExist\((err|readErr|[a-zA-Z_][a-zA-Z0-9_]*[Ee]rr)\)'
 }
 
-eh_d3_costura() {  # D3: a plataforma entra por UM ponto -- constante ou argumento
+eh_d3_costura() {  # D3: a plataforma entra por UM ponto -- constante, argumento ou GETTER
+  # (c) DEVOLVIDA POR UM GETTER, sozinha na linha do `return`:
+  #       func effectiveGOOS() string { ...; return runtime.GOOS }
+  #     Esta e a forma CANONICA da costura em Go: o getter e o ponto unico por onde
+  #     a plataforma entra, e e ele que o `SetPlatformForTest` sobrescreve. Nao ha
+  #     string autorada nem comparacao -- pela ADR-2026-09-09 (origem do argumento),
+  #     nao e classificacao.
+  #
+  #     🔴 Entrou em 2026-10-15 porque o classificador ACUSAVA este sitio: o sync do
+  #     #562 trouxe `internal/agentconfig/agentconfig.go:89` e o ratchet reprovou um
+  #     seam. Mesma familia do conserto do ML-1H, quando prosa dentro de docstring
+  #     deixou de contar como sitio -- e la um arquivo SAIU do baseline por isso.
+  #
+  #     🔴 A ancora no FIM da linha e o que mantem a regra estreita: ela recusa
+  #     `return runtime.GOOS == "windows"`, que compara no proprio sitio e e
+  #     classificacao. Medido no acervo em 2026-10-15: 1 sitio na forma do getter,
+  #     ZERO na forma com comparacao -- a segunda nao existe hoje, e a regra ja a
+  #     recusa para quando existir.
+  printf '%s' "$1" | grep -qE "^[[:space:]]*return[[:space:]]+(${PLATAFORMA})[[:space:]]*$" && return 0
   # (a) atribuida a uma constante/variavel nomeada, com ou sem anotacao de tipo:
   #       var CurrentGOOS = runtime.GOOS
   #       _current_platform: str = sys.platform
