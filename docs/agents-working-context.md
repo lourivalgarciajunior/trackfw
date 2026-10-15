@@ -4,6 +4,46 @@
 
 ---
 
+## Sessão 2026-10-15 (fim) — claude (a 9.6.0, e a previsão de "efeito nulo" que errou na letra)
+
+**FIM.** Sync da **9.6.0** (`ac80b006`): release pura — **5 de produto, 1 retido**, `validate 0 → 0`.
+A tripla foi completa, e o passo 3 **não** foi decidido por dry-run: o CHANGELOG da 9.6.0 manda
+rodar o `update harness` porque o resolvedor do guard global mudou.
+
+🔴 **A previsão que eu escrevi antes de rodar — "efeito nulo" — errou na letra e acertou no**
+**comportamento, e a diferença importa.** O harness **mudou o arquivo**:
+
+```
+antes   sha256=83d9207b44f0ba57  5599 bytes  4 grupos com guard
+depois  sha256=7277523345afeaf9  5599 bytes  4 grupos com guard
+cmp     DIFEREM, char 6 linha 2
+```
+
+O que mudou foi **só ordem de chaves** — o harness reescreve o JSON em ordem alfabética
+(`autoMode` subiu, `tui` desceu, `command` antes de `type`, `matcher` depois de `hooks`). A prova
+de que nada semântico mudou é a comparação dos **objetos**, não dos bytes:
+
+```
+objetos JSON IGUAIS?    SIM
+canonico (sort_keys)    IDENTICO
+comandos de guard       IDENTICOS (4)
+matchers                IDENTICOS: ['Bash|PowerShell', 'Bash|PowerShell']
+```
+
+**A lição é de forma, e serve para toda prova de "não mudou nada":** `cmp` responde *"os bytes
+são os mesmos?"*, e para arquivo de configuração a pergunta certa é *"o objeto é o mesmo?"*.
+Dizer "efeito nulo" com o `cmp` divergindo seria afirmação falsa; dizer "mudou" com o objeto
+igual seria alarme falso. **Os dois números, rotulados.**
+
+**Observação pequena, não levada como issue:** o `--dry-run` diz `updated=2` e a corrida real diz
+`updated=1`. Os dois alvos (`claude-credential-guard` e `claude-git-branch-guard`) vivem no
+**mesmo arquivo**, então o dry-run conta alvos e o real conta escritas. Não é defeito — é
+denominador diferente no mesmo rótulo, e vale saber antes de ler o número como contagem de alvos.
+
+**E o backup do arquivo global ficou no scratchpad** (`settings.antes-9.6.0`), não no git: ele é
+arquivo do usuário, fora do repositório.
+
+---
 ## Sessão 2026-10-15 (tarde) — claude (o ratchet reprovou, e eu li os dois sítios em bloco)
 
 **FIM.** O sync do #562 trouxe `internal/agentconfig/agentconfig.go` e o
