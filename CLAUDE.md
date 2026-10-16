@@ -894,6 +894,54 @@ Medido nas duas direções antes de remover a pasta, com o mesmo teste:
 A linha de cima é o que justificava o contorno; a de baixo é o que o aposenta. Sem a segunda, remover
 seria fé; sem a primeira, eu não saberia se algum dia fez falta.
 
+## 🔴 O 4º aviso do `validate` é VERDADEIRO: `C:\dev` dá escrita a Usuários autenticados (2026-10-16)
+
+O [#567](https://github.com/kgsaran/trackfw/pull/567) trouxe a regra
+`project_foreign_write_windows` (ML-W2 da `REQ-2026-09-03` dele), e ela **acende aqui**:
+
+```
+validate   0 violacoes · 3 avisos  ->  0 violacoes · 4 avisos
+
+project_foreign_write_windows: "C:\dev\ferramentas\trackfw-main" grants write access to
+  AUTORIDADE NT\Usuarios autenticados (S-1-5-11) (inherited ACE)
+```
+
+🔴 **Não é ruído — é fato desta máquina, conferido pelo `icacls` e não pelo aviso:**
+
+```
+C:\dev\ferramentas\trackfw-main
+  BUILTIN\Administradores             (I)(OI)(CI)(F)
+  AUTORIDADE NT\SISTEMA               (I)(OI)(CI)(F)
+  BUILTIN\Usuarios                    (I)(OI)(CI)(RX)
+  AUTORIDADE NT\Usuarios autenticados (I)(M)              <- esta pasta
+  AUTORIDADE NT\Usuarios autenticados (I)(OI)(CI)(IO)(M)  <- herdada para os filhos
+```
+
+O repositório vive **fora do perfil do usuário**, e a ACL herdada de `C:\dev` concede **Modify** a
+`S-1-5-11`. Qualquer conta autenticada desta máquina pode escrever nos artefatos de governança.
+
+**E a duplicata no texto do aviso NÃO é defeito de detecção** — foi a minha primeira leitura e está
+refutada pelo `icacls`: o aviso nomeia o mesmo principal duas vezes porque **existem dois ACEs**
+**distintos**, um para a pasta e um `(IO)` só para os filhos, e o display não imprime as marcas de
+herança. O comando de remédio sai com o SID repetido, redundante e idempotente.
+
+🔴 **O remédio NÃO foi aplicado, e a razão é de alçada, não técnica:** mexer em ACL é mudança de
+configuração de segurança da máquina do usuário, e isso não se faz sem a palavra dele. O comando,
+em PowerShell, para quando ele decidir:
+
+```powershell
+icacls "C:\dev\ferramentas\trackfw-main" /inheritance:d
+icacls "C:\dev\ferramentas\trackfw-main" /remove:g *S-1-5-11
+```
+
+**O que muda se ele não aplicar:** o `validate` daqui passa a ter **4 avisos** permanentes, e toda
+afirmação de "0 violações · 3 avisos" neste arquivo é de **antes de 2026-10-16**. A alternativa que
+o próprio aviso oferece — mover o projeto para dentro do perfil — custa mais que o `icacls`, porque
+arrastaria os outros repositórios de `ferramentas/`.
+
+**Limite declarado:** `rc=0` nas duas direções. É **aviso**, não violação, então nenhum gate
+reprova por causa dele, aqui ou no CI — e em `ubuntu-latest` a regra é no-op por construção
+(`validator_project_foreign_write_other.go`).
 ## O agregador custa ~470 s nesta máquina, e o custo está decomposto (2026-10-13)
 
 Medido porque o usuário perguntou *"verifica se travou"* depois de desligar o computador no meio de
@@ -1474,8 +1522,11 @@ o roteiro está escrito acima, e não só na memória da sessão.
 > corrigindo a causa. Medido pelo `trackfw` do PATH, não pelo da árvore — que é o que responde "todos
 > os projetos desta máquina", e não só este.
 >
-> **Veredito de hoje:** `validate` **0 violações · 3 avisos**, e os 3 são isenções declaradas por
-> corte (`req_has_roadmap` e `req_done_open_criteria`), com `0 enforced`.
+> **Veredito de 2026-10-08:** `validate` **0 violações · 3 avisos**, e os 3 eram isenções declaradas por
+> corte (`req_has_roadmap` e `req_done_open_criteria`), com `0 enforced`. 🔴 **Hoje são 4** — o
+> quarto é o `project_foreign_write_windows`, do #567, e tem seção própria abaixo. `hoje` num
+> arquivo que sobrevive ao dia é a forma mais fraca que este arquivo usa, e esta linha é a
+> terceira a cair por ela.
 >
 > 🔴 **E ACONTECEU DE NOVO, duas vezes mais.** Terceiro movimento às 19:54 de 2026-10-07 (o sync do
 > #536 trocou a linha pela polyglot do D11: `validate` **3 → 15**, os 12 novos de escopo global) e

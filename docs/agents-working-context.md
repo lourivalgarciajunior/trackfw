@@ -4,6 +4,49 @@
 
 ---
 
+## Sessão 2026-10-16 (tarde) — claude (sync do #567: o 4º aviso do `validate` é VERDADEIRO aqui)
+
+**FIM.** Sync do **#567** (`b5416c0f`, mesclado por ele às 14:07): o **ML-W2** da
+`REQ-2026-09-03` — no Windows o `validate` passou a **avisar quando o projeto concede escrita a**
+**outro usuário**, em vez de fingir `0600`. 3.577 linhas, 25 arquivos.
+
+```
+produto trazido  14   ·  governanca retida  11 (de 25 no merge)
+validate   0 violacoes · 3 avisos  ->  0 violacoes · 4 AVISOS   <- a regra ACENDE aqui
+go build exit 0  ·  run-local-gates 16 executado(s) · 0 falha(s)
+```
+
+🔴 **O aviso novo é VERDADEIRO, e isto é o achado do ciclo.** Ele diz que
+`C:\dev\ferramentas\trackfw-main` concede escrita a `AUTORIDADE NT\Usuários autenticados`
+(`S-1-5-11`) por ACE herdada. Conferido pelo `icacls`, **não pelo aviso**:
+
+```
+  AUTORIDADE NT\Usuarios autenticados (I)(M)              <- esta pasta
+  AUTORIDADE NT\Usuarios autenticados (I)(OI)(CI)(IO)(M)  <- herdada para os filhos
+```
+
+O repositório vive **fora do perfil**, e a ACL de `C:\dev` concede **Modify**. A seção própria no
+`CLAUDE.md` carrega a medição, o remédio por `icacls` e a razão de ele **não** ter sido aplicado:
+ACL é configuração de segurança da máquina do usuário, e isso não se faz sem a palavra dele.
+
+**E a minha primeira leitura do aviso estava errada, refutada no mesmo minuto:** eu li a duplicata
+do principal (`S-1-5-11` nomeado duas vezes) como defeito de deduplicação do produto. O `icacls`
+mostrou **dois ACEs distintos** — um da pasta, um `(IO)` só dos filhos —, e o display não imprime as
+marcas de herança. Teria virado issue sobre defeito inexistente; o discriminante foi olhar a ACL
+real em vez do texto do aviso.
+
+🔴 **E uma afirmação em PRESENTE no `CLAUDE.md` caiu com este sync, a terceira pela mesma forma:**
+o *"**Veredito de hoje:** `validate` 0 violações · 3 avisos"* ficou falso às 14:20. Datei-o
+(`Veredito de 2026-10-08`) e pus o número de hoje ao lado. As outras três ocorrências de "3 avisos"
+no arquivo **ficam**, porque são medições datadas no passado — previsão confirmada e veredito de um
+dia. *Datado e no passado não envelhece; presente envelhece.*
+
+**Duas ocorrências do heredoc comendo contrabarra, no mesmo ciclo**, a segunda com `SyntaxError` em
+vez de silêncio: o script do `CLAUDE.md` tem caminho de Windows em quase toda linha, e `C:\dev`
+chegou como `C:` mais escape inválido. A forma que funciona está no próprio script — escrever `\` e
+trocar por `chr(92)` no fim, **sem nenhuma contrabarra no transporte**.
+
+---
 ## Sessão 2026-10-16 — claude (sync do #566, e a vigia da `main` dele fechou o laço sozinha)
 
 **FIM.** Sync do **#566** (`04074dd3`, mesclado por ele às 09:25): o **ML-R3** da mesma
