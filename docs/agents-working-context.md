@@ -4,6 +4,32 @@
 
 ---
 
+## Sessão 2026-10-16 (fim) — claude (sync do #568: o censo de Windows, e a nossa ADR do HOME cobrando no arnês dele)
+
+**FIM.** Sync do **#568** (`f7e9bded`, mesclado por ele às 15:49): o **ML-W4** — o censo de Windows
+deixou de instalar o pacote pré-v8, passou a usar o `trackfw.exe`, e o **cenário 67** do
+`check-gates-falsify.sh` passou a isolar o `USERPROFILE`.
+
+```
+produto trazido  2   ·  governanca retida  6 (de 8 no merge)  ·  validate 0 antes · 0 depois
+go build exit 0  ·  run-local-gates 16 executado(s) · 0 falha(s)
+os 2 de produto   .github/workflows/windows-census.yml  ·  scripts/check-gates-falsify.sh
+```
+
+🔴 **E o conserto dele é consequência direta do achado do HOME ≠ `%USERPROFILE%`** (o #562, que a
+nossa seção do `CLAUDE.md` já registra). O cenário 67 passava só `HOME=<fake>`; no Windows o
+`agentconfig.ClaudeConfigDir` resolve por `os.UserHomeDir()` — que é o `USERPROFILE` —, então o
+`readClaudeSettingsJSON` devolvia `ok=false`, o `discover` gravava a entrada no projeto e os braços
+1 e 4 reprovavam. O arnês passou a mandar `HOME`, `USERPROFILE` e `CLAUDE_CONFIG_DIR=` juntos.
+
+**O que isso diz do nosso lado:** o `check-gates-falsify.sh` é consumido pelo **`Makefile`** (alvos
+de paridade), não pelo nosso agregador — conferido por `grep`. Então ele não roda aqui, e a nossa
+regra de não rodar `make parity-rest` na raiz do fork continua valendo sem mudança.
+
+**Quarto sync do dia**, e os quatro pelo mesmo laço: #565, #566, #567 e #568. Nos três últimos a
+vigia da `main` dele acordou sozinha, e o único trabalho manual foi ler o que o merge trouxe.
+
+---
 ## Sessão 2026-10-16 (tarde) — claude (sync do #567: o 4º aviso do `validate` é VERDADEIRO aqui)
 
 **FIM.** Sync do **#567** (`b5416c0f`, mesclado por ele às 14:07): o **ML-W2** da
