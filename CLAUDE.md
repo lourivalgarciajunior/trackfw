@@ -1982,6 +1982,37 @@ O gate imprimia um caminho **que não existe**, e a comparação de bytes funcio
 mesmo fallback do MSYS. O `.exe` passou a ser tentado primeiro. É a mesma família de
 `msys-mente-sobre-o-que-criou`, agora dentro de um instrumento nosso.
 
+## ✅ A campanha de Windows do upstream encerrou em 2026-10-16: lista conhecida de 14 para 6
+
+A `REQ-2026-09-03` dele — *"as 217 falhas reais de Windows colapsam em poucas causas"* — fechou
+pelo [#571](https://github.com/kgsaran/trackfw/pull/571). O arco inteiro, na declaração dele:
+**246 → 39** no primeiro encerramento (06/09), e agora **lista conhecida 14 → 6**, com o censo de
+Windows de **4 → 2 FAIL**.
+
+🔴 **As 6 que restam são TODAS de ambiente, e três já tinham seção própria neste arquivo:**
+
+| teste | grupo e causa |
+|---|---|
+| `TestFilenameUniqueness_DiretorioNaoLegivel_P2` | **A** — `os.Chmod(0o000)` é no-op em NTFS sem ACL |
+| `TestFolderStatus_DiretorioNaoLegivel_P2` | **A** — a mesma |
+| `TestStaleWIPReportsWIPWalkError` | **A** — `ENOTDIR` = `ERROR_PATH_NOT_FOUND` no Windows |
+| `TestAttentionScripts_FallbackWithoutJQ` | **C** — `os.Symlink` exige privilégio de desenvolvedor |
+| `TestShip_Integration_GracefulDegradation_RealBinary` | **C** — `git.exe` falso no PATH dispara a defesa anti-fork-bomb do runner |
+| `TestChecksum_StableAndMatchesSHA256Sum` | **D** — `shasum -a 256` com caminho de barra invertida |
+
+**A terceira linha é o `ENOTDIR`** — a mesma medição que originou a **Regra Dura de Reconciliação**
+deste arquivo, em 2026-09-05: o ML mediu que `ENOTDIR` é indistinguível de "ausente" no Windows e,
+**na mesma entrega**, criou um teste afirmando o contrário. Hoje ela está na lista como causa de
+ambiente, `MEASURED`, que é onde ela sempre deveria ter estado.
+
+**As duas primeiras são as do Group A** que a seção abaixo documenta como inconstruíveis nesta
+máquina. **Nada a fazer deste lado** — e 🔴 **o remédio continua não sendo `chmod +x` nem forçar
+bit**, pela ordem de 2026-08-29 que esta casa já pagou uma vez para aprender.
+
+**Nossa exposição, medida nos syncs do dia:** 14 → 12 (#565) → 11 → 6 (#570). Cada queda veio de
+falha que **deixou de existir**, não de entrada aposentada por conveniência: a regra **D6** do ADR
+dele exige que entrada resolvida saia no mesmo PR que a corrige, e foi o CI dele que cobrou isso —
+o `windows-full-suites` do #565 ficou **vermelho** justamente porque dois testes da lista passaram.
 ## Ponto cego local de bit de execução: `pin7-noexec` e as três falhas do Group A
 
 Mesma causa da [#421](https://github.com/kgsaran/trackfw/issues/421): **`os.Chmod` é no-op em NTFS

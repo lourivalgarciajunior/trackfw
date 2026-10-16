@@ -4,6 +4,33 @@
 
 ---
 
+## Sessão 2026-10-16 (noite, 3) — claude (sync do #571: a campanha de Windows dele ENCERROU)
+
+**FIM.** Sync do **#571** (`95ef36a0`, 20:00): ele encerrou a `REQ-2026-09-03`.
+
+```
+produto trazido  0   ·  governanca retida  5 (de 5 no merge)  ·  validate 0 antes · 0 depois
+arco declarado por ele:  246 -> 39 (06/09)  ·  lista conhecida 14 -> 6  ·  censo 4 -> 2 FAIL
+nossa exposicao no dia:  14 -> 12 (#565) -> 11 -> 6 (#570)
+```
+
+🔴 **Previsão acertada desta vez, e o motivo é de método:** eu derivei `produto = 0` **da lista de
+arquivos do commit** (cinco, todos sob `docs/`), não do tipo do commit. Em 2026-10-10 a mesma
+previsão errou por eu ter olhado o `docs(governance)` do assunto e esquecido que
+`.claude/agent-memory/` fica fora da retenção. Derivar do conteúdo, não do rótulo.
+
+**As 6 que restam são todas de ambiente**, e três já tinham seção neste repositório — as duas do
+`os.Chmod` no-op em NTFS e a do `ENOTDIR = ERROR_PATH_NOT_FOUND`. 🔴 **Esta última é a medição que
+originou a nossa Regra Dura de Reconciliação**, em 2026-09-05: o ML mediu que `ENOTDIR` é
+indistinguível de "ausente" e, na mesma entrega, criou um teste afirmando o contrário. Hoje ela está
+na lista como causa de ambiente, `MEASURED` — onde sempre deveria ter estado. A tabela das seis
+entrou no `CLAUDE.md`.
+
+**Sexto sync do dia** — #565, #566, #567, #568, #570 e #571 —, mais o #262 da ACL. Nos cinco
+últimos a vigia da `main` dele acordou sozinha e o único trabalho manual foi ler o que o merge
+trouxe.
+
+---
 ## Sessão 2026-10-16 (noite, 2) — claude (sync do #570: o ratchet de Windows cai de 11 para 6)
 
 **FIM.** Sync do **#570** (`bcde12ac`, mesclado por ele às 18:22): o **ML-W3** — o renderizador
