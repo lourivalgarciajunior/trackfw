@@ -4,6 +4,51 @@
 
 ---
 
+## Sessão 2026-10-16 — claude (sync do #566, e a vigia da `main` dele fechou o laço sozinha)
+
+**FIM.** Sync do **#566** (`04074dd3`, mesclado por ele às 09:25): o **ML-R3** da mesma
+`REQ-2026-09-03` — o guard de entrada do `Manager` passou a recusar **travessia com `/` ou `\`**
+nos destinos relativos **e** no ramo `~/` dos globais.
+
+```
+produto trazido  2   ·  governanca retida  3 (de 5 no merge)  ·  validate 0 antes · 0 depois
+go build exit 0  ·  run-local-gates 16 executado(s) · 0 falha(s)
+divergencia de produto, ancorada na base   so .github/workflows/local-gates.yml, que e NOSSO
+```
+
+**O mecanismo, na medição dele:** o pacote `path` (POSIX) **não** trata `\` como separador, então
+`path.Clean("..\outside.md")` devolve a própria string e o segmento de travessia atravessava o
+guard — só o `beneath()` barrava, e só no Windows. Uma camada só. No ramo `~/`, pior:
+`~/..\outside.md` virava **nome literal de arquivo no home** no macOS.
+
+🔴 **E o red-team dele REFUTOU a fórmula proposta, o que é a parte que vale copiar.** A ressalva
+R-1 do `hades-tf` mostrou que `.. `, `.. .`, `...` e `. ` passavam pelo guard **e** pelo
+`beneath()`, porque o Win32 **apara ponto e espaço à direita**. A correção proposta —
+`TrimRight(part) == ".."` — **nunca seria verdadeira**, e ele escreveu isso no commit em vez de
+silenciar: a regra que entrou é `TrimRight(part, " .") == ""`, exceto `.`. Fórmula proposta,
+medida, refutada e substituída, com o registro do refutado.
+
+**A vigia funcionou como desenhada, e isto é o primeiro ciclo completo dela:**
+
+```
+20:48 -> 06:53  300 ciclos, SEM lacuna, rc=2 (teto)   -> a maquina nao dormiu
+06:55 -> 09:26  rearmada com teto de 720; ciclo 76 acordou com rc=0
+                antes 8b040300  ->  agora 04074dd3
+```
+
+🔴 **E a causa do `rc` mentiroso foi fechada na raiz, não remediada.** Na primeira armação a
+notificação trouxe `exit code 0` com a vigia saindo **2**, porque o último comando da cadeia era um
+`tail` — oitava ocorrência da família do cano. Na rearmada o comando de segundo plano passou a ser
+**só o script**, sem nada depois: agora `0` significa *acordou por movimento* e `2` significa
+*teto*, que são decisões opostas (sincronizar x rearmar). Confundi-las faria eu sincronizar sem
+haver merge.
+
+**E a primeira tentativa de armar ficou INÚTIL por `nohup … &`:** a vigia rodava — conferido vivo
+pelo `Win32_Process`, porque o `ps` do MSYS é cego para esta família — mas **destacada da sessão**,
+logo nenhuma notificação chegaria. Vigia que ninguém lê não é vigia. Morta pelo PID e rearmada como
+tarefa rastreada.
+
+---
 ## Sessão 2026-10-15 (noite) — claude (sync do #565, e a previsão errou o DENOMINADOR dela mesma)
 
 **FIM.** Sync do **#565** do upstream (`8b040300`, mesclado por ele às 19:52): o ML-W1 da
