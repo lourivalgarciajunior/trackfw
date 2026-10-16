@@ -4,6 +4,37 @@
 
 ---
 
+## Sessão 2026-10-16 (noite, 2) — claude (sync do #570: o ratchet de Windows cai de 11 para 6)
+
+**FIM.** Sync do **#570** (`bcde12ac`, mesclado por ele às 18:22): o **ML-W3** — o renderizador
+passou a converter CRLF dos assets, e **as causas `INFER` do Windows saíram da lista**.
+
+```
+produto trazido  10   ·  governanca retida  4 (de 14 no merge)  ·  validate 0 antes · 0 depois
+ratchet   active 11 -> 6   ·   removed 27 -> 32
+go build exit 0  ·  run-local-gates 16 executado(s) · 0 falha(s)
+
+as cinco que sairam da lista ativa:
+  TestRenderOpenCodeAgent_CRLFSourceMatchesLF
+  TestRenderSubagentRouteInjectsIdentity_CRLFSourceMatchesLF
+  TestRenderWithoutIdentityMatchesFrozenGoldens
+  TestResolveAgentModelMatchesRender
+  TestUpdateMigratesKnownCodexAndPreservesUnknown
+```
+
+🔴 **Em dois dias a nossa exposição no ratchet de Windows caiu de 14 para 6** — #565 tirou 2, e este
+tirou 5. São falhas que **deixaram de existir**, não entradas aposentadas por conveniência: a regra
+D6 dele exige que entrada resolvida saia no mesmo PR, e foi o que ele fez nos dois.
+
+**E dois arquivos de `.claude/agent-memory/` vieram como PRODUTO, como a seção do `CLAUDE.md`
+prevê** — o diretório fica **fora** da retenção por decisão medida em 2026-10-10 (107 de 116
+arquivos são dele). A nota nova do `apolo-tf` é sobre revert com `sed` em múltiplos sítios, e entrou
+sem conflito com os 9 que são nossos.
+
+**Quinto sync do dia:** #565, #566, #567, #568 e #570, mais o #262 da ACL. Nos quatro últimos a
+vigia acordou sozinha.
+
+---
 ## Sessão 2026-10-16 (noite) — claude (o remédio da ACL tiraria a escrita do dono: #569)
 
 **FIM.** O usuário perguntou *"o que preciso fazer aqui"* sobre o 4º aviso, e a resposta certa era
