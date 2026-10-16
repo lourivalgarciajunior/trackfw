@@ -4,6 +4,64 @@
 
 ---
 
+## Sessão 2026-10-16 (noite) — claude (o remédio da ACL tiraria a escrita do dono: #569)
+
+**FIM.** O usuário perguntou *"o que preciso fazer aqui"* sobre o 4º aviso, e a resposta certa era
+**não rodar o comando que o aviso imprime**.
+
+```
+owner do projeto          LGJINDIE\louri        ACE explicita para ele   NENHUMA
+BUILTIN\Usuarios          ReadAndExecute        <- nao da escrita
+Usuarios autenticados     Modify                <- a UNICA que da escrita a ele
+Administradores no token  AUSENTE               contas locais habilitadas  1
+```
+
+🔴 **O remédio impresso (`/inheritance:d && /remove:g *S-1-5-11`) deixaria o repositório**
+**somente-leitura para quem trabalha nele.** Falta um `/grant` antes do `/remove`. Owner tem
+`WRITE_DAC` implícito, não escrita de dados.
+
+**Declarado: é INFERÊNCIA da ACL mais o token, não medição por efeito.** Não executei o remédio nem
+para reproduzir — ACL da máquina do usuário não se mexe sem a palavra dele, e isso vale também para
+produzir prova. O discriminante é verificável por leitura.
+
+**Duas entregas:** a seção do `CLAUDE.md` passou a trazer a sequência de **três** comandos com a
+medição, e a [#569](https://github.com/kgsaran/trackfw/issues/569) foi aberta no upstream.
+
+### ✅ E o usuário APLICOU os três, pouco antes das 17:30 — medido por efeito depois
+
+```
+ACL depois:  SISTEMA(F) · Administradores(F) · BUILTIN\Usuarios(RX) · lgjindie\louri(F)
+             Usuarios autenticados  AUSENTE   ·  nenhuma ACE herdada
+validate     4 avisos -> 3 avisos  ·  0 mencoes a foreign
+escrita raiz · subdir · arquivo filho  OK  ·  git status rc=0  ·  go build rc=0
+```
+
+🔴 **A ACL de depois CONFIRMA a inferência sem ninguém ter sido trancado fora:** a única ACE que dá
+escrita ao usuário é a `lgjindie\louri FullControl` criada pelo `/grant`. Sem o comando do meio,
+sobrariam `SISTEMA`, `Administradores` — fora do token dele — e `BUILTIN\Usuarios` com
+`ReadAndExecute`: **zero escrita**. Inferência por leitura virou leitura do estado final, que é o
+mais forte que se consegue sem provocar o lockout.
+
+🔴 **E eu quase commitei o texto errado:** a seção do `CLAUDE.md` e esta entrada diziam *"o remédio
+NÃO foi aplicado"* — escrito às 17:2x, falso às 17:30, porque o usuário rodou os comandos no meio do
+trabalho. Peguei antes do commit porque medi o estado em vez de reusar o que eu tinha acabado de
+escrever. **Afirmação de estado envelhece em minutos quando outra pessoa age no mesmo sistema.**
+
+**Escopo declarado:** o `/inheritance:d` foi na pasta do trackfw, não em `C:\dev`. Os outros
+repositórios de `ferramentas/` continuam herdando a ACL aberta — nenhuma regra os olha.
+
+🔴 **E a issue só foi aberta DEPOIS de varrer o acervo dele** — nove documentos do #567 e do #568,
+as duas ADRs, os três de segurança, os dois de portabilidade e as duas notas do vault. O `D2.1` da
+`ADR-2026-10-16` separa ACE herdada de explícita, mas **nenhum dos nove trata do caso "o dono perde
+a escrita"** e `/grant` não aparece em nenhum. É a regra que já custou uma retirada de oferta em
+07/10, aplicada antes e não depois.
+
+**A sugestão à issue não pede dado novo:** a regra já computa `currentUserSID()` para não
+classificar o próprio usuário como estranho; com esse SID dá para incluir o `/grant` na sequência ou
+avisar só quando, descontado o SID acusado, nenhuma ACE restante conceder escrita ao usuário
+corrente. 🔴 **Não propus suprimir o aviso** — ele está certo; o que está estreito é a orientação.
+
+---
 ## Sessão 2026-10-16 (fim) — claude (sync do #568: o censo de Windows, e a nossa ADR do HOME cobrando no arnês dele)
 
 **FIM.** Sync do **#568** (`f7e9bded`, mesclado por ele às 15:49): o **ML-W4** — o censo de Windows

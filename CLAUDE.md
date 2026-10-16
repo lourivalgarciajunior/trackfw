@@ -894,10 +894,12 @@ Medido nas duas direções antes de remover a pasta, com o mesmo teste:
 A linha de cima é o que justificava o contorno; a de baixo é o que o aposenta. Sem a segunda, remover
 seria fé; sem a primeira, eu não saberia se algum dia fez falta.
 
-## 🔴 O 4º aviso do `validate` é VERDADEIRO: `C:\dev` dá escrita a Usuários autenticados (2026-10-16)
+## ✅ O 4º aviso do `validate` era VERDADEIRO, e foi FECHADO em 2026-10-16, pouco antes das 17:30
 
 O [#567](https://github.com/kgsaran/trackfw/pull/567) trouxe a regra
-`project_foreign_write_windows` (ML-W2 da `REQ-2026-09-03` dele), e ela **acende aqui**:
+`project_foreign_write_windows` (ML-W2 da `REQ-2026-09-03` dele), e ela **acendeu aqui** — o
+usuário aplicou a sequência de três comandos pouco antes das 17:30 e o aviso saiu. A medição de antes fica,
+porque é ela que explica por que o remédio de **dois** comandos não servia:
 
 ```
 validate   0 violacoes · 3 avisos  ->  0 violacoes · 4 avisos
@@ -925,19 +927,80 @@ refutada pelo `icacls`: o aviso nomeia o mesmo principal duas vezes porque **exi
 **distintos**, um para a pasta e um `(IO)` só para os filhos, e o display não imprime as marcas de
 herança. O comando de remédio sai com o SID repetido, redundante e idempotente.
 
-🔴 **O remédio NÃO foi aplicado, e a razão é de alçada, não técnica:** mexer em ACL é mudança de
-configuração de segurança da máquina do usuário, e isso não se faz sem a palavra dele. O comando,
-em PowerShell, para quando ele decidir:
+🔴 **Eu não apliquei o remédio, e a razão é de alçada, não técnica:** mexer em ACL é mudança de
+configuração de segurança da máquina do usuário, e isso não se faz sem a palavra dele. **Quem
+rodou foi o usuário**, no terminal dele, depois de ler a medição abaixo.
+
+### 🔴 E o remédio que o próprio aviso imprime TIRARIA a escrita do dono — são TRÊS comandos
+
+O aviso manda `icacls /inheritance:d && icacls /remove:g *S-1-5-11`, dois comandos. **Aqui isso
+deixaria o repositório somente-leitura para o usuário que trabalha nele.** Lido com `Get-Acl` e com
+o token do processo, sem alterar nada:
+
+```
+owner do projeto          LGJINDIE\louri            <- o usuario interativo
+ACE explicita para ele    NENHUMA
+BUILTIN\Usuarios                     ReadAndExecute   <- nao da escrita
+AUTORIDADE NT\Usuarios autenticados  Modify           <- a UNICA que da escrita a ele
+Administradores no token  AUSENTE    (conta padrao, nao administrador)
+contas locais habilitadas 1  —  louri
+```
+
+`Administradores:(F)` **não está no token** e `SISTEMA` não é ele, então **toda a escrita vem do**
+`S-1-5-11`. Removido o SID, nenhuma ACE restante concede escrita: git, build e qualquer gravação
+param. Os direitos implícitos de owner são `READ_CONTROL` e `WRITE_DAC`, **não** escrita de dados.
+
+🔴 **Declarado: isto é INFERÊNCIA da ACL mais o token, não medição por efeito.** Não executei o
+remédio — nem para reproduzir —, porque ACL da máquina do usuário não se mexe sem a palavra dele. O
+discriminante é verificável por leitura: depois da remoção nenhuma ACE de escrita casa com o token.
+
+**A sequência que não quebra**, com o `/grant` **antes** do `/remove`:
 
 ```powershell
 icacls "C:\dev\ferramentas\trackfw-main" /inheritance:d
+icacls "C:\dev\ferramentas\trackfw-main" /grant "LGJINDIE\louri:(OI)(CI)(F)"
 icacls "C:\dev\ferramentas\trackfw-main" /remove:g *S-1-5-11
 ```
 
-**O que muda se ele não aplicar:** o `validate` daqui passa a ter **4 avisos** permanentes, e toda
-afirmação de "0 violações · 3 avisos" neste arquivo é de **antes de 2026-10-16**. A alternativa que
-o próprio aviso oferece — mover o projeto para dentro do perfil — custa mais que o `icacls`, porque
-arrastaria os outros repositórios de `ferramentas/`.
+O owner roda os três **sem elevação**, porque owner tem `WRITE_DAC` implícito — conferido com conta
+padrão. Depois, `validate` tem de sair com **3 avisos** e uma gravação qualquer tem de funcionar.
+
+**E a exposição de hoje é quase nula, o que torna "não fazer nada" defensável:** há **uma** conta
+local habilitada nesta máquina, então não existe segunda identidade autenticada para se aproveitar
+da ACL aberta. O cenário que a regra protege — pasta compartilhada, várias contas — não é este.
+
+Levado ao upstream na [#569](https://github.com/kgsaran/trackfw/issues/569), depois de varrer os
+docs do #567 e do #568: a `ADR-2026-10-16` dele separa os casos no **D2.1**, mas **nenhum dos nove
+documentos trata do caso "o dono perde a escrita"**, e `/grant` não aparece em nenhum. A regra já
+computa `currentUserSID()`, então o dado para avisar já está na mão dela.
+
+### ✅ Aplicado pelo usuário pouco antes das 17:30, e medido depois — por efeito, não por leitura
+
+```
+ACL depois (nenhuma herdada — o /inheritance:d as tornou explicitas):
+  AUTORIDADE NT\SISTEMA       FullControl
+  BUILTIN\Administradores     FullControl
+  BUILTIN\Usuarios            ReadAndExecute, Synchronize     <- nao da escrita
+  lgjindie\louri              FullControl                     <- o /grant, e a UNICA escrita dele
+  Usuarios autenticados       AUSENTE
+
+validate        4 avisos -> 3 avisos   ·  0 mencoes a foreign na saida
+escrita na raiz · subdiretorio · arquivo filho   OK
+git status rc=0   ·   go build ./... rc=0
+```
+
+🔴 **E a ACL de depois CONFIRMA a inferência, sem ninguém ter sido trancado fora:** a única ACE que
+concede escrita ao usuário é a `lgjindie\louri FullControl` que o `/grant` criou. Sem esse comando
+do meio, as três restantes seriam `SISTEMA`, `Administradores` — que não está no token dele — e
+`BUILTIN\Usuarios` com `ReadAndExecute`. **Zero escrita.** O que era inferência por leitura virou
+leitura do estado final, que é o mais forte que se consegue sem provocar o lockout.
+
+**A alternativa que o próprio aviso oferece** — mover o projeto para dentro do perfil — custa mais
+que o `icacls`, porque arrastaria os outros repositórios de `ferramentas/`. Não foi o caminho.
+
+🔴 **O escopo é só este repositório.** Os outros de `ferramentas/` continuam herdando a ACL aberta
+de `C:\dev`; nenhuma regra os olha, e o `/inheritance:d` foi aplicado na pasta do trackfw, não no
+pai.
 
 **Limite declarado:** `rc=0` nas duas direções. É **aviso**, não violação, então nenhum gate
 reprova por causa dele, aqui ou no CI — e em `ubuntu-latest` a regra é no-op por construção
