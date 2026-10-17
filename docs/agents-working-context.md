@@ -35,6 +35,11 @@ não tem, **procure um lugar onde a premissa ainda exista** em vez de reconstru�
 exigiria mexer em ACL — o que está vetado — e a pasta irmã sob `C:\dev` oferecia a premissa
 intacta.
 
+**Sync do #573 (`db1d0fb8`, 10:50), no mesmo ciclo:** ele **encerrou a `REQ-2026-09-03` de novo**,
+agora com o ML-W2d dentro. `produto 0 · retidos 3 (de 3)`, `validate 0 → 0` — previsão derivada da
+lista de arquivos, os três sob `docs/`. O arco completo da nossa issue: **aberta 17:21, reaberta a
+REQ 20:02, mesclada 08:21, encerrada de novo 10:50** — menos de 18 h entre o relato e o
+encerramento com a correção dentro.
 **E a forma dele confirma a nossa Regra Dura de Causa Raiz:** ele **não abriu REQ nova** — reabriu a
 `REQ-2026-09-03`, que tinha encerrado às 20:00, e acrescentou o **ML-W2d** às 20:02. Dois minutos
 entre o encerramento e a reabertura, porque a causa é a mesma.
