@@ -4,6 +4,37 @@
 
 ---
 
+## Sessão 2026-10-17 (noite) — claude (sync do #576: a previsão do `git add -A` acertou, e errou o prazo)
+
+**FIM.** Sync do **#576** (`a32d16a7`, 19:10): o guard passou a recusar **staging com escopo
+implícito**, ligado por padrão (`REQ-2026-09-05`).
+
+```
+produto trazido  11   ·  governanca retida  8 (de 19 no merge)  ·  validate 0 antes · 0 depois
+```
+
+🔴 **A previsão de 15:31 acertou o veredito — deu (b), o `git add -A` é recusado — e ERROU o
+prazo.** Medido com os dois binários, no mesmo minuto e com os mesmos payloads:
+
+```
+binario do PATH (9.7.0 publicada)   git add -A -> rc=0   <- passa; nada quebrou hoje
+binario da arvore (com o #576)      git add -A -> rc=2   <- bloqueia
+```
+
+O hook chama `trackfw` **resolvido no PATH**, e o PATH entrega a release — anterior ao #576. **O
+travamento chega com a próxima release**, no passo 2 da tripla. É a mesma lição da seção do ponto
+cego do PATH: *a cerca é a do binário que o PATH entrega*, não a do código que acabou de mesclar.
+
+**E a medição achou uma borda que a previsão não tinha:** `git add -A docs/` **passa** (rc=0) —
+`-A` **com** pathspec é pathspec. O que ofende é o `-A` sozinho. A memória do `hades-tf` dele diz o
+mesmo, em `project_git_add_A_with_pathspec_equals_pathspec`. Também medido: `git add -A -- .`
+**bloqueia** (rc=2), então o `--` não salva.
+
+**O procedimento daqui mudou de saída, sem esperar a release:** este commit foi estagiado por
+caminho explícito, com a lista derivada de `git status --short` — não por `-A`. A tabela de oito
+casos e a mensagem do guard estão no `CLAUDE.md`.
+
+---
 ## Sessão 2026-10-17 (tarde, 2) — claude (sync do #575, e um aviso ANTES do evento: `git add -A`)
 
 **FIM.** Sync do **#575** (`3e9d4c6d`, 15:30): triagem medida do backlog pré-v8 dele — 16 roadmaps,
