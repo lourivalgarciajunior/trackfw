@@ -4,6 +4,35 @@
 
 ---
 
+## Sessão 2026-10-17 (tarde, 2) — claude (sync do #575, e um aviso ANTES do evento: `git add -A`)
+
+**FIM.** Sync do **#575** (`3e9d4c6d`, 15:30): triagem medida do backlog pré-v8 dele — 16 roadmaps,
+10 seguem com escopo reescrito, 6 saem.
+
+```
+produto trazido  0   ·  governanca retida  27 (de 27 no merge)  ·  validate 0 antes · 0 depois
+previsao derivada da LISTA DE ARQUIVOS: os 27 sob docs/  ->  produto 0, acertou
+```
+
+### 🔴 Previsão escrita ANTES do evento: o guard de staging pode bloquear o nosso `git add -A`
+
+Ele abriu, às 15:31, a branch `feat/o-guard-do-trackfw-passa-a-bloquear-staging-com-escopo-`
+`implicito` (REQ-2026-09-05), com um commit de governança e **nenhum de produto ainda**.
+
+**O nosso fluxo usa `git add -A` em todo sync** — é a linha que estagia o merge preparado pelo
+`upstream-sync.sh`. Se o guard passar a recusar escopo implícito, essa linha **para de funcionar** e
+o laço do sync trava no passo do commit.
+
+🔴 **A previsão é datada e falsificável:** quando essa branch virar PR e mesclar, o `git add -A`
+daqui ou **(a)** continua passando — e aí o guard cobre só `git add .` ou formas sem `-A` —, ou
+**(b)** passa a ser recusado, e o sync precisa estagiar por caminho explícito. **Medir por efeito
+antes de supor**, com o payload real do hook, nos dois shells. Se eu errar, o motivo tem de ser
+escrito.
+
+**Não vale contornar o hook para destravar** — é a ordem permanente desta casa, e ela não tem
+exceção para conveniência de sync.
+
+---
 ## Sessão 2026-10-17 (tarde) — claude (sync da 9.7.0, e um vermelho que era de corrida superada)
 
 **FIM.** Sync da **9.7.0** (`f8870c79`, 12:20): release pura.
