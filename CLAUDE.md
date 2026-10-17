@@ -1982,6 +1982,52 @@ O gate imprimia um caminho **que não existe**, e a comparação de bytes funcio
 mesmo fallback do MSYS. O `.exe` passou a ser tentado primeiro. É a mesma família de
 `msys-mente-sobre-o-que-criou`, agora dentro de um instrumento nosso.
 
+## 🔴 `git add -A` está BLOQUEADO desde o #576 — e aqui ainda não, por causa de qual binário o hook usa
+
+O [#576](https://github.com/kgsaran/trackfw/pull/576) (19:10 de 2026-10-17, `REQ-2026-09-05`) fez o
+guard recusar **staging com escopo implícito**, ligado por padrão. **Medido por efeito com o binário
+da árvore**, com o payload real do hook e o `rc` lido sem cano:
+
+| comando | rc | |
+|---|---|---|
+| `git add -A` | **2** | bloqueia |
+| `git add .` | **2** | bloqueia |
+| `git add -u` | **2** | bloqueia |
+| `git add --all` | **2** | bloqueia |
+| `git add -A -- .` | **2** | bloqueia — o `--` não salva |
+| `git add docs/x.md` | 0 | passa — caminho explícito |
+| `git add -A docs/` | 0 | passa — **`-A` COM pathspec é pathspec** |
+| `git status` | 0 | passa — controle negativo |
+
+A penúltima linha é a que a leitura ingênua erra: `-A` sozinho é o que ofende, não a flag. A memória
+do `hades-tf` dele diz o mesmo (`project_git_add_A_with_pathspec_equals_pathspec`).
+
+**A mensagem do guard ensina a saída:**
+
+> *enumerate antes o que vai estagiar com `git status --short`, depois estagiar por caminho
+> explícito: `git add <arquivo1> <arquivo2> ...` e commitar com `trackfw commit -m ...`*
+
+### 🔴 E a previsão escrita ANTES do merge acertou o veredito e ERROU o prazo
+
+Eu previ, às 15:31, que *"se o guard recusar escopo implícito, a linha do sync para de funcionar e o
+laço trava no commit"* — e nomeei as saídas (a) e (b). **Deu (b)**: o `git add -A` é recusado.
+
+🔴 **O que a previsão não antecipou é QUANDO.** O hook chama `trackfw` **resolvido no PATH**, e aqui
+o PATH entrega a **9.7.0 publicada**, que é anterior ao #576. Medido no mesmo minuto, com os mesmos
+payloads:
+
+```
+binario do PATH (9.7.0)   git add -A  ->  rc=0   <- passa; nada quebrou hoje
+binario da arvore (#576)  git add -A  ->  rc=2   <- bloqueia
+```
+
+**O travamento chega com a próxima release**, no passo 2 da tripla (`npm i -g`). É a mesma lição já
+registrada na seção do ponto cego do PATH: *a cerca é a do binário que o PATH entrega*, não a do
+código que acabou de mesclar.
+
+**O procedimento daqui mudou de saída, sem esperar a release:** estagiar por caminho explícito,
+derivando a lista de `git status --short`. 🔴 **Não se contorna o hook** — a ordem é permanente, e
+conveniência de sync nunca foi exceção.
 ## ✅ A campanha de Windows do upstream encerrou em 2026-10-16: lista conhecida de 14 para 6
 
 A `REQ-2026-09-03` dele — *"as 217 falhas reais de Windows colapsam em poucas causas"* — fechou
