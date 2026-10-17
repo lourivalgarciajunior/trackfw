@@ -4,6 +4,42 @@
 
 ---
 
+## Sessão 2026-10-17 — claude (a #569 virou produto em 20 h, e foi medida por efeito aqui)
+
+**FIM.** Sync do **#572** (`dd2b7531`, 08:21): ele implementou a **nossa [#569]**
+(https://github.com/kgsaran/trackfw/issues/569) — o remédio do `project_foreign_write_windows`
+passou a conceder ao dono **antes** de remover o SID alheio. A issue foi **fechada como COMPLETED**
+um segundo depois do merge.
+
+```
+produto trazido  3   ·  governanca retida  6 (de 9 no merge)  ·  validate 0 antes · 0 depois
+issue aberta 17:21 (16/10)  ->  primeiro commit 20:02  ->  mesclada 08:21 (17/10)
+```
+
+🔴 **Medido POR EFEITO, e não por leitura do diff** — e a sonda resolveu um problema real: aqui o
+aviso **não acende mais**, porque a ACL foi consertada ontem. Então a medição foi num projeto
+temporário criado **sob `C:\dev`**, que **herda a ACL aberta** sem que eu precisasse alterar
+ACL nenhuma:
+
+```
+ACL da sonda (herdada)   Usuarios autenticados: Modify   <- a premissa, de graca
+trackfw init             rc=0
+validate, binario novo   icacls ... /inheritance:d
+                      && icacls ... /grant *S-1-5-21-…-1001:(OI)(CI)(F)   <- o comando NOVO
+                      && icacls ... /remove:g *S-1-5-11 *S-1-5-11
+sonda apagada  ·  arvore nossa intacta  ·  settings.json global intocado (16:10 de 15/10)
+```
+
+**A lição da sonda vale guardar:** quando a correção se verifica num estado que a própria máquina já
+não tem, **procure um lugar onde a premissa ainda exista** em vez de reconstruí-la. Reconstruir
+exigiria mexer em ACL — o que está vetado — e a pasta irmã sob `C:\dev` oferecia a premissa
+intacta.
+
+**E a forma dele confirma a nossa Regra Dura de Causa Raiz:** ele **não abriu REQ nova** — reabriu a
+`REQ-2026-09-03`, que tinha encerrado às 20:00, e acrescentou o **ML-W2d** às 20:02. Dois minutos
+entre o encerramento e a reabertura, porque a causa é a mesma.
+
+---
 ## Sessão 2026-10-16 (noite, 3) — claude (sync do #571: a campanha de Windows dele ENCERROU)
 
 **FIM.** Sync do **#571** (`95ef36a0`, 20:00): ele encerrou a `REQ-2026-09-03`.
