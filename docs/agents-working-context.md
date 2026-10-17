@@ -4,6 +4,40 @@
 
 ---
 
+## Sessão 2026-10-17 (tarde) — claude (sync da 9.7.0, e um vermelho que era de corrida superada)
+
+**FIM.** Sync da **9.7.0** (`f8870c79`, 12:20): release pura.
+
+```
+produto trazido  5   ·  governanca retida  1 (de 6 no merge)  ·  validate 0 antes · 0 depois
+binario da arvore  9.7.0   ·   tag v9.7.0 existe (5f6bbc42)   ·   npm latest ainda 9.6.0
+passo 3 da tripla  update harness --dry-run: updated=0 — NAO rodado, e o CHANGELOG nao manda
+```
+
+🔴 **O `statusCheckRollup` do PR dele mostrava `pr-closing-keyword` DUAS vezes — uma `FAILURE` e uma
+`SUCCESS` — e ler o agregado daria "vermelho".** Pelos runs, com hora e `attempt`:
+
+```
+13:52:01  failure  attempt=1  d81dadda  PR Closing Keyword
+13:56:07  success  attempt=1  d81dadda  PR Closing Keyword   <- 4 min depois, MESMA head
+```
+
+Mesmo SHA, mesmo `attempt`, **duas corridas**: ele editou o corpo do PR para incluir a palavra de
+fechamento e o workflow rodou de novo. É o **espelho** da regra que esta casa já aplica — *"verde
+herdado de corrida anterior não conta"*. Aqui era **vermelho** herdado, e o discriminante é o
+mesmo: a corrida **mais recente por nome**, nunca o agregado.
+
+**O CHANGELOG da 9.7.0 cita a nossa contribuição**, na seção `Added` da regra nova: *"conceder a
+você mesmo (`/grant`) **antes** de remover o SID alheio (`/remove:g`), para não se trancar fora do
+projeto"* — (#567, #572). Os quatro fixes do ciclo também estão lá: proveniência 8.3 (#565),
+travessia com contrabarra (#566), CRLF nos assets (#570) e *"0600 no Windows deixa de ser fingido"*.
+
+**Passo 2 da tripla pendente por motivo externo**, declarado em vez de adivinhado: a tag existe e o
+`npm latest` ainda é 9.6.0 — a publicação dele não terminou. 🔴 **O número se deriva** (`git tag
+--contains` cruzado com `npm view`), nunca se escreve: esta regra já apodreceu duas vezes aqui, uma
+delas em 13 horas.
+
+---
 ## Sessão 2026-10-17 — claude (a #569 virou produto em 20 h, e foi medida por efeito aqui)
 
 **FIM.** Sync do **#572** (`dd2b7531`, 08:21): ele implementou a **nossa [#569]**
