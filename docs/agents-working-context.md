@@ -30,6 +30,10 @@ cego do PATH: *a cerca é a do binário que o PATH entrega*, não a do código q
 mesmo, em `project_git_add_A_with_pathspec_equals_pathspec`. Também medido: `git add -A -- .`
 **bloqueia** (rc=2), então o `--` não salva.
 
+**Sync do #577 (`7d7b4d3e`, 19:26), no mesmo ciclo:** ele **encerrou a `REQ-2026-09-05`**, do guard
+de staging. `produto 0 · retidos 3 (de 3)`, `validate 0 → 0` — previsão derivada da lista de
+arquivos, os três sob `docs/`. Ele encerrou a REQ **antes** de eu terminar de sincronizar o #576:
+dois merges dele em 8 minutos, e o laço da vigia pegou os dois.
 **O procedimento daqui mudou de saída, sem esperar a release:** este commit foi estagiado por
 caminho explícito, com a lista derivada de `git status --short` — não por `-A`. A tabela de oito
 casos e a mensagem do guard estão no `CLAUDE.md`.
