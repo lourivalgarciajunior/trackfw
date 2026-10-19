@@ -30464,3 +30464,81 @@ com um ajuste pedido que **eu havia estreitado sem perceber** — a fixture casa
 AC2 existe para o formato da #494, que é casamento **só por sobreposição** e **no plural**. Corrigido
 com os dois roadmaps do caso original, mais o controle que prova que a asserção do plural morde (só um
 dos dois em `done/` → reprova). CI do #509: 20/20, ratchet `14 observed / 14 active`. O merge é dele.
+
+
+---
+
+## 2026-10-19 — o prazo do contexto nao era veredito da sonda do guard
+
+**O que a sessao descobriu, e nao estava procurando.** A regra
+`guard_binary_probe` acusou *"the Git Bash login shell cannot find trackfw in its
+PATH"* numa corrida de `validate` feita enquanto um `du -sh` varria um
+`node_modules` em segundo plano — e o `trackfw` estava no PATH. Antes e depois,
+nada.
+
+**A medicao que fechou o caso.** Replica linha a linha da sonda num programa Go
+isolado, com o `bash.exe` que a propria `guardFindGitBashExe` escolheria:
+
+```
+timeout 5s · 3s    resolveu
+timeout 1s · 300ms · 1ms    VIOLACAO, com err = ExitError: exit status 1
+custo normal da sonda: 2,0 a 2,25 s (5 passadas) contra prazo de 5 s
+```
+
+`exec.CommandContext` mata o filho no prazo e `cmd.Output()` devolve
+`*exec.ExitError` — entao o `errors.As` casava e o terceiro caso do doc
+(`("", false)` para deadline) **nunca se realizava**.
+
+🔴 **O discriminante ja existia no repositorio, e os dois arquivos se citam em uma
+direcao so.** O `resolveNetworkErr` do `netexec.go` pergunta `ctx.Err() != nil`
+antes de classificar; e o comentario do `cmdWaitDelay`, no mesmo arquivo, diz
+*"Matches the precedent in internal/validator/validator_guard_binary_probe.go"*.
+O `WaitDelay` viajou da sonda para o netexec; o `ctx.Err()` nao voltou.
+
+**A varredura trouxe o que a REQ nao previa.** 6 sitios de `exec.CommandContext`
+fora de teste, em 3 arquivos: `netexec.go` (2, corretos), `discover.go` (1,
+correto) e o arquivo da sonda (3, nenhum perguntando ao contexto). Dos tres,
+**dois** tinham o defeito — o login shell e o `guard --help` — e o terceiro
+(`Get-ExecutionPolicy`) e seguro, porque falha para o silencio em vez da acusacao
+falsa. Mesma causa, mesma REQ, mesmo commit.
+
+**Duas licoes de forma, as duas pagas nesta sessao:**
+
+1. 🔴 **O teste decisivo pulava na plataforma que importa.** A primeira versao
+   tinha `t.Skip` no Windows, e Windows e onde a regra existe — eu teria enviado
+   um teste que **nunca vi passar**. A versao que ficou acha o Git Bash **real**
+   pela propria `guardFindGitBashExe` no Windows, e usa script stub no POSIX.
+2. 🔴 **Um `bashExe` inexistente ja caia em `("", false)` ANTES do conserto**, logo
+   um teste escrito assim passaria sem ele. Por isso o controle positivo com prazo
+   folgado vem **antes** do caso curto, no mesmo teste.
+
+**E a falsificacao foi por efeito, com desarme cirurgico:** `if false && ...` so no
+sitio do login shell, teste reprovando, arquivo restaurado de copia e
+`grep -c DESARMADO` = 0 conferido depois. Sem o braco desarmado, "o teste passa"
+nao diria se o conserto e o que o faz passar.
+
+**Como derivar o estado quando precisar** (em vez de ler daqui): as falhas da
+suite se comparam por nome contra `origin/main` em worktree separado — foi assim
+que as tres desta maquina se mostraram identicas nas duas pontas, e todas tres
+estao em `.github/windows-known-failures.json`. O estado dos gates sai de
+`bash scripts/run-local-gates.sh`, e o da governanca de `trackfw validate`.
+
+Issue no upstream: [#589](https://github.com/kgsaran/trackfw/issues/589).
+
+### Adendo — o produto nao entra na nossa `main`, e foi o CI que ensinou
+
+A PR #275 levava os dois arquivos de `internal/validator/` junto da governanca, e o
+job `gates-locais` reprovou no gate *Divergencia de produto tem de ser ZERO*,
+nomeando os dois. 🔴 **O gate esta certo** — ele e o invariante do fork —, e o ADR
+deste ciclo ja previa a divergencia como "deliberada e temporaria". O que o ADR nao
+tirou foi a consequencia: **temporaria em branch, nunca na `main`**.
+
+O precedente estava escrito no `CLAUDE.md` e eu nao o li a tempo: as 14 branches
+`upstream-pr/*` carregaram contribuicao e **nunca foram mescladas aqui**. A divisao
+que ficou: o produto na branch-veiculo nascida de `upstream/main`, que virou a
+[#590](https://github.com/kgsaran/trackfw/pull/590) do upstream; a governanca na
+nossa `main`. O conserto chega pelo `upstream-sync.sh` quando ele mesclar — por
+convergencia, nao por reversao.
+
+**A licao de forma:** prever a divergencia no ADR nao bastava. Faltou derivar onde ela
+podia viver, e o gate que responde isso ja existia e roda em todo PR.
