@@ -4,6 +4,93 @@
 
 ---
 
+## Sessão 2026-10-19 — claude (as DUAS issues viraram produto, e a 10.0.0 traz um BREAKING)
+
+**FIM.** Sync de **8 commits**, de `30574d16` até `a21b8ff1` — a **10.0.0**. Este PR **substitui o
+#271**, que ficou vermelho por causa da fixture acoplada ao host e cuja correção agora está no
+produto. A branch nasceu do head do #271, então o conteúdo dele entra inteiro, inclusive a entrada
+de handoff de 17/10.
+
+```
+produto trazido  30   ·  governanca retida  15 (de 45 no merge)  ·  validate 0 antes · 0 depois
+go build exit 0  ·  run-local-gates 16 executado(s) · 0 falha(s)  ·  binario da arvore 10.0.0
+```
+
+### 🔴 As duas issues abertas em 17/10 viraram produto em menos de 24 h
+
+```
+19192454  10:43  #581 — o NOSSO PR: cenario 12 escreve o proprio trackfw.yaml  (fecha a #580)
+b1d539b3  12:37  #583 — integridade referencial normaliza CRLF e reprova com zero referencias (#579)
+```
+
+**E o conserto do #583 confirma o número que eu havia reportado, medido aqui com o binário novo:**
+
+```
+antes   Referential integrity OK: 87 REQs,   0 referencias verificadas   rc=0
+depois  Referential integrity OK: 87 REQs, 143 referencias verificadas   rc=0
+```
+
+🔴 **As 143 são exatamente as que eu contei por fora**, com um leitor que descarta ``, quando
+abri a issue. A contagem independente e a do gate corrigido coincidem — que é a forma mais forte de
+confirmar um relato de vácuo: o número que eu disse existir é o número que o instrumento passou a
+ver.
+
+### 🔴 BREAKING do #585: `branch new` passa a criar da branch padrão do REMOTO
+
+```
+trackfw branch new chore/x --dry-run
+  [dry-run] would create branch "chore/x" from origin/main
+--from HEAD   reproduz o comportamento antigo  ·  --from <ref> para qualquer ref
+```
+
+**Isto muda o fluxo daqui e vale saber antes de doer:** a branch de sync passa a nascer de
+`origin/main`, não do HEAD corrente. Hoje isso seria **melhor** — a branch deste PR nasceu do head
+do #271 porque eu estava nele, e só não virou problema porque o #271 ia mesmo ser substituído. Com
+a 10.0.0 instalada, o mesmo descuido não aconteceria.
+
+**E o #587 regenerou a skill `implement`** com `git add` por caminho explícito e `trackfw commit` —
+o procedimento que este repositório já adotou à mão em 17/10, agora no produto.
+
+---
+## Sessão 2026-10-17 (noite, 2) — claude (o denominador do #578 acusou um SEGUNDO vácuo: a #579)
+
+**FIM.** Sync do **#578** (`30574d16`, 21:15): o `check-referential-integrity.sh` passou a reprovar
+sobre árvore vazia **e a mostrar o que verificou**. `produto 4 · retidos 6 (de 10)`.
+
+🔴 **O denominador novo acusou, no primeiro uso, um segundo caminho de vácuo — e a medição do
+antes/depois é o que o revelou:**
+
+```
+ANTES do sync    "Referential integrity OK"                              rc=0   25 bytes
+DEPOIS do sync   "Referential integrity OK: 87 REQs, 0 referencias verificadas"  rc=0
+o acervo tem     143 marcadores adr:/roadmap: com valor
+```
+
+**A causa é CRLF.** O gate detecta o frontmatter por igualdade exata (`[[ "$line" == "---" ]]`), e
+aqui a linha chega como `---`: a igualdade é falsa, `in_frontmatter` nunca vira 1, e o laço passa
+sem olhar nada. **Falsificado nas duas direções**, em fixture com os MESMOS bytes e só o fim de
+linha mudando, `rc` lido sem cano:
+
+```
+CRLF  rc=0  "1 REQs, 0 referencias verificadas"
+LF    rc=1  acusa as DUAS referencias quebradas da fixture    <- controle positivo
+```
+
+🔴 **E o limite está declarado: aqui o vácuo NÃO escondia defeito.** Varrido com leitor que descarta
+``: **87 REQs · 143 referências · 0 que não existem**. O instrumento estava cego; o que ele
+deveria olhar está íntegro. Relatar "dano" seria falso — o que se relata é que **o verde não era
+evidência**.
+
+Levado ao upstream na [#579](https://github.com/kgsaran/trackfw/issues/579), com duas sugestões: a
+normalização na entrada (como o nosso `check-req-marcador-ancorado.sh` faz desde 2026-10-01, pelo
+mesmo motivo) e um **piso de denominador** — reprovar com `req_count > 0` e `ref_count == 0` —, que
+teria pegado este caso **sem saber nada sobre CRLF**.
+
+**E o `rc` mentiu de novo no meio da medição:** o braço LF saiu `rc=0` com um `| tail -2` entre o
+comando e o `$?`. Refeito sem cano, é `rc=1`. Nona ocorrência da família — e desta vez teria
+invertido a conclusão do controle positivo.
+
+---
 ## Sessão 2026-10-17 (noite) — claude (sync do #576: a previsão do `git add -A` acertou, e errou o prazo)
 
 **FIM.** Sync do **#576** (`a32d16a7`, 19:10): o guard passou a recusar **staging com escopo
