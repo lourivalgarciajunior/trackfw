@@ -7,9 +7,60 @@ e este projeto adere a [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [10.0.0] - 2026-10-18
+
+### ⚠️ BREAKING
+
+- **`trackfw branch new` cria a branch a partir da branch padrão do remoto, não mais do HEAD
+  atual.** Antes de criar, o comando faz `fetch` de `origin` (avisa e segue se falhar) e parte de
+  `origin/<branch padrão>` — `main`, `master` ou o que o remoto declarar —, sem rastreá-la
+  (`--no-track`). Uma branch nova deixa de herdar em silêncio os commits da branch em que você estava,
+  e nasce atualizada mesmo quando a `main` local está atrás.
+  **Para migrar:** quem empilha de propósito passa a usar `trackfw branch new <tipo>/<slug> --from HEAD`
+  (ou `--from <branch|tag|sha>`). Alterações não commitadas que conflitem com a base fazem o comando
+  parar com orientação (commit, stash ou `--from HEAD`); sem remoto `origin`, idem.
+  `--dry-run` passa a mostrar a base que seria usada. (#585, REQ-2026-09-12)
+
 ### Changed
 
-- **O guard bloqueia staging com escopo implícito, ligado por padrão.** `git add` e `git stage` sem caminho explícito (bare, `-A`/`--all`/`-u` sem positional, ou com só tokens whole-tree como `.` `./` `..` `../` `:/` `:(top)`) são bloqueados pelo guard de branch do agente com instrução de enumerar o que vai estagiar via `git status --short` e depois usar `git add <arquivo1> <arquivo2> …`. Passam: caminhos explícitos (inclusive `-A docs/`), flags interativas (`-p`/`-i`/`--patch`/`--interactive`), dry-run (`-n`/`--dry-run`) e `--pathspec-from-file=`. O Amazon Q Developer recebe um segundo padrão em `deniedCommands` cobrindo as formas bare. (REQ-2026-09-05, ADR-2026-09-05)
+- **O guard bloqueia `git worktree add <caminho>` quando isso cria uma branch implícita** a partir do
+  HEAD (sem `-b`, sem branch/commit existente, inclusive com `--orphan` ou `--lock --reason`). Continuam
+  liberados `git worktree add <caminho> <branch-existente>`, `<caminho> <commit>` e `--detach`. (#585)
+- `trackfw push` e `trackfw ship` passam a orientar `trackfw branch new` em vez de `git checkout -b`. (#585)
+
+### Security
+
+- **`--from` do `branch new` não vira mais opção do `git`.** O valor é resolvido para um commit
+  (`git rev-parse --verify --end-of-options`) antes do checkout, que recebe o SHA; valores começando com
+  `-` ou que não resolvem são recusados sem tocar no repositório. (Encontrado no red-team antes da
+  release — nenhuma versão publicada tinha o `--from`.) (#585)
+
+## [9.8.0] - 2026-10-18
+
+### Changed
+
+- **O guard bloqueia `git add` com escopo implícito, ligado por padrão.** `git add` e `git stage` sem caminho
+  (`-A`, `--all`, `-u`, `--update`, sem operando) ou com alvo que é a raiz inteira (`.`, `./`, `..`, `:/`,
+  `:(top)`, só exclusões como `:!x`) — inclusive misturado com outros caminhos, depois de `sudo`, entre
+  parênteses ou com redirecionamento — são bloqueados com a orientação de listar com `git status --short` e
+  estagiar por caminho. Passam: arquivos e diretórios nomeados (inclusive `git add -A docs/`), `-p`/`-i` e
+  `-n`. A denylist nativa do Amazon Q ganha o mesmo padrão e o template de skill passa a instruir caminho
+  explícito. Formas que dependem de expansão do shell (`$(…)`, aliases, `git add '*'`) ficam declaradas fora de
+  alcance. (#576, REQ-2026-09-05)
+- **`model:` dos agentes do Claude sai sempre entre aspas** (`model: "claude-opus-5"`), para que valores como
+  `null`, `true` ou `0x10` continuem sendo texto. Quem já tem agentes instalados vê essa diferença no próximo
+  `trackfw update harness` ou `agents update`. (#582, REQ-2026-08-30)
+
+### Fixed
+
+- **Valor de `agent_models` validado antes de gravar.** Fora de `[a-zA-Z0-9._:@/+-]` (espaço, `&&`, `#`, `{`,
+  aspas), `init`, `agents install`/`update`, `update harness` e `agents third-party` falham nomeando a chave e
+  não gravam nenhum arquivo; `trackfw agents models` marca a linha como `[invalid]` e sai com código ≠ 0. Ids
+  Bedrock (`…-v1:0`), Vertex (`…@data`) e `openai/gpt-5` continuam aceitos. (#582, REQ-2026-08-30)
+- **Nome e descrição do agente em YAML válido.** Um `display_name` como `Zeus: danger` em
+  `~/.trackfw/identity.json` quebrava o frontmatter dos agentes; agora é escrito com aspas quando necessário
+  (nomes comuns ficam iguais) e caractere de controle no arquivo é recusado. (#582)
+- **Razão de bloqueio de `git reset --hard` saía como JSON inválido.** (#576)
 
 ## [9.7.0] - 2026-10-17
 
