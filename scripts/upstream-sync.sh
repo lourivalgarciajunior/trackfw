@@ -228,7 +228,13 @@ git checkout "$BASE" -- docs >/dev/null 2>&1 || true
 # Governança fora de docs/: volta a ser a da BASE. O checkout a partir de um commit
 # também resolve o conflito, se houver — as entradas não mescladas saem do índice.
 for g in $GOVERNANCA_FORA_DE_DOCS; do
-	git checkout "$BASE" -- "$g" >/dev/null 2>&1 || die "não consegui reter $g da base."
+	# 🔴 O stderr do git ENTRA na mensagem. Em 2026-10-19 este passo falhou e o
+	# `2>&1` para /dev/null deixou a causa invisivel: a mensagem dizia apenas
+	# "nao consegui reter trackfw.yaml da base", sem o que o git disse. Diagnostico
+	# sem a frase do git e adivinhacao — e o proprio script ja prega isso duas
+	# guardas acima ("Silencio no stderr transformou falha de merge em medicao
+	# plausivel").
+	_reter_err="$(git checkout "$BASE" -- "$g" 2>&1)" || die "não consegui reter $g da base. git disse: ${_reter_err:-<stderr vazio>}"
 done
 
 # Produto em docs/: volta a ser o do REF. Se o REF não tem o arquivo, ele sai.

@@ -4,6 +4,54 @@
 
 ---
 
+## Sessão 2026-10-19 (fim) — claude (o sync do #588 abortou DUAS vezes, e a segunda fui eu)
+
+**FIM.** Sync do **#588** (`bc9d4b5c`): resíduos pré-v8. 🔴 **A previsão escrita antes do merge
+acertou as três pernas:**
+
+```
+previsto   2 de produto · 4 retidos · validate 0 -> 0 · fim de linha INALTERADO
+medido     2 de produto (.gitattributes, docs/cli-parity.md) · 4 retidos (de 6)
+           validate 0 antes · 0 depois
+           regras do .gitattributes (linhas nao-comentario): IDENTICAS, 0 diferencas
+           arquivo do acervo ainda CRLF no disco (od -c: - - - \r \n)
+```
+
+### 🔴 Mas ele abortou duas vezes, por causas diferentes — e a segunda fui eu
+
+**Primeira (10:17):** `não consegui reter trackfw.yaml da base`, e **nada mais**. O passo engolia o
+stderr do git (`>/dev/null 2>&1`), então a causa ficou invisível. O script **prega o contrário duas
+guardas acima** — *"Silêncio no stderr transformou falha de merge em medição plausível"* — e não
+seguia a própria regra no passo de retenção.
+
+🔴 **E o abort deixou a árvore pela metade:** 215 arquivos marcados como deletados no índice e o
+`docs/` inteiro **untracked** no disco, com conteúdo do upstream. O `git merge --abort` **recusou**
+(`Untracked working tree file would be overwritten`), que é o git protegendo o que não rastreia. A
+saída foi **mover** o `docs/` para backup, abortar, e conferir: 215 no disco = 215 no HEAD, 0
+diferentes.
+
+**Segunda (10:41): defeito meu.** Eu acrescentei a continuação de linha e **o transporte comeu uma
+contrabarra** — o arquivo ficou com `2>&1)" \n` literal e o bash executou `n`:
+
+```
+scripts/upstream-sync.sh: line 237: n: command not found
+upstream-sync: nao consegui reter trackfw.yaml da base. git disse: <stderr vazio>
+```
+
+🔴 **Terceira ocorrência da mesma família no mesmo dia** (heredoc come contrabarra). A forma que não
+tem o problema é **não usar continuação**: uma linha só.
+
+**E o `<stderr vazio>` é a prova de que a mensagem nova funciona** — ela diz que o **git não falou
+nada**, o que é verdade: quem falhou foi o shell, antes do git. Sem ela, a saída seria idêntica à de
+10:17 e eu teria procurado a causa no lugar errado pela segunda vez.
+
+**Terceira passada: `rc=0`.** 🔴 **E a causa da PRIMEIRA continua sem explicação** — reproduzida em
+worktree descartável a partir do mesmo `BASE`, com o stderr visível, os três `git checkout` saem
+`rc=0`. Mesma classe do `validate 1 antes · 0 depois` de 2026-10-11: **causa desconhecida,
+declarada**, e o que funcionou foi o desenho do script — ele recusou seguir com retenção que não
+sabia provar.
+
+---
 ## Sessão 2026-10-19 (tarde) — claude (o BREAKING do `branch new`, medido onde ele morde)
 
 **FIM.** O usuário observou que o BREAKING da 10.0.0 muda o fluxo dele, e nomeou o caso: *"working
