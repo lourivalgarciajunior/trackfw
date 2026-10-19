@@ -234,7 +234,7 @@ for g in $GOVERNANCA_FORA_DE_DOCS; do
 	# sem a frase do git e adivinhacao — e o proprio script ja prega isso duas
 	# guardas acima ("Silencio no stderr transformou falha de merge em medicao
 	# plausivel").
-	_reter_err="$(git checkout "$BASE" -- "$g" 2>&1)" \n		|| die "não consegui reter $g da base. git disse: ${_reter_err:-<stderr vazio>}"
+	_reter_err="$(git checkout "$BASE" -- "$g" 2>&1)" || die "não consegui reter $g da base. git disse: ${_reter_err:-<stderr vazio>}"
 done
 
 # Produto em docs/: volta a ser o do REF. Se o REF não tem o arquivo, ele sai.
