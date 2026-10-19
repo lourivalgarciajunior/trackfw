@@ -30524,3 +30524,21 @@ estao em `.github/windows-known-failures.json`. O estado dos gates sai de
 `bash scripts/run-local-gates.sh`, e o da governanca de `trackfw validate`.
 
 Issue no upstream: [#589](https://github.com/kgsaran/trackfw/issues/589).
+
+### Adendo — o produto nao entra na nossa `main`, e foi o CI que ensinou
+
+A PR #275 levava os dois arquivos de `internal/validator/` junto da governanca, e o
+job `gates-locais` reprovou no gate *Divergencia de produto tem de ser ZERO*,
+nomeando os dois. 🔴 **O gate esta certo** — ele e o invariante do fork —, e o ADR
+deste ciclo ja previa a divergencia como "deliberada e temporaria". O que o ADR nao
+tirou foi a consequencia: **temporaria em branch, nunca na `main`**.
+
+O precedente estava escrito no `CLAUDE.md` e eu nao o li a tempo: as 14 branches
+`upstream-pr/*` carregaram contribuicao e **nunca foram mescladas aqui**. A divisao
+que ficou: o produto na branch-veiculo nascida de `upstream/main`, que virou a
+[#590](https://github.com/kgsaran/trackfw/pull/590) do upstream; a governanca na
+nossa `main`. O conserto chega pelo `upstream-sync.sh` quando ele mesclar — por
+convergencia, nao por reversao.
+
+**A licao de forma:** prever a divergencia no ADR nao bastava. Faltou derivar onde ela
+podia viver, e o gate que responde isso ja existia e roda em todo PR.

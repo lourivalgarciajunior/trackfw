@@ -24,8 +24,11 @@ Issue no upstream: [#589](https://github.com/kgsaran/trackfw/issues/589).
 - [x] A classificação em função própria, testada uma vez (desenho do `resolveNetworkErr`)
 - [x] Teste que afirma o terceiro caso do doc — hoje não existia nenhum
 - [x] Verdadeiro positivo preservado, e os testes do ML-5D intocados
-- [x] `go build ./...` e `go test ./internal/validator/...` passam
+- [x] `go build ./...` e `go test ./internal/validator/...` passam — medido na
+      branch-veiculo, que e onde o produto vive
 - [x] `run-local-gates` sem falha nova — 16 executado(s), 0 falha(s), rc=0
+- [x] **Divergencia de produto na nossa `main`: ZERO.** O conserto NAO entra aqui;
+      ele vive na branch-veiculo e chega pelo `upstream-sync.sh`
 
 ## Status Legend
 ⬜ Pendente · 🔄 Em andamento · ✅ Concluído · ❌ Bloqueado
@@ -158,6 +161,42 @@ grep -q 'denominador impresso' docs/roadmaps/claude/*/ROADMAP-2026-10-19-o-deadl
 | `GuardRunBashLoginProbe_PrazoEstourado_NaoAfirmaNada` | o terceiro caso do doc existe — **corpo real**, Git Bash real no Windows | PASS (2,03 s) |
 | `GuardBinaryProbeOnce_PrazoDoGuardHelp_NaoAcusaOBinario` | o segundo sítio também pula, **e o erro comum continua acusando** | PASS |
 
+🔴 **O PRODUTO NAO ENTRA NA NOSSA `main`, e isso foi o CI que ensinou.** A PR #275
+levava os dois arquivos de `internal/validator/`, e o job `gates-locais` reprovou:
+
+```
+Divergencia de produto tem de ser ZERO
+  DIVERGE (compartilhado, mudado por nos): internal/validator/validator_guard_binary_probe.go
+  DIVERGE (compartilhado, mudado por nos): internal/validator/validator_guard_binary_probe_gitbash_test.go
+arquivos compartilhados que diferem: 2
+::error::divergencia de produto deixou de ser zero
+```
+
+**O gate esta certo, e nao se afrouxa gate para caber.** Ele e o invariante do fork
+— *"arquivo COMPARTILHADO que NOS mudamos"* —, e o ADR deste roadmap ja previa a
+divergencia como *"deliberada e temporaria"*. O que o ADR nao tirou foi a
+consequencia: temporaria **em branch**, nunca na `main`.
+
+**O precedente desta casa e explicito:** as 14 branches `upstream-pr/*` carregaram
+contribuicao ao upstream e **nunca foram mescladas na nossa `main`** — o conteudo
+chegou pela `main` dele, por squash. Removidas em 2026-10-05, com o conteudo
+sobrevivendo em `refs/pull/<N>/head`.
+
+Entao a divisao fica assim, e e a mesma de sempre:
+
+| onde | o que leva |
+|---|---|
+| `chore/pr-upstream-prazo-da-sonda` → [kgsaran/trackfw#590](https://github.com/kgsaran/trackfw/pull/590) | **o produto**, nascido de `upstream/main`, 2 arquivos |
+| `fix/o-deadline-da-sonda-do-login-shell` → nossa `main` | **a governanca**: ADR, REQ, este roadmap, handoff |
+
+O conserto chega a nossa `main` pelo `upstream-sync.sh`, quando o upstream
+mesclar — e ai a divergencia volta a zero por convergencia, nao por reversao.
+
+🔴 **As medicoes acima continuam valendo, e foram feitas onde o produto esta.**
+`go build`, os tres testes, a falsificacao por desarme e a comparacao da suite por
+nome rodaram com os dois arquivos na arvore. Fica declarado para que ninguem leia
+"o produto nao esta na main" como "o conserto nao foi medido".
+
 **Acceptance criteria:**
 - [x] Contexto expirado → `ran=false`, afirmado por teste
 - [x] `ExitError` com contexto vivo → `ran=true`, afirmado por teste
@@ -172,5 +211,6 @@ grep -q 'denominador impresso' docs/roadmaps/claude/*/ROADMAP-2026-10-19-o-deadl
 # cada linha roda como um sh -c separado
 go build ./...
 go test ./internal/validator/... -run 'GuardGitBash|LoginProbe|GuardProbeEnded|PrazoDoGuardHelp' -count=1
-test "$(git diff --name-only origin/main -- internal cmd | wc -l | tr -d ' ')" = "2"
+# o produto NAO entra na nossa main (ver ML-1A): aqui o numero certo e ZERO
+test "$(git diff --name-only origin/main -- internal cmd | wc -l | tr -d ' ')" = "0"
 ```
