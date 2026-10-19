@@ -4,6 +4,40 @@
 
 ---
 
+## Sessão 2026-10-19 (tarde) — claude (o BREAKING do `branch new`, medido onde ele morde)
+
+**FIM.** O usuário observou que o BREAKING da 10.0.0 muda o fluxo dele, e nomeou o caso: *"working
+tree parado numa branch velha"*. Medido, em vez de suposto.
+
+**O contrato veio dos 12 E2E dele, rodados aqui** — `PASS 12 · SKIP 0 · FAIL 0 · 46 s`. 🔴 **E a
+razão de não ter sido fixture minha vale guardar:** eu tentei montar uma e **a cerca recusou, com
+razão** — `git commit` bruto é bloqueado, e o `trackfw commit` se nega a commitar na branch padrão
+(`blocked: commit directly on "master"`). O `git commit-tree` **passaria** pelo guard (medido:
+rc=0), e usá-lo seria contornar o hook por conveniência de medição. O caminho honesto era melhor e
+mais barato: **a suíte dele já afirma exatamente os sete casos que eu ia construir à mão.**
+
+### Onde morde nesta máquina
+
+```
+project_management   remotes=[NENHUM]   -> branch new FALHA ali; remedio `--from HEAD`
+cartao_fornari       branch=feat/implantacao-homologacao -> branch nova nasce de origin/main
+```
+
+A primeira é a que surpreende: o `ferramentas/CLAUDE.md` registra aquele repo como *"sem remote,
+trabalho local só"*, e o comando que sempre funcionou ali passa a sair ≠ 0. **Não é defeito** — é a
+decisão nova encontrando um repositório que nunca teve `origin`.
+
+🔴 **E o caso da branch velha já me pegou hoje, antes de eu saber que era caso:** criei a branch do
+sync da 10.0.0 de dentro do head do #271, um PR vermelho, porque `branch new` ainda era 9.7.0 e
+partia do HEAD. Só não custou nada porque o #271 ia mesmo ser substituído. Com a 10.0.0 instalada,
+o mesmo descuido não aconteceria — **o BREAKING conserta mais do que quebra**, e o preço é quem
+quer empilhar branch ter de escrever `--from HEAD`.
+
+**Limite declarado:** os repositórios do Méllea **não** foram inspecionados; lá a regra manda
+invocar a skill `modo-lourival` antes de agir. A pergunta é a mesma: tem `origin`, e o HEAD está
+parado?
+
+---
 ## Sessão 2026-10-19 — claude (as DUAS issues viraram produto, e a 10.0.0 traz um BREAKING)
 
 **FIM.** Sync de **8 commits**, de `30574d16` até `a21b8ff1` — a **10.0.0**. Este PR **substitui o

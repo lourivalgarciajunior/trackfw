@@ -1982,6 +1982,52 @@ O gate imprimia um caminho **que não existe**, e a comparação de bytes funcio
 mesmo fallback do MSYS. O `.exe` passou a ser tentado primeiro. É a mesma família de
 `msys-mente-sobre-o-que-criou`, agora dentro de um instrumento nosso.
 
+## 🔴 BREAKING da 10.0.0: `branch new` cria da branch padrão do REMOTO, e num repo sem `origin` ele FALHA
+
+O [#585](https://github.com/kgsaran/trackfw/pull/585) (`REQ-2026-09-12`) mudou o ponto de partida:
+`trackfw branch new` passa a **buscar o `origin` e criar de `origin/<branch padrão>`**, em vez do HEAD
+corrente. `--from HEAD` reproduz o antigo; `--from <ref>` aponta para qualquer um.
+
+**O contrato está medido, não lido** — os 12 E2E dele rodados aqui com o binário 10.0.0:
+
+```
+go test ./internal/commands -run "TestBranchNewBase|TestBranchNew_From" -v
+  PASS 12 · SKIP 0 · FAIL 0 · 46 s
+```
+
+| caso | o que o teste afirma |
+|---|---|
+| padrão | cria de `origin/<default>`, inclusive para `chore/` |
+| `--from HEAD` | preserva os commits do HEAD corrente |
+| fetch falha | **avisa e cria assim mesmo** (sai 0) |
+| **sem `origin`** | 🔴 **sai ≠ 0**, com mensagem acionável e sem vazar erro cru do git |
+| upstream tracking | **não** é configurado na branch nova |
+| `--from -<algo>` · `--from ext::…upload-pack` | recusados (injeção) |
+| `--from <tag>` · `--from <sha>` | resolvidos |
+
+### 🔴 Onde isto morde NESTA máquina, medido em `ferramentas/`
+
+```
+project_management   remotes=[NENHUM]   branch=main
+  -> branch new FALHA ali. O remedio e `--from HEAD`.
+
+cartao_fornari       remotes=[origin]   branch=feat/implantacao-homologacao
+  -> a branch nova passa a nascer de origin/main, nao daquela feat/.
+```
+
+A primeira linha é a que surpreende: o `ferramentas/CLAUDE.md` registra `project_management` como
+*"sem remote no GitHub, trabalho local só"* — e o comando que sempre funcionou ali passa a sair
+≠ 0. **Não é defeito**: é a decisão nova encontrando um repositório que nunca teve `origin`.
+
+A segunda é o caso que o usuário nomeou: **working tree parado numa branch velha**. Antes, a branch
+nova herdava o estado daquela; agora nasce de `origin/main`. Na maioria das vezes isso **conserta**
+um erro silencioso — foi exatamente o que me aconteceu em 2026-10-19, quando criei a branch do sync
+da 10.0.0 de dentro do head de um PR vermelho. O custo está no caso inverso: quem **quer** empilhar
+branch precisa escrever `--from HEAD`, e o padrão não avisa que mudou de base.
+
+**Limite declarado:** os repositórios do Méllea **não** foram inspecionados — lá a regra desta casa
+manda invocar a skill `modo-lourival` antes de agir, e a pergunta é a mesma nos dois casos: o repo
+tem `origin`, e o HEAD está parado numa branch velha?
 ## 🔴 `git add -A` está BLOQUEADO desde o #576 — e aqui ainda não, por causa de qual binário o hook usa
 
 O [#576](https://github.com/kgsaran/trackfw/pull/576) (19:10 de 2026-10-17, `REQ-2026-09-05`) fez o
