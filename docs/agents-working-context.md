@@ -30589,3 +30589,60 @@ falsificacao, desarmando o conserto       FAIL com a mensagem que a reproducao D
 `gh pr view 590 --repo kgsaran/trackfw --json statusCheckRollup`, agrupado **por nome** e
 tomando a corrida mais recente — nunca do campo agregado, que guarda a reprovada ao lado
 das que passaram. O head medido foi `8ab6e84c`.
+
+## 2026-10-20 — o #590 mesclou e o conserto voltou por convergencia
+
+O mantenedor mesclou o [#590](https://github.com/kgsaran/trackfw/pull/590) as **13:33
+(-0300)**, commit `81130826`, e a [#589](https://github.com/kgsaran/trackfw/issues/589)
+fechou sozinha pelo `Closes` do corpo. O ciclo da `REQ-2026-10-19` fecha aqui: roadmap em
+`done/`, REQ em `Done`, 7 de 7 criterios marcados **nomeando o sitio que comprova**.
+
+**A convergencia foi medida por efeito, nao lida:**
+
+```
+upstream-sync rc=0   produto trazido 2 · governanca retida 0 (de 2 no merge)
+arvore x upstream/main, em internal cmd Makefile    0 arquivo(s) diferem
+os dois arquivos do conserto                        IDENTICOS ao upstream
+.github que difere                                  so local-gates.yml (nosso, adicao)
+recorte ML-1A+1B, com -v                            10 PASS · 0 FAIL · 0 SKIP
+```
+
+🔴 **A divisao produto/governanca do ML-1A terminou de se provar.** Ela previa que a
+divergencia sumiria "por convergencia, nao por reversao" — e sumiu: zero arquivo de produto
+difere do upstream, sem ninguem desfazer nada. O conserto saiu daqui pela branch-veiculo,
+foi aceito la, e voltou pelo sync.
+
+**Tres armadilhas de medicao neste ciclo, todas de familias ja registradas:**
+
+1. **Comparei `upstream/main` contra `HEAD` e li "DIFERE" nos dois arquivos.** O
+   `upstream-sync.sh` **nao commita** — e nao deve —, entao o `HEAD` ainda era a `main`
+   velha e a mudanca estava na **arvore**. Comparacao certa: `git diff upstream/main --
+   <arquivo>`, sem a segunda ref. Mesma familia do dois-pontos contra base de merge: **a
+   ancora nao estava onde eu pensei**.
+2. **`go test` sem `-v` devolveu `PASS: 0` com `rc=0`.** O Go so imprime linha por teste com
+   `-v`, entao o meu contador leu zero num verde legitimo — e **zero e indistinguivel de
+   "nenhum teste casou o filtro"**. Verde sem denominador outra vez, agora pelo flag.
+3. **A notificacao de tarefa disse `exit code 0` com a suite em `rc=1`** (no ciclo do
+   ML-1B): o rc e o do **ultimo comando do encadeamento**, que era um `tail`.
+
+**E o `TaskStop` nao mata o bash interno da vigia.** No re-arme deste dia o PID 81144
+sobreviveu ao stop com a base velha; sem mata-lo a mao haveria **duas** vigias sobre a mesma
+`main`. 🔴 **E a contagem por `Win32_Process` se auto-encontra**: o comando que procura
+`vigia-main-upstream` contem a string, entao acusa os shells da propria sessao. O
+discriminante e excluir `shell-snapshots` e conferir que o PID **muda entre duas leituras**.
+
+**O que a vigia NAO cobre, e custou um relato errado:** ela compara so o head da `main`
+dele. As 08:10 deste dia ele **revisou o #590** pedindo um segundo sitio, e as 09:22 eu
+relatei *"nao evoluiu"* — porque varri head, branches, lista de PRs, issues, tag e npm, e
+nao os **comentarios** do PR aberto. Revisao nao move head. A varredura passou a incluir
+`state`, `reviews`, `reviewDecision` e contagem de comentarios do PR.
+
+**Estado dele ao fim do dia, para quem retomar:** ele nao parou na quarta como o
+`docs/ponto-de-parada-2026-10-19` dizia — fechou o ML-1H da `REQ-2026-09-05` hoje e abriu o
+**[#591](https://github.com/kgsaran/trackfw/pull/591)**, *"feat(attention): hooks de atencao
+nativos em Go"*, com seis commits entre 09:16 e 13:32. **O proximo sync vem dai.**
+
+**Como derivar o estado quando precisar:** o head dele sai de
+`gh api repos/kgsaran/trackfw/commits/main`; a divergencia de produto, de
+`git diff --name-only upstream/main -- internal cmd Makefile` com a arvore limpa; e o
+veredito de PR, do `statusCheckRollup` agrupado **por nome** com a corrida mais recente.
