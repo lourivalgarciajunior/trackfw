@@ -30646,3 +30646,76 @@ nativos em Go"*, com seis commits entre 09:16 e 13:32. **O proximo sync vem dai.
 `gh api repos/kgsaran/trackfw/commits/main`; a divergencia de produto, de
 `git diff --name-only upstream/main -- internal cmd Makefile` com a arvore limpa; e o
 veredito de PR, do `statusCheckRollup` agrupado **por nome** com a corrida mais recente.
+
+## 2026-10-20 (II) — o sync do #591, e o sinal de atencao que ficou inerte
+
+Segundo sync do mesmo dia. O mantenedor mesclou o
+[#591](https://github.com/kgsaran/trackfw/pull/591) as **14:11 (-0300)**, duas horas depois do
+#590 — ou seja, o `docs/ponto-de-parada-2026-10-19` dele, que prometia retomar na quarta, ja
+nao descrevia o estado.
+
+### 🔴 O sinal de atencao fica INERTE nesta maquina, e o rc nao denuncia
+
+Os `scripts/trackfw-attention-*.sh` viraram **involucros** que chamam
+`trackfw attention signal|cleanup` **resolvido no PATH**. Medido por efeito:
+
+```
+pelo PATH (global 10.0.0)   Error: unknown command "attention" for "trackfw"   rc=0
+com a arvore na frente      sem erro                                           rc=0
+a linha que decide          trackfw attention signal "$@" || true
+```
+
+**O `|| true` faz as duas pontas sairem 0** — falha ABERTA e silenciosa. Nao bloqueia nada,
+porque atencao e informativa por desenho, mas **o banner nao acende** ate sair release com o
+subcomando. Mesma familia do ponto cego do guard no PATH, com a diferenca que aqui ninguem
+reprova: o `validate` segue em 3 avisos, o piso.
+
+🔴 **O padrao escrito no CLAUDE.md previa avisos novos e NAO disparou.** A premissa dele se
+cumpriu — a forma da linha de hook mudou —, mas a regra que acusa cobre o guard, que
+bloqueia, nao a atencao. **Premissa satisfeita e regra silenciosa sao coisas diferentes**, e
+sem a sonda eu teria lido o silencio como "nada mudou".
+
+🔴 **E medir o involucro por efeito ESCREVE no `roadmap_dir` real.** A sonda deixou
+`docs/roadmaps/.trackfw-attention.json` com o payload generico que eu injetei
+(`"Agent is executing: unknown"`), quatro segundos depois da chamada. Apagado antes do
+commit. Familia da sonda que contamina o acervo: **proxima vez, `roadmap_dir` descartavel**.
+O lado util: isso e o controle positivo — com o binario certo, o sinal funciona.
+
+### O ratchet de predicado de SO reprovou, e o achado era legitimo
+
+O #591 trouxe `internal/commands/attention.go:87` —
+`strings.ContainsAny(dir, "\\:") || filepath.IsAbs(dir)` sobre o `roadmap_dir` lido do
+`trackfw.yaml`. Entrou no BASELINE **com o motivo escrito**, que e a saida 2 da
+`ADR-2026-09-09`. Depois: **311 sitios, baldes somando 311, zero fora do baseline**.
+
+**NAO virou issue**, diferente do padrao desta casa para achado em produto alheio: o
+comentario do proprio sitio declara que tratar separador e volume de Windows como inseguros
+em **todo** hospedeiro e deliberado — que e exatamente o que a ADR pede. O lint o pega pela
+**forma**; a semantica ja satisfaz a regra. Issue ali seria ruido.
+
+### Duas armadilhas de medicao, as duas ja registradas e repetidas
+
+1. **`git diff HEAD..upstream/main` devolveu 1282 arquivos**; o diff **do commit** tem 38. O
+   dois-pontos responde *"o que ele tem que nos nao temos"*.
+2. **A previsao de proporcao errou os dois numeros E nao fechava contra si mesma**: previ
+   `24 produto + 13 retidos = 37` num commit de **38**. Faltava o `CHANGELOG.md` (arquivo de
+   raiz, fora dos cinco caminhos que filtrei) e sobrava o `docs/cli-parity.md`, que **vem
+   dele** por regra escrita e nao e retido. Medido: **26 + 12 = 38**. **Previsao com varios
+   numeros se confere contra si mesma antes de sair.**
+
+### Residuo declarado: a suite de generators estoura o prazo PADRAO do Go
+
+```
+go test ./internal/generators/...            panic: test timed out after 10m0s   608,2 s
+```
+
+Nao e teste reprovando: e **prazo**, no limite default de 10 min, nesta maquina. Repetido com
+`-timeout 40m` para separar "lento" de "quebrado"; **o veiculo do veredito e o CI**, que roda
+em runner limpo. Familia do custo de processo no MSYS ja medido no agregador (~470 s).
+
+### Como derivar o estado
+
+Head dele: `gh api repos/kgsaran/trackfw/commits/main`. Divergencia de produto:
+`git diff --name-only upstream/main -- internal cmd Makefile` com a arvore limpa — e, para
+`scripts`/`.github`, cruzar com `git ls-tree -r --name-only upstream/main` antes de chamar
+de divergencia, porque **adicao nossa nao e divergencia**.
