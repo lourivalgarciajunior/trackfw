@@ -30542,3 +30542,50 @@ convergencia, nao por reversao.
 
 **A licao de forma:** prever a divergencia no ADR nao bastava. Faltou derivar onde ela
 podia viver, e o gate que responde isso ja existia e roda em todo PR.
+
+### Adendo de 2026-10-20 — o ML-1A fechou com um sitio de fora, e quem pegou foi o mantenedor
+
+As 08:10 (-0300) o Kleber revisou o `a4dbec34` no #590 e nomeou a linha: `guardRunProbe`
+tem **dois** consumidores, e o ML-1A tratou `errGuardProbeDeadline` so em
+`guardBinaryProbeOnce`. O segundo — `guardGitBashBinaryProbe`, a sonda do binario que o
+login shell resolve quando difere do principal — lia qualquer erro como ausencia do
+subcomando, inclusive o prazo, e mandava remover ou atualizar um binario sobre o qual nada
+havia sido medido.
+
+🔴 **Nenhum instrumento nosso pegou isso.** Nem `validate`, nem `run-local-gates`, nem os
+tres testes do ML-1A — eles afirmam o sitio que o ML tratou, e sitio nao tratado nao tem
+teste que o acuse. O discriminante que teria pego e barato e nao foi rodado:
+`git grep -c 'guardRunProbe('` contra `git grep -c 'errors.Is(probeErr'`. **Quando um ML
+embala erro em sentinela, a conta dos consumidores e a reconciliacao que falta** — e a
+Regra Dura de Reconciliacao, do jeito que esta escrita, nao a cobre: ela confronta o
+artefato com a conclusao do relatorio, e aqui os dois concordavam sobre o sitio errado.
+
+**Virou ML-1B na REQ vigente, no MESMO PR** — Regra Dura de Causa Raiz literal. O roadmap
+continuou em `wip/`, que e onde ele tinha de estar.
+
+**Medicao que nao se deriva e por isso fica escrita:**
+
+```
+suite completa do pacote, nesta maquina   rc=1   504,6 s   3 FAIL
+  as tres sao Group A e estao no .github/windows-known-failures.json (6 ativas)
+  controle em worktree sobre o commit BASE a4dbec34, sem o conserto: as tres reprovam igual
+recorte afetado                           10 PASS · 0 FAIL · 0 SKIP
+falsificacao, desarmando o conserto       FAIL com a mensagem que a reproducao DELE previa
+#590 depois do push (head 8ab6e84c)       CI fechou 09:48 · {'SUCCESS': 20} · superadas 0
+```
+
+🔴 **Duas armadilhas de instrumento, ambas ja registradas e ambas cometidas de novo:**
+
+1. **A notificacao da tarefa disse `exit code 0` com a suite em `rc=1`.** O rc da
+   notificacao e o do **ultimo comando do encadeamento**, que era um `tail`. Setima
+   ocorrencia da familia `cano-mascara-exit-code`. **Comando de segundo plano tem de ser so
+   o que se quer medir**, e o rc real lido do arquivo.
+2. **`MSYS_NO_PATHCONV=1` quebrou o envio do comentario.** O `gh` recebeu `/c/Users/...` e
+   disse *"cannot find the path"* — o arquivo existia, quem nao o via era o Win32. Passou
+   com a grafia `C:\...`. A conversao do MSYS engana **nos dois sentidos**: desliga-la
+   conserta o argumento `--repo` e quebra o argumento de caminho, no mesmo comando.
+
+**Como derivar o estado quando precisar:** o veredito do #590 sai de
+`gh pr view 590 --repo kgsaran/trackfw --json statusCheckRollup`, agrupado **por nome** e
+tomando a corrida mais recente — nunca do campo agregado, que guarda a reprovada ao lado
+das que passaram. O head medido foi `8ab6e84c`.
