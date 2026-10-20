@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-10-19
 req: "docs/requisições/claude/REQ-2026-10-19-o-deadline-da-sonda-do-login-shell-e-classificado-como-trackfw-ausente-o-ctx-err-que-o-netexec-ja-tem.md"
 squad: ""
@@ -7,7 +7,7 @@ squad: ""
 
 # Roadmap: O deadline da sonda do login shell e classificado como trackfw ausente - o ctx.Err que o netexec ja tem
 
-> Created: 2026-10-19 | Status: wip
+> Created: 2026-10-19 | Status: done
 
 ## Context
 <!-- Derived from REQ -->
