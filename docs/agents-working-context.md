@@ -30719,3 +30719,99 @@ Head dele: `gh api repos/kgsaran/trackfw/commits/main`. Divergencia de produto:
 `git diff --name-only upstream/main -- internal cmd Makefile` com a arvore limpa — e, para
 `scripts`/`.github`, cruzar com `git ls-tree -r --name-only upstream/main` antes de chamar
 de divergencia, porque **adicao nossa nao e divergencia**.
+
+## 2026-10-21 — o sync do #592 e #593, e DUAS afirmacoes nossas que estavam falsas
+
+O mantenedor mesclou o [#592](https://github.com/kgsaran/trackfw/pull/592) as **16:48** e o
+[#593](https://github.com/kgsaran/trackfw/pull/593) as **17:16** (-0300), fechando a
+`REQ-2026-09-05` da instalacao em Windows. A vigia da `main` dele pegou o primeiro **sozinha**, no
+ciclo 17 de uma janela armada as 16:17 — e o `exit 0` da notificacao nao foi tomado por veredito: o
+que decidiu foi o bloco `ANDOU` no arquivo, conferido depois contra a API.
+
+### A previsao do sync fechou byte a byte
+
+```
+previsto   5 de produto + 7 retidos = 12
+medido     5 de produto + 7 retidos = 12
+os cinco   README.md · internal/commands/attention.go · attention_test.go
+           scripts/check-install-checksum.sh · scripts/install.sh
+verificacao   go build exit 0 · validate 0 antes / 0 depois · 0 violacoes e 3 avisos
+              copia do PATH N/A (contorno dos shims nao em vigor)
+retencao por efeito   5 arquivos entre a nossa main anterior e o merge — o handoff
+                      dele, a jornada de 560 linhas e a nota de vault NAO entraram
+```
+
+Zero arquivo para decidir a mao: o `CLAUDE.md` nao estava no conjunto, diferente do #550. E o
+`check-orphan-gates.sh` dele saiu **OK** com o gate novo (`check-install-checksum.sh`), porque o
+consumidor ja existia no `Makefile` desde o #331.
+
+### 🔴 A afirmacao nossa sobre "binario velho = falha ABERTA" estava FALSA
+
+O `CLAUDE.md` dizia, sobre o guard resolvido no PATH: *"ausente da 127, velho da 1, e os dois
+desligam o guard porque so 2 bloqueia"*. Isso descrevia a forma de linha de hook de **2026-10-07**.
+A linha de hoje e a **polyglot** do #536, nos sete grupos do `.claude/settings.json`, e o
+`$((2*!!$?))` transforma **qualquer** nao-zero em 2. Medido por efeito com a linha REAL e payload
+**benigno** (`git status`), em tres PATHs, nenhum deles o ambiente de verdade:
+
+```
+binario sao (PATH normal)   rc=0   permite
+binario VELHO (sai 1)       rc=2   BLOQUEIA
+binario AUSENTE             rc=2   BLOQUEIA   bash: trackfw: command not found
+```
+
+**Nao e falha aberta: e deny-all.** A consequencia inverteu — nao e cerca que emudece, e sessao em
+que nenhuma ferramenta funciona. Quem viveu a forma foi o mantenedor, na VM do #592, com um
+8.0.0-rc2 em `~/bin`. O sitio dele nao nos atinge (o nosso `~/bin` tem so `trackfw-go.exe`, nome
+diferente; o bash de login resolve o npm em 10.0.0 com `guard --help` rc=0), e **ele corrigiu o
+titulo da propria nota**: o bash *herda* o PATH, e o `/etc/profile` **prepende** `~/bin`. Logo o
+modo de falha e **sombreamento**, nao ausencia de heranca — e isso muda o remedio.
+
+### ✅ E a previsao do `git add -A` cumpriu-se, pelo passo 2 da tripla
+
+O PATH passou a entregar a 10.0.0, que contem o #576. Medido pelo binario do PATH, payload real:
+`-A` e `.` dao **rc=2**; caminho explicito, `-A docs/` e `git status` dao **0**. O titulo da secao
+dizia *"e aqui ainda nao"* e ficou falso — corrigido no mesmo commit.
+
+### 🔴 Um defeito de RENDERIZACAO no proprio `CLAUDE.md`, achado por instrumento meu que mentiu duas vezes
+
+Ao conferir paridade de cercas depois de editar, o **primeiro** contador conflatava topo com
+blockquote e deu 205 ímpar; o **segundo** separava mas deixava 9 linhas de fora (156+40=196 de 205).
+O terceiro, por profundidade de blockquote, isolou o fato: **topo com 165, ímpar** — antes da minha
+edicao tambem.
+
+A causa e uma linha que comeca com tres acentos graves **recuados**, e em CommonMark isso **abre
+cerca** com o resto da linha como info string:
+
+```
+2332:    ``` e citacao: sao 3 no acervo, e conta-los inventa criterio ...
+```
+
+Ela engolia **22 linhas** — inclusive o cabecalho `### A forma canonica do criterio caducado` e o
+exemplo do `Caducou:` — e **invertia todas as cercas seguintes**. Falsificado nas duas direcoes:
+
+```
+cercas de topo                165 IMPAR  ->  164 par
+blocos com CABECALHO dentro    10        ->    0
+```
+
+🔴 **O discriminante que funcionou nao foi contar: foi procurar cabecalho DENTRO de bloco de
+codigo.** Contagem par nao prova alinhamento, e contagem ímpar nao diz onde. Mesma familia do
+`grep -iE` que procurava a palavra que eu supunha em vez da que o instrumento escreve.
+
+### O que ficou pendente, derivavel
+
+O `attention` continua inerte aqui e o prazo e **derivado**: `git tag --contains` do commit
+`28d6d018` contra `npm view trackfw version` — nenhuma das oito tags mais novas o continha em
+2026-10-21, e o `npm latest` era a 10.0.0, de 18/10. Quando sair release que o contenha, a tripla e
+sync -> `npm i -g` -> `trackfw update harness`, com prova por efeito no fim.
+
+E ele ja tem frente nova em voo, **sem PR**: a branch `fix/hooks-de-guard-gerados-falham-sob-zsh`,
+aparecida no fetch deste sync.
+
+### Como derivar o estado
+
+Head dele: `gh api repos/kgsaran/trackfw/commits/main`. Vigia: o invólucro canonico vive em
+`~/.claude/projects/<projeto>/tools/`, e o re-arme e **contar pelo Win32 -> matar -> conferir
+suspensao (par 42 -> 1, provedores DIFERENTES) -> ler o upstream avulso -> armar**. Nesta sessao a
+leitura avulsa foi o que pegou o #592 nascendo, 14 min antes do armamento; as quatro suspensoes da
+janela anterior somaram ~14h41m de cegueira real.

@@ -1506,6 +1506,42 @@ hook de volta para o `.sh` não resolvia, porque a guarda dele sobre `guard --he
 > desconhecido — remedido na forma em 2026-10-07: `trackfw naoexiste` → rc=1, enquanto
 > `trackfw guard naoexiste` → rc=2, que é o despacho interno do guard falhando fechado, de propósito.
 >
+> ### 🔴 ISTO CADUCOU em 2026-10-21, e a consequência INVERTEU: velho e ausente hoje BLOQUEIAM TUDO
+>
+> O parágrafo acima descreve a forma de linha de hook de **2026-10-07**, em que o `rc` do binário
+> atravessava. **A linha de hoje é a polyglot** do #536 (D11), e ela está nos **sete** grupos do
+> nosso `.claude/settings.json`:
+>
+> ```
+> $LASTEXITCODE=2 2>${null-/dev/null}; trackfw guard git-branch; LASTEXITCODE=$((2*!!$?)); ...
+> ```
+>
+> O `2*!!$?` transforma **qualquer** não-zero em **2**. Medido por efeito com a linha real e payload
+> **benigno** (`git status`), em três PATHs — nenhum deles o ambiente de verdade, que não se mexe:
+>
+> | | rc | |
+> |---|---|---|
+> | binário são (PATH normal) | 0 | permite |
+> | binário **velho** (sai 1) | **2** | **bloqueia** |
+> | binário **ausente** | **2** | **bloqueia** (`bash: trackfw: command not found`) |
+>
+> 🔴 **Não é mais falha aberta: é deny-all.** O custo mudou de natureza — não é cerca que emudece, é
+> **sessão em que nenhuma ferramenta funciona**. Quem mediu a forma vivida foi o mantenedor, na VM da
+> jornada de Windows do #592: com um `trackfw` 8.0.0-rc2 em `~/bin`, *"todos os Bash/PowerShell/Read/
+> Write ficam bloqueados"* e *"a instalação parece travada sem mensagem de erro sobre versão"*.
+>
+> **O sítio dele não nos atinge, re-medido em 2026-10-21:** o nosso `~/bin` tem só `trackfw-go.exe`
+> — nome diferente, não sombreia —, e o bash de login resolve `%APPDATA%/npm/trackfw` → 10.0.0, com
+> `guard --help` rc=0. 🔴 **E ele corrigiu o título da própria nota:** *"o PATH não herda do processo
+> pai"* estava errado — o bash **herda**, e o `/etc/profile` do Git Bash **prepende** `~/bin` ao PATH
+> herdado. O modo de falha é **sombreamento**, não ausência de herança, e isso muda o remédio: olhar
+> o que vem ANTES no PATH, não se o PATH chegou.
+>
+> **A lição de forma:** afirmação sobre `rc` de hook envelhece quando a **forma da linha** muda — e a
+> forma mudou quatro vezes em dois dias de outubro, como a seção da tripla já registra. Cite a linha
+> vigente e meça por efeito; `rc` herdado de forma anterior é o mesmo erro do número de versão
+> chumbado.
+>
 > A medição foi levada à #535. **E o erro de redação é nosso:** tabela cujas linhas compartilham uma
 > condição implícita mente quando uma linha é citada sozinha — mesma família do
 > `_force_utf8_output`, dos "8 mascarados" e da lista de scripts só nossos.
@@ -2028,7 +2064,7 @@ branch precisa escrever `--from HEAD`, e o padrão não avisa que mudou de base.
 **Limite declarado:** os repositórios do Méllea **não** foram inspecionados — lá a regra desta casa
 manda invocar a skill `modo-lourival` antes de agir, e a pergunta é a mesma nos dois casos: o repo
 tem `origin`, e o HEAD está parado numa branch velha?
-## 🔴 `git add -A` está BLOQUEADO desde o #576 — e aqui ainda não, por causa de qual binário o hook usa
+## ✅ `git add -A` está BLOQUEADO desde o #576, e AQUI TAMBÉM desde 2026-10-21 — quem decide é o binário do PATH
 
 O [#576](https://github.com/kgsaran/trackfw/pull/576) (19:10 de 2026-10-17, `REQ-2026-09-05`) fez o
 guard recusar **staging com escopo implícito**, ligado por padrão. **Medido por efeito com o binário
@@ -2074,6 +2110,26 @@ código que acabou de mesclar.
 **O procedimento daqui mudou de saída, sem esperar a release:** estagiar por caminho explícito,
 derivando a lista de `git status --short`. 🔴 **Não se contorna o hook** — a ordem é permanente, e
 conveniência de sync nunca foi exceção.
+
+> ### ✅ A previsão CUMPRIU-SE em 2026-10-21, e o gatilho foi o passo 2 da tripla
+>
+> O PATH passou a entregar a **10.0.0**, que contém o #576 (tag `a21b8ff1`, de 18/10 — posterior ao
+> merge do #576, às 19:10 de 17/10). **Medido por efeito pelo binário do PATH**, com o payload real
+> do hook e o `rc` lido sem cano:
+>
+> | | rc | |
+> |---|---|---|
+> | `git add -A` · `git add .` | **2** | bloqueia |
+> | `git add docs/x.md` | 0 | caminho explícito passa |
+> | `git add -A docs/` | 0 | **`-A` COM pathspec é pathspec** |
+> | `git status` | 0 | controle negativo |
+>
+> 🔴 **A linha do `-A` com pathspec é a que a leitura ingênua erra**, e por isso ela está medida nas
+> duas direções: o que ofende é o escopo implícito, não a flag.
+>
+> **O procedimento não muda**, porque ele já era o certo antes da release: estagiar por caminho
+> explícito, derivado de `git status --short`. O que mudou é que agora o hook cobra.
+
 ## ✅ A campanha de Windows do upstream encerrou em 2026-10-16: lista conhecida de 14 para 6
 
 A `REQ-2026-09-03` dele — *"as 217 falhas reais de Windows colapsam em poucas causas"* — fechou
@@ -2272,8 +2328,8 @@ Dura de Reconciliação aplicada ao acervo em vez de ao microlote.
 2. **Só `status: done` entra no alvo.** REQ `Open` com critério aberto é trabalho em curso, não
    contradição. 🔴 A primeira derivação deu 64 ACs por não ter isto — e incluía a própria REQ que
    define o alvo.
-3. **Só checkbox sob bloco de critério**, e **fora de cerca de código**. 🔴 `- [ ]` dentro de
-   ``` é citação: são 3 no acervo, e contá-los inventa critério que ninguém escreveu.
+3. **Só checkbox sob bloco de critério**, e **fora de cerca de código**. 🔴 Um `- [ ]` dentro de uma
+   cerca ```` ``` ```` é citação: são 3 no acervo, e contá-los inventa critério que ninguém escreveu.
 
 O gate oferece **duas saídas e recusa a terceira**: marque nomeando o sítio que comprova, ou a REQ
 deixa de ser `done`. Reescrever o critério para caber no estado atual não é saída — é fabricar
