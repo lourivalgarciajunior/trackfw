@@ -30899,3 +30899,96 @@ numero chumbado. Divergencia de produto: `git diff --name-only $(git merge-base 
 HEAD -- <caminhos>` e, para cada arquivo, `git ls-tree -r --name-only upstream/main` para separar
 divergencia de **adicao**. Vigia: o roteiro de re-arme esta no invólucro, em
 `~/.claude/projects/<projeto>/tools/`.
+
+## 2026-10-22 (II) — a TRIPLA fechou nos quatro passos, e a vigia ficou orfa com a sessao
+
+Ciclo com tres coisas: a tripla executada de ponta a ponta (primeira vez nesta campanha), o merge do
+sync do #595, e o sync do #596/#597.
+
+### 🔴 A tripla, fechada — e o par antes/depois e o que vale guardar
+
+```
+                            ANTES            DEPOIS
+trackfw no PATH             10.0.0           10.1.0   (bash · PowerShell · cmd.exe)
+`trackfw attention`         unknown command  "Signal or clear board attention"
+validate (avisos)           23               3        <- o piso
+avisos "global scope"       20               0
+linha global com prefixo    nao              as 2 formas, sim
+```
+
+**Passo 3:** `updated=10 skipped=25 missing=1 failed=0`, em cinco CLIs — Claude, Codex, Gemini,
+Cursor e Copilot. O unico `missing` e o do Windsurf, que nao esta instalado: ausencia, nao
+defasagem.
+
+**Passo 4, pela linha GLOBAL** (a que governa todos os projetos desta maquina, nao so este):
+
+```
+                 GIT BASH   POWERSHELL 5.1
+git status         rc=0         rc=0      <- controle negativo
+git log            rc=0         rc=0      <- controle negativo
+git add -A         rc=2         rc=2
+git commit -m x    rc=2         rc=2
+git push origin    rc=2         rc=2
+```
+
+E o sinal de atencao deixou de ser inerte: payload de `AskUserQuestion` com DUAS perguntas gravou a
+primeira, real, a segunda nao apareceu, e o `cleanup` apagou — medido em `roadmap_dir`
+**descartavel**, com o acervo real conferido intacto depois.
+
+### 🔴 Eu quase travei o trabalho com uma ressalva que a medicao derrubou
+
+Eu disse que o sync do #596/#597 tinha de vir ANTES da tripla, para o harness nao escrever a linha
+do binario publicado em vez da nossa. **Falso, e o discriminante foi comparar os dois
+`settings.json`:**
+
+```
+formas de guard na v10.1.0 (3be3375c)   2
+formas na nossa arvore                   2        IDENTICAS: True
+o que o #597 toca   version.go · CHANGELOG.md · package.json · package-lock · pyproject
+```
+
+Nenhuma linha de hook no intervalo, logo nao havia o que esperar. **Ressalva sobre ordem de passos
+se confere comparando os artefatos, nao raciocinando sobre eles.**
+
+### 🔴 A vigia ficou ORFA quando a sessao anterior morreu — e a contagem mentiu nas duas direcoes
+
+O invólucro (2 processos) morreu com o teardown; o laco interno **sobreviveu** e seguiu batendo na
+API a cada 120 s, escrevendo no arquivo sem ter para quem entregar. A notificacao da tarefa veio
+como `stopped`.
+
+```
+primeira contagem pelo Win32    1 processo (pid 103156, idade 16,9 min)
+segunda contagem, 2 min depois  4 processos
+depois do Stop-Process          0
+```
+
+**As duas leituras estao certas no instante delas:** os 3 extras sao subshells transitorias que o
+laco cria por ciclo. 🔴 **O total sozinho nao distingue resto acumulado de transitoria — a IDADE
+distingue**, e e por isso que o invólucro manda contar com `CreationDate`. Quem lesse "4" como
+vazamento mataria o que nao era preciso; quem lesse "1" como "esta tudo bem" perderia a orfa.
+
+### ✅ Previsao da manha CONFIRMADA, em 49 minutos
+
+Eu escrevi as 07:47 que ele fecharia a `REQ-2026-10-20` com um PR curto de `docs(req)`, como no par
+#592 -> #593, e que se ao fim do dia ela seguisse `Open` a previsao estaria errada. Ele fechou as
+**08:36** (#596) e tageou a **10.1.0** as **08:49** (#597) — e e essa tag que destravou o passo 2,
+porque ela contem os DOIS commits que a tripla esperava (`28d6d018` do attention e `28665b30` da
+linha nova), conferido por `compare` tag-a-commit, nao por leitura de numero.
+
+### Este sync NAO pede tripla, e o 3 e controle
+
+```
+validate   3 antes -> 3 depois    ·    "global scope"  0 antes · 0 depois
+previsao   5 de produto + 4 retidos = 9      medido o mesmo, terceira vez seguida
+arvore 10.1.0  ·  PATH 10.1.0  ·  batem SIM
+```
+
+O contraste com o sync do #595, que levou o `validate` de 3 para 23, e o que torna este 3 um
+controle e nao sorte: a diferenca entre os dois intervalos e **a presenca de linha de hook**.
+
+### Como derivar o estado
+
+Se uma versao publicada contem um commit: `gh api 'repos/kgsaran/trackfw/tags?per_page=8'` cruzado
+com `gh api repos/kgsaran/trackfw/compare/<tag>...<commit>` lendo `.status` (`behind` ou `identical`
+= contem), e `npm view trackfw version` para o publicado. Processos de vigia: Win32 com
+`CreationDate`, nunca `ps` do MSYS, nunca o total sozinho.
