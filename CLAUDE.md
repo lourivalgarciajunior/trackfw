@@ -606,6 +606,28 @@ histórico do upstream. Se ele algum dia criar um arquivo com um desses caminhos
 com "conflito de PRODUTO"** — alto e visível, como o `CLAUDE.md` fez em 2026-10-09 —, e aí a
 decisão se revisita com o caso na mão.
 
+> #### ✅ O limite acima era HIPOTÉTICO e hoje JÁ É VERDADE — medido em 2026-10-22, no sync do #595
+>
+> Ele diz *"se ele algum dia criar um arquivo com um desses caminhos"*. A realidade é mais fina, e a
+> divergência já existe: o que é compartilhado não é uma das 9 notas, é o **índice**.
+>
+> ```
+> .claude/agent-memory/hades-tf/MEMORY.md   +9 linhas nossas   (existe nos DOIS lados)
+> as 9 notas em si                          só nossas          (0 commits no histórico dele)
+> nasceu aqui no sync da 10.0.0             7007fffa, 2026-10-19
+> ```
+>
+> 🔴 **E o git mescla, porque são apêndices em lugares diferentes** — então o sync **não** aborta
+> hoje, e não abortou em nenhum dos três syncs desde 19/10. O dia em que ele editar as **mesmas
+> linhas** do índice, aborta; a previsão escrita acima estava certa no mecanismo e **larga no
+> gatilho**: não é "criar um arquivo com um desses caminhos", é **tocar o índice no mesmo lugar**.
+>
+> **E ele só apareceu porque o filtro da medição foi alargado.** A derivação que este arquivo
+> publica usa `-- internal cmd Makefile`, e por aquele filtro a divergência é **zero** — verdade, e
+> estreita. Com `.claude .codex .gemini docs/cli-parity.md scripts` no filtro, sai **1**, e as
+> outras 31 entradas são **adição**, conferidas uma a uma contra `git ls-tree -r upstream/main`.
+> Mesma lição da lista de scripts: o veredito depende do denominador, e o denominador se declara.
+
 #### 🔴 Três instrumentos errados numa medição de dez minutos
 
 | o que usei | por que mentiu |
