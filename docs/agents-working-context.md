@@ -30815,3 +30815,87 @@ Head dele: `gh api repos/kgsaran/trackfw/commits/main`. Vigia: o invólucro cano
 suspensao (par 42 -> 1, provedores DIFERENTES) -> ler o upstream avulso -> armar**. Nesta sessao a
 leitura avulsa foi o que pegou o #592 nascendo, 14 min antes do armamento; as quatro suspensoes da
 janela anterior somaram ~14h41m de cegueira real.
+
+## 2026-10-22 — o sync do #595, a vigia acordando sozinha, e a tripla travada no passo 2
+
+O #595 dele mesclou as **06:20** (-0300) e a **vigia da `main` pegou as 07:38, sem ninguem pedir**.
+🔴 **E o `exit 0` da notificacao de tarefa NAO foi tomado por veredito** — quem decidiu foi o bloco
+`ANDOU` no arquivo, conferido depois contra a API, porque interrupcao externa tambem sai zero.
+
+### A defasagem de 78 min esta decomposta, e a causa era a declarada
+
+```
+mesclado             22/10 06:20 local
+detectado            22/10 07:38
+suspensao            42 em 21/10 20:06:02  ->  1 em 22/10 07:30:51     11h25m
+ciclos 29, 30, 31    leitura VAZIA (rede nao pronta apos o despertar)
+ciclo 32             leitura valida -> ANDOU
+```
+
+A cegueira por suspensao e a que o usuario decidiu deixar como esta em 21/10, e ela aconteceu
+exatamente como previsto — a previsao escrita era *"se amanha a main dele estiver a frente sem que a
+vigia tenha disparado, a causa ja esta nomeada"*. 🔴 **E as tres leituras vazias sao o guard do
+`andou()` funcionando**: vazio e "ainda nao sei", nunca movimento. Se fosse `"" != "$base"`, ela
+anunciaria as 07:32 um movimento que nao leu.
+
+### A previsao do sync fechou byte a byte pela SEGUNDA vez
+
+```
+previsto   20 de produto + 10 retidos = 30        medido  o mesmo, e os 20 nomes identicos
+verificacao  go build exit 0 · validate 0 violacoes antes / 0 depois
+```
+
+### 🔴 A tripla, quinta ocorrencia — com os numeros, e travada no passo 2
+
+```
+validate   3 avisos  ->  23       (rc=0: aviso, nao violacao)
+dos 23, 20 citam escopo GLOBAL, na forma
+  "~/.claude/settings.json (Claude Code, global scope) has \"$LASTEXITCODE=2 ...\""
+os 3 do piso continuam (isencoes por corte, 0 enforced)
+```
+
+**O passo 2 nao tem o que instalar, e isso e derivado:** nenhuma das 8 tags mais novas contem o
+`28665b30`, e o `npm latest` e a 10.0.0 (tag de 18/10). **Duas** coisas agora esperam a mesma
+release: o `attention` (`28d6d018`, #591) e a linha `emulate -R sh` (#595). Os 20 avisos ficam ate
+ele tagear — eles sao consequencia de o escopo global viver **fora do git**, nao esquecimento.
+
+### A cerca foi medida com a linha JA MESCLADA, e confirma o que eu publiquei na vespera
+
+```
+GIT BASH      git status rc=0   ·   git add -A rc=2
+POWERSHELL    git status rc=0   ·   git add -A rc=2
+no ofensivo   hookSpecificOutput/PreToolUse  -> a negacao e do guard, nao erro de shell
+```
+
+Na vespera, as 19:40, eu havia publicado na **Discussion #594** do upstream a medicao da linha
+**candidata** (head `0239ff0d`, com o SHA fixado porque branch anda), prevendo ausencia de
+regressao. A linha mesclada confirma. Ele nao respondeu a discussion em 12 h, e isso **nao** se le
+como desinteresse: o conteudo era confirmacao, nao bloqueio.
+
+### Quatro branches dele sem PR: uma viva, tres cemiterio — e o discriminante NAO e a branch
+
+```
+docs/encerra-req-2026-10-20-guard-zsh            ahead=1 behind=0    22/10 06:22   VIVA
+chore/fecha-req-2026-09-02-fiacao-do-guard       ahead=1 behind=33   10/10
+chore/fecha-reqs-prazo-de-rede-e-prune-remoto    ahead=1 behind=31   12/10
+docs/ponto-de-parada-2026-10-19                  ahead=1 behind=5    19/10
+```
+
+Os nomes dizem "fecha REQ", o que convidaria a ler tres fechamentos pendentes. 🔴 **Mas o
+discriminante e o `status` na `main`, nao a branch:** as REQs 2026-09-02, 2026-10-10 e 2026-10-12
+estao **`Done`** la, com roadmap em `done/`, e o commit da branch **fora** da `main`. Branch nao
+mesclou **e** o trabalho chegou — mesma classe de *"`git cherry` sozinho classifica errado"* e
+*"PR fechada nao e trabalho descartado"*.
+
+**A quarta e estado aberto de verdade:** a `REQ-2026-10-20` segue `Open` com roadmap em `wip/`
+enquanto o conserto dela ja mesclou. Previsao datada: ele fecha com um PR curto de `docs(req)`, como
+fez no par #592 -> #593. Se ao fim de 22/10 ela seguir `Open`, a previsao estava errada.
+
+### Como derivar o estado
+
+Head dele: `gh api repos/kgsaran/trackfw/commits/main`. Se uma versao publicada ja contem um commit:
+`gh api 'repos/kgsaran/trackfw/tags?per_page=8'` cruzado com `npm view trackfw version` — nunca com
+numero chumbado. Divergencia de produto: `git diff --name-only $(git merge-base HEAD upstream/main)
+HEAD -- <caminhos>` e, para cada arquivo, `git ls-tree -r --name-only upstream/main` para separar
+divergencia de **adicao**. Vigia: o roteiro de re-arme esta no invólucro, em
+`~/.claude/projects/<projeto>/tools/`.
