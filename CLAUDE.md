@@ -1676,6 +1676,37 @@ o roteiro está escrito acima, e não só na memória da sessão.
 > **O padrão, com quatro ocorrências em dois dias:** toda vez que o upstream muda a *forma* da linha
 > de hook, os CLIs globais ficam atrás e o `validate` acusa. Não é defeito nem esquecimento — é
 > consequência de o escopo global viver **fora do git**. O que muda é só quantos avisos.
+>
+> ### ✅ QUINTA ocorrência, e a primeira EXECUTADA de ponta a ponta — 2026-10-22
+>
+> O sync do #595 levou o `validate` de **3 para 23 avisos** (20 de escopo global). A `v10.1.0`, tageada
+> às 08:49 do dia seguinte, continha os **dois** commits que esperavam release — o `attention`
+> (`28d6d018`, #591) e a linha `emulate -R sh` (`28665b30`, #595) —, e os quatro passos foram
+> executados na ordem:
+>
+> ```
+>                             ANTES            DEPOIS
+> trackfw no PATH             10.0.0           10.1.0   (bash · PowerShell · cmd.exe)
+> `trackfw attention`         unknown command  "Signal or clear board attention"
+> validate (avisos)           23               3        <- o piso
+> avisos "global scope"       20               0
+> passo 3                     updated=10 skipped=25 missing=1 failed=0   (5 CLIs)
+> ```
+>
+> **Passo 4, pela linha GLOBAL**, nos dois shells: `status` e `log` rc=0; `add -A`, `commit` e `push`
+> rc=2, com `hookSpecificOutput`/`PreToolUse` na saída. E o sinal de atenção deixou de ser inerte,
+> medido em `roadmap_dir` descartável.
+>
+> 🔴 **E uma ressalva minha sobre a ORDEM dos passos foi derrubada pela medição.** Eu afirmei que o
+> sync seguinte tinha de vir antes do passo 3, para o harness não escrever a linha do binário
+> publicado em vez da nossa. O discriminante foi **comparar os dois `settings.json`**: as duas formas
+> da `v10.1.0` eram **idênticas** às da árvore, e o bump só toca `version.go`, `CHANGELOG.md`,
+> `package.json` e `pyproject.toml`. Ressalva sobre ordem se confere comparando artefato, não
+> raciocinando sobre ele.
+>
+> **E o sync seguinte (#596/#597) é o controle negativo da regra:** `validate` **3 antes · 3 depois**,
+> zero de escopo global, porque **não havia linha de hook no intervalo**. A diferença entre os dois
+> intervalos é exatamente isso — e é ela que faz do `3` um controle em vez de sorte.
 
 **Resíduo declarado em 2026-10-06, desde então pago:** os avisos do `validate` foram de **3 para 17**
 com o merge, e os 14 novos eram de escopo **global** — o `settings.json` do Copilot CLI, os hooks do
