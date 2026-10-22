@@ -1707,6 +1707,25 @@ o roteiro está escrito acima, e não só na memória da sessão.
 > **E o sync seguinte (#596/#597) é o controle negativo da regra:** `validate` **3 antes · 3 depois**,
 > zero de escopo global, porque **não havia linha de hook no intervalo**. A diferença entre os dois
 > intervalos é exatamente isso — e é ela que faz do `3` um controle em vez de sorte.
+>
+> ### ✅ E com o TERCEIRO intervalo a regra virou PREDICADO, não observação — 2026-10-22
+>
+> Três intervalos medidos no mesmo dia, duas formas de resultado:
+>
+> | sync | `validate` | arquivo de hook no conjunto? |
+> |---|---|---|
+> | #595 | 3 → **23** (20 globais) | **sim** — `.claude/settings.json` +23 −23 |
+> | #596/#597 | 3 → 3 | não |
+> | #598/#600/#601 | 3 → 3 | não |
+>
+> 🔴 **O discriminante é a presença de `.claude/settings.json`, `.codex/hooks.json` ou
+> `.gemini/settings.json` no conjunto do intervalo** — derivável por
+> `git diff --name-only <base>..upstream/main` **antes** de mesclar. No terceiro sync eu previ
+> `3 → 3` por aquela ausência e fechou.
+>
+> **Consequência prática:** dá para saber se um sync vai exigir a tripla **antes** de rodá-lo, em vez
+> de descobrir pelo `validate` depois. A regra dos quatro passos não muda; o que muda é que ela deixa
+> de ser surpresa.
 
 **Resíduo declarado em 2026-10-06, desde então pago:** os avisos do `validate` foram de **3 para 17**
 com o merge, e os 14 novos eram de escopo **global** — o `settings.json` do Copilot CLI, os hooks do
