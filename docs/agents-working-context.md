@@ -30992,3 +30992,109 @@ Se uma versao publicada contem um commit: `gh api 'repos/kgsaran/trackfw/tags?pe
 com `gh api repos/kgsaran/trackfw/compare/<tag>...<commit>` lendo `.status` (`behind` ou `identical`
 = contem), e `npm view trackfw version` para o publicado. Processos de vigia: Win32 com
 `CreationDate`, nunca `ps` do MSYS, nunca o total sozinho.
+
+## 2026-10-22 (III) — o sync dos tres commits, e o ciclo que fechou em OUTRO repositorio
+
+Terceiro sync do dia. Ele mesclou #598 (13:12), #600 (16:16) e #601 (16:45), e a vigia pegou o
+primeiro deles sozinha as 13:13 — 32 minutos depois de eu ter lido a branch, que mesclou com o
+texto do `architect.md` **identico** ao que eu havia medido no head `680bbef4`.
+
+### A previsao do sync, quarta vez seguida fechando byte a byte
+
+```
+previsto   12 de produto + 13 retidos = 25      medido  o mesmo, e os 12 nomes identicos
+```
+
+### 🔴 O `3` do validate e CONTROLE, e o contraste esta medido nos dois intervalos
+
+```
+sync do #595          validate 3 -> 23   (20 de escopo global)    linha de hook MUDOU
+sync do #596/#597     validate 3 ->  3                            linha nao mudou
+sync do #598/600/601  validate 3 ->  3   ·  escopo global 0 / 0    linha nao mudou
+```
+
+Tres intervalos, duas formas de resultado, e **o discriminante e a presenca de arquivo de hook no
+conjunto** — `.claude/settings.json`, `.codex/hooks.json`, `.gemini/settings.json`. Previ `3 -> 3`
+antes de rodar, pela ausencia desses tres nomes na lista; fechou. **Isso transforma a regra da
+tripla de observacao em predicado**: da para saber se um sync vai exigir a tripla olhando o
+conjunto de arquivos, antes de mesclar.
+
+### Os testes de integrations rodados AQUI, e por que nao e redundante com o CI dele
+
+```
+go test ./internal/integrations/... ./internal/identity/...
+  ok internal/integrations  25,0 s   ·   ok internal/identity  1,3 s   ·   0 FAIL
+```
+
+O #600 e sobre **escape** — TOML 1.0 no destino Codex, YAML sem caractere de controle cru, slug
+validado no `Load` — e o `render_escape_test.go` e arquivo novo. Em Windows, fim de linha e aspa se
+comportam diferente, e este repositorio tem historico de defeito que **so** aparece aqui (o
+`sh -n -c` que mentia, o `ln -s` que degrada para copia, o `os.Chmod` no-op em NTFS). Verde local
+sobre codigo de escape nao e redundancia.
+
+### 🔴 O ciclo que fechou em OUTRO repositorio, e a exposicao aqui era zero
+
+O `architect.md` entrou com a proibicao de passar `model` na chamada `Agent` (1 ocorrencia
+conferida). **Neste repositorio isso nao muda nada** — nao existe `.claude/agents/` nem arquivo de
+agente rastreado, medido —, mas a **mesma lacuna existia nos nossos agentes de verdade**, que vivem
+no `plugin-skill`:
+
+```
+agentes no plugin-skill          28
+com campo `model:` declarado     28      <- ha roteamento a ser sobreposto
+com a tool `Agent` (despacham)    3      <- so esses podem passar `model`
+com a proibicao escrita, antes    0
+```
+
+Corrigido la pelo PR #51 (mesclado 13:32), nos **tres** dispatchers e nos 25 nao — `trackfw-architect`,
+`book-apolo` e `adv-justiniano` —, com versoes `trackfw 1.9.0 / bookfw 0.9.0 / attorneyfw 0.12.0`
+publicadas e conferidas no cache. 🔴 **Redacao propria por dominio**, nao copia do ingles dele: *"quem
+afina cada Musa e o arquivo dela, nao a sua batuta"*, *"sobrepor na chamada e decidir sem procuracao"*.
+
+**E os 25 ficaram FORA de proposito:** eles declaram `model:` mas nao tem a tool `Agent`, logo nao
+podem passar o parametro. Escrever a proibicao neles seria ruido permanente — o defeito que levamos
+ao upstream na #530.
+
+### 🔴 Tres instrumentos MEUS mentiram ao conferir aquele trabalho, todos da mesma classe
+
+```
+grep 'par[aâ]metro .model'   0 de 3   <- o texto escreve "parâmetro `model`": espaco E acento grave
+grep 'Roteamento de custo'   1 de 3   <- cada plugin usa cabecalho do seu dominio
+grep 'Nunca passe o par...'  3 de 3   <- o discriminante tirado do texto medido
+parser de hooks.json         0 entradas num arquivo de 1 KB  <- esquema do Cursor poe
+                                         `command` direto no item, nao em `hooks` aninhado
+```
+
+**O discriminante e o texto medido, nunca a palavra que eu suponho.** Quatro ocorrencias da mesma
+licao em um dia, e a quarta foi num esquema de JSON em vez de numa string.
+
+### Frente nova dele, sem PR, que toca um arquivo NOSSO
+
+```
+fix/trackfw-log-conflita-em-toda-branch-paralela   ahead=2 behind=0
+ADR-2026-10-22-logs-append-only-compartilhados-viram-um-arquivo-por-entrada-
+  porque-o-github-ignora-merge-union
+o nosso docs/roadmaps/.trackfw-log   382 linhas · 48.696 bytes · retido por docs/
+```
+
+O mecanismo esta no titulo: **o GitHub ignora `merge=union`**, e o remedio dele e trocar o arquivo
+unico por um arquivo por entrada. 🔴 **Limite: li o TITULO da ADR e a lista de arquivos, nao o corpo
+dela**, e os dois commits sao `docs(adr)` e `docs(seguranca)` — **nenhuma linha de produto ainda**.
+Quando houver, a pergunta a medir e se a leitura do log pelo CLI fica incompativel com o nosso
+arquivo unico.
+
+### A issue #599 dele NAO nos atinge, e a medicao e por leitura do arquivo
+
+Ele relata que o `update` **acrescenta** a forma atual do credential guard nos matchers `Read`/`Write`
+do `.cursor/hooks.json` e **nao remove as anteriores** — 4 legadas por par evento x matcher, mais a
+atual, com o guard rodando 5 vezes por `Read`.
+
+```
+o nosso ~/.cursor/hooks.json, depois do `update harness` das 09:33
+  beforeShellExecution   2 entradas (credential + git-branch), forma `emulate -R sh`
+  afterShellExecution    2 entradas, a mesma forma
+  grupos com matcher Read/Write   NENHUM   <- o sitio do acumulo nao existe aqui
+```
+
+**Limite declarado:** nao sei POR QUE nao temos esses grupos; esta maquina pode nunca ter tido a
+geracao que os criou. E ausencia medida, nao causa explicada.
