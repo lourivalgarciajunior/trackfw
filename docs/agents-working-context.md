@@ -31294,3 +31294,112 @@ onde `*` e nome de arquivo valido.
 (`grep -qiF ... <<< "$validate_out"`, duas vezes), deixando `grep.exe.stackdump` na raiz — apagado.
 Os dois casos sairam `OK` por outra verificacao do gate, entao o crash **nao** mudou veredito; fica
 registrado porque herestring com UTF-8 grande e a forma que o derruba.
+
+---
+
+## 2026-10-23 — sync do #604: o update remove as geracoes antigas do guard
+
+**Branch:** `chore/sync-do-604-geracoes-antigas-do-guard` · **merge:** `upstream/main f2c7c7fd`
+
+### A previsao fechou porque o sync ANTERIOR ensinou
+
+```
+previsto   14 de produto + 24 retidos = 38
+medido     14 de produto + 24 retidos = 38
+```
+
+🔴 No sync do #602 eu errei por **um** arquivo, porque derivei a retencao da regra escrita neste
+arquivo — que afirma tres vezes ser o `CLAUDE.md` *"o unico que o sync NAO retem"*, e esta errada
+desde 2026-10-09. Hoje a derivacao incluiu `CLAUDE.md` e fechou byte a byte. **A medicao de ontem
+virou instrumento hoje**, que e o unico uso que justifica escrever o erro.
+
+### A vigia pegou o merge em menos de um minuto, e a branch eu JA havia medido
+
+```
+armada     09:34, base d450ed10
+#604       mesclado as 13:22, por kgsaran        <- conferido na API, nao no bloco ANDOU
+ANDOU      detectado as 13:22, ciclo 41 de 1110
+```
+
+Na varredura das ~12:5x a branch aparecia **sem PR**, com 37 arquivos; o squash tem **38**, e o 38o e
+`docs/agents-working-context/20261024T050000Z-zeus-tf-fim-wave3-...` — a Wave 3, que ele acrescentou
+depois da leitura. 🔴 **Medicao de branch alheia envelhece em minutos**, e o discriminante e comparar
+por NOME contra `refs/pull/604/head`, que sobrevive a poda: os dois conjuntos sao identicos, 38 cada.
+
+### Retencao e estado
+
+```
+CLAUDE.md                        byte a byte o nosso · 3202 linhas · 3202 CR · diff vs main vazio
+docs/agents-working-context.md   31.296 linhas, intacto
+docs/roadmaps/.trackfw-log       382 linhas, intacto
+docs/agents-working-context/     retido — 0 entradas
+validate     0 violacoes · 3 avisos ANTES e DEPOIS · escopo global 0 · wiring 0
+divergencia de produto           ZERO (base d450ed10)
+go build ./...                   exit 0
+3 gates nossos                   rc=0, inclusive o ratchet de SO que o sync passado cobrou
+testes       internal/validator 3 FAIL — as TRES na lista ativa do ratchet, 0 fora
+             internal/guardforms  [no test files]
+```
+
+**O predicado da tripla fechou de novo:** previ `3 -> 3` pela ausencia de arquivo de hook no conjunto,
+e as constantes da linha foram **movidas** para o pacote novo `internal/guardforms/` sem mudar —
+comparei as 3 formas polyglot byte a byte entre `d450ed10` e a branch: **identicas**.
+
+### 🔴 A nossa exposicao a #599 e ZERO, medida por IGUALDADE EXATA — e quatro instrumentos meus erraram antes disso
+
+```
+.claude\settings.json      guard=4  atual=4  LEGADA=0        .copilot\settings.json   guard=4  atual=4  LEGADA=0
+.codex\hooks.json          guard=4  atual=4  LEGADA=0        .kiro\...credential      guard=2  atual=2  LEGADA=0
+.gemini\settings.json      guard=4  atual=4  LEGADA=0        .kiro\...git-branch      guard=2  atual=2  LEGADA=0
+.cursor\hooks.json         guard=4  atual=4  LEGADA=0
+TOTAL                      atual=24   LEGADA=0   fora das listas=0
+```
+
+| o instrumento errado | por que mentiu |
+|---|---|
+| grep amplo de comandos como "lista de legadas" | trouxe atuais e legadas MISTURADAS: `\|\| exit 2` e a forma **atual** do `cmd.exe`, e eu a contei como legada |
+| `str.count` para contar formas | legada e **substring** da atual, entao deu `atual=4 LEGADA=10` num arquivo com **4** comandos. O arquivo DELE avisa: *"exact equality on the full command string (never strings.Contains)"* |
+| parser procurando so a chave `command` | o **Copilot** usa `bash`: deu `guard=0` num arquivo com 4 ocorrencias de `trackfw`. Mesma classe da cegueira ao schema do Cursor, ja paga aqui |
+| regex em Python por heredoc | o heredoc comeu as contrabarras **duas vezes**, inclusive na forma *quoted*. Reescrito sem nenhuma contrabarra, via Write |
+
+O primeiro numero que eu quase reportei foi **LEGADA=56**. O medido e **0**.
+
+### 🔴 E a sonda do conserto NAO discriminou — limite declarado, e uma afirmacao minha corrigida
+
+Plantei uma forma legada em `HOME` isolado e rodei os dois binarios. **Os dois migram:**
+
+```
+arvore (com o #604)            guard=6  atual=6  LEGADA=0
+PATH 10.1.0 (ANTES do #604)    guard=6  atual=6  LEGADA=0
+```
+
+Eu havia afirmado que o controle *"fecha de forma decisiva"* — e aquela leitura veio de um
+`grep 'exit $LASTEXITCODE"'`, **substring**, e a forma polyglot atual TERMINA nessa string. Por
+igualdade exata os dois sao iguais.
+
+**A causa de a sonda nao discriminar esta nomeada:** a premissa da #599 e acumulo por par
+**evento x matcher** no Cursor, e eu plantei no `.claude/settings.json`.
+
+🔴 **E isso FECHA a pergunta que ficou aberta em 2026-10-22.** Aquela entrada declarou *"nao sei POR
+QUE nao temos esses grupos Read/Write"*. Agora esta medido no gerador:
+
+```
+os nomes de evento que o gerador emite para o Cursor:
+  "beforeShellExecution"   "afterShellExecution"      <- e so
+o nosso .cursor/hooks.json:  os MESMOS 2 eventos, 2 entradas cada
+```
+
+**Nao existem eventos Read/Write no Cursor** para acumular. A ausencia deixa de ser inexplicada.
+
+### Duas coisas pequenas, e a primeira travou o sync
+
+🔴 **O sync abortou na primeira passada**, e corretamente: `upstream-sync: arvore suja`. O sujo era
+um `grep.exe.stackdump` de 09:50 — crash do `grep` do MSYS sob herestring com UTF-8 grande, o mesmo
+que apareceu no `check-agent-namespace-union.sh`. **O `.gitignore` nao cobre `*.stackdump`**
+(`git check-ignore` nao casa), entao crash de ferramenta trava o sync ate alguem apagar o lixo a mao.
+Fica como achado; o `.gitignore` e compartilhado com o upstream, e mexer nele cria divergencia que
+hoje e zero.
+
+**E `internal/guardforms` nao tem teste proprio** (`[no test files]`): e um pacote-folha de
+constantes, e quem o exercita sao os testes de `generators` e `validator`, pelo teste de concordancia
+que o proprio cabecalho dele cita.
