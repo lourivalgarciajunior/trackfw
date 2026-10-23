@@ -31403,3 +31403,68 @@ hoje e zero.
 **E `internal/guardforms` nao tem teste proprio** (`[no test files]`): e um pacote-folha de
 constantes, e quem o exercita sao os testes de `generators` e `validator`, pelo teste de concordancia
 que o proprio cabecalho dele cita.
+
+---
+
+## 2026-10-23 — sync do #605: encerramento da REQ das gerações, stage vazio
+
+**Branch:** `chore/sync-do-605-encerra-req-das-geracoes` · **merge:** `upstream/main 34b8defe`
+
+```
+previsto   0 de produto + 4 retidos = 4,  stage VAZIO
+medido     0 de produto + 4 retidos = 4,  stage VAZIO
+```
+
+Os 4 arquivos são `docs/` dele — o handoff por entrada, a REQ, o `.trackfw-log` e o roadmap indo
+para `done/` —, todos retidos. A árvore fica byte a byte igual ao HEAD anterior, e **o valor deste
+merge é a ANCESTRALIDADE**: sem ele, `34b8defe` não é ancestral do nosso HEAD e o próximo sync
+reconcilia um intervalo maior.
+
+### 🔴 O padrão agora tem DUAS ocorrências, e por isso é previsível
+
+```
+#602 (produto, 13:22 de 22/10)  ->  #603 (docs(req) de encerramento, 08:39 de 23/10)
+#604 (produto, 13:22 de 23/10)  ->  #605 (docs(req) de encerramento, 13:46 — 24 min depois)
+```
+
+**Consequência operacional:** depois de um PR de produto dele, o `docs(req)` que fecha a REQ chega em
+menos de uma hora. Esperar o par antes de abrir o nosso PR economiza um ciclo inteiro de 24 checks.
+Hoje pagamos os dois ciclos — o #603 entrou no mesmo PR do #602, mas o #605 não entrou no do #604,
+porque o CI já estava enchendo quando ele mesclou.
+
+### 🔴 Previsão escrita ANTES do evento: a branch `feat/regras-de-escrita-dos-agentes…` nos atinge em TRÊS frentes
+
+Ele abriu `feat/regras-de-escrita-dos-agentes-viram-mecanismo-no-harness` às 13:48 (local) e empurrou
+**10 commits em 1 h 34**, ainda **sem PR**. 32 arquivos, 24 deles fora de `docs/`.
+
+**1. `internal/commands/barrier.go` +529 −3 — checagem `ml_scope` nova, que REPROVA arquivo tocado
+fora dos `Files affected` da wave** (D2, ML-2A), mais `scripts/check-barrier.sh` +119 −2. Os nossos
+roadmaps têm bloco de gates; a pergunta a medir, quando entrar, é se eles declaram `Files affected`
+e se o barrier passa a reprovar o que hoje passa.
+
+**2. O `CLAUDE.md` muda de novo** (+1 −1), no passo 3 do Agent Protocol:
+
+```
+-3. After finishing: write a new file in docs/agents-working-context/...
++3. After finishing: the ORCHESTRATING SESSION (trackfw_architect) writes ... Subagents never write
++   there; they state what started, what changed and what is pending in their final report.
+```
+
+É a terceira mudança dele nesse arquivo em dois dias. O sync o **retém** (desde 2026-10-09) e imprime
+o diff, então não há conflito a resolver — há decisão de trazer ou não.
+
+**3. 🔴 E o ML-3A dele INVENTA exatamente o que a nossa decisão de hoje pedia:** um marcador
+`<!-- trackfw:frozen -->` para declarar o **working context legado**, mais as chaves
+`write_scope.frozen_paths` e `write_scope.frozen_paths_subagent` no `trackfw.yaml`.
+
+Hoje eu decidi ficar no handoff monolítico porque o nosso `check-handoff-cobre-o-ciclo.sh:55` tem o
+caminho chumbado e casa por substring fixa. **O mecanismo dele dá nome a essa decisão em vez de
+deixá-la implícita** — o nosso `docs/agents-working-context.md`, com 31 mil linhas, é precisamente um
+working context legado que continua sendo escrito. Quando aquela branch mesclar, a pergunta a medir é
+se marcar o nosso arquivo como `frozen` o **congela** (e aí o nosso gate reprova por outro caminho) ou
+apenas o declara.
+
+🔴 **Limite declarado:** li o patch do `CLAUDE.md`, a lista de arquivos e duas linhas do roadmap dele.
+**Não li o corpo da ADR nem o contrato completo do `ml_scope`.** Nenhum arquivo de hook está no
+conjunto (`.claude/settings.json`, `.codex/hooks.json`, `.gemini/settings.json` ausentes), então pelo
+predicado a tripla **não** será exigida — e isso é falsificável.
