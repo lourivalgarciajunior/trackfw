@@ -31229,3 +31229,68 @@ nossos gates                  handoff · upstream-content · referential-integri
 maquina **dormiu 12 h 54** das 18 h 57 — a janela util descoberta era de **6 h 03**, nao de 19 h, e o
 denominador fecha contra o relogio. Os tres eventos da janela (#600 as 16:16, #601 as 16:45, PR #602
 as 18:19) cairam **todos** no trecho acordado, e a varredura a mao pegou os tres.
+
+### O ratchet de predicado de SO pegou o sitio novo do #602 — e foi o CI que cobrou
+
+O `gates-locais` do PR #283 saiu **vermelho nas duas corridas**, e o gate que reprovou foi o nosso
+`check-os-predicate-classification.sh`:
+
+```
+FAIL check-os-predicate-classification      exit=1
+  ✗ CLASSIFICACAO NAO DECLARADA: internal/translog/translog.go:310 — filepath.IsAbs
+      if filepath.IsAbs(dir) {
+run-local-gates: 16 executado(s) · 1 REPROVOU(RAM)
+```
+
+🔴 **Isto e o ratchet funcionando, nao defeito**: o pacote `internal/translog/` e NOVO, trazido pelo
+#602, e o sitio entrou sem declaracao. As duas saidas do gate sao usar o resolvedor canonico ou
+**declarar com motivo**; a primeira criaria divergencia de produto, que hoje e ZERO, e pelo escopo
+negativo da `REQ-2026-09-05-onda-2` achado em produto dele vira **issue**, nunca correcao local.
+
+**A entrada foi declarada, e a diferenca em relacao as onze anteriores esta ESCRITA:** nelas o
+caminho vem de FORA (env, payload, `trackfw.yaml`); aqui vem do proprio chamador, e o ramo absoluto
+existe para o caso de **teste**, onde `dir` e um temp absoluto. O comentario do proprio sitio declara
+o mecanismo — o `filepath.Join` do Go **nao** descarta componentes antes de um absoluto, ao
+contrario do Python —, e a vault note dele de 2026-10-22 o mede.
+
+```
+depois da declaracao
+  318 sitios varridos · 202 com teste (D5) · 65 D1 · 7 D3 · 28 comentario · 16 D2 em 12 arquivos
+  202 + 65 + 7 + 28 + 16 = 318      <- o denominador reconcilia, nao sobra resto
+  Nenhum sitio de classificacao fora do baseline.      rc=0
+falsificado nas duas direcoes
+  sem a entrada   rc=1, 1 ocorrencia de CLASSIFICACAO NAO DECLARADA
+  com a entrada   rc=0
+```
+
+🔴 **E o baseline avisa, por medicao propria, que backtick ali e EXECUTADO** — ele e uma string de
+aspas duplas, e a primeira redacao de uma entrada anterior saiu `rc=2, syntax error`. A entrada nova
+foi escrita sem nenhum. O gate e **LF puro** (0 CR em 282 linhas), e a insercao preservou.
+
+### E o ponto cego de plataforma do `check-agent-namespace-union.sh`, com o mecanismo medido
+
+Ele sai `rc=1` nesta maquina, no caso `glob-metachar/go/star-count-not-inflated`, e **nao e
+regressao**: o caso existia antes do #602 (10 ocorrencias em `20d956f9`) e o merge **nao o tocou**
+(0 linhas com `glob-metachar` no diff entre as pontas; o que o #602 mudou ali foi acrescentar
+`translog.EntriesDirSuffix[1:]` ao filtro de infra).
+
+**A causa esta medida por efeito, e e a terceira grafia do `msys-mente-sobre-o-que-criou`:**
+
+```
+mkdir '*' em tmpdir
+  o ls do MSYS mostra      '*'        bytes: 2a 0a   (o asterisco literal)
+  o Win32 (Get-ChildItem)  codepoints: U+F02A        <- Private Use Area
+```
+
+O `*` nao e nome valido em NTFS, entao o MSYS o mapeia para **U+F02A** e **traduz de volta na
+exibicao**. O binario Go le pelo Win32 e reporta `agent ""`; o gate compara com `*` e falha.
+A fixture e **inconstruivel aqui**, mesma familia do `os.Chmod` no-op em NTFS.
+
+**No CI isto nao acende**, e a derivacao e a que importa: o gate nao esta no nosso
+`run-local-gates.sh` — esta no **`Makefile`**, que o `parity-other-gates` roda em `ubuntu-latest`,
+onde `*` e nome de arquivo valido.
+
+**E dois `core dumped` do `grep` do MSYS** apareceram na mesma corrida
+(`grep -qiF ... <<< "$validate_out"`, duas vezes), deixando `grep.exe.stackdump` na raiz — apagado.
+Os dois casos sairam `OK` por outra verificacao do gate, entao o crash **nao** mudou veredito; fica
+registrado porque herestring com UTF-8 grande e a forma que o derruba.
