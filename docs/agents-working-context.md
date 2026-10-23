@@ -31098,3 +31098,199 @@ o nosso ~/.cursor/hooks.json, depois do `update harness` das 09:33
 
 **Limite declarado:** nao sei POR QUE nao temos esses grupos; esta maquina pode nunca ter tido a
 geracao que os criou. E ausencia medida, nao causa explicada.
+
+---
+
+## 2026-10-23 — sync do #602: o log append-only virou um arquivo por entrada
+
+**Branch:** `chore/sync-do-602-log-append-only-por-entrada` · **merge:** `upstream/main f99db897`
+
+### A previsao errou por UM arquivo, e a causa e este proprio acervo
+
+```
+previsto   60 de produto + 13 retidos = 73
+medido     59 de produto + 14 retidos = 73
+```
+
+🔴 **O arquivo e o `CLAUDE.md`, e eu errei porque confiei no que esta escrito nele.** Tres vezes o
+`CLAUDE.md` afirma que ele e *"o unico que o sync NAO retem"* — e o script diz
+`GOVERNANCA_FORA_DE_DOCS="trackfw.yaml CLAUDE.md"`, com o comentario
+*"CLAUDE.md entrou em 2026-10-09, pela MESMA causa e com a mesma decisao"*.
+
+A frase foi escrita como **previsao antes do #550** e nunca corrigida depois de o script mudar.
+Custou duas coisas no mesmo dia: a previsao da proporcao, e eu ter dito ao usuario que **sobraria um
+arquivo para decidir a mao** quando o sync o retem e **imprime o diff dele**, que e o desenho certo.
+Mesma familia do `hoje` e do numero de versao chumbado — **previsao em futuro sobre o upstream
+apodrece; o que fica e a medicao datada**.
+
+### Retencao provada por efeito
+
+```
+CLAUDE.md                        byte a byte o nosso  (git diff vs main: vazio)
+                                 3202 linhas · 3202 bytes CR  -> CRLF preservado
+docs/agents-working-context.md   31.100 linhas, intacto
+docs/roadmaps/.trackfw-log       382 linhas, intacto    (o merge textual daria 591)
+docs/agents-working-context/     NAO chegou — retido por docs/
+```
+
+### A DECISAO declarada: ficamos no handoff monolitico
+
+O #602 troca o handoff unico pelo diretorio `docs/agents-working-context/`, um arquivo por entrada.
+**Nao adotamos agora**, e a razao e medida, nao preferencia:
+
+```
+check-handoff-cobre-o-ciclo.sh:55   HANDOFF='docs/agents-working-context.md'   <- CHUMBADO
+  conta por substring fixa (grep -cF):
+    docs/agents-working-context.md                            conta=1
+    docs/agents-working-context/20261023T100000Z-claude-x.md  conta=0
+```
+
+Adotar o diretorio faria **todo diff que fecha ciclo reprovar** nesse gate. E nao ha pressa: o merge
+**nao apaga** o arquivo, e o `translog.ReadAll` le o log legado por compatibilidade explicita no
+codigo (*"o `.trackfw-log` legado continua sendo LIDO ... mas nunca mais escrito por este binario"*).
+A decisao e reversivel; o custo de hoje e zero.
+
+### A regra nova foi provada VIVA, nao suposta silenciosa
+
+Sonda em `mktemp`, nunca na arvore viva — mexer no nosso `.gitignore` e o equivalente a desligar a
+nossa propria cerca:
+
+```
+.gitignore limpo                 0 ocorrencias de log_entries_dir_gitignored   <- o nosso caso
+.gitignore cobrindo o diretorio  1 aviso, nomeando o padrao e o arquivo
+```
+
+Sem a segunda linha, `0` seria indistinguivel de regra inerte. O nosso `.gitignore` tem so `*.exe` e
+`**/__pycache__/`, e `git check-ignore` sai 1 para os tres caminhos.
+
+### 🔴 Um teste APOSENTADO como "corrected" falha nesta maquina — e nao e regressao
+
+```
+.github/windows-known-failures.json
+  entries   5 ativas
+  removed   TestAttentionScripts_FallbackWithoutJQ
+            removal_note: "corrected"   (PR #591, citando o run 39458335009 do CI dele)
+
+aqui, isolado, -count=3
+  DEPOIS do merge (f99db897)   FAIL 3 de 3
+  ANTES  do merge (20d956f9)   FAIL 3 de 3   <- o CONTROLE: preexistente
+  scaffold_test.go:432  "Arquivo de atencao nao foi encontrado no modo fallback:
+                         open docs\roadmaps\.trackfw-attention.json"
+```
+
+**As duas hipoteses obvias estao REFUTADAS, nao assumidas:**
+
+```
+python3 desta maquina   /c/Users/louri/.../WindowsApps/python3   `import json` -> OK
+o script de atencao     0 ocorrencias de `python3`  (virou wrapper nativo, como o note diz)
+jq                      presente, jq-1.8.2
+```
+
+🔴 **Limite declarado: a causa NAO foi medida.** O que esta medido e que a falha e preexistente,
+reproduz 3 de 3 nas duas pontas, e que a mensagem **nao e** a do `reason` original do ratchet
+(symlink / `fakeBinDir`). Candidato a issue no upstream; as outras tres falhas do pacote
+(`TestStaleWIPReportsWIPWalkError`, `TestFolderStatus_DiretorioNaoLegivel_P2`,
+`TestFilenameUniqueness_DiretorioNaoLegivel_P2`) **estao** nas 5 ativas, conferidas por nome.
+
+### 🔴 Duas armadilhas de instrumento, no mesmo ciclo
+
+**O `rc` da notificacao de tarefa e do involucro.** Os testes de `generators`/`validator` voltaram
+com `exit code 0` na notificacao e `panic: test timed out after 10m0s` no arquivo — o teto padrao do
+`go test`, batendo em 607 s e 602 s nesta maquina. Conferi que **nao contaminaram a arvore** (`0` ADRs
+de hoje em `docs/adr/`, nada fora do stage) e relancei com `-timeout 30m`: 1149 s para `generators`.
+Sexta ocorrencia da familia `cano-mascara-exit-code`.
+
+**E a ref da branch dele morre no `--prune`.** Para comparar o squash com o que eu havia ensaiado, o
+`git diff 8b962417..upstream/<branch>` saiu `fatal: ambiguous argument` — o mantenedor apaga a branch
+ao mesclar, e o `rc=1` que apareceu era revisao inexistente, **nao divergencia**. O caminho que
+funciona e `refs/pull/602/head`, e por ele os dois conjuntos sao **identicos por nome**, 73 cada.
+Mesma licao das 14 branches `upstream-pr/*`.
+
+### O resto da medicao
+
+```
+validate                      0 violacoes · 3 avisos   ANTES e DEPOIS   ·  escopo global 0
+  previsto pelo predicado     3 -> 3, pela ausencia de arquivo de hook no conjunto — fechou
+divergencia de produto        ZERO   (base 8b962417; guarda: upstream/main:Makefile legivel)
+.gitattributes                alinhado byte a byte
+go build ./...                exit 0
+translog · metrics · serve    ok 3,4 s · 1,8 s · 2,0 s   ·  0 FAIL
+nossos gates                  handoff · upstream-content · referential-integrity · slug-inventory
+                              rc=0 nos 4
+`trackfw context`             secao nova: "Recent working context (last 0 entries)" — declara o
+                              vazio em vez de omitir, e rc=0
+```
+
+**A vigia pegou o merge em 1 minuto.** Armada as 08:10 na base `8b962417`, disparou as 08:22 com o
+`f99db897` — mesclado as 08:21, conferido na API e nao pelo bloco `ANDOU`. Seis ciclos de 1110.
+
+🔴 **E a janela descoberta foi decomposta pela primeira vez.** Entre a saida da vigia as 13:13 de
+22/10 e o re-arme as 08:10 de hoje, quatro pares `42 -> 1` (provedores diferentes) dizem que a
+maquina **dormiu 12 h 54** das 18 h 57 — a janela util descoberta era de **6 h 03**, nao de 19 h, e o
+denominador fecha contra o relogio. Os tres eventos da janela (#600 as 16:16, #601 as 16:45, PR #602
+as 18:19) cairam **todos** no trecho acordado, e a varredura a mao pegou os tres.
+
+### O ratchet de predicado de SO pegou o sitio novo do #602 — e foi o CI que cobrou
+
+O `gates-locais` do PR #283 saiu **vermelho nas duas corridas**, e o gate que reprovou foi o nosso
+`check-os-predicate-classification.sh`:
+
+```
+FAIL check-os-predicate-classification      exit=1
+  ✗ CLASSIFICACAO NAO DECLARADA: internal/translog/translog.go:310 — filepath.IsAbs
+      if filepath.IsAbs(dir) {
+run-local-gates: 16 executado(s) · 1 REPROVOU(RAM)
+```
+
+🔴 **Isto e o ratchet funcionando, nao defeito**: o pacote `internal/translog/` e NOVO, trazido pelo
+#602, e o sitio entrou sem declaracao. As duas saidas do gate sao usar o resolvedor canonico ou
+**declarar com motivo**; a primeira criaria divergencia de produto, que hoje e ZERO, e pelo escopo
+negativo da `REQ-2026-09-05-onda-2` achado em produto dele vira **issue**, nunca correcao local.
+
+**A entrada foi declarada, e a diferenca em relacao as onze anteriores esta ESCRITA:** nelas o
+caminho vem de FORA (env, payload, `trackfw.yaml`); aqui vem do proprio chamador, e o ramo absoluto
+existe para o caso de **teste**, onde `dir` e um temp absoluto. O comentario do proprio sitio declara
+o mecanismo — o `filepath.Join` do Go **nao** descarta componentes antes de um absoluto, ao
+contrario do Python —, e a vault note dele de 2026-10-22 o mede.
+
+```
+depois da declaracao
+  318 sitios varridos · 202 com teste (D5) · 65 D1 · 7 D3 · 28 comentario · 16 D2 em 12 arquivos
+  202 + 65 + 7 + 28 + 16 = 318      <- o denominador reconcilia, nao sobra resto
+  Nenhum sitio de classificacao fora do baseline.      rc=0
+falsificado nas duas direcoes
+  sem a entrada   rc=1, 1 ocorrencia de CLASSIFICACAO NAO DECLARADA
+  com a entrada   rc=0
+```
+
+🔴 **E o baseline avisa, por medicao propria, que backtick ali e EXECUTADO** — ele e uma string de
+aspas duplas, e a primeira redacao de uma entrada anterior saiu `rc=2, syntax error`. A entrada nova
+foi escrita sem nenhum. O gate e **LF puro** (0 CR em 282 linhas), e a insercao preservou.
+
+### E o ponto cego de plataforma do `check-agent-namespace-union.sh`, com o mecanismo medido
+
+Ele sai `rc=1` nesta maquina, no caso `glob-metachar/go/star-count-not-inflated`, e **nao e
+regressao**: o caso existia antes do #602 (10 ocorrencias em `20d956f9`) e o merge **nao o tocou**
+(0 linhas com `glob-metachar` no diff entre as pontas; o que o #602 mudou ali foi acrescentar
+`translog.EntriesDirSuffix[1:]` ao filtro de infra).
+
+**A causa esta medida por efeito, e e a terceira grafia do `msys-mente-sobre-o-que-criou`:**
+
+```
+mkdir '*' em tmpdir
+  o ls do MSYS mostra      '*'        bytes: 2a 0a   (o asterisco literal)
+  o Win32 (Get-ChildItem)  codepoints: U+F02A        <- Private Use Area
+```
+
+O `*` nao e nome valido em NTFS, entao o MSYS o mapeia para **U+F02A** e **traduz de volta na
+exibicao**. O binario Go le pelo Win32 e reporta `agent ""`; o gate compara com `*` e falha.
+A fixture e **inconstruivel aqui**, mesma familia do `os.Chmod` no-op em NTFS.
+
+**No CI isto nao acende**, e a derivacao e a que importa: o gate nao esta no nosso
+`run-local-gates.sh` — esta no **`Makefile`**, que o `parity-other-gates` roda em `ubuntu-latest`,
+onde `*` e nome de arquivo valido.
+
+**E dois `core dumped` do `grep` do MSYS** apareceram na mesma corrida
+(`grep -qiF ... <<< "$validate_out"`, duas vezes), deixando `grep.exe.stackdump` na raiz — apagado.
+Os dois casos sairam `OK` por outra verificacao do gate, entao o crash **nao** mudou veredito; fica
+registrado porque herestring com UTF-8 grande e a forma que o derruba.
