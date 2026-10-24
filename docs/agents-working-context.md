@@ -31468,3 +31468,134 @@ apenas o declara.
 **Não li o corpo da ADR nem o contrato completo do `ml_scope`.** Nenhum arquivo de hook está no
 conjunto (`.claude/settings.json`, `.codex/hooks.json`, `.gemini/settings.json` ausentes), então pelo
 predicado a tripla **não** será exigida — e isso é falsificável.
+
+---
+
+## 2026-10-24 — sync do #606/#608: o guard de write-scope e o ml_scope no barrier
+
+**Branch:** `chore/sync-do-606-608-write-scope-e-ml-scope` · **merge:** `upstream/main c7483950`
+
+```
+previsto   36 de produto + 12 retidos = 48
+medido     36 de produto + 12 retidos = 48
+```
+
+### 🔴 O padrão de encerramento fechou a TERCEIRA ocorrência, e virou regra operacional
+
+| produto | encerramento | intervalo |
+|---|---|---|
+| #602 (22/10 13:22) | #603 (23/10 08:39) | no dia seguinte |
+| #604 (23/10 13:22) | #605 (23/10 13:46) | 24 min |
+| #606 (24/10 09:14) | #608 (24/10 09:28) | **14 min** |
+
+Três por três. **Esperar o par antes de abrir o nosso PR** deixou de ser economia hipotética: hoje os
+dois já estavam mesclados e um sync só os cobriu. (O `#607` não existe — número saltado.)
+
+### 🔴 A previsão de `validate 3 -> 3` ERROU, e a distinção importa mais que o erro
+
+```
+validate   3 antes  ->  4 depois
+o novo     write_scope_not_wired: .claude/settings.json PreToolUse[Write|Edit|NotebookEdit]
+           missing trackfw guard write-scope (run `trackfw init` or `trackfw update`)
+escopo global   0        wiring   0
+```
+
+**O predicado da tripla não errou — eu o usei FORA DO DOMÍNIO dele.** Ele prevê a família de avisos de
+**escopo global**, e o escopo global ficou em **0**, como previsto. O que subiu foi uma regra **nova**
+(`internal/validator/validator_write_scope_wiring.go`) no escopo do **projeto**. Eu generalizei
+`3 -> 3` a partir de um predicado que só cobre a família global; o erro é de **domínio**, meu, e a
+correção é de forma: **predicado prevê a família que ele mede, não o total do `validate`**.
+
+🔴 **E o remédio que o aviso imprime está VETADO aqui:** `trackfw update` apaga 62 linhas de medição do
+nosso `CLAUDE.md`, medido por efeito em 2026-10-12. A alternativa é aplicar o grupo **à mão** no
+`.claude/settings.json` — e isso é decisão do usuário, porque liga uma cerca que muda o que
+subagentes podem fazer. **Não foi aplicado.**
+
+### O guard de write-scope, medido em SEIS sondas — e eu afirmei o contrário duas vezes antes de medir
+
+| sonda | quem escreve | marcador | rc | |
+|---|---|---|---|---|
+| A · F | sessão principal | ausente | **0** | passa — **o nosso caso** |
+| B | sessão principal | **linha 1** | **2** | frozen |
+| C | sessão principal | linha 11 | **0** | fora da janela de 10 linhas |
+| D | **subagente** | ausente | **2** | frozen **sempre** |
+| E | subagente, outro arquivo | — | **0** | controle negativo |
+
+O mecanismo, lido no código: `frozenMarker` é procurado nas **10 primeiras linhas** de
+`docs/agents-working-context.md`; `isSubagent := payloadHasAgentID(root)`; e
+`writeScopeSubagentFrozenRelPaths` inclui o handoff e o `trackfw.yaml`, **sempre** congelados para
+subagente.
+
+🔴 **Duas afirmações minhas erradas, as duas por não medir:**
+
+1. Disse *"bloqueia por default"* lendo a **ajuda do subcomando**
+   (*"blocks writes to frozen paths (docs/agents-working-context.md and others)"*). A ajuda descreve a
+   capacidade, não o estado.
+2. Um `rc=2` **triplo** pareceu confirmar — e as **mensagens** mostravam que dois dos três eram
+   `is not an absolute path`, defeito do meu payload. Com caminho absoluto os quatro passam. **`rc`
+   igual por motivos diferentes** é a mesma classe do verde pelo motivo errado.
+
+🔴 **Armadilha declarada, e ela é nossa:** o handoff **tem** `<!-- trackfw:frozen -->` na linha
+**31457** — a menção que eu escrevi em 2026-10-23 ao documentar o mecanismo dele. A janela é de 10
+linhas **no topo** e o nosso handoff cresce por apêndice, então é inócua **hoje**. Se algum dia uma
+entrada for escrita no TOPO citando o marcador, o arquivo **congela sem ninguém pedir** — mesma classe
+do `check-contorno-dos-shims-caducou`, onde o registro histórico citava a string que o instrumento
+procura.
+
+### Os 4 testes que estavam vermelhos no CI dele passam AQUI
+
+```
+ratchet dele   antes e depois: 12.457 bytes IDENTICOS · 5 entradas ativas
+os 4 nomes     em entries[]? NAO · em removed[]? NAO  ->  corrigidos no CODIGO
+medido aqui    go test -run 'TestGuardWriteScope|TestRunWriteScope'
+               63 casos · 63 PASS · 0 FAIL      (Windows, que e o que eles testam)
+```
+
+A leitura do ratchet era **derivação**; os 63 PASS são a medição por efeito no ambiente que importa.
+
+### 🔴 O ratchet de SO cobrou de novo — SEIS sítios, e a entrada quebrou o gate na primeira redação
+
+```
+FAIL check-os-predicate-classification   exit=1
+  internal/guard/writescope.go:148 · :217 · :284 · :440   filepath.IsAbs
+  internal/guard/writescope.go:688 · :696                  runtime.GOOS
+```
+
+Duas famílias num arquivo só, e a granularidade do baseline é por **arquivo**: quatro `IsAbs` sobre
+caminho que vem de FORA (payload do hook, cwd, lista de frozen, config) — mesma forma das doze
+entradas anteriores — e dois `runtime.GOOS` nos ajudantes `pathEqual`/`pathHasPrefix`, que ligam
+comparação case-insensitive. A segunda família é classificação de plataforma **legítima**, e o lint
+não tem classe para *predicado que seleciona semântica de sistema de arquivos*, então entra sob D2 por
+falta de classe mais fina.
+
+🔴 **A primeira redação da entrada saiu `rc=127` com `que: command not found`.** O motivo: eu escrevi
+`== "darwin" || == "windows"`, e **aspas duplas FECHAM a string `BASELINE="`**, fazendo o resto da
+linha virar comando. O aviso no topo do baseline falava **só de backtick** — **aspas duplas são a
+segunda grafia do mesmo defeito**, e agora está escrito na própria entrada.
+
+```
+depois da declaracao
+  339 varridos · 211 com teste (D5) · 67 D1 · 11 D3 · 28 comentario · 22 D2 em 13 arquivos
+  211 + 67 + 11 + 28 + 22 = 339      o denominador reconcilia
+falsificado nas duas direcoes
+  sem a entrada   rc=1, 6 acusacoes
+  com a entrada   rc=0
+```
+
+### As outras frentes, medidas
+
+```
+.gitignore         mudou (+ .trackfw/leases/) e AINDA NAO cobre *.stackdump  -> o achado de 23/10 segue aberto
+ml_scope           nada a reprovar hoje: 41 roadmaps nossos declaram Files affected e o wip/ esta VAZIO
+retencao           CLAUDE.md byte a byte o nosso (3202 linhas · 3202 CR) · handoff 31.470 · log 382
+                   docs/agents-working-context/ retido (0 entradas)
+divergencia        ZERO (base 34b8defe) · go build exit 0
+gates              handoff · upstream-content · roadmap-barrier-contract  rc=0
+```
+
+🔴 **E a conversão de caminho do MSYS mordeu numa ref com dois-pontos:**
+`git show "upstream/main:.github/..."` virou `upstream\main;.github\...` — barra convertida e
+dois-pontos trocado por ponto-e-vírgula. `MSYS_NO_PATHCONV=1` conserta, e é a terceira grafia do
+`msys-mente-sobre-o-que-criou` registrada aqui. Na sonda do write-scope, o mesmo problema reapareceu
+como `cygpath -w | sed 's#\#/#g'` falhando por contrabarra: a forma que funciona é **`cygpath -m`**,
+que já devolve barra normal.
