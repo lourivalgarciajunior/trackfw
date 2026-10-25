@@ -31599,3 +31599,144 @@ dois-pontos trocado por ponto-e-vírgula. `MSYS_NO_PATHCONV=1` conserta, e é a 
 `msys-mente-sobre-o-que-criou` registrada aqui. Na sonda do write-scope, o mesmo problema reapareceu
 como `cygpath -w | sed 's#\#/#g'` falhando por contrabarra: a forma que funciona é **`cygpath -m`**,
 que já devolve barra normal.
+
+---
+
+## 2026-10-25 — sync da 11.0.1: havia um DENY-ALL que o `validate` não mostrava
+
+**Branch:** `chore/sync-da-11-0-1-ci-trigger-e-fiacao-de-projeto` · **merge:** `upstream/main 8093aaaf`
+(7 commits: #609 `ci_trigger`, #610, **#611 bump 11.0.0**, #612, #615, #616, **#617 bump 11.0.1**)
+
+```
+previsto   88 de produto + 25 retidos = 113
+medido     88 de produto + 25 retidos = 113
+```
+
+### 🔴 O predicado da tripla ERROU DENTRO do próprio domínio — terceira correção em quatro dias
+
+```
+os TRES arquivos de hook no conjunto    .claude/settings.json · .codex/hooks.json · .gemini/settings.json
+previsto   escopo global SOBE
+medido     escopo global = 0   ·   validate 3 -> 3
+```
+
+**A causa, medida:** a **forma** da linha não mudou. Mudou o **conjunto de comandos** — uma forma
+**nova**, a do `write-scope` — e a ordem das chaves JSON. Os CLIs globais seguem com as linhas certas,
+logo não há nada a reescrever e o aviso de escopo global não acende.
+
+🔴 **O discriminante certo não é "arquivo de hook no conjunto", é "a FORMA da linha mudou"**, e isso
+se deriva comparando as constantes byte a byte entre as pontas — exatamente o que eu já havia feito
+nos syncs do #602 e do #604 e não liguei ao predicado.
+
+**Histórico das três correções, porque a forma de errar importa:**
+
+| quando | o que o predicado dizia | o que a medição mostrou |
+|---|---|---|
+| 22/10 | arquivo de hook no conjunto -> tripla | fechou 3 vezes seguidas |
+| 24/10 | (usei para prever o TOTAL do validate) | subiu por regra NOVA de projeto — erro de **domínio**, meu |
+| 25/10 | arquivo no conjunto -> global sobe | **não subiu**: a forma não mudou — o predicado estava **largo** |
+
+### 🔴 E o que custava trabalho não era o `validate`: era um DENY-ALL ativo
+
+O sync trouxe do upstream o grupo `PreToolUse[Write|Edit|NotebookEdit] -> trackfw guard write-scope`
+(o `.claude/settings.json` **não** é retido). E:
+
+```
+a linha           emulate -R sh ...; trackfw guard write-scope; LASTEXITCODE=$((2*!!$?)); ...
+2*!!$? presente   True        ->  qualquer nao-zero vira 2 = DENY
+o PATH            10.1.0
+10.1.0 + payload real   rc=2   "unknown subcommand write-scope"
+```
+
+**Toda `Write`/`Edit`/`NotebookEdit` neste projeto estava bloqueada** — o modo de falha que este
+arquivo registra desde 2026-10-21. 🔴 **E o `validate` estava em 3 avisos, o PISO: ele não vê isso.**
+
+**A lição de forma, e é a mais cara do dia:** o predicado olha **avisos**; o que trava trabalho é
+**subcomando NOVO na linha de hook que o binário do PATH não conhece**. São perguntas diferentes, e
+só a segunda produz deny-all.
+
+**A tripla, executada e medida:**
+
+```
+passo 2   npm i -g trackfw@11.0.1
+          DERIVADO, nao chumbado: git log --diff-filter=A -- internal/guard/writescope.go -> 7bddcd34
+                                  git tag --contains 7bddcd34 -> v11.0.0 v11.0.1
+                                  npm view trackfw version   -> 11.0.1
+          bash 11.0.1 · PowerShell 11.0.1 · cmd.exe 11.0.1
+passo 3   trackfw update harness       updated=10 skipped=25 missing=1 failed=0
+passo 4   prova por efeito PELO BINARIO DO PATH:
+            sessao principal no handoff   rc=0   passa
+            SUBAGENTE no handoff          rc=2   bloqueia
+```
+
+🔴 **A 11.0.1 e não a 11.0.0, e o motivo está no CHANGELOG dele:** na 11.0.0, com o guard global
+instalado, o `update` **removia do projeto** as entradas de `credential` e `git-branch`, e *"os
+settings de projeto são versionados, então o CI e os clones sem global ficavam sem guard"*. Nós
+**não** rodamos o `update` (está vetado aqui), então não fomos atingidos — e o head dele já traz a
+fiação devolvida pelo #615, conferida antes do merge.
+
+### O aviso `write_scope_not_wired` resolveu-se sozinho, pelo caminho certo
+
+Em 24/10 eu declarei esse aviso e **não apliquei** o remédio, porque o que o produto sugere
+(`trackfw update`) apaga 62 linhas de medição do `CLAUDE.md`. O sync trouxe a fiação **vinda dele**:
+o aviso sumiu sem que eu tocasse na cerca à mão. **Decisão adiada é decisão barata quando o upstream
+está convergindo.**
+
+### Os globais NÃO ganham o write-scope, e é por DESENHO
+
+```
+.claude · .codex · .gemini · .cursor · .copilot     guard=4 cada  ·  write-scope=0 em todos
+```
+
+Apesar de `updated=10`. 🔴 Confirmado no código, não suposto: o write-scope sai de
+`InjectClaudeHooks(rootDir)` — hook **de projeto** —, com o comentário *"PreToolUse only, matcher
+Write|Edit|NotebookEdit. No PostToolUse, no cmd.exe form, no Read coverage"*. Ele julga pela raiz do
+projeto **do arquivo alvo**, e um hook global não saberia qual projeto. O `validate` não reclama da
+ausência: **0** avisos.
+
+### Os dois breaking changes da 11.0.0, medidos
+
+**`config_value_type` (severidade `error`) não acusa nada aqui** — medido com o binário **11.0.1**:
+`validate rc=0`, 3 avisos, `config_value_type` em **0**. O nosso `trackfw.yaml` tem `adr_dirs` e
+`agents` como listas e as demais chaves como strings; não temos `ci:`, `rules:` nem
+`credential_guard:`.
+
+**O `ml_scope` do barrier não é exercitável aqui:** `trackfw barrier` sai `rc=1` por falta de
+`--wave`, e com **0** roadmaps em `wip/` não há wave para avaliar. 🔴 **N/A nomeado, não verde** — o
+`rc=1` é exit code certo pelo motivo errado, a classe que este arquivo já registra para os gates de
+PATH curado.
+
+### 🔴 "Verifica se travou" — segunda vez, causa diferente, e DOIS instrumentos meus erraram
+
+O `check-roadmap-barrier-contract.sh` ficou 34 min sem escrever no arquivo. **Não travou**, e a prova
+é a árvore de processos:
+
+```
+gate (34 min, cpu 28,4 -> 31,9 -> 34,3 s)
+ └ bash (2s) └ bash (2s) └ trackfw-go barrier (2s) └ git.exe (0s)
+taxa medida   8 cenarios em 41 s  ->  11,8/min, ~5,1 s cada
+```
+
+**A causa do custo tem nome:** o `barrier` da 11.0.0 ganhou o `ml_scope` (24 menções em
+`barrier.go`), que lê os `Files affected` do roadmap **commitado em HEAD** e compara contra
+`origin/main` — trabalho de git por cenário que antes não existia.
+
+🔴 **Não é declarado como regressão:** uma passada de wall-clock nesta máquina não é medida, e **este
+gate não está na tabela de custos deste arquivo** — não há baseline. Está afirmado **onde** o tempo
+está, não que tenha piorado.
+
+**Os dois instrumentos que erraram:**
+
+| o que usei | por que mentiu |
+|---|---|
+| `Get-CimInstance -Filter "Name='trackfw-go.exe'"` | o processo chama-se **`trackfw-go`, SEM `.exe`** — a taxa saiu **0,00/s** com o gate rodando. Zero era **cegueira**, não ausência |
+| o arquivo de saída parado em 350 bytes | a saída dos cenários sai **no fim**; em 2026-10-13 a mesma leitura tinha causa diferente (um `\| tail -8`) |
+
+A primeira é a família do `[ -f ]` do MSYS mentindo sobre nome sem extensão, já registrada na seção
+da cópia do PATH. **Nome de processo sem extensão é a terceira grafia.**
+
+```
+retencao      CLAUDE.md byte a byte o nosso (3202 linhas · 3202 CR) · handoff 31.601 · log 382
+              hades-tf/MEMORY.md mesclou SEM abortar — a previsao de 22/10 se confirmou
+divergencia   ZERO (base c7483950)  ·  go build exit 0  ·  arvore 11.0.1
+```
