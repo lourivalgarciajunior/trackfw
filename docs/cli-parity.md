@@ -3216,7 +3216,7 @@ The `ml_scope` check verifies that every file touched by the current branch is c
 - **Roadmap from HEAD, not disk.** `git show HEAD:<roadmap>` is used to read the `**Files affected:**` lines. An uncommitted disk edit cannot expand scope. A roadmap not yet committed results in `skipped`.
 - **Touched files.** `git diff --name-only -z $(git merge-base origin/main HEAD) HEAD` (committed changes) plus `git status --porcelain=v1 -z --untracked-files=all` (modified, staged, untracked), excluding gitignored files.
 - **Wave N scope.** The union of `**Files affected:**` from every ML in waves 0..N.
-- **Orchestration set (always permitted).** The roadmap file itself; the REQ from frontmatter `req:`; the ADR from the REQ's frontmatter `adr:`; `docs/agents-working-context/`; `vault/notes/`; `.claude/agent-memory/`; `<roadmap_dir>/.trackfw-log`; `<roadmap_dir>/.trackfw-log-entries/`; `<req_dir>/.trackfw-log`; `<req_dir>/.trackfw-log-entries/`.
+- **Orchestration set (always permitted).** The roadmap file itself; the REQ from frontmatter `req:`; the ADR from the REQ's frontmatter `adr:`; `docs/agents-working-context/`; `vault/notes/`; `.claude/agent-memory/`; `<roadmap_dir>/.trackfw-log`; `<roadmap_dir>/.trackfw-log-entries/`; `<req_dir>/.trackfw-log`; `<req_dir>/.trackfw-log-entries/`. The roadmap counts as orchestration in every state directory of `roadmap_dir` with the same basename (`backlog/`, `analyzing/`, `wip/`, `blocked/`, `done/`, `abandoned/`), so a roadmap moved between states in the branch (e.g. `done/` → `wip/` on reopen) does not produce a spurious out-of-scope failure for the deleted old-state path.
 
 #### `**Files affected:**` grammar
 
@@ -3437,6 +3437,96 @@ the user's environment** (it fires on the user's `git commit`/`pre-push`, potent
 is installed or on a machine that never installs it) — routing it through the loader would mean
 shelling out to `trackfw` from inside a hook, which is not guaranteed to exist. It reads only
 `roadmap_dir`, is intentionally minimal, and is not part of the `Update`/`Sync` namespaces above.
+
+### `ci_trigger` — `trackfw.yaml` field controlling how the gate CI workflow fires
+
+<!-- trackfw-contract: gate=internal/config/config_ci_trigger_test.go partial=TestLoad_CITrigger_* tests parsing of all accepted and rejected ci_trigger values; gate=internal/generators/ci_trigger_test.go partial=TestCITrigger_* tests golden file equality and doctor cross-combination; gate=internal/validator/validator_ci_trigger_test.go partial=TestValidateCITrigger_* tests ci_trigger_invalid and ci_trigger_manual rules -->
+
+Since `REQ-2026-10-24`, a flat top-level `ci_trigger:` key in `trackfw.yaml` controls whether the
+trackfw gate workflow fires automatically on pull requests / merge requests (the default) or only
+when triggered manually.
+
+| Key (YAML) | Type | Default (absent) | Accepted values |
+|---|---|---|---|
+| `ci_trigger` | scalar string | `"pull_request"` | `"pull_request"`, `"manual"` |
+
+```yaml
+# Default — gate runs automatically on every pull request / merge request
+ci_trigger: pull_request
+
+# Manual — gate runs only when dispatched manually (workflow_dispatch / web pipeline)
+ci_trigger: manual
+```
+
+**Behaviour by value:**
+
+- `"pull_request"` (or absent): GitHub Actions gate uses `on: pull_request: branches: [main]`;
+  GitLab CI gate uses `only: - merge_requests`.
+- `"manual"`: GitHub Actions gate uses `on: workflow_dispatch:` (no inputs);
+  GitLab CI gate uses `rules: - if: '$CI_PIPELINE_SOURCE == "web"'`.
+
+**Invalid value:** `trackfw validate` emits a `ci_trigger_invalid` violation (default severity:
+`"error"`) with the raw value and accepted values. `trackfw update` and `trackfw init` refuse with
+rc≠0 and leave any existing workflow file untouched.
+
+**Manual warning:** `trackfw validate` additionally emits a `ci_trigger_manual` warning (default
+severity: `"warning"`) when the value is `"manual"` — the gate will not run on pull requests.
+
+**Security (T2):** the value of `ci_trigger` is NEVER interpolated into YAML. The switch over
+`"manual"` / `"pull_request"` selects between two pre-written, fixed blocks.
+
+**`trackfw init`:** honours an existing `ci_trigger` key already in `trackfw.yaml` (option c,
+§Z). No new flag or wizard question; the template does not emit the key.
+
+**`trackfw discover --init`:** honours `ci_trigger` from `config.Load()` when writing
+`.github/workflows/trackfw-validate.yml`.
+
+**`trackfw doctor`:** compares the on-disk workflow byte-exactly against the template of the
+*configured* trigger. When `ci_trigger_invalid` is set, the comparison is skipped (no valid
+template to compare against). When `config=manual` but disk has the PR variant (or vice-versa),
+a `scaffold-divergent` finding is reported. Run `trackfw update` to regenerate.
+
+**Coverage note:** the v8 single-Go-implementation invariant applies — there is one template per
+(isProducer, ciTrigger) combination, all in `internal/generators/scaffold.go` and
+`internal/generators/scaffold_doctor.go`.
+
+### `config_value_type` — validate rule for wrong YAML type on a trackfw.yaml key (ML-1B/ML-1C, REQ-2026-10-24)
+
+<!-- trackfw-contract: gate=internal/config/config_scalar_type_test.go partial=TestScalarType_* tests that all known scalar keys, list keys, container keys and nested scalars record a ScalarTypeError when given a wrong YAML type; gate=internal/validator/validator_config_scalar_test.go partial=TestConfigValueType_* tests the config_value_type rule in both ValidateUnfiltered and Validate (tagged path) -->
+
+When any key in `trackfw.yaml` receives a YAML value of the wrong type, the parser records a
+`ScalarTypeError` in `cfg.ScalarTypeErrors`. The recording layer covers four key categories:
+
+| Category | Examples | Expected type | Wrong types caught |
+|---|---|---|---|
+| **Scalar keys** | `req_dir`, `roadmap_dir`, `ci`, `forge`, … (24 total) | `scalar string` | `sequence`, `mapping` |
+| **List keys** | `adr_dirs`, `agents`, `acceptance_markers` | `sequence` | `scalar`, `mapping` |
+| **Container keys** | `rules`, `agent_models`, `link_fields`, `credential_guard`, `write_scope` | `mapping` | `scalar`, `sequence` |
+| **Map values** | `rules.<key>`, `agent_models.<key>` | `scalar string` | `sequence`, `mapping` |
+| **Nested scalars** | `credential_guard.mode` | `scalar string` | `sequence`, `mapping` |
+
+Since ML-1B, scalar keys go through `stringValRec` (via `scalarKeyTable`). Since ML-1C, list keys
+use `stringListRec`, container keys use `recordContainerType`, and nested scalars use
+`stringValNested`. `KnownScalarKeys()` derives the scalar list from `scalarKeyTable` by
+construction — adding a new scalar key to the table automatically includes it in detection.
+
+**Validate rule:** `config_value_type` (default severity: `"error"`) emits one violation per
+affected key with the key name, received type, and expected type.
+
+```
+config_value_type: trackfw.yaml: key "agents" received a scalar value; expected a sequence
+config_value_type: trackfw.yaml: key "rules.wip_limit" received a sequence value; expected a scalar string
+config_value_type: trackfw.yaml: key "credential_guard.mode" received a sequence value; expected a scalar string
+```
+
+**Excluded key:** `ci_trigger` is NOT covered by this rule. A non-scalar `ci_trigger` is handled
+exclusively by `ci_trigger_invalid` (ML-1A) to avoid a double violation on the same root cause.
+
+**Known scalar keys:** `req_dir`, `roadmap_dir`, `roadmap_namespacing`, `governance_mode`,
+`lenient_until`, `wip_limit`, `wip_by_squad`, `stale_wip_days`, `require_req_in_commit`,
+`trace_id_field`, `strict_ci_paths`, `forge`, `hooks`, `ci`, `backend`, `frontend`,
+`pkg_manager`, `agent_conventions`, `linear_api_key`, `linear_team_id`, `jira_base_url`,
+`jira_email`, `jira_token`, `jira_project`. Source of truth: `config.KnownScalarKeys()`.
 
 ### `credential_guard.mode` — `trackfw.yaml` field consumed by `scripts/trackfw-credential-guard.sh`
 
@@ -4415,14 +4505,16 @@ de um roadmap anterior e não relacionado
    nunca invoca o Kiro diretamente). Decisão: documentar o pré-requisito nos doc comments dos 3 stacks
    e em `docs/cli-parity.md`, sem tentar sondagem de subprocesso e sem usar `TargetResult.Message`
    (reservado a `state: failed`).
-6. **Dedup por leitura (ML-3A) funcionando nos 6 CLIs, fail-open confirmado.** Cada um dos 6
-   `InjectXHooks`/`injectXHooks`/`inject_x_hooks` de projeto lê (nunca escreve) o arquivo de hooks
-   global correspondente antes de adicionar a entrada de credential-guard por-projeto; se a entrada
-   global já existe, a entrada por-projeto é pulada (attention-signal/cleanup continuam normais).
-   Qualquer falha ao resolver `$HOME`, ler ou parsear o arquivo global é tratada como "não instalado
-   globalmente" — fail-open, nunca fail-closed silenciando o credential-guard por-projeto por erro de
-   leitura. Coberto por `internal/generators/credential_guard_dedup_test.go` (Go, 9 testes) e
-   equivalentes Node/Python.
+6. **D15 (ADR-2026-10-04 adendo 2026-10-24): wiring por-projeto sempre emitido.** Os 7
+   `InjectXHooks` de projeto emitem a entrada de credential-guard incondicionalmente — a leitura
+   prévia do arquivo global (que existia no ML-3A para pular a entrada de projeto quando o guard
+   global já estava instalado) foi removida. Em máquinas com o guard global instalado, o guard
+   executa duas vezes por evento (~12 ms para credential, ~11 ms para git-branch): uma via escopo
+   global, uma via escopo de projeto. Custo aceito em troca de eliminar a dependência de estado
+   externo no gerador de projeto. O validator também foi atualizado: a ausência de wiring
+   por-projeto é violação mesmo quando o guard global está instalado (ver `credential_guard_presence_required`
+   abaixo). Coberto por `internal/generators/credential_guard_dedup_test.go` (Go) e
+   `internal/commands/update_validate_global_guard_test.go` (AC9).
 7. **Gate de paridade estrutural novo (ML-4A) cobrindo os 6 arquivos globais.**
    `scripts/check-harness-hooks-parity.sh` — gate dedicado (não extensão de
    `check-agent-hooks-parity.sh`, entry points/fixtures diferentes) — roda `trackfw update harness
@@ -5672,9 +5764,12 @@ como as demais regras do validador — `applyRule`/`applyRuleTagged`, `internal/
 - Comando que não casa nenhuma das 4 formas de prefixo é **ignorado de propósito** —
   `resolveCredentialGuardHookPath` retorna `ok=false` e o chamador não trata isso como violação.
   Não é função desta regra adivinhar wiring próprio do usuário fora dos formatos que o trackfw gera.
-- **Ausência de entrada de guard não é violação** — é o estado legítimo de quem usa só o guard
-  **global** (`~/.trackfw/`, fora do escopo desta regra; o dedup `globalCredentialGuardInstalled*()`
-  pula as entradas de projeto de propósito).
+- **Ausência de entrada de guard em arquivo que não existe não é violação** — se o arquivo de hook
+  não existe no projeto (CLI não instalado), a regra ignora-o em silêncio.
+  **D15 (ADR-2026-10-04 adendo 2026-10-24): a ausência em arquivo que EXISTE é sempre violação**,
+  mesmo que o guard global (`~/.trackfw/` ou `~/.codeium/`) esteja instalado na máquina. O dedup
+  `globalCredentialGuardInstalled*()` foi removido do gerador e o short-circuit do validator foi
+  removido; usar só o guard global não satisfaz o requisito de projeto.
 - Provada não-vácua pelo Cenário 47 de `scripts/check-gates-falsify.sh` (ML-2A): desabilitar a regra
   faz o cenário falhar.
 
@@ -5876,9 +5971,10 @@ materializando-o com a ferramenta de escrita/edição nativa (`Write`/`Edit`, `w
 `create`/`edit`, `apply_patch`, ...). A ADR-2026-08-06 emenda 7 fecha essa lacuna: cada
 `InjectXHooks`/`injectXHooks`/`inject_x_hooks` agora também registra o matcher nativo de
 leitura e de escrita/edição de cada CLI apontando para o mesmo
-`scripts/trackfw-credential-guard.sh`, sujeito ao mesmo dedup contra o wiring global
-(`globalCredentialGuardInstalled<CLI>()`, seção "Agent hooks por CLI" acima) que já existia para o
-shell tool.
+`scripts/trackfw-credential-guard.sh` (forma legada) ou o subcomando inline `trackfw guard
+credential` (forma D11 revista, ADR-2026-10-04). **D15 (adendo 2026-10-24):** o dedup contra o
+wiring global (`globalCredentialGuardInstalled<CLI>()`) foi removido do gerador — o wiring de
+leitura/escrita é sempre emitido independentemente do estado do guard global.
 
 | CLI | Matcher de leitura | Matcher de escrita/edição | Observação |
 |---|---|---|---|

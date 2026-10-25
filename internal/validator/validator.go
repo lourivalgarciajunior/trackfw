@@ -239,6 +239,10 @@ var ruleDefaults = map[string]string{
 	// docs/agents-working-context/ means transition history is silently lost on clone.
 	// Default "warning" — the pattern may be intentional in some projects.
 	"log_entries_dir_gitignored": "warning",
+	// ML-1A (REQ-2026-10-24): ci_trigger: manual — gate will not run automatically on PR.
+	// Default "warning": the project may have deliberately chosen manual dispatch.
+	// ci_trigger_invalid is absent (defaults to "error" via the fallthrough).
+	"ci_trigger_manual": "warning",
 }
 
 // ruleSeverity retorna a severidade configurada para a regra.
@@ -796,6 +800,48 @@ func LenientUntilDate() string {
 	return gm.LenientUntil.Format("2006-01-02")
 }
 
+// validateCITrigger emits violations/warnings for the ci_trigger key in trackfw.yaml.
+// Two rules (ML-1A, REQ-2026-10-24):
+//
+//   - ci_trigger_invalid (default "error"): ci_trigger is present but not "pull_request" or "manual".
+//   - ci_trigger_manual (default "warning"): ci_trigger is "manual" — gate will not run on PRs.
+func validateCITrigger() (invalidMsgs []string, manualMsgs []string) {
+	cfg := config.Load()
+	if cfg.Update.CITriggerInvalid {
+		invalidMsgs = append(invalidMsgs,
+			fmt.Sprintf("ci_trigger_invalid: trackfw.yaml: ci_trigger value %q is not accepted (accepted: \"pull_request\", \"manual\")", cfg.Update.CITriggerRawValue),
+		)
+	}
+	if cfg.Update.CITrigger == "manual" {
+		manualMsgs = append(manualMsgs,
+			"ci_trigger_manual: trackfw.yaml: ci_trigger is \"manual\" — the gate workflow will not run automatically on pull requests / merge requests; if required_status_checks in branch protection require the gate job, pull requests will be blocked",
+		)
+	}
+	return invalidMsgs, manualMsgs
+}
+
+// validateConfigValueType emits one config_value_type violation (default "error") for each
+// trackfw.yaml key that received an unexpected type (scalar key got sequence/mapping; list key
+// got scalar/mapping; container key got scalar/sequence; nested scalar got sequence/mapping;
+// map value got non-string). The parser records these in cfg.ScalarTypeErrors. ML-1C, REQ-2026-10-24.
+//
+// Note: ci_trigger is excluded — a non-scalar ci_trigger triggers ci_trigger_invalid instead.
+// Renamed from validateConfigScalarType (ML-1B) to reflect the expanded coverage.
+func validateConfigValueType() []string {
+	cfg := config.Load()
+	var msgs []string
+	for _, e := range cfg.ScalarTypeErrors {
+		expected := e.Expected
+		if expected == "" {
+			expected = "scalar string" // backward compat for entries without Expected set
+		}
+		msgs = append(msgs,
+			fmt.Sprintf("config_value_type: trackfw.yaml: key %q received a %s value; expected a %s", e.Key, e.Got, expected),
+		)
+	}
+	return msgs
+}
+
 // ValidateUnfiltered executa todas as validações sem filtro de baseline nem modo lenient.
 // Use para criar snapshots de baseline ou quando você quer o quadro completo.
 func ValidateUnfiltered() (violations []string, warnings []string, err error) {
@@ -1208,6 +1254,17 @@ func ValidateUnfiltered() (violations []string, warnings []string, err error) {
 	// or .trackfw\ grants write to a foreign SID on Windows — always-warning, never blockable.
 	// 🔴 Mirror site in validateUnfilteredTagged below — forgetting it silences the rule from --json.
 	applyRuleWarnOnly("project_foreign_write_windows", validateProjectForeignWriteWindows(), &warnings)
+
+	// ML-1A (REQ-2026-10-24): ci_trigger key validation.
+	// 🔴 Mirror site in validateUnfilteredTagged below — forgetting it silences these rules from --json.
+	ciTriggerInvalidMsgs, ciTriggerManualMsgs := validateCITrigger()
+	applyRule("ci_trigger_invalid", ciTriggerInvalidMsgs, &violations, &warnings)
+	applyRule("ci_trigger_manual", ciTriggerManualMsgs, &violations, &warnings)
+
+	// ML-1C (REQ-2026-10-24): config_value_type — any key received a wrong type.
+	// Renamed from config_scalar_type (ML-1B) to reflect expanded coverage.
+	// 🔴 Mirror site in validateUnfilteredTagged below — forgetting it silences this rule from --json.
+	applyRule("config_value_type", validateConfigValueType(), &violations, &warnings)
 
 	return violations, warnings, nil
 }
@@ -1713,6 +1770,16 @@ func validateUnfilteredTagged() (violations []TaggedMsg, warnings []TaggedMsg, e
 	// 🔴 Missing this site silences project_foreign_write_windows from --json output.
 	applyRuleWarnOnlyTagged("project_foreign_write_windows", validateProjectForeignWriteWindows(), &warnings)
 
+	// ML-1A (REQ-2026-10-24): mirror of ValidateUnfiltered ci_trigger block.
+	// 🔴 Missing this site silences ci_trigger_invalid / ci_trigger_manual from --json output.
+	ciTriggerInvalidMsgsT, ciTriggerManualMsgsT := validateCITrigger()
+	applyRuleTagged("ci_trigger_invalid", ciTriggerInvalidMsgsT, &violations, &warnings)
+	applyRuleTagged("ci_trigger_manual", ciTriggerManualMsgsT, &violations, &warnings)
+
+	// ML-1C (REQ-2026-10-24): mirror of ValidateUnfiltered config_value_type block.
+	// 🔴 Missing this site silences config_value_type from --json output.
+	applyRuleTagged("config_value_type", validateConfigValueType(), &violations, &warnings)
+
 	return violations, warnings, nil
 }
 
@@ -1794,7 +1861,7 @@ func inventoryBlock(cfg config.ProjectConfig) string {
 		}
 	}
 
-	states := []string{"backlog", "analyzing", "wip", "blocked", "done", "abandoned"}
+	states := config.RoadmapStates()
 	roadmapCounts := make(map[string]int, len(states))
 	roadmapTotal := 0
 	for _, state := range states {
@@ -2028,9 +2095,13 @@ func isDotPrefixedName(name string) bool {
 // recomendação adotada sem alteração). Esta exclusão vive só aqui, não no resolvedor — a colisão de
 // nome não é "comprovadamente infraestrutura" como isInfraDirName, é uma inferência sobre o
 // significado do nome, então só afeta a violação, nunca a união/enumeração.
-var agentNamespaceStateNames = map[string]bool{
-	"backlog": true, "analyzing": true, "wip": true, "blocked": true, "done": true, "abandoned": true,
-}
+var agentNamespaceStateNames = func() map[string]bool {
+	m := make(map[string]bool, len(config.RoadmapStates()))
+	for _, s := range config.RoadmapStates() {
+		m[s] = true
+	}
+	return m
+}()
 
 // undeclaredNamespacesOnDisk devolve, a partir do resolvedor canônico (que já filtra infra e não
 // segue symlink), os nomes de namespace presentes em dir e ausentes de agents:, excluindo colisões
@@ -2295,7 +2366,7 @@ func ResolveAgentNamespaces(cfg config.ProjectConfig, dir string) []string {
 // REQ. Ela existe apenas para o leitor tolerar árvores antigas: pelo invariante D1 da
 // ADR-2026-09-03, REQ NÃO tem dimensão de estado — backlog/analyzing/wip/blocked/done/abandoned são
 // conceito de roadmap. Nada aqui deve ser usado para ESCREVER REQ.
-var reqLayoutStates = []string{"backlog", "analyzing", "wip", "blocked", "done", "abandoned"}
+var reqLayoutStates = config.RoadmapStates()
 
 // ResolveWriteAgent resolve o namespace de agente para escrita em modo by_agent.
 //
@@ -4071,6 +4142,12 @@ func reqStatusValue(content string) string {
 	return ""
 }
 
+// roadmapFolderStates is the scan order for validateFolderStatusCoherence and
+// validateFilenameUniqueness. "wip" appears first so active roadmaps are found
+// quickly. Order IS semantic; the set must equal config.RoadmapStates() —
+// see TestRoadmapFolderStates_SetEqualsCanonical in roadmap_order_states_test.go.
+var roadmapFolderStates = []string{"wip", "backlog", "analyzing", "blocked", "done", "abandoned"}
+
 // folderToExpectedStatus mapeia o nome da pasta para os valores de status aceitos.
 var folderToExpectedStatus = map[string][]string{
 	"wip":       {"WIP", "wip", "In Progress"},
@@ -4085,7 +4162,7 @@ var folderToExpectedStatus = map[string][]string{
 func validateFolderStatusCoherence() ([]string, error) {
 	cfg := config.Load()
 	var warnings []string
-	states := []string{"wip", "backlog", "analyzing", "blocked", "done", "abandoned"}
+	states := roadmapFolderStates
 
 	type dirState struct{ path, state string }
 	var dirs []dirState
@@ -4154,7 +4231,7 @@ func validateFolderStatusCoherence() ([]string, error) {
 // validateFilenameUniqueness detecta o mesmo filename em múltiplos estados.
 func validateFilenameUniqueness() ([]string, error) {
 	cfg := config.Load()
-	states := []string{"wip", "backlog", "analyzing", "blocked", "done", "abandoned"}
+	states := roadmapFolderStates
 
 	seen := map[string][]string{}
 
