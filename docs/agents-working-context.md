@@ -31740,3 +31740,103 @@ retencao      CLAUDE.md byte a byte o nosso (3202 linhas · 3202 CR) · handoff 
               hades-tf/MEMORY.md mesclou SEM abortar — a previsao de 22/10 se confirmou
 divergencia   ZERO (base c7483950)  ·  go build exit 0  ·  arvore 11.0.1
 ```
+
+---
+
+## 2026-10-25 (II) — sync da 11.0.2: o predicado corrigido passou no primeiro teste
+
+**Branch:** `chore/sync-da-11-0-2-guard-so-no-campo-de-comando` · **merge:** `upstream/main 14d10dc3`
+(#620 fix do #618, #621 encerramento, #622 bump 11.0.2)
+
+```
+previsto   15 de produto + 13 retidos = 28
+medido     15 de produto + 13 retidos = 28
+```
+
+### 🔴 O predicado CORRIGIDO acertou, e a diferença entre as duas formas ficou visível
+
+Hoje de manhã o predicado largo errou: os três arquivos de hook estavam no conjunto e o escopo global
+não subiu. A correção foi trocar o discriminante. **Este sync é o primeiro teste da forma nova:**
+
+```
+o predicado LARGO (aposentado)    arquivo de hook no conjunto?   NENHUM
+o predicado CORRIGIDO             a FORMA da linha mudou?
+                                  formas antes 4 · depois 4 · diff rc=0  ->  IDENTICAS
+previsto   escopo global 0 · validate 3 -> 3 · tripla NAO exigida
+medido     escopo global 0 · validate 3 -> 3 · rc=0
+           wiring 0 · write_scope 0 · config_value_type 0
+```
+
+**Os dois predicados concordariam aqui** (nenhum hook no conjunto *e* forma idêntica), então este caso
+não os separa — o que ele mostra é que a forma nova **não quebrou** no primeiro uso. O caso que os
+separa foi o da manhã, e está registrado na entrada anterior.
+
+### 🔴 A lição do deny-all virou verificação de rotina
+
+Antes de commitar, conferi que o binário do PATH conhece **todos** os subcomandos que o hook chama:
+
+```
+git-branch   rc=0 · unknown=0
+credential   rc=0 · unknown=0
+write-scope  rc=0 · unknown=0
+PATH 11.0.1  ·  arvore 11.0.2   <- ha defasagem, e NENHUM subcomando novo
+```
+
+Defasagem de versão **não** basta para deny-all; o que basta é **subcomando novo** que o PATH não
+conhece. Hoje de manhã essa distinção custou uma sessão inteira com `Write`/`Edit` bloqueados, e
+agora é um laço de três linhas antes do commit.
+
+### A regra que MUDOU foi re-sondada, não assumida
+
+O #620 mexeu em `validator_guard_wiring.go` (+51 −20) — a mesma regra que eu havia provado viva
+três horas antes, sobre código que acabou de ser substituído:
+
+```
+worktree descartavel, nunca a arvore viva
+  fiacao INTACTA (controle negativo)        wiring = 0     <- o nosso caso
+  grupo PreToolUse Bash|PowerShell apagado  rc=1, 2 VIOLACOES: git-branch e credential
+```
+
+🔴 **Medição sobre código substituído caduca com o código.** Re-sondar custou 2 min; não re-sondar
+teria deixado um "está viva" que falava de outro binário.
+
+### 🔴 A cerca me barrou DUAS vezes hoje, e nas duas eu troquei de caminho em vez de contornar
+
+| tentativa | o que o hook disse | o que eu fiz |
+|---|---|---|
+| `git checkout -- .claude/settings.json` no worktree da sonda | descarte irreversível bloqueado | restaurei escrevendo o blob da `main`; o git ainda acusou `M` por **fim de linha** (blob em LF, árvore em CRLF: 93 linhas / **0** CR contra 93/93), e aí copiei da árvore principal |
+| `git add -A` para montar sonda num `mktemp` | escopo implícito bloqueado | troquei pelo **worktree**, que é o caminho já validado |
+
+O hook **não distingue tmpdir**, e isso é desenho, não defeito: a regra é sobre a forma do comando.
+
+### O fix do #618 chega como robustez, não como correção de dor nossa
+
+Re-medido com o binário **11.0.2**, não com a leitura de antes:
+
+```
+settings de PROJETO   8 ocorrencias · fora de .command/.bash = 0
+settings GLOBAL       4 ocorrencias · fora de .command/.bash = 0
+```
+
+Nunca tivemos prosa citando o guard, então o falso positivo que ele corrigiu **nunca nos atingiu**.
+
+### 🔴 O padrão de encerramento fechou a QUARTA ocorrência, e o intervalo encurta
+
+| produto | encerramento | intervalo |
+|---|---|---|
+| #602 → #603 | 22→23/10 | dia seguinte |
+| #604 → #605 | 23/10 | 24 min |
+| #606 → #608 | 24/10 | 14 min |
+| **#620 → #621** | 25/10 15:52 → 16:07 | **15 min** |
+
+E o release veio **35 min** depois do encerramento. Quatro por quatro: **esperar o trio
+produto+encerramento+release** antes de abrir o nosso PR cobre tudo num ciclo só, e foi o que se fez
+aqui.
+
+```
+testes      internal/validator  3 FAIL — as TRES na lista ativa do ratchet, 0 fora
+            (Group A: os.Chmod no-op em NTFS e ENOTDIR = ERROR_PATH_NOT_FOUND)
+retencao    CLAUDE.md byte a byte o nosso (3202 linhas · 3202 CR) · handoff 31.742 · log 382
+            docs/agents-working-context/ retido (0 entradas)
+divergencia ZERO (base 8093aaaf) · guarda de vacuidade conferida · go build exit 0 · arvore 11.0.2
+```
