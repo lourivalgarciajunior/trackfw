@@ -31840,3 +31840,47 @@ retencao    CLAUDE.md byte a byte o nosso (3202 linhas · 3202 CR) · handoff 31
             docs/agents-working-context/ retido (0 entradas)
 divergencia ZERO (base 8093aaaf) · guarda de vacuidade conferida · go build exit 0 · arvore 11.0.2
 ```
+
+---
+
+## 2026-10-26 14:30 — sync da 11.1.0: o trio produto+encerramento+release na SEXTA ocorrência, e a previsão fechou nos quatro pontos
+
+**O que foi feito.** Sync de `14d10dc3` (11.0.2) para `4a471465` (11.1.0), em
+`chore/sync-da-11-1-0-aviso-de-presenca-do-credential-guard`. O intervalo tem três commits e é o
+**trio** que o padrão já previa: produto (#623, D17 — aviso de presença do credential guard nos 6
+CLIs sem regra), encerramento (#625, a REQ-2026-10-25 fechada 22 min depois) e release (#626, o bump
+para 11.1.0). **Sexta ocorrência** do padrão; as cinco anteriores estão no `CLAUDE.md`.
+
+**A previsão foi escrita antes de rodar o script, e os quatro pontos fecharam:**
+
+| previsto | medido |
+|---|---|
+| 17 trazidos + 11 retidos = 28 | **17 + 11 = 28** — byte a byte |
+| conflito de PRODUTO zero | **zero** |
+| a tripla NÃO é necessária | **não foi** — `validate` 3 → 3, `global scope` = 0 |
+| `validate` 3 → 3, regra do #623 silenciosa | **3 → 3**, 0 menções a `credential`/`presence` |
+
+🔴 **O discriminante usado foi a FORMA da linha, não a presença de arquivo de hook no intervalo.**
+`internal/guardforms/guard_generations.go` saiu **idêntico byte a byte** entre `14d10dc3` e
+`4a471465` (conferido por `cmp`, não por leitura do diff), e os três subcomandos que a linha chama —
+`guard git-branch`, `guard credential`, `guard write-scope` — responderam `rc=0` pelo binário do PATH
+**antes** do sync. Sem forma nova, não há deny-all a temer e não há harness a reescrever.
+
+**Por que a presença de arquivo de hook não basta como predicado.** O `CLAUDE.md` registra o
+predicado na forma *"`.claude/settings.json` no conjunto do intervalo"*, e essa é a forma **larga**:
+ela acerta quando a forma muda junto com o arquivo, e erra nos dois sentidos — arquivo de hook tocado
+sem a forma mudar (bump de versão no comentário) pediria tripla inútil, e forma mudada sem o
+`settings.json` do upstream no conjunto não pediria tripla alguma. A comparação das constantes do
+`guardforms` responde a pergunta certa de uma vez.
+
+**Resíduo que NÃO é desta entrega, e fica declarado:** o binário do PATH está em **11.0.1** enquanto
+o npm publicado já é **11.1.0** — duas releases atrás. Isso **não** exige a tripla (a forma não
+mudou, e o `validate` confirma por efeito com `global scope = 0`), mas a cerca de todos os projetos
+desta máquina roda por código de 11.0.1. Derive antes de decidir: `trackfw --version` em cada shell
+cruzado com `npm view trackfw version`.
+
+**Aberto, carregado das entradas anteriores:** o `TestAttentionScripts_FallbackWithoutJQ` está em
+`removed[]` como `"corrected"` e falha aqui 3/3 — o controle prova que não é regressão, `python3` e
+`jq` foram refutados como causa, e a **causa não foi medida**; o `.gitignore` não cobre
+`*.stackdump`; a #624 (testes leem o `~/.claude/settings.json` real) reproduz aqui.
+
