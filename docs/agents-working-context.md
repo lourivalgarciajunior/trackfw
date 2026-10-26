@@ -31884,3 +31884,70 @@ cruzado com `npm view trackfw version`.
 `jq` foram refutados como causa, e a **causa não foi medida**; o `.gitignore` não cobre
 `*.stackdump`; a #624 (testes leem o `~/.claude/settings.json` real) reproduz aqui.
 
+
+---
+
+## 2026-10-26 15:35 — a 11.1.0 instalada, e o `updated=0` é o CONTROLE NEGATIVO do predicado da tripla
+
+**O que foi feito.** Fechado o resíduo declarado no sync da 11.1.0: o binário do PATH estava em
+**11.0.1** enquanto o npm publicado já era **11.1.0**. `npm i -g trackfw@11.1.0`, com a versão
+**derivada** de três fontes que concordaram — `npm view trackfw version`, o `version.go` da árvore e
+`git tag --contains 4a471465` (`v11.1.0`).
+
+**Os três shells atravessaram juntos**, e isso só foi possível porque a pasta do npm tinha só os três
+shims — sem `.exe` solto, o contorno não está em vigor desde 2026-10-07:
+
+```
+antes   Git Bash 11.0.1 · PowerShell 11.0.1 · cmd.exe 11.0.1
+depois  Git Bash 11.1.0 · PowerShell 11.1.0 · cmd.exe 11.1.0
+```
+
+🔴 **O achado que vale guardar: este é o primeiro `npm i -g` feito quando a tripla NÃO era
+necessária, e o passo 3 mediu o outro lado do predicado.**
+
+```
+trackfw update harness --dry-run   updated=0 · skipped=35 · missing=1 · failed=0
+validate (binario do PATH)         0 violacoes · 3 avisos · 0 mencoes a "global scope"
+```
+
+O `updated=0` é o **controle negativo** do predicado corrigido. As cinco ocorrências anteriores do
+padrão registradas no `CLAUDE.md` mediram sempre o lado positivo — forma nova, `validate` subindo,
+harness reescrevendo de 5 a 10 arquivos. Aqui a forma do `guardforms` saiu idêntica byte a byte, e o
+harness **confirmou por efeito** que não havia nada a reescrever. Antes disso, "a tripla não é
+necessária" era previsão derivada do `cmp`; agora é medição.
+
+**Prova por efeito dos três subcomandos pelo binário do PATH**, cada um com controle negativo —
+porque `rc=0` sem controle é indistinguível de guard inerte:
+
+| `guard git-branch` | `guard credential` | `guard write-scope` |
+|---|---|---|
+| `push` · `commit` · `add -A` · `add -A -- .` → **rc=2** | global (block): chave AWS → **rc=2** | subagente no handoff → **rc=2** |
+| `add docs/x.md` · `add -A docs/` · `status` · `log` → rc=0 | projeto (warn): chave → rc=0 **com 86 bytes de aviso** | subagente no `trackfw.yaml` → **rc=2** |
+| pela ferramenta **PowerShell** também: push 2 · status 0 | payload limpo → rc=0 com **0 bytes** | a mesma escrita **sem** `agent_id` → rc=0 |
+
+🔴 **O hook REAL bloqueou a minha própria chamada de ferramenta no meio da medição** — eu pus uma
+forma de JWT na linha de comando para sondar o guard, e o `PreToolUse:Bash` recusou com
+*"possible JWT detected in tool payload"*. É a prova mais forte que a sessão podia produzir: a cerca
+da 11.1.0 está viva pela linha real, no caminho real, contra o payload real. **Não foi contornada** —
+a sonda foi refeita sem aquela forma.
+
+🔴 **E duas sondas minhas estavam CEGAS antes disso, pelo mesmo erro de premissa.** Eu sondei o
+`guard credential` com `{"tool_name":"Read","file_path":".../.ssh/id_rsa"}` e li o `rc=0` como
+"passa". Duas cegueiras empilhadas: o guard varre **padrão de JWT e de chave AWS no payload**, não
+caminho de arquivo — o `--help` diz isso em duas linhas —, e o arquivo **não existe** nesta máquina
+(é `id_ed25519`). A sonda não exercitava nada. Mesma família do `Name='trackfw-go.exe'` que devolveu
+0 processos: **zero com sonda errada é cegueira, não ausência**, e o remédio foi ler o `--help` antes
+de inventar o payload.
+
+🔴 **O modo de projeto é `warn`, então o `rc` NÃO é o discriminante ali.** Chave encontrada em escopo
+de projeto sai `rc=0` com o aviso impresso; o discriminante é a **saída** (86 bytes contra 0). Quem
+medisse só o `rc` concluiria que o guard de credencial é inerte neste repositório.
+
+**O que isto não fecha.** O `missing=1` do harness continua sendo o `windsurf-credential-guard`
+(`~/.codeium/windsurf/hooks.json`): o Windsurf não está instalado aqui, então é **ausência, não
+defasagem**, e `--install-missing` ali criaria hook para um CLI que ninguém usa.
+
+**Aberto, carregado das entradas anteriores:** o `TestAttentionScripts_FallbackWithoutJQ` em
+`removed[]` como `"corrected"` falhando aqui 3/3 com causa não medida; o `.gitignore` sem
+`*.stackdump`; a #624.
+
