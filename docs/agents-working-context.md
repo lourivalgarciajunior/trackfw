@@ -112,8 +112,7 @@ antes   Referential integrity OK: 87 REQs,   0 referencias verificadas   rc=0
 depois  Referential integrity OK: 87 REQs, 143 referencias verificadas   rc=0
 ```
 
-🔴 **As 143 são exatamente as que eu contei por fora**, com um leitor que descarta `
-`, quando
+🔴 **As 143 são exatamente as que eu contei por fora**, com um leitor que descarta ``, quando
 abri a issue. A contagem independente e a do gate corrigido coincidem — que é a forma mais forte de
 confirmar um relato de vácuo: o número que eu disse existir é o número que o instrumento passou a
 ver.
@@ -150,8 +149,7 @@ o acervo tem     143 marcadores adr:/roadmap: com valor
 ```
 
 **A causa é CRLF.** O gate detecta o frontmatter por igualdade exata (`[[ "$line" == "---" ]]`), e
-aqui a linha chega como `---
-`: a igualdade é falsa, `in_frontmatter` nunca vira 1, e o laço passa
+aqui a linha chega como `---`: a igualdade é falsa, `in_frontmatter` nunca vira 1, e o laço passa
 sem olhar nada. **Falsificado nas duas direções**, em fixture com os MESMOS bytes e só o fim de
 linha mudando, `rc` lido sem cano:
 
@@ -161,8 +159,7 @@ LF    rc=1  acusa as DUAS referencias quebradas da fixture    <- controle positi
 ```
 
 🔴 **E o limite está declarado: aqui o vácuo NÃO escondia defeito.** Varrido com leitor que descarta
-`
-`: **87 REQs · 143 referências · 0 que não existem**. O instrumento estava cego; o que ele
+``: **87 REQs · 143 referências · 0 que não existem**. O instrumento estava cego; o que ele
 deveria olhar está íntegro. Relatar "dano" seria falso — o que se relata é que **o verde não era
 evidência**.
 
