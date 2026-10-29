@@ -112,7 +112,8 @@ antes   Referential integrity OK: 87 REQs,   0 referencias verificadas   rc=0
 depois  Referential integrity OK: 87 REQs, 143 referencias verificadas   rc=0
 ```
 
-🔴 **As 143 são exatamente as que eu contei por fora**, com um leitor que descarta ``, quando
+🔴 **As 143 são exatamente as que eu contei por fora**, com um leitor que descarta `
+`, quando
 abri a issue. A contagem independente e a do gate corrigido coincidem — que é a forma mais forte de
 confirmar um relato de vácuo: o número que eu disse existir é o número que o instrumento passou a
 ver.
@@ -149,7 +150,8 @@ o acervo tem     143 marcadores adr:/roadmap: com valor
 ```
 
 **A causa é CRLF.** O gate detecta o frontmatter por igualdade exata (`[[ "$line" == "---" ]]`), e
-aqui a linha chega como `---`: a igualdade é falsa, `in_frontmatter` nunca vira 1, e o laço passa
+aqui a linha chega como `---
+`: a igualdade é falsa, `in_frontmatter` nunca vira 1, e o laço passa
 sem olhar nada. **Falsificado nas duas direções**, em fixture com os MESMOS bytes e só o fim de
 linha mudando, `rc` lido sem cano:
 
@@ -159,7 +161,8 @@ LF    rc=1  acusa as DUAS referencias quebradas da fixture    <- controle positi
 ```
 
 🔴 **E o limite está declarado: aqui o vácuo NÃO escondia defeito.** Varrido com leitor que descarta
-``: **87 REQs · 143 referências · 0 que não existem**. O instrumento estava cego; o que ele
+`
+`: **87 REQs · 143 referências · 0 que não existem**. O instrumento estava cego; o que ele
 deveria olhar está íntegro. Relatar "dano" seria falso — o que se relata é que **o verde não era
 evidência**.
 
@@ -32008,9 +32011,30 @@ arquivos que o upstream nunca teve. O script já provava a retenção por efeito
 
 **O que isto significa para os PRs deste fork:** `windows-install-ps1` entrou em
 `.github/required-status-checks.txt`, e o `quality.yml` é compartilhado — o conjunto de merge daqui
-passa de **20 para 21** checks. O número foi derivado comparando por nome o head do #627 contra o
-#626 mesclado; a comparação contra a `main` **não serve**, porque o head dela é um commit de release
-cujos check-runs são 30 entradas iguais de `check-annotations`, que é outro workflow.
+passa de **24 para 25** checks, e o PR #291 é o primeiro a pagá-lo.
+
+🔴 **E eu publiquei esse número errado três vezes antes de medi-lo no lugar certo.** Escrevi *"de 20
+para 21"* no commit do sync, no corpo do PR #291 e na primeira versão desta entrada, depois de
+comparar por nome o head do #627 contra o #626 **dele**. O 20/21 é o conjunto do repositório
+**dele**; o nosso tem quatro jobs que ele não tem:
+
+```
+conjunto do #626 (upstream, mesclado)              20
+conjunto do #290 (ESTE fork, mesclado)             24    <- gates-locais x2 e gates-windows x2
+declaracao .github/required-status-checks.txt      10 nomes, com windows-install-ps1
+esperado para o #291                               25
+```
+
+**A causa é a de sempre: denominador medido no acervo errado.** E o efeito é pior que o de um número
+solto — o critério de merge desta casa exige *"conjunto completo, não maioria: todo check do PR
+verde, e o total conferido"*, então um `21 de 21` verde teria me feito declarar conjunto fechado com
+**quatro jobs ainda rodando**, que é literalmente a cegueira que o `CLAUDE.md` nomeia. 🔴 **O `24` do
+`CLAUDE.md` estava certo desde sempre, e foi a minha "correção" dele que errou** — eu o corrigi
+contra o acervo do upstream, não contra o nosso.
+
+A outra metade da medição continua válida: a comparação contra a `main` **não serve**, porque o head
+dela é um commit de release cujos check-runs são 30 entradas iguais de `check-annotations`, que é
+outro workflow. O instrumento certo é o último PR **mesclado do mesmo repositório**.
 
 🔴 **Um `bash.exe.stackdump` nasceu na árvore durante este sync**, não rastreado. É prova viva do
 achado que já estava aberto: o `.gitignore` não cobre `*.stackdump`, e o `+8` do #627 cobriu só
