@@ -31951,3 +31951,92 @@ defasagem**, e `--install-missing` ali criaria hook para um CLI que ninguém usa
 `removed[]` como `"corrected"` falhando aqui 3/3 com causa não medida; o `.gitignore` sem
 `*.stackdump`; a #624.
 
+
+---
+
+## 2026-10-29 18:30 — sync da 11.2.0: o trio na SÉTIMA ocorrência, e o meu verificador de invariante caiu no dois-pontos
+
+**O que foi feito.** Mesclados três commits do upstream pelo `scripts/upstream-sync.sh`, numa tarde
+em que ele foi de draft a release publicada em 38 minutos:
+
+```
+05636616  16:49  #627  documentacao 11.x, scripts/install.ps1, site/ e ml_scope do barrier
+1374621c  17:05  #628  governanca das duas REQ fechada; windows-install-ps1 obrigatorio
+8753441c  17:27  #629  bump para 11.2.0   ->   tag v11.2.0, npm 11.2.0
+```
+
+**A forma do trio** — produto, depois encerramento de governança, depois release — é a **sétima**
+ocorrência registrada neste arquivo. O que a sexta previu, esta confirmou sem ajuste.
+
+**Medido, não lido:**
+
+```
+produto trazido      42        governanca retida  25   (de 67 no merge)
+go build ./...       exit 0
+validate             0 antes · 0 depois · 3 avisos · 0 de escopo global
+binario da arvore    11.2.0 (version.go em 11.2.0)
+copia do PATH        N/A — o contorno dos shims nao esta em vigor desde 2026-10-07
+```
+
+**A tripla não foi exigida, e os três predicados concordaram** — é a segunda vez que o lado negativo
+é medido, depois do `updated=0` de 2026-10-26:
+
+| predicado | leitura |
+|---|---|
+| regra larga (arquivo de hook no intervalo) | `.claude/settings.json`, `.codex/hooks.json`, `.gemini/settings.json` — **0** no conjunto |
+| regra fina (`guard_generations.go`) | 8 linhas mudadas, **não-comentário = 0**; literais `LASTEXITCODE` idênticos por `cmp` |
+| por efeito | `validate` com 3 avisos e **0 de escopo global**, que é o piso |
+
+🔴 **E o predicado ACENDEU antes de ser desarmado pela medição, o que refina a regra.** O arquivo
+`internal/guardforms/guard_generations.go` entrou no conjunto do #627 com `+5 −3`, e `cmp` sobre o
+**arquivo** diverge — mas as oito linhas são um bloco de comentário reescrito para apontar o README.
+O discriminante que decide não é `cmp` no arquivo: é `cmp` sobre os **literais da linha gerada**.
+A forma escrita no `CLAUDE.md` erra para o lado de exigir a tripla.
+
+🔴 **O meu verificador da invariante de retenção estava errado, e o erro é o DOIS-PONTOS** — a
+quarta ocorrência da mesma armadilha neste fork, e a primeira dentro de um instrumento escrito na
+hora. Eu ancorei em `79b65751..upstream/main`, que responde *"o que o upstream tem e nós não"*:
+
+```
+ancorado no NOSSO HEAD      retidos 1372, "97 fora de docs/ e vault/"   <- as NOSSAS REQs e scripts
+ancorado na BASE DE MERGE   retidos 25, 0 fora, e 0 trazidos fora do merge    67 = 42 + 25
+```
+
+As 97 "violações" eram as nossas próprias 60 REQs, 20 scripts, o `CLAUDE.md` e o `trackfw.yaml` —
+arquivos que o upstream nunca teve. O script já provava a retenção por efeito e já havia impresso
+`25 (de 67 no merge)`; o meu verificador independente é que mediu outra coisa.
+
+**O que isto significa para os PRs deste fork:** `windows-install-ps1` entrou em
+`.github/required-status-checks.txt`, e o `quality.yml` é compartilhado — o conjunto de merge daqui
+passa de **24 para 25** checks, e o PR #291 é o primeiro a pagá-lo.
+
+🔴 **E eu publiquei esse número errado três vezes antes de medi-lo no lugar certo.** Escrevi *"de 20
+para 21"* no commit do sync, no corpo do PR #291 e na primeira versão desta entrada, depois de
+comparar por nome o head do #627 contra o #626 **dele**. O 20/21 é o conjunto do repositório
+**dele**; o nosso tem quatro jobs que ele não tem:
+
+```
+conjunto do #626 (upstream, mesclado)              20
+conjunto do #290 (ESTE fork, mesclado)             24    <- gates-locais x2 e gates-windows x2
+declaracao .github/required-status-checks.txt      10 nomes, com windows-install-ps1
+esperado para o #291                               25
+```
+
+**A causa é a de sempre: denominador medido no acervo errado.** E o efeito é pior que o de um número
+solto — o critério de merge desta casa exige *"conjunto completo, não maioria: todo check do PR
+verde, e o total conferido"*, então um `21 de 21` verde teria me feito declarar conjunto fechado com
+**quatro jobs ainda rodando**, que é literalmente a cegueira que o `CLAUDE.md` nomeia. 🔴 **O `24` do
+`CLAUDE.md` estava certo desde sempre, e foi a minha "correção" dele que errou** — eu o corrigi
+contra o acervo do upstream, não contra o nosso.
+
+A outra metade da medição continua válida: a comparação contra a `main` **não serve**, porque o head
+dela é um commit de release cujos check-runs são 30 entradas iguais de `check-annotations`, que é
+outro workflow. O instrumento certo é o último PR **mesclado do mesmo repositório**.
+
+🔴 **Um `bash.exe.stackdump` nasceu na árvore durante este sync**, não rastreado. É prova viva do
+achado que já estava aberto: o `.gitignore` não cobre `*.stackdump`, e o `+8` do #627 cobriu só
+`npm/README.md` e `pypi/README.md`. Ficou fora do commit, de propósito.
+
+**Aberto, carregado das entradas anteriores:** o `TestAttentionScripts_FallbackWithoutJQ` em
+`removed[]` como `"corrected"` falhando aqui 3/3 com causa não medida; o `.gitignore` sem
+`*.stackdump`, agora com ocorrência observada; a #624.
