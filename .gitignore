@@ -41,3 +41,10 @@ docs/roadmaps/.trackfw-credential-guard.json
 # ML-1B, ROADMAP-2026-10-28-documentacao-e-canais-refletem-o-produto-11-x.
 npm/README.md
 pypi/README.md
+
+# Despejo de pilha do MSYS/Cygwin: <ferramenta>.exe.stackdump, escrito na raiz do
+# diretorio de trabalho quando um binario do Git Bash morre por sinal. Nasce de
+# subprocesso de gate ou de sync, nunca de codigo nosso, e nao se versiona.
+# Medido em 2026-10-29: um bash.exe.stackdump de 1332 bytes apareceu durante o
+# upstream-sync.sh da 11.2.0 e entrou em `git status` como nao rastreado.
+*.stackdump

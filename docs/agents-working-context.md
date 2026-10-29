@@ -32040,3 +32040,42 @@ achado que já estava aberto: o `.gitignore` não cobre `*.stackdump`, e o `+8` 
 **Aberto, carregado das entradas anteriores:** o `TestAttentionScripts_FallbackWithoutJQ` em
 `removed[]` como `"corrected"` falhando aqui 3/3 com causa não medida; o `.gitignore` sem
 `*.stackdump`, agora com ocorrência observada; a #624.
+
+---
+
+## 2026-10-29 19:15 — o `.gitignore` passa a cobrir `*.stackdump`, e o CRLF foi escrito desde o começo
+
+**O que foi feito.** Acrescentada a regra `*.stackdump` ao `.gitignore`, fechando um achado que vinha
+carregado nas entradas anteriores e que ganhou ocorrência observada no sync da 11.2.0: um
+`bash.exe.stackdump` de **1332 bytes**, escrito às 18:13 por algum subprocesso do
+`upstream-sync.sh`, entrou em `git status` como não rastreado e precisou ficar fora do commit à mão.
+
+**Medido por efeito, com controle negativo** — porque regra de ignore que passa sem controle é
+indistinguível de regra larga:
+
+```
+git status ve o stackdump?       1  ->  0
+git check-ignore -v              .gitignore:50:*.stackdump   bash.exe.stackdump
+controle: bash.exe.stackdump.md  NAO ignorado, e aparece no status   <- a regra nao e larga
+```
+
+🔴 **O `.gitignore` é arquivo compartilhado, então isto cria a primeira divergência nossa nele — e a
+consequência está medida, não suposta:**
+
+```
+o gate `Divergencia de produto tem de ser ZERO` filtra
+  internal npm pypi cmd .github Makefile          <- o .gitignore NAO esta na lista
+o upstream-sync.sh retem trackfw.yaml e CLAUDE.md <- o .gitignore NAO e retido
+```
+
+Ou seja: o gate não reprova, e a regra viaja por merge do git. O dia em que o upstream editar o
+`.gitignore` perto do fim do arquivo, o sync **aborta com conflito de PRODUTO** — alto e visível, que
+é o comportamento desejado e o mesmo padrão já registrado para `.claude/agent-memory/`. **A saída
+alternativa era levar ao upstream como issue**, e foi oferecida; o usuário escolheu a regra local.
+
+🔴 **E a lição da entrada anterior foi aplicada na mesma hora:** esta entrada e o bloco do
+`.gitignore` foram escritos **em CRLF desde o começo**, por Python sobre bytes crus, em vez de
+`cat >> heredoc` — que é o que gravou 68 linhas em LF num arquivo CRLF e produziu um diff de 32 mil
+linhas para uma edição de 24. As duas escritas de hoje asseveram `raw.endswith(b"
+")` antes de
+tocar o arquivo.
