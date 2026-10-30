@@ -32141,3 +32141,71 @@ sem força removeu com `rc=0`. A cerca funcionou e **não foi contornada**.
 **Aberto, carregado:** o `TestAttentionScripts_FallbackWithoutJQ` em `removed[]` como `"corrected"`
 falhando aqui 3/3 com causa não medida; e agora o `TestBranchNew_DryRunFetchesMasterDefault`, também
 com causa não medida. O `.gitignore` sem `*.stackdump` **fechou** no #292; a #624 **fechou** aqui.
+
+---
+
+## 2026-10-30 12:10 — os dois achados carregados foram MEDIDOS e viraram issue: #633 e #634
+
+**O que foi feito.** Os dois últimos achados com *causa não medida* saíram da lista. Nenhum virou
+correção local: os dois são sítio do upstream, então é issue, pelo escopo negativo de sempre.
+
+### [#633](https://github.com/kgsaran/trackfw/issues/633) — `branch new` em git < 2.48
+
+A premissa falsa está escrita no comentário do próprio produto, em `resolveBranchBase`
+(`internal/commands/branch.go`): *"always fetch ... so both paths resolve the same default branch
+for remotes whose origin/HEAD is not locally set yet"*. 🔴 **`git fetch` só cria o
+`refs/remotes/origin/HEAD` a partir do git 2.48**; abaixo disso a cadeia `forge API → symref →
+fallback "main"` cai no literal, e `rev-parse origin/main` falha num repositório `master`.
+
+```
+git 2.45.1 (esta maquina)    FAIL  11,09 s e 13,12 s em duas corridas
+git 2.56.0 (windows-latest)  PASS  0,75 s        <- do log do windows-full-suites
+
+sonda isolada, clone descartavel, git 2.45.1:
+  set-head --delete   ->  for-each-ref vazio E rev-parse vazio   (AUSENTE, nao 'nao-simbolica')
+  git fetch origin    ->  continua ausente                       <- o ponto
+  set-head --auto     ->  restabelecida                          <- controle positivo
+  followRemoteHEAD    ->  0 ocorrencias em `git fetch --help` e `git config --help`
+```
+
+🔴 **A versão foi pinada por DUAS fontes independentes, e a segunda é a que dá peso à issue:** as
+release notes da 2.48.0, e o **`docs/cli-parity.md` dele**, que já escreve `git ≥2.48` — no cenário
+11 do `check-release-tag-parity.sh`, onde `remote.origin.followRemoteHEAD never` é usado para
+**impedir** a auto-cura. A dependência já estava documentada lá **na direção oposta**: o fetch
+*restaurando* um symref é tratado como risco de vacuidade de teste; o fetch *estabelecendo* o
+symref é assumido como garantia pelo `branch new`. Mesma propriedade do git, uma direção conferida.
+
+**E não há versão mínima de git declarada** em `README.md`, `CONTRIBUTING.md` ou `docs/cli-parity.md`
+— 0 ocorrências de `minimum git` / `requires git`.
+
+### [#634](https://github.com/kgsaran/trackfw/issues/634) — o `removed[]` diz `"corrected"`, e a causa segue viva
+
+```
+1  conta: admin no token False · SeCreateSymbolicLinkPrivilege False
+   AllowDevelopmentWithoutDevLicense (nao definido)  -> Modo de Desenvolvedor OFF
+   New-Item -ItemType SymbolicLink  ->  "requer privilegio de administrador"
+2  o teste classifica por isSymlinkPrivilegeError e PROSSEGUE  ->  fakeBinDir vazio
+   requiredBins hoje = ["trackfw"]   <- nao mais jq, nao mais ajudante falso
+3  filho recebe so PATH=fakeBinDir  ->  `command -v trackfw ... || exit 0`, SEM ESCREVER
+   falha duas assercoes depois, em scaffold_test.go:432
+4  CONTROLE POSITIVO: PATH = <arvore>/bin  ->  rc=0 e o arquivo escrito com o payload exato
+```
+
+🔴 **A `removal_note` está certa sobre o `jq` e errada sobre a causa.** A correção tirou o `jq` e o
+ajudante falso, mas o invólucro passou a depender do **binário `trackfw`**, entregue pelo mesmo
+`os.Symlink`. O `reason` da própria entrada ainda descreve o que acontece aqui.
+
+### 🔴 Quatro sondas minhas falharam antes de acertar, e três são reincidência
+
+| sonda | por que mentiu |
+|---|---|
+| `env PATH=<dir> bash script.sh` | sai **127**: o `env` não acha o próprio `bash` com o PATH já substituído. Os **dois** controles deram 127, então nenhum mediu nada |
+| `PATH=<dir do npm>` como controle positivo | ali o `trackfw` é shim que precisa de `node`: `command -v` acha, a execução falha, e o `\|\| true` engole |
+| backtick dentro de aspas duplas no `printf` do rótulo | o bash **executou** `set-head --auto` como comando — rótulos vazios e um `command not found` no meio da medição |
+| filtro de run por SHA **digitado** em vez de `git rev-parse` | devolveu `[]`, que lido como verde seria cegueira (foi no critério 4 do #292) |
+
+As três últimas já estão na memória desta sessão. O remédio das duas primeiras é o mesmo:
+**controle que não produz o efeito esperado não é controle** — os dois 127 iguais deviam ter me
+parado antes da conclusão, e o que me parou foi olhar o `wc -c` da saída.
+
+**Aberto:** nada com causa não medida. Os dois achados estão reportados e aguardam o mantenedor.
