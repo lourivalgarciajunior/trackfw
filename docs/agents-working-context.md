@@ -32079,3 +32079,65 @@ alternativa era levar ao upstream como issue**, e foi oferecida; o usuário esco
 linhas para uma edição de 24. As duas escritas de hoje asseveram `raw.endswith(b"
 ")` antes de
 tocar o arquivo.
+
+---
+
+## 2026-10-30 09:30 — sync do #630/#631: a nossa #624 fechou, e um teste reprova aqui com o CI verde
+
+**O que foi feito.** Mesclados dois commits do upstream pelo `scripts/upstream-sync.sh`:
+
+```
+d0dba293  29/10 19:29  #630  docs(site): release tag nao tem --dry-run
+c5085d32  30/10 08:12  #631  testes nao dependem do ambiente do desenvolvedor
+```
+
+✅ **O #631 FECHA A NOSSA [#624](https://github.com/kgsaran/trackfw/issues/624)**, com `Closes #624`
+no corpo e `closedAt` às 08:12. Era um dos três achados que eu vinha carregando como aberto em toda
+varredura — testes de `internal/commands` liam o `~/.claude/settings.json` real —, e a tabela de ACs
+dele registra a medição: *15 FAIL com PATH sem trackfw e o guard global no HOME*. **Sai da lista.**
+
+**Medido, não lido:**
+
+```
+produto trazido      8         governanca retida  10   (de 18 no merge)
+invariante           ancorado na BASE DE MERGE (8753441c) — 0 fora de docs/ U vault/,
+                     e 0 trazidos fora do conjunto do merge     18 = 8 + 10
+go build ./...       exit 0
+validate             0 antes · 0 depois · 3 avisos · 0 de escopo global
+divergencia          0
+a tripla             NAO exigida — internal/guardforms = 0, arquivo de hook = 0
+```
+
+**Os dois testes novos dele passam aqui, por efeito:** `TestIsolatedHomeCoversBothChannels` e
+`TestGitGuardFailsFastWhenGitAbsent`, os dois PASS.
+
+### 🔴 Achado novo: `TestBranchNew_DryRunFetchesMasterDefault` reprova nesta máquina, e o CI não vê
+
+```
+antes do sync (354b277c, em worktree)   FAIL em 11,09 s
+depois do sync                          FAIL em 13,12 s   <- IDENTICO, mesma assercao
+branch_new_base_e2e_test.go:510         R-1: dry-run deve reportar 'origin/master'
+                                        obteve "a ref base 'origin/main' nao foi encontrada"
+familia delimitada                      15 PASS · 1 FAIL
+no .github/windows-known-failures.json  NAO (entries=5)
+windows-full-suites do #292             success, com o MESMO codigo
+```
+
+🔴 **O controle fecha nas duas direções e é ele que decide:** a falha é **anterior** ao sync, não
+causada por ele. E a última linha é a que torna o achado interessante em vez de ruído — **o CI não
+reproduz**, então é esta máquina. 🔴 **A causa NÃO foi medida.** Duas hipóteses foram levantadas e
+uma já caiu: `init.defaultBranch` desta máquina é `master`, mas a fixture do teste faz
+`init -b master` **explícito** nos dois repositórios, então a config local não explica. O que resta
+é o `origin/HEAD` não sendo atualizado pelo fetch que o produto faz — não medido.
+
+**É da mesma família do que o #631 acabou de corrigir** — teste que depende do ambiente do
+desenvolvedor —, o que faz dele candidato a issue no upstream, pelo escopo negativo de sempre: sítio
+dele, achado nosso, issue e não correção local.
+
+🔴 **E o hook bloqueou o meu `git worktree remove --force` no meio disto**, com o comando composto
+recusado por inteiro. Era `--force` por hábito, sem necessidade: o worktree estava limpo e a forma
+sem força removeu com `rc=0`. A cerca funcionou e **não foi contornada**.
+
+**Aberto, carregado:** o `TestAttentionScripts_FallbackWithoutJQ` em `removed[]` como `"corrected"`
+falhando aqui 3/3 com causa não medida; e agora o `TestBranchNew_DryRunFetchesMasterDefault`, também
+com causa não medida. O `.gitignore` sem `*.stackdump` **fechou** no #292; a #624 **fechou** aqui.
