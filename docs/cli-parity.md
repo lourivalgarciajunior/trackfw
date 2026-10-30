@@ -791,6 +791,27 @@ Date ruler: `date:` frontmatter first, `REQ-YYYY-MM-DD-` filename prefix as fall
 precedence as `req_has_roadmap`. Unreadable date → fail-closed (treated as post-cutoff, charged).
 `rules: {req_done_open_criteria: off}` silences all arms including the aggregated notice.
 
+### `--json` stream contract (post-document)
+
+<!-- trackfw-contract: gate=internal/commands/json_exit_test.go partial=cobre validate --json, update --json e update harness --json na classe de falha de I/O em targets não-catálogo (AC1/AC1-bis/AC7); diagnósticos em-run (pathguard refusals, harnessWarnMsg) permanecem no stderr por design (D-1 opção a, Wave 0 §3.10–3.11); erros antes do documento (marshal failure, config error) não são cobertos -->
+
+After the result document has been written to stdout, the process exits with
+the numeric code that reflects the result (e.g. 1 for violations or failed
+targets). The `root.go` error printer writes nothing to stderr — the outcome
+is communicated through the exit code only, not through a message from `root.go`.
+
+In-run diagnostics emitted **while computing the result** (pathguard refusals,
+`agent_models` warnings from `update harness`) may still appear on stderr.
+They are described in the individual command sections and documented in
+`docs/seguranca/2026-10-30-wave0-json-stderr-saida-silenciosa.md` (§1.2).
+
+This contract applies to: `validate --json`, `update --json`,
+`update harness --json`.
+
+Errors that occur **before** the document is written (marshal failure, config
+parse error) are not covered — they may still print to stderr, because there
+is no document to deliver silently.
+
 ### `req list` / `req move` — discovery layouts and conditional physical move
 
 <!-- trackfw-contract: gap reason=nenhum gate exercita req list/req move — nem a descoberta por layout (flat/by_agent) nem a discriminação in-place-vs-physical-move são cobertas por gate -->
@@ -7526,11 +7547,13 @@ fonte de versão do próprio runtime:
   **antes** de compor qualquer URL, `curl`/`wget`. `timeout-minutes: 10` (GitHub Actions) e
   `timeout: 10 minutes` (GitLab CI) são pinados junto — perder qualquer um dos dois foi o defeito
   real que motivou esta REQ (incidente de 2026-08-27 no cmdb, ver Motivation da REQ).
-- `trackfw-validate.yml`: o passo `go install github.com/kgsaran/trackfw/cmd/trackfw@v<versão>`
-  usa a versão pinada, nunca `@latest` — este é o **segundo mecanismo de instalação** do gate de
-  CI, distinto do `install.sh` acima; a Wave 0 original não o enumerou porque o padrão de busca
-  dado a ela (`releases/latest`) nunca casa com `@latest` (registrado na seção 1 do resultado do
-  ML-0A do roadmap).
+- `trackfw-validate.yml` (consumer): desde ML-1A de
+  ROADMAP-2026-10-30-go-install-entrega-versao-errada, o passo usa o **mesmo mecanismo do
+  `trackfw-gate.yml`**: `TRACKFW_VERSION: "<versão>"` no bloco `env:` e
+  `curl -sSfL "https://github.com/kgsaran/trackfw/releases/download/v${TRACKFW_VERSION}/install.sh" | sh`
+  — o script vem da **tag pinada**, não de `releases/latest` (ADR-2026-10-30: `go install` não é canal;
+  `module path must match major version` rc=1 para v11+). O job id `governance-go-install` é mantido
+  como contrato de `required_status_checks` (ADR-2026-10-30 D3); o nome não descreve mais o mecanismo.
 
 **`trackfw update` gerencia os três arquivos, no binário, com uma assimetria deliberada
 (AC17):** o alvo `ci-workflow` sempre reescreve `trackfw-gate.yml`/`.gitlab-ci-trackfw.yml` quando
@@ -7542,12 +7565,14 @@ um projeto com `ci: none` que rodou `discover` teria o arquivo fora de qualquer 
 `ci: none`, fechando exatamente esse buraco). Idempotência: `update` duas vezes seguidas com o
 mesmo binário não reporta `updated` na segunda chamada.
 
-**Gate falsificável:** `scripts/check-ci-workflow-pin-parity.sh` dumpa os 9 builders (3 templates
-) em sandbox e compara byte a byte, nomeando a divergência quando falha; falsifica
-nas duas direções — template sem `TRACKFW_VERSION`, com versão diferente da que o binário
-reporta, sem `timeout-minutes`/`timeout: 10 minutes`, e `trackfw-validate.yml` com `@latest` em
-vez de `@v<versão>` — todos reprovam com a razão que o **próprio gate** emite. Guarda de vacuidade
-e idempotência (duas execuções sobre o mesmo commit produzem os mesmos 9 arquivos) inclusas.
+**Gate falsificável:** `scripts/check-ci-workflow-pin-parity.sh` dumpa 5 outputs pull_request-mode
+(3 famílias de template — GitHub Actions gate, GitLab CI, Discover validate — em variantes
+consumer/producer) em sandbox e valida invariantes, nomeando a divergência quando falha; falsifica
+nas duas direções — template sem `TRACKFW_VERSION`, com versão diferente da que o binário reporta,
+sem `timeout-minutes`/`timeout: 10 minutes`, e qualquer template de consumidor com `releases/latest`
+em vez de `releases/download/v${TRACKFW_VERSION}/install.sh` — todos reprovam com a razão que o
+**próprio gate** emite. Guarda de vacuidade, guarda de no-op para os vetores de falsificação, e
+idempotência (segundo dump; byte-idêntico ao primeiro como verificação de estabilidade) inclusas.
 
 #### Assimetria residual — `init` do Python sem `--ci`/`--hooks` (fora de escopo)
 
@@ -7596,7 +7621,7 @@ saber sem abrir o YAML:
 | workflow | job id (antigo → novo) | mecanismo de instalação |
 |---|---|---|
 | `trackfw-gate.yml` (`buildGitHubActionsWorkflowContent`) | `governance` → `governance-install-script` | `curl \| sh` (`install.sh`) |
-| `trackfw-validate.yml` (`BuildDiscoverGitHubActionsWorkflowContent`) | `governance` → `governance-go-install` | `go install .../trackfw@v<versão>` |
+| `trackfw-validate.yml` (`BuildDiscoverGitHubActionsWorkflowContent`) | `governance` → `governance-go-install` | `install.sh` from pinned tag (ADR-2026-10-30; job id kept for `required_status_checks` — name no longer describes mechanism) |
 
 Decisão registrada (sem usuários downstream conhecidos hoje, e este próprio repositório não tinha
 `required_status_checks` configurado — é a lacuna que motivou a REQ): mudar o job id muda o nome do

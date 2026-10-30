@@ -32209,3 +32209,60 @@ As três últimas já estão na memória desta sessão. O remédio das duas prim
 parado antes da conclusão, e o que me parou foi olhar o `wc -c` da saída.
 
 **Aberto:** nada com causa não medida. Os dois achados estão reportados e aguardam o mantenedor.
+
+---
+
+## 2026-10-30 18:45 — sync da 11.2.1: duas ressalvas minhas, as duas medidas, as duas caem
+
+**O que foi feito.** Mesclados quatro commits do upstream pelo `scripts/upstream-sync.sh`, no
+segundo lote do dia:
+
+```
+468bd098  12:58  #635  stream --json limpo depois do documento: validate, update, update harness
+dd5540cc  13:13  #636  REQ-2026-09-07 Done, roadmap em done/
+9d26c0a7  17:15  #638  templates de consumidor instalam pelo install.sh da tag;
+                       `go install` DEIXA DE SER CANAL (#637)
+45ed483e  17:59  #639  bump para 11.2.1; governanca do #637 fechada
+```
+
+**Medido, não lido:**
+
+```
+produto trazido      32        governanca retida  26   (de 58 no merge)
+invariante           ancorado na BASE DE MERGE (c5085d32): 58 = 32 + 26, 0 retidos fora
+                     de docs/ U vault/, e 0 trazidos fora do conjunto do merge
+go build ./...       exit 0
+validate             0 antes · 0 depois · 3 avisos · 0 de escopo global
+divergencia          0          version.go  11.2.1
+a tripla             NAO exigida — internal/guardforms = 0, arquivo de hook = 0
+```
+
+### 🔴 As duas ressalvas que eu levantei na varredura — medidas, e as duas caem
+
+Elas foram escritas **antes** do sync, como previsões falsificáveis, e é por isso que valem:
+
+| ressalva | o que a medição disse |
+|---|---|
+| `.github/workflows/windows-probe.yml` é workflow novo e compartilhado — *"pode acrescentar job ao conjunto dos nossos PRs"* | **Não acrescenta.** É `workflow_dispatch` apenas, e o cabeçalho dele diz *"ESTA sonda roda só sob demanda (workflow_dispatch), NUNCA em push/PR"*. O conjunto continua **25** |
+| `scripts/check-ci-workflow-pin-parity.sh` é gate novo, e o `run-local-gates.sh` reprova `.sh` só nosso sem consumidor declarado | **É dele** (existe em `upstream/main`), logo fica fora da derivação: o agregador deriva *"20 script(s) só nosso(s) de 91 em scripts/"* e não o inclui |
+
+**A segunda é a que mostra o valor da derivação sobre a lista escrita à mão.** O agregador não
+precisou ser tocado: ele pergunta *"este `.sh` existe no upstream?"* a cada corrida, em vez de
+carregar uma lista que envelheceria a cada sync. É a mesma regra que este arquivo aplica aos scripts
+só nossos — *a lista NÃO se escreve à mão, ela se deriva*.
+
+### As issues #633 e #634, conferidas com padrão ANCORADO
+
+```
+'#633'  '#634'  'issues/633'  'issues/634'  'DryRunFetchesMasterDefault'
+em docs/, vault/ e .claude/ do upstream:  0 em todos
+```
+
+🔴 **A primeira varredura, com `633` e `634` soltos, devolveu 11 e 13** — e não era resposta
+nenhuma: eram dígitos casando dentro de outro texto. Padrão de três dígitos num acervo de milhares
+de linhas casa com número de linha, SHA e data. **O padrão se ancora** (`#633`, `issues/633`), ou o
+contador mede ruído. Mesma família do `grep -ci 'divergen'` que devolveu 0 com o aviso impresso
+duas linhas acima — o discriminante é o texto medido, nunca o que eu suponho que ele diga.
+
+As duas issues são de hoje à tarde; ele responde por documento no acervo, então vale reconferir no
+próximo sync.
