@@ -877,6 +877,28 @@ linha a linha, e traga à mão só o que é novo. 🔴 Nunca "aceitar o deles".
 nesta máquina**, então é ausência, não defasagem, e `--install-missing` ali só criaria hook para um
 CLI que ninguém usa.
 
+🔴 **A conclusão acima está certa e o TESTE natural dela dá o contrário — medido em 2026-10-30.**
+Quem for conferir *"o Windsurf está instalado?"* olhando o diretório de configuração vai achar que
+sim, porque ele **existe**:
+
+```
+~/.codeium/windsurf/        EXISTE   (memories/ e skills/)
+  skills/                   trackfw-agent-architect, -backend, -code-quality, -data, -dba, ...
+                            -> criado pelo TRACKFW, nao pelo Windsurf
+  memories/global_rules.md
+hooks.json                  ausente
+
+windsurf no PATH                            nao
+AppData/Local/Programs/Windsurf             nao existe
+Program Files/Windsurf                      nao existe
+AppData/Local/Windsurf                      nao existe
+```
+
+🔴 **Diretório de configuração presente não é aplicativo instalado**, e aqui a pasta existe porque o
+**próprio trackfw** escreveu skills nela para um CLI que não está na máquina. **O discriminante é o
+executável** — `command -v` mais os três caminhos de instalação —, nunca a pasta de config. Mesma
+família do *zero com sonda errada é cegueira*: a sonda óbvia responde outra pergunta.
+
 ## Não rode `make parity-rest` na raiz deste fork
 
 > ✅ **Resolvido em 2026-09-17 pelo [#381](https://github.com/kgsaran/trackfw/pull/381) do upstream,

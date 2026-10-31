@@ -32266,3 +32266,75 @@ duas linhas acima — o discriminante é o texto medido, nunca o que eu suponho 
 
 As duas issues são de hoje à tarde; ele responde por documento no acervo, então vale reconferir no
 próximo sync.
+
+---
+
+## 2026-10-30 19:40 — a 11.2.1 instalada, o hook REAL bloqueou a minha própria medição, e o teste do Windsurf engana
+
+**O que foi feito.** Fechado o resíduo do sync da 11.2.1: o binário do PATH estava em **11.1.0**,
+duas releases atrás, enquanto a árvore e o npm já eram **11.2.1**. A versão foi **derivada** de três
+fontes que concordaram — `npm view trackfw version`, o `version.go` da árvore e
+`git tag --contains 45ed483e` (`v11.2.1`).
+
+```
+os tres shells      git bash · powershell · cmd.exe  ->  11.2.1
+resolve em          .../npm/trackfw (bash) e trackfw.ps1 (PowerShell)
+pasta do npm        3 shims, nenhum .exe solto -> o contorno nao esta em vigor
+```
+
+**O guard pelo binário do PATH, por efeito, com controle negativo:**
+
+```
+rc=2  git push origin main · git commit -m x · git add -A · git add . · git checkout -b feat/x
+rc=0  git add docs/x.md · git add -A docs/ · git status · git log
+
+guard --help      rc=0      <- a sonda que pega binario VELHO
+guard naoexiste   rc=2      <- falha fechada, de proposito
+trackfw naoexiste rc=1      <- comando de topo desconhecido
+```
+
+A linha do `-A` **com pathspec** passando é a que a leitura ingênua erra: o que ofende é o escopo
+implícito, não a flag.
+
+🔴 **E o hook REAL bloqueou o meu próprio comando composto no meio da medição.** Eu pus
+`git commit --dry-run` no fim de um encadeamento que também media o harness, e o `PreToolUse:Bash`
+recusou **o comando inteiro** — nada antes dele executou. É a prova mais forte que a sessão podia
+produzir, porque é pela ferramenta real, no caminho real, com o payload real. Custou refazer as
+outras medições, e **não foi contornado**. Segunda vez hoje que a cerca me para; a primeira foi o
+`git worktree remove --force`.
+
+**O controle negativo da tripla confirma o predicado:**
+
+```
+trackfw update harness --dry-run   updated=0  skipped=35  missing=1  failed=0
+validate pelo PATH e pela arvore   rc=0 · 3 avisos · 0 de escopo global
+                                   as duas saidas IDENTICAS por cmp
+```
+
+`updated=0` é exatamente o que o predicado previa: nenhum arquivo de hook no conjunto do sync, nada
+a reescrever. É a terceira vez que o lado negativo é medido em vez de inferido.
+
+### 🔴 A linha do Windsurf no `CLAUDE.md` estava certa na conclusão e enganosa no teste
+
+Ela diz que o `missing=1` é *"ausência, não defasagem"* porque *"o Windsurf não está instalado"*.
+A conclusão se sustenta — mas o teste que qualquer um faria dá o contrário:
+
+```
+~/.codeium/windsurf/        EXISTE  (memories/ e skills/)
+  skills/                   trackfw-agent-architect, -backend, -code-quality, ...
+                            -> criado pelo TRACKFW, nao pelo Windsurf
+hooks.json                  ausente
+windsurf no PATH · Programs/Windsurf · Program Files/Windsurf · Local/Windsurf   nenhum
+```
+
+**Diretório de configuração presente não é aplicativo instalado**, e a pasta existe porque o
+**próprio trackfw** escreveu skills nela para um CLI que não está na máquina. O `CLAUDE.md` passou a
+carregar o discriminante — o executável e os três caminhos de instalação —, não só a conclusão.
+
+### Quinta ocorrência do backtick, no mesmo dia
+
+`printf "  grupos com \`trackfw guard\` no ..."` — o bash **executou** `trackfw guard`, imprimiu o
+erro dele no meio da medição e deixou o rótulo vazio (`grupos com  no`). O número medido saiu certo;
+o texto, não. É a mesma lição de 2026-10-08 e já custou rótulo errado quatro vezes antes hoje.
+**Dentro de aspas duplas, backtick executa** — em rótulo de `printf` tanto quanto em mensagem de
+commit.
