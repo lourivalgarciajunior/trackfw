@@ -208,6 +208,73 @@ roadmap **por que** o escopo original não os previa.
 - **Build obrigatório** após qualquer alteração: `go build ./...`
 - **Atualizar `docs/agents-working-context.md`** ao iniciar e encerrar cada ciclo
 
+## 🔴 Conteúdo autoral NUNCA viaja dentro de uma string de comando (INVIOLÁVEL)
+
+Texto que vai para arquivo — handoff, gate, script, markdown — se escreve com a ferramenta
+**`Write`** (arquivo novo ou reescrito inteiro) ou **`Edit`** (mudança pontual). **Nunca** por
+`python - <<'PY'`, `cat > arquivo <<'EOF'` ou qualquer outra forma que ponha o conteúdo dentro do
+comando.
+
+### Por que, medido byte a byte em 2026-10-31
+
+O **mesmo** conteúdo, escrito pelos dois caminhos e comparado em bytes:
+
+```
+padrao                                 Write    por string de comando
+contrabarra + newline (continuacao)      2        1
+contrabarra DUPLA   \\                   1        0     <- comida
+contrabarra + t     \t                   1        0     <- comida
+$'\r'                                    1        0     <- comida
+contrabarra + n     \n                   1        1
+contrabarra + ponto \.                   1        1
+cmp das duas                          DIFEREM
+```
+
+🔴 **A causa não é o heredoc do bash — é a contrabarra atravessando a string de comando.** Trocar um
+heredoc por outro não resolve; o que resolve é o conteúdo não passar por ali. O `Write` e o `Edit`
+levam o conteúdo como **string de JSON**, sem shell no caminho.
+
+### O que isso já custou
+
+| quando | o que saiu errado |
+|---|---|
+| 2026-10-31 | o handoff publicou uma continuação de linha virada em `\n` literal — **comando que não roda** para quem copia. E pegou **duas vezes no mesmo minuto**: ao escrever, e na busca que tentava consertar (o `replace` procurando a contrabarra virou **no-op**) |
+| 2026-10-01 | o `check-req-marcador-ancorado.sh` ficou com as **duas pernas do CRLF idênticas** — o caso CRLF nunca foi verificado |
+| 2026-09-08 | um heredoc comeu metade das barras invertidas de uma sonda do corpus de predicados, e quase inverteu a conclusão |
+
+🔴 **A memória `heredoc-come-contrabarra` já existia** e não impediu nenhuma das três. É por isso
+que esta regra é mecânica em vez de "lembrar melhor".
+
+### A ordem de escolha, medida
+
+1. **`Edit`** para mudança pontual. **Ele preserva CRLF**, medido em 2026-10-31 no
+   `.github/workflows/local-gates.yml` (CRLF, 243 linhas): depois do acréscimo, `CR=261 LF=261`,
+   **0 linhas LF puro**, e o diff saiu `+18` sem churn.
+2. **`Write`** para arquivo novo ou reescrito inteiro.
+3. **`scripts/anexa-crlf.sh <fonte> <alvo>`** para anexar ao fim de arquivo grande — o caso em que
+   o `Edit` pede âncora única e leitura prévia, e o `Write` reescreveria 32 mil linhas. A fonte se
+   escreve com `Write`; o script recebe **só caminhos**, converte para CRLF e **verifica por
+   efeito**: compara os bytes anexados com a fonte normalizada, confere que o conteúdo anterior não
+   mudou, confere que não apareceu linha LF-only — e **restaura o alvo** se qualquer um falhar.
+
+### Por que NÃO existe gate de repositório para isto
+
+🔴 **A corrupção é sintaticamente válida.** `cmd --flag \n | foo` é linha de shell legal — ali `\n`
+é só um `n` escapado —, então `sh -n` não vê, e o `check-gates-uma-linha-por-comando.sh` também não.
+Um gate textual para a assinatura daria falso positivo na prosa que cita `\n` de propósito, e o
+handoff faz isso em várias entradas.
+
+O instrumento honesto é a **pós-condição dentro da ferramenta**, que decide sobre **bytes** em vez
+de padrão de texto. O auto-teste dela tem passo próprio no `local-gates.yml`, com piso no
+denominador, porque ela está declarada `FORA` do agregador — é ferramenta, não gate.
+
+### Armadilha de medição, da mesma família
+
+**`cat -A` depois de um `sed` mente sobre fim de linha** — o `sed` do MSYS converte CRLF em modo
+texto, e as linhas aparecem sem `^M`. Em 2026-10-31 isso quase me fez registrar como LF uma entrada
+que estava em CRLF, no mesmo minuto em que o `\n` literal era real. **Instrumento que passa por
+filtro de texto não decide sobre fim de linha** — leia os bytes.
+
 ## Instalação de skills de terceiro (`trackfw <skills|agents> third-party`)
 
 Instala skills externas (via URL) em duas fases obrigatórias, com um ponto de revisão humana entre

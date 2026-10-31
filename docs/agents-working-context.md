@@ -32497,3 +32497,95 @@ sync ali gastaria 25 jobs de CI para trazer **zero** arquivo. Com o bump, o inte
 **1 de produto** — o `version.go` —, e sincronizar antes da tag sair teria posto a árvore em 11.2.2
 com o npm ainda em 11.2.1: o resíduo do PATH que fechamos hoje reabriria na hora. Esperar a release
 fez os dois passos caberem num movimento.
+
+---
+
+## 2026-10-31 12:40 — "o handoff saiu com um comando quebrado" era uma CLASSE, e virou regra mecânica
+
+**O que foi feito.** O usuário perguntou *"isso acontece toda hora, como fazemos para resolver em
+definitivo"*. A resposta não é lembrar melhor: a memória `heredoc-come-contrabarra` **já existia** e
+me pegou duas vezes no mesmo minuto, horas antes desta entrada.
+
+### A causa, pinada byte a byte — e não é o heredoc
+
+O **mesmo** conteúdo, escrito pelos dois caminhos e comparado em bytes:
+
+```
+padrao                                 Write    por string de comando
+contrabarra + newline (continuacao)      2        1
+contrabarra DUPLA   \\                   1        0     <- comida
+contrabarra + t     \t                   1        0     <- comida
+$'\r'                                    1        0     <- comida
+contrabarra + n     \n                   1        1
+contrabarra + ponto \.                   1        1
+cmp das duas                          DIFEREM
+```
+
+🔴 **É a contrabarra atravessando a string de comando**, não o heredoc do bash. Isso muda o remédio:
+trocar um heredoc por outro não resolve nada, e era o que eu vinha fazendo.
+
+### A ordem de escolha, cada degrau medido
+
+| degrau | medição |
+|---|---|
+| **`Edit`** para mudança pontual | **preserva CRLF** — no `local-gates.yml` (CRLF, 243 linhas): `CR=261 LF=261`, **0 linhas LF puro**, diff `+18` sem churn. No `CLAUDE.md`: `CR=3291 LF=3291`, 0 LF puro, e `\\`=1, `\t`=1, `\r`=1 sobreviveram na seção nova |
+| **`Write`** para arquivo novo | preserva tudo (a tabela acima) |
+| **`scripts/anexa-crlf.sh`** para anexar a arquivo grande | o caso em que o `Edit` pede âncora única e leitura prévia, e o `Write` reescreveria 32 mil linhas |
+
+🔴 **A descoberta de que o `Edit` preserva CRLF reposicionou a ferramenta que eu tinha acabado de
+escrever** — de primária para terceiro degrau. Registro isso em vez de esconder: a medição derrubou
+o meu próprio desenho no meio do trabalho, e o resultado é melhor.
+
+### A ferramenta, e por que ela verifica em vez de prometer
+
+`scripts/anexa-crlf.sh <fonte> <alvo>` recebe **só caminhos**. Depois de anexar, ele compara os
+bytes anexados com a fonte normalizada, confere que o conteúdo anterior não mudou, confere que não
+apareceu linha LF-only — e **restaura o alvo** se qualquer um falhar, porque alvo meio-escrito é
+pior que alvo não escrito.
+
+```
+auto-teste                       9 caso(s) · 0 falha(s)
+  python3 resolvido              rc=0
+  PY=python (a queda)            rc=0
+  PATH sem nenhum dos dois       rc=1, "nem python3 nem python no PATH"   <- falha fechada, com motivo
+```
+
+🔴 **O auto-teste pegou DOIS defeitos meus antes de a ferramenta tocar arquivo real:** a fixture
+escrevia `\ t` com espaço em vez de `\t`, e uma asserção minha esperava 1 linha LF quando o correto
+era 0. É exatamente para isso que o piso de casos existe.
+
+🔴 **E um defeito de portabilidade que só o CI pegaria:** eu havia chumbado `PY=${PY:-python}`, e em
+`ubuntu-latest` o nome `python` **não existe** por padrão — só `python3`. O agregador roda lá, então
+isso reprovaria o passo por motivo de ambiente. A resolução passou a preferir `python3`, com queda
+para `python` e falha nomeada se não houver nenhum.
+
+### Por que NÃO existe gate de repositório para esta classe
+
+🔴 **A corrupção é sintaticamente válida.** `cmd --flag \n | foo` é linha de shell legal — ali `\n` é
+só um `n` escapado —, então `sh -n` não vê, e o `check-gates-uma-linha-por-comando.sh` também não.
+Um gate textual para a assinatura daria falso positivo na prosa que cita `\n` de propósito, e este
+handoff faz isso em várias entradas.
+
+O instrumento honesto é a **pós-condição dentro da ferramenta**, que decide sobre **bytes**. Ela
+está declarada `FORA` do agregador — é ferramenta, não gate: modifica o arquivo que recebe como
+argumento, e sem argumentos sai 1 por construção, então `EXECUTAR` a reprovaria por motivo nenhum. O
+auto-teste tem passo próprio no `local-gates.yml`, com piso no denominador, mesmo precedente do
+`check-roadmap-done-com-ml-pendente`.
+
+```
+guarda de completude do agregador   21 script(s) so nosso(s) de 92 em scripts/   (era 20 de 91)
+nenhum ✗ COMPLETUDE, e o agregador seguiu para os gates
+```
+
+### Duas armadilhas de medição do mesmo dia, em direções opostas
+
+- **`cat -A` depois de `sed` mente sobre fim de linha.** O `sed` do MSYS converte CRLF em modo
+  texto, as linhas aparecem sem `^M`, e eu quase registrei como LF uma entrada que estava em CRLF —
+  no mesmo minuto em que o `\n` literal era real. **Instrumento que passa por filtro de texto não
+  decide sobre fim de linha.**
+- **O backtick dentro de aspas duplas me pegou pela SEXTA vez**, e desta vez deixou detrito: o
+  rótulo de um `echo` executou `cat fonte >> alvo` na raiz do repositório e criou um arquivo `alvo`
+  de 0 byte, que eu só vi no `git status` do commit seguinte. É a mesma família da regra nova —
+  caractere especial de shell dentro de string de comando.
+
+**Esta entrada foi anexada pela própria ferramenta**, que é o primeiro uso real dela.
