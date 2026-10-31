@@ -109,6 +109,24 @@ jobs:
           bash scripts/check-roadmap-done-com-ml-pendente.sh --self-test | tee "$RUNNER_TEMP/rd-self-test.txt"
           grep -qE '^self-test: [1-9][0-9]* de [1-9][0-9]* caso\(s\) passaram$' "$RUNNER_TEMP/rd-self-test.txt"
 
+      - name: Self-test do anexa-crlf — a ferramenta de autoria sem string de comando
+        # 🔴 Ele esta declarado FORA do agregador (e ferramenta, nao gate: MODIFICA o
+        # arquivo que recebe como argumento, e sem argumentos sai 1 por construcao).
+        # Sem este passo o auto-teste dele NAO rodaria em lugar nenhum do nosso CI —
+        # mesmo precedente do check-roadmap-done-com-ml-pendente acima.
+        #
+        # 🔴 Guarda de vacuidade sobre o denominador: auto-teste que exercita zero caso
+        # sai 0 e pareceria verde. O script falha sozinho abaixo de 9 casos, e este
+        # passo confere a frase do denominador.
+        #
+        # 🔴 E ele exercita aqui o caminho que NAO existe nesta maquina: em ubuntu-latest
+        # o nome `python` nao existe por padrao, so `python3`. A resolucao do script
+        # prefere `python3` justamente por isso, e e este runner que prova.
+        run: |
+          set -euo pipefail
+          bash scripts/anexa-crlf.sh --self-test | tee "$RUNNER_TEMP/anexa-self-test.txt"
+          grep -qE '^anexa-crlf --self-test: [1-9][0-9]* caso\(s\) · 0 falha\(s\)$' "$RUNNER_TEMP/anexa-self-test.txt"
+
       - name: Self-test do ratchet de Windows do upstream
         # 🔴 Sem este passo o self-test NAO roda em lugar nenhum do nosso CI. O `Makefile` o
         # chama no `parity-rest`, mas o nosso `parity-other-gates` morre na linha 78, antes de
