@@ -32467,8 +32467,25 @@ mensagem de erro, leitura vazia, tag sem o `v`, versão anterior, versão à fre
 **A versão é argumento derivado, nunca escrito à mão.** A derivação está no cabeçalho do script:
 
 ```
-MSYS_NO_PATHCONV=1 git show upstream/main:internal/version/version.go \n  | grep -oE '"[0-9]+\.[0-9]+\.[0-9]+"' | head -1 | tr -d '"'
+MSYS_NO_PATHCONV=1 git show upstream/main:internal/version/version.go | grep -oE '"[0-9]+\.[0-9]+\.[0-9]+"' | head -1 | tr -d '"'
 ```
+
+🔴 **E a primeira versao desta entrada publicou o comando QUEBRADO** — a continuacao de linha
+saiu como contrabarra mais a letra `n`, entao quem copiasse receberia um comando que nao roda. **A
+causa e o heredoc comendo contrabarra**, que esta na memoria desta sessao e me pegou DUAS vezes no
+mesmo minuto: primeiro ao escrever a entrada, depois na busca que tentava consertar (`str.replace`
+procurando a contrabarra virou no-op, exatamente como a memoria descreve). O que funcionou foi
+**construir o byte** — `bytes([92])` — em vez de escreve-lo no fonte.
+
+**E o conserto nao foi escapar melhor: foi tirar a necessidade da continuacao**, pondo o comando numa
+linha. Comando de uma linha tambem e melhor para quem copia. Provado por execucao: a linha como esta
+escrita devolve `11.2.2` com rc=0.
+
+🔴 **E duas medicoes minhas mentiram em direcoes OPOSTAS no mesmo minuto.** O `cat -A` depois de
+um `sed` mostrou as linhas **sem** `^M` e eu quase registrei a entrada como LF — a armadilha que este
+arquivo ja documenta (*"o `sed` do MSYS converte CRLF em modo texto"*) —, e o CRLF estava la. Quem
+disse a verdade nas duas pontas foi ler os **bytes crus** com Python. **Instrumento que passa por
+filtro de texto nao decide sobre fim de linha.**
 
 **E a release saiu enquanto eu escrevia o script**, o que deu o controle positivo **ao vivo** em vez
 de sintético — mais forte do que eu teria conseguido de propósito.
