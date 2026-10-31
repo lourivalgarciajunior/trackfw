@@ -32420,3 +32420,80 @@ quando o processo anterior saiu"*. **O log diz outra coisa**, e ler a notificaç
 encerrou" teria perdido a causa. É a mesma família de `cano-mascara-exit-code`: o sinal existe e
 responde outra pergunta. **A corrida seguinte teve 0 linhas de falha de fork**, então é acidente
 até repetir — se repetir, é padrão e pede medição própria.
+
+---
+
+## 2026-10-31 11:50 — sync da 11.2.2, e a vigia da `main` NÃO pega release: ferramenta nova
+
+**O que foi feito.** Sync de dois commits (`#642` governança das #633/#634, `#643` bump) e a
+**11.2.2 instalada no PATH**, com a versão derivada de três fontes que concordaram.
+
+```
+produto trazido      5         governanca retida  9   (de 14 no merge)
+invariante           ancorado na BASE DE MERGE (42cf24b8): 14 = 5 + 9, 0 fora
+go build · validate  exit 0 · 0 antes · 0 depois · 3 avisos · 0 de escopo global
+divergencia          0        version.go 11.2.2   binario da arvore 11.2.2
+a tripla             NAO exigida (guardforms 0, arquivo de hook 0)
+
+os tres shells       git bash · powershell · cmd.exe  ->  11.2.2
+guard pelo PATH      rc=2 push · commit · add -A      rc=0 add docs/x.md · add -A docs/ · status
+sondas de versao     guard --help 0 · guard naoexiste 2 (fail-closed)
+harness --dry-run    updated=0 skipped=35 missing=1 failed=0   <- controle negativo
+validate             PATH e arvore IDENTICOS por cmp
+```
+
+### 🔴 A vigia da `main` não pega release, e a razão é mecânica
+
+**A tag nasce NO COMMIT QUE JÁ ESTÁ LÁ**, então a `main` **não anda** quando a release sai. Medido
+neste mesmo dia: o bump para 11.2.2 mesclou às 11:33 (`2e0f1817`) e, no mesmo minuto, `git tag` e
+`npm view` ainda diziam **11.2.1**. Armar a vigia da `main` para esperar release é esperar um evento
+que não acontece — e eu ia fazer exatamente isso quando o usuário pediu *"avisa quando a release
+sair"*.
+
+**A ferramenta nova:** `~/.claude/projects/<projeto>/tools/vigia-release-upstream.sh`. Ela vigia a
+**tag E o npm**, e exige as duas — a tag pode existir antes de o npm publicar, porque o workflow de
+release roda depois dela; e o passo 2 da tripla é `npm i -g`, logo quem decide é o npm.
+
+```
+auto-teste                  12 caso(s) · 0 falha(s)
+controle POSITIVO ao vivo   rc=0 — "RELEASE 11.2.2 SAIU", tag v11.2.2 · npm 11.2.2
+controle NEGATIVO ao vivo   rc=2 — esperando 99.9.9, teto atingido, nao 'saiu'
+```
+
+Os nove casos de *deve esperar* cobrem o que faria errar: **só a tag**, **só o npm**, leitura com
+mensagem de erro, leitura vazia, tag sem o `v`, versão anterior, versão à frente, as duas vazias, e o
+**CR invisível**. 🔴 **Leitura falhada não é release** — falha fechada, com controle, e não por fé.
+
+**A versão é argumento derivado, nunca escrito à mão.** A derivação está no cabeçalho do script:
+
+```
+MSYS_NO_PATHCONV=1 git show upstream/main:internal/version/version.go | grep -oE '"[0-9]+\.[0-9]+\.[0-9]+"' | head -1 | tr -d '"'
+```
+
+🔴 **E a primeira versao desta entrada publicou o comando QUEBRADO** — a continuacao de linha
+saiu como contrabarra mais a letra `n`, entao quem copiasse receberia um comando que nao roda. **A
+causa e o heredoc comendo contrabarra**, que esta na memoria desta sessao e me pegou DUAS vezes no
+mesmo minuto: primeiro ao escrever a entrada, depois na busca que tentava consertar (`str.replace`
+procurando a contrabarra virou no-op, exatamente como a memoria descreve). O que funcionou foi
+**construir o byte** — `bytes([92])` — em vez de escreve-lo no fonte.
+
+**E o conserto nao foi escapar melhor: foi tirar a necessidade da continuacao**, pondo o comando numa
+linha. Comando de uma linha tambem e melhor para quem copia. Provado por execucao: a linha como esta
+escrita devolve `11.2.2` com rc=0.
+
+🔴 **E duas medicoes minhas mentiram em direcoes OPOSTAS no mesmo minuto.** O `cat -A` depois de
+um `sed` mostrou as linhas **sem** `^M` e eu quase registrei a entrada como LF — a armadilha que este
+arquivo ja documenta (*"o `sed` do MSYS converte CRLF em modo texto"*) —, e o CRLF estava la. Quem
+disse a verdade nas duas pontas foi ler os **bytes crus** com Python. **Instrumento que passa por
+filtro de texto nao decide sobre fim de linha.**
+
+**E a release saiu enquanto eu escrevia o script**, o que deu o controle positivo **ao vivo** em vez
+de sintético — mais forte do que eu teria conseguido de propósito.
+
+### Por que o sync esperou a release, por decisão do usuário
+
+No movimento anterior o intervalo era **só governança** (o #642, 7 arquivos, todos retidos), e um
+sync ali gastaria 25 jobs de CI para trazer **zero** arquivo. Com o bump, o intervalo passou a ter
+**1 de produto** — o `version.go` —, e sincronizar antes da tag sair teria posto a árvore em 11.2.2
+com o npm ainda em 11.2.1: o resíduo do PATH que fechamos hoje reabriria na hora. Esperar a release
+fez os dois passos caberem num movimento.
