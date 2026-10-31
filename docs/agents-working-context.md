@@ -32338,3 +32338,85 @@ erro dele no meio da medição e deixou o rótulo vazio (`grupos com  no`). O n�
 o texto, não. É a mesma lição de 2026-10-08 e já custou rótulo errado quatro vezes antes hoje.
 **Dentro de aspas duplas, backtick executa** — em rótulo de `printf` tanto quanto em mensagem de
 commit.
+
+---
+
+## 2026-10-31 10:30 — o ciclo inteiro fechou: as nossas #633 e #634 medidas, reportadas, corrigidas e mescladas em menos de 24 h
+
+**O que foi feito.** Sync do #640 do upstream, que é `Closes #633 Closes #634` — as duas issues que
+esta sessão abriu ontem à tarde. **CLOSED/COMPLETED** às 13:09:47Z e 13:09:49Z.
+
+### A linha do tempo, que é o registro mais útil desta entrada
+
+```
+30/10 ~17h   medi as duas causas e abri #633 e #634
+30/10 18:36  ele abriu ADR, REQs e roadmaps
+30/10 19:57  as duas correcoes implementadas
+30/10 20:31  red team DELE acha A-1 a A-5 na propria implementacao
+30/10 20:47  A-1 a A-5 corrigidos
+31/10 09:30  medi a branch AQUI: FAIL na base, PASS na branch
+31/10 09:4x  postei a medicao nas duas issues
+31/10 10:09  #640 mesclado
+```
+
+### 🔴 Os dois limites que eu DECLAREI como não medidos foram exatamente o que ele mediu
+
+| limite que eu escrevi | o que ele respondeu |
+|---|---|
+| *"não varri os outros chamadores de `resolveDefaultBranch`"* | trouxe o `branch prune` para a **mesma REQ**, e o diff também toca `release.go` e `ship.go` |
+| *"não varri os outros `os.Symlink` dos testes"* | varreu: só mais um materializa binário no PATH (`git_branch_guard_test.go`), e esse **já cai para cópia** |
+
+**Declarar o limite é o que fez o trabalho continuar de onde parou**, em vez de recomeçar. É a
+contrapartida prática da regra desta casa sobre `(d) não verificável aqui`: o limite declarado é
+resultado, não desculpa — e aqui ele virou escopo da REQ dele.
+
+🔴 **E a decisão de desenho dele é melhor que a minha sugestão.** Eu ofereci duas saídas na issue;
+ele escolheu `git ls-remote --symref origin HEAD` e **recusou o `set-head --auto`** porque ele
+**escreve no repositório do usuário**. Na minha sonda o `--auto` era controle positivo — para provar
+que a ref era reconstruível —, e eu o repassei como candidato a remédio sem pesar o efeito colateral.
+
+**E `remote.origin.followRemoteHEAD never` como alavanca de teste fecha o ponto mais frágil da minha
+medição:** ela dependia de **ter** um git anterior à 2.48 à mão. Com a chave, o caso é exercitável em
+qualquer versão — inclusive no `windows-latest`, que é 2.56.0 e por isso não via nada.
+
+### Medido neste sync
+
+```
+produto trazido      16        governanca retida  14   (de 30 no merge)
+invariante           ancorado na BASE DE MERGE (45ed483e): 30 = 16 + 14, 0 fora
+go build · validate  exit 0 · 0 antes · 0 depois · 3 avisos · 0 de escopo global
+divergencia          0        a tripla NAO exigida (guardforms 0, hook 0)
+
+os dois testes, na NOSSA arvore:
+  TestBranchNew_DryRunFetchesMasterDefault     ok
+  TestAttentionScripts_FallbackWithoutJQ       ok
+
+o escopo antes nao exercitado:
+  familia branch new/base/default/parseLsRemote   17 PASS · 0 FAIL
+  branch prune · release                          ok · ok
+  ship                                            1 FAIL (abaixo)
+```
+
+🔴 **O FAIL do `ship` não é regressão, e o controle fecha nas duas direções:**
+`TestShip_Integration_GracefulDegradation_RealBinary` reprova **idêntico** em `c331e5cb` (worktree,
+antes do sync), e está em `entries[]` do `.github/windows-known-failures.json` como falha **ativa e
+declarada** — *"Group C: fake git.exe in PATH triggers Windows runner anti-fork-bomb defense …
+(MEASURED)"*. É uma das 6 que restaram da campanha de Windows dele, todas de ambiente.
+
+**E o que eu medi na branch é byte a byte o que mesclou:** `git diff cb62fa1e 42cf24b8` nos arquivos
+de produto dá **0**. O risco que eu declarei no comentário — *"o veredito vale para o SHA escrito,
+não para o nome do ponteiro"* — não se materializou, e isso foi **medido**, não presumido.
+
+### 🔴 A vigia morreu de falha de FORK do MSYS, e a notificação disse `stopped`
+
+```
+dofork: child -1 ... died unexpectedly, exit code 0xC000026B, errno 11
+vigia-main-upstream.sh: fork: retry: Resource temporarily unavailable
+ultimo ciclo 247/1110  ·  ANDOU 0  ·  6 linhas de falha de fork
+```
+
+A notificação de tarefa trouxe `stopped` com a nota de que *"pode ter sido parada ou estar rodando
+quando o processo anterior saiu"*. **O log diz outra coisa**, e ler a notificação como "a sessão
+encerrou" teria perdido a causa. É a mesma família de `cano-mascara-exit-code`: o sinal existe e
+responde outra pergunta. **A corrida seguinte teve 0 linhas de falha de fork**, então é acidente
+até repetir — se repetir, é padrão e pede medição própria.
