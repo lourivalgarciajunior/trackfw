@@ -32589,3 +32589,130 @@ nenhum ✗ COMPLETUDE, e o agregador seguiu para os gates
   caractere especial de shell dentro de string de comando.
 
 **Esta entrada foi anexada pela própria ferramenta**, que é o primeiro uso real dela.
+
+---
+
+## 2026-10-31 19:14 — sync da 11.2.3 e a tripla; e o Defender passou a comer o CLI compilado aqui
+
+**O que foi feito.** Sync dos dois commits da 11.2.3 do upstream (`c915f0fb` = #644, o `ml_scope` da
+wave N cobrindo wave posterior já iniciada; `a485c637` = #645, o bump) e `npm i -g trackfw@11.2.3`.
+A release foi detectada pelo vigia de release às 17:42, em um ciclo.
+
+### O sync, com a invariante fechada e ancorada na BASE DE MERGE
+
+```
+base de merge    2e0f1817a5f3        upstream/main  a485c637ad3f
+merge toca  29  =  trazidos 14  +  retidos 15
+retido fora de docs/ e vault/                 0
+trazido fora do conjunto do merge             0
+divergencia de produto (indice x upstream)    0
+  24 arquivos diferem, e os 24 sao ADICAO nossa (ausentes no upstream, conferido por ls-tree)
+  internal/, cmd/ e Makefile nao aparecem
+guarda de vacuidade: upstream/main:Makefile legivel   sim
+go build ./...   rc=0        validate   3 avisos antes · 3 depois
+```
+
+### A previsão do predicado dos arquivos de hook acertou de novo — quarto intervalo
+
+Escrita **antes** do merge: zero arquivo de hook no conjunto ⇒ o `validate` fica em 3 avisos e o
+passo 3 da tripla (`update harness`) não é exigido. Cumpriu-se.
+
+| sync | `validate` | arquivo de hook no conjunto? |
+|---|---|---|
+| #595 | 3 → 23 (20 globais) | **sim** |
+| #596/#597 | 3 → 3 | não |
+| #598/#600/#601 | 3 → 3 | não |
+| #644/#645 | 3 → 3 | não |
+
+E o predicado fino concordou: `internal/guardforms/guard_generations.go` fora do conjunto e `cmp`
+idêntico. As quatro bordas do `Caducou:` que o nosso gate espelha estão intactas — a
+`LapsedContinuationRe` é a **mesma regex na linha 58** dos dois lados; só os números de linha dos
+consumidores andaram (675 → 1007, 766 → 1103), porque o `roadmapdoc.go` cresceu +390.
+
+### O passo 2 da tripla, provado por efeito nos três shells
+
+```
+Git Bash    %APPDATA%/npm/trackfw       trackfw 11.2.3
+PowerShell  %APPDATA%/npm/trackfw.ps1   trackfw 11.2.3
+cmd.exe                                 trackfw 11.2.3
+
+guard git-branch, payload real, rc lido sem cano:
+  git status · git log                         0 · 0      <- controle negativo
+  git push origin main · git commit -m x       2 · 2
+  git add -A · git add .                       2 · 2
+  git add docs/x.md                            0          <- caminho explicito
+  git add -A docs/                             0          <- `-A` COM pathspec e pathspec
+```
+
+A penúltima e a última são as que a leitura ingênua erra, e por isso estão medidas.
+
+### 🔴 ACHADO NOVO: o Defender põe em quarentena o CLI compilado desta fonte, nesta máquina
+
+Logo depois de o sync reconstruir os binários da árvore às 19:02, o `bin/trackfw` e o
+`bin/trackfw.exe` ficaram ilegíveis — `Permission denied` **até no `cmp`**, que é leitura, e isso é o
+que descarta bit de execução e ACL de saída. O log do Defender nomeia:
+
+```
+Trojan:Win32/Bearfoos.A!ml   severidade 5   19:03:05 e 19:03:24
+Resources: file:_C:\dev\ferramentas\trackfw-main\bin\trackfw(.exe)
+```
+
+O sufixo `!ml` é heurística por aprendizado de máquina, não assinatura.
+
+**Medido em quatro direções, e a terceira é o controle que inverte a leitura óbvia:**
+
+| | resultado |
+|---|---|
+| fonte 11.2.3, `go build -o <qualquer>/trackfw.exe ./cmd/trackfw` | 🔴 rc=1, *"contains a virus"* no `a.out.exe` do linker |
+| o mesmo em `/tmp` e no scratchpad, fora do repo | 🔴 igual — **o gatilho são os bytes, não o local** |
+| fonte **11.2.2** (worktree em `f07b5d39`), mesma máquina, mesmo minuto | ✅ compila e roda — `trackfw 11.2.2` |
+| 11.2.3 **publicada** (build do CI dele, baixada por `npm pack`) | ✅ lê, hasheia e roda aqui |
+
+🔴 **A terceira linha é a que vale guardar:** sem ela, a conclusão natural seria *"a definição do
+Defender atualizou hoje e agora todo build de Go morre"*, e isso é falso. O que mudou foram os bytes
+desta fonte — a 11.2.3 trouxe +3 225 linhas em `barrier.go` e `roadmapdoc.go`, e o build local caiu
+na região ruim do modelo.
+
+**E o código está bom pelas duas provas independentes:** o artefato que o npm publica, compilado da
+**mesma fonte** pelo CI dele, roda limpo nesta máquina (14 828 032 bytes, contra 21 160 448 do meu
+build); e os **seis** jobs de Windows dele passaram nos dois PRs, inclusive o `windows-full-suites`,
+que compila o CLI.
+
+`go version go1.26.1 windows/amd64`.
+
+#### O custo, medido — e ele é de instrumento, não de produto
+
+```
+go build ./...  (so compila)                 rc=0
+go vet                                       rc=0
+go test ./internal/roadmapdoc/...            rc=0  ok  10,8 s
+trackfw validate (PATH, 11.2.3 publicada)    rc=0  3 avisos
+os 56 testes novos do ml_scope               rc=0  0,77 s   <- os que AFIRMAM a mudanca do #644
+os 16 gates so nossos, rodados um a um       16 rc=0   (157 s somados)
+
+E2E do barrier (barrier_contract, barrier_fence)   13 FAIL
+  FAIL com a mensagem de virus                     13
+  FAIL sem ela                                      0        <- classificado um a um, nao por total
+run-local-gates.sh                           bloqueado: a precondicao exige `-x bin/trackfw`
+```
+
+🔴 **O que está cego é só o que precisa do executável ligado de `cmd/trackfw`.** Binário de teste
+não é comido; os testes que afirmam a mudança rodam e passam. O agregador roda em `ubuntu-latest` no
+CI, que é onde ele de fato cobra — e o `windows-full-suites` do CI é a pergunta aberta, porque o
+runner do GitHub tem Defender próprio e o dele passou nesta fonte.
+
+🔴 **Não apliquei remédio, e a razão é de alçada, não técnica:** exclusão no Defender é mudança de
+configuração de segurança da máquina do usuário, e isso não se faz sem a palavra dele. Mesma
+precedência do `icacls` de 2026-10-16, em que eu medi, escrevi a sequência e **quem rodou foi o
+usuário**.
+
+### Duas armadilhas de instrumento, as duas minhas
+
+- **`git rev-parse --short=12 A B` sai 128** com *"Needed a single revision"* — é o `=N` que força
+  revisão única, e por um momento isso pareceu ref de `origin` faltando. `--short` pelado aceita
+  dois. Lido ao contrário, seria "o `origin/main` não existe", que é diagnóstico errado sobre
+  repositório são.
+- **`/tmp` invisível ao Python nativo do Windows, pela enésima vez** — o classificador dos FAILs
+  estourou `FileNotFoundError` sobre um arquivo que o bash lê. O caminho nativo resolve.
+
+**Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
