@@ -1673,10 +1673,13 @@ never guesses:**
    working tree is clean. **This local resolution is a cross-check candidate only — see the
    "commit-target ancoring" note below for what actually decides the published commit.**
 3. **The 4 version files disagree with `<version>`** — `internal/version/version.go`,
-   `npm/package.json`, `pypi/pyproject.toml`, and `pypi/trackfw/__init__.py` (checked twice: the
-   `importlib.metadata` fallback and the `except`-block fallback, since both hold a version
-   literal) — 5 checks in total. Refuses naming exactly which file/occurrence diverges and both
-   values.
+   `npm/package.json`, `npm/package-lock.json` (checked twice: the root `"version"` field and
+   `packages[""].version` — two independent checks from one file), and `pypi/pyproject.toml`
+   — **5 checks in total** (AC1, REQ-2026-08-30). Note: `pypi/trackfw/__init__.py` is no
+   longer read by `release tag` (removed in ML-1A, REQ-2026-08-30; Wave 3 deletes the file).
+   Refuses naming exactly which file/occurrence diverges and both values. The two lockfile
+   checks are independent: a v1 lockfile (no `packages[""]` entry) or a corrupted lockfile
+   causes the `packages[""].version` check to fail closed (error, not silent pass).
 4. **`CHANGELOG.md` missing the version's section** — refuses unless a `## [<version>] -
    YYYY-MM-DD` heading exists; the matched section becomes the tag message
    (`changelog.FormatSection`/`format_section`/`formatSection` — the module `ship`-adjacent
@@ -4361,6 +4364,26 @@ template is `skipped`, even if the implementation rewrote the bytes. Deciding by
 instead of "did the content change" makes an idempotent re-run report `updated` in one runtime and
 `skipped` in another for the same input — measured divergence between Go and Node.js in the first
 Wave 6 round.
+
+### `agent_models` advisory — emitted at most once per `update harness` call (AC3, REQ-2026-08-30)
+
+<!-- trackfw-contract: gate=internal/generators/update_test.go partial=TestUpdateHarness_AgentModelsAdvisory_EmittedOnceForMultipleCatalogTargets e TestUpdateHarness_AgentModelsAdvisory_NotEmittedForNonCatalogTargets -->
+
+When `update harness` selects one or more catalog targets (`<tool>-agents`, `<tool>-skills`),
+`ResolveAgentModels("global", …)` is called **once** — in a pre-scan before the target loop — and
+any advisory message is emitted **once** to `ErrWriter` (command level: `cmd.ErrOrStderr()`), not
+once per catalog target. Non-catalog targets (`credential-guard-script`,
+`git-branch-guard-script`, per-tool guard wiring) never trigger the resolution.
+
+**Contract (binding):**
+
+- N catalog targets selected, no global `agent_models` configured → advisory appears **exactly once**
+  in `ErrWriter`; not 2 or N times.
+- Zero catalog targets selected (e.g. `--targets credential-guard-script`) → advisory **does not
+  appear** in `ErrWriter`, even if HOME has no global `agent_models`.
+- The advisory text is one of the three constants defined in `internal/config/config.go`:
+  `GlobalAgentModelsNoneMessage`, `GlobalAgentModelsProjectOnlyMessage`,
+  `MalformedGlobalConfigMessage`. The text is never modified by this layer.
 
 ### Declared harness targets — pinned list
 
@@ -7460,8 +7483,27 @@ por caminho, não por manifesto (ADR-2026-08-27).
 | `scaffold-wrong-mode` | artefato de scaffold existe com conteúdo correto, mas o bit de execução do owner está ausente (`mode & 0o100 == 0`) em um artefato que deve ser executável | `trackfw update` — o `update` restaura o conteúdo **e** o modo (ver AC9 abaixo) |
 | `scaffold-workflow-duplicated` | `trackfw-gate.yml` e `trackfw-validate.yml` estão ambos presentes como arquivos regulares — executam o mesmo `trackfw validate` com instaladores diferentes (`ADR-2026-09-29` D3). **Advisory, não bloqueante.** O `gate.yml` é o canônico; o consumidor decide se remove o `validate.yml` **após verificar** que `governance-go-install` não está nos `required_status_checks` do repositório (o produto não pode verificar isso) | Nenhum comando automático — a mensagem descreve o que verificar antes de remover `trackfw-validate.yml` manualmente |
 
-As quatro classes têm `claim` zerado (`kind`, `item`, `target`, `surface`, `scope` = string vazia)
+As quatro classes acima têm `claim` zerado (`kind`, `item`, `target`, `surface`, `scope` = string vazia)
 — artefatos de scaffold nunca têm entrada no manifesto.
+
+#### `stray-agent-memory` — memória de agente fora da raiz (REQ-2026-11-01, #646)
+
+<!-- trackfw-contract: gate=internal/commands/doctor_test.go partial=TestScanStrayAgentMemory_SubpastaComMemoriaVazia,TestScanStrayAgentMemory_ApenasRaizNenhumAchado,TestScanStrayAgentMemory_RepositorioAninhado,TestScanStrayAgentMemory_PathsWithSpaceAndQuote,TestScanStrayAgentMemory_UnreadableSubdir cobrem os cenários do AC4/AC7: stray com 0 e 2 arquivos, root-only sem achado, repo aninhado não reportado, caminho com espaço e aspas, subdir ilegível -->
+
+| classe | condição | remédio |
+|---|---|---|
+| `stray-agent-memory` | um diretório `.claude/agent-memory/` foi encontrado **fora** da raiz do repositório — criado pelo harness do Claude Code quando um agente é despachado com cwd em subpasta (issue #646). Mensagem diferencia: **vazio** (resíduo do harness — 0 arquivos), **ilegível** (permissão negada num subdiretório — inspecionar antes de remover) e **com arquivos** (memória perdida — nunca lida) | O `doctor` **não apaga** nada. Vazio: `rm -rf '<caminho absoluto>'` (caminho entre aspas simples POSIX). Ilegível: inspecionar o diretório antes de remover. Com arquivos: arquivar para `.claude/agent-memory/<agente>/` antes de remover. |
+
+**Comportamento da varredura:**
+- Raiz obtida via `git rev-parse --show-toplevel` (não `os.Getwd()`), portanto correta mesmo quando `trackfw doctor` é invocado de subpasta.
+- Se o diretório não estiver dentro de um repositório git (ou git indisponível), nenhum achado é emitido.
+- `.git/` e `node_modules/` são pulados (`SkipDir`). Permissão negada em um diretório pula a subárvore, não aborta a varredura.
+- Repositórios aninhados (`.git` como dir ou arquivo de submódulo) são pulados — sua `.claude/agent-memory/` é legítima para os agentes daquele repo.
+- Symlinks e junctions Windows (`ModeSymlink|ModeIrregular`) não são seguidos.
+- A contagem de arquivos é recursiva sobre entradas não-diretório (evita o falso "memória perdida" num diretório com apenas subdirs). Um erro de leitura num subdiretório interno (ex.: `chmod 000`) marca o achado como ilegível e suprime o remédio de remoção.
+- O caminho no remédio é **absoluto** e entre aspas simples POSIX (`shellQuotePOSIX`): espaços e metacaracteres no nome do diretório não causam deleção indevida ao copiar o comando.
+- A `.claude/agent-memory/` da raiz é legítima e nunca reportada; a varredura continua dentro dela para detectar strays aninhados (ex.: `.claude/agent-memory/zeus-tf/.claude/agent-memory/`).
+- `claim` zerado (não é artefato de catálogo). Exit code do `doctor` não muda (RunE retorna nil com achados).
 
 ### Propriedade por caminho — artefatos cobertos pelo binário
 
@@ -9363,7 +9405,7 @@ Quando `agent_id` está presente no payload (subagente) e `agent_type` é um slu
 
 **Busca em duas raízes (ML-3C / Decision 3 ML-4C):** o guard procura o lease em ambas as raízes (cwd e alvo). Se qualquer lease for inválido (expirado, versão errada, allow relativo etc.), a escrita é negada. Se nenhuma raiz tiver lease para o `agent_type`, só a D3 se aplica. O alvo precisa estar no `allow` de **todos** os leases válidos encontrados — não basta um. Isso impede que um projeto falso (cwd) com um lease permissivo (`allow: ["/private/"]`) sobreponha a permissão restrita do projeto do alvo (ataque 2E, Decision 3, ML-4C).
 
-**`.gitignore`:** o `trackfw init` garante que `.trackfw/leases/` esteja ignorado no `.gitignore` do projeto. Os leases contêm caminhos absolutos da máquina do arquiteto e não devem ser versionados.
+**`.gitignore`:** o `trackfw init` garante que `.trackfw/leases/` esteja ignorado no `.gitignore` do projeto. Os leases contêm caminhos absolutos da máquina do arquiteto e não devem ser versionados. O `trackfw init` também garante a regra `*/**/.claude/agent-memory/` — ver seção `stray-agent-memory` do `trackfw doctor` abaixo. **Negação respeitada:** se o `.gitignore` já tiver uma linha `!` cujo padrão (sem `!` e sem `/` final) termina em `.claude/agent-memory` **e não for ancorada na raiz**, o `trackfw init` trata isso como decisão do consumidor, não acrescenta a regra e exibe um aviso (`⚠ .gitignore: negation "…" respected — rule not added`). Formas ancoradas na raiz — `.claude/agent-memory` e `/.claude/agent-memory` — só desfazem o ignore do diretório de topo e são compatíveis com `*/**/.claude/agent-memory/`; não são tratadas como opt-out (issue #646, A-1).
 
 **Resíduos declarados:**
 - R6 (Wave 0): dois subagentes do mesmo `agent_type` em worktrees paralelos compartilham o mesmo lease — a instância menos privilegiada herda a permissão da mais privilegiada.
