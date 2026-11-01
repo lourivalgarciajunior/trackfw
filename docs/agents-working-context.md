@@ -32790,3 +32790,222 @@ a ordem de 2026-08-29 de **não forçar o bit** seguem inteiras.
 
 O `agent_models` é um `WARN` do comando `agents models`, não regra de `validate`, e por isso o piso de
 3 avisos não se move.
+
+---
+
+## 2026-11-01 15:20 — sync da 11.2.4; o primeiro conflito de produto desde o #550; e a minha correção do Defender estava ERRADA de novo
+
+**O que foi feito.** Sync dos quatro commits da 11.2.4 do upstream e `npm i -g trackfw@11.2.4`.
+O intervalo é o maior deste arco: **59 arquivos**, contra 29 no da 11.2.3.
+
+| commit | PR | o que é |
+|---|---|---|
+| `98f01f0c` | #647 | débitos de higiene — `package-lock` no release tag, bit de execução dos scripts, aviso de `agent_models` |
+| `2fad7d40` | #648 | a governança daquilo (REQ `Done`, roadmap em `done/`) |
+| `919a0516` | #646/#650 | memória de agente caía em subpasta quando o cwd do despacho não é a raiz |
+| `bca55ae0` | #651 | o bump |
+
+### O sync, com a invariante fechada e ancorada na BASE DE MERGE
+
+```
+base de merge    a485c637ad3f        upstream/main  bca55ae03979
+merge toca  59  =  trazidos 30  +  retidos 29
+retido fora de docs/ e vault/                 0
+trazido fora do conjunto do merge             0
+dos 30 trazidos, quantos em docs/             1  — o cli-parity.md, excecao nomeada
+divergencia de produto no NUCLEO              0  (internal/, cmd/, Makefile ausentes)
+go build rc=0  ·  go vet rc=0
+validate   3 avisos antes · 3 depois — as duas saidas IDENTICAS por diff
+```
+
+No filtro largo (`.claude .codex .gemini docs/cli-parity.md scripts`) **33** arquivos diferem: **32
+são adição nossa**, conferidos um a um contra `git ls-tree -r upstream/main`, e **1 é divergência
+real** — o índice `.claude/agent-memory/hades-tf/MEMORY.md`, que existe nos dois lados.
+
+🔴 **A primeira sonda da divergência deu `0`, e era sonda malformada** — eu misturei `--cached` com um
+*range* (`git diff --cached --name-only BASE..upstream/main`). Zero com sonda errada é cegueira, não
+ausência. A forma certa é `git diff --cached upstream/main -- <filtro>`, e o **controle negativo** é o
+que prova que ela mede: o `CLAUDE.md`, que sabemos divergir, aparece nela.
+
+### 🔴 Este sync exigiu decisão à mão — a primeira desde o `CLAUDE.md` do #550
+
+**Previsto por merge de ensaio em worktree descartável, antes de rodar o script**, e cumpriu-se
+exatamente:
+
+```
+git merge --no-commit --no-ff upstream/main  ->  rc=1, 7 conflitos
+  .gitignore                                     <- 🔴 PRODUTO, a mao
+  docs/req/REQ-2026-08-30-debitos-de-higiene…    }
+  docs/roadmaps/claude/done/ROADMAP-2026-09-22…  }  os 6 sao retidos por
+  docs/roadmaps/claude/done/ROADMAP-2026-11-01…  }  docs/ e vault/, logo
+  docs/seguranca/2026-10-30-wave0-branch-padrao…  }  resolvidos pelo script
+  docs/visao-projeto/VISION.md                   }
+  vault/notes/index.md                           }
+
+scripts/upstream-sync.sh  (1a passada)  rc=1
+  "conflito de PRODUTO remanescente. Resolva a mao. Arvore devolvida."
+  e devolveu mesmo: git status vazio, HEAD em 912ac600
+```
+
+**A diferença entre 7 e 1 é o valor do script**, e é por isso que o ensaio foi com `git merge` cru.
+
+🔴 **A causa é POSICIONAL, não semântica, e por isso o remédio não é resolver o conflito — é tirar a
+nossa regra da zona de colisão.** O upstream anexa no **fim** deste arquivo (o bloco `npm/README.md`
+veio assim no ML-1B; o #646 anexou `*/**/.claude/agent-memory/` agora), e a nossa regra `*.stackdump`
+morava exatamente ali desde 2026-10-29. Dois appends no mesmo fim de arquivo é add/add **a cada
+release**.
+
+O bloco subiu para acima do último bloco do upstream. Medido por efeito:
+
+```
+conjunto de regras efetivas (sem comentario, ordenado)   diff rc=0, IDENTICO
+negacoes `!` no arquivo                                  ZERO, por grep
+a regra ainda ignora                                     `!! bash.exe.stackdump`
+CRLF                                                     58 CR / 58 LF, 0 linha LF pura
+diff contra a base                                       15 insercoes, 0 delecoes, UM hunk na linha 34
+cauda vs cauda da base, normalizada                      diff rc=0
+scripts/upstream-sync.sh  (2a passada)                   rc=0, limpo
+```
+
+**A penúltima linha é a que decide o merge:** com a cauda idêntica à da base, o append dele fica
+disjunto do nosso hunk. E **zero negação é o que torna a mudança de posição gratuita** — com uma `!`
+no arquivo, a ordem seria semântica e isto não poderia ser feito.
+
+🔴 **Armadilha de medição, da família já registrada:** comparar `git show <ref>:arquivo` com a árvore
+acusa diferença **falsa**, porque o blob sai em LF e a árvore é CRLF. A primeira comparação da cauda
+deu `rc=1` por isso, e normalizada deu `rc=0`.
+
+### O índice do `hades-tf` mesclou as duas pontas, e o denominador fecha
+
+```
+52 na base  +  9 nossas  +  2 dele  =  63 medido
+as 9 nossas presentes (9 de 9)   ·   as 2 dele presentes
+```
+
+O git mesclou porque as **regiões são disjuntas**: ele tocou o topo (linha 3) e o fim (append), nós o
+meio (linhas 25–34), com **16 linhas de folga**. 🔴 **A previsão escrita no `CLAUDE.md` desde 22/10
+dizia exatamente isto** — *"o dia em que ele editar as **mesmas linhas** do índice, aborta"* —, e hoje
+ele não editou as mesmas linhas. Primeira vez que essa previsão foi exercitada com ele mexendo no
+arquivo.
+
+🔴 **E a conversão de caminho do MSYS mordeu de novo**, pela enésima vez: `git show
+upstream/main:.claude/…` devolveu `fatal: ambiguous argument` e a contagem saiu **0**. Com
+`MSYS_NO_PATHCONV=1`, **54**. Zero ali seria lido como "o arquivo não existe no lado dele", que é o
+oposto do real.
+
+### Os dois predicados da tripla, e aqui o fino importou mais que de hábito
+
+| | |
+|---|---|
+| largo | **zero** arquivo de hook no conjunto → **5º intervalo seguido** |
+| fino | `internal/guardforms/guard_generations.go` **idêntico** (228 linhas) |
+| fino, segunda perna | as linhas tocadas de `scaffold.go` e `update_harness.go` têm **0** ocorrências de `LASTEXITCODE`, `PreToolUse`, `matcher` ou `trackfw guard` |
+
+🔴 **A segunda perna do fino não é cerimônia neste intervalo:** `scaffold.go` e `update_harness.go`
+são justamente quem **gera** a linha de hook, e os dois estão no conjunto. O predicado largo sozinho
+diria "sem arquivo de hook, nada a fazer" — e isso seria verdade por acidente. Logo o passo 3
+(`update harness`) não é exigido, por medição e não por ausência.
+
+### O aviso novo do #646 não acende aqui, e a razão é a forma da regra
+
+```
+trackfw doctor   rc=0   2 finding(s)   ·   0 stray-agent-memory
+a nossa memoria de agente       ./.claude/agent-memory   (unica no disco, na RAIZ)
+git check-ignore do indice      NAO ignorada
+```
+
+A regra dele é `*/**/.claude/agent-memory/`, e o `*/` **exige um nível de diretório antes** — a nossa
+é na raiz, então não casa. Os **2** achados do `doctor` são os dois do
+`.github/workflows/trackfw-validate.yml`, **fora do conjunto do intervalo**: um pede `trackfw update`,
+que é **vetado na raiz deste fork**, e o outro propõe remover o workflow depois de verificar que
+`governance-go-install` não é required check.
+
+🔴 **Essa verificação foi feita, e a resposta muda o enquadramento de um critério nosso:**
+
+```
+gh api .../branches/main/protection/required_status_checks   404 "Branch not protected"
+protected                                                     False
+required checks registrados                                   0
+```
+
+**A `main` do fork não é protegida.** Então nada no GitHub bloqueia merge, e as **25 linhas / 23
+nomes** do critério de merge são **disciplina nossa, conferida à mão** — não imposição da forja. É
+coerente com o `CLAUDE.md` insistir em contar as linhas: *"zero pendente com 2 checks registrados é
+cegueira, não verde"*. A pré-condição do `doctor` está satisfeita por vacuidade, mas remover o
+workflow tiraria `governance-go-install` do nosso conjunto, e isso é **decisão separada**, não parte
+deste sync.
+
+### Passo 2 da tripla, com sonda ANTES de instalar
+
+```
+npm pack @trackfw-bin/win32-x64@11.2.4, extraido FORA do PATH
+  le e hasheia          sha256 53831c45…    14 843 392 bytes
+  --version             trackfw 11.2.4
+  guard --help          rc=0
+depois do npm i -g:
+  Git Bash    %APPDATA%/npm/trackfw       trackfw 11.2.4
+  PowerShell  %APPDATA%/npm/trackfw.ps1   trackfw 11.2.4
+  cmd.exe                                 trackfw 11.2.4
+```
+
+🔴 **A sonda não é zelo: é o que impede sessão em deny-all.** A linha polyglot do hook transforma
+**qualquer** não-zero em 2, então binário em quarentena no PATH bloqueia toda ferramenta. Foi o que
+esta sonda cobriu ontem, e a razão continua inteira hoje.
+
+### Testes: 1 FAIL, comparado POR NOME
+
+```
+go test dos 5 pacotes do intervalo   rc=1   ·   1 FAIL individual
+  TestShip_Integration_GracefulDegradation_RealBinary
+    declarado na lista de Windows do upstream — Group C:
+    "fake git.exe in PATH triggers Windows runner anti-fork-bomb defense"
+entradas ativas na lista              5    (o CLAUDE.md registra 6, de 2026-10-16)
+```
+
+A lista encolheu de **6 para 5**. Comparar por nome é o que separa isto de regressão; por contagem,
+`1 FAIL` seria indistinguível de defeito novo.
+
+### 🔴 CORREÇÃO: a definição do Defender ATUALIZOU, e a entrada das 10:30 de hoje afirma o contrário
+
+A entrada de hoje às 10:30 — e o commit `be8120b8`, que está nesta `main` — dizem, em caixa alta, que
+*"a definição do Defender **NÃO** atualizou"*, e dali concluem **causa desconhecida**. **Medido agora,
+às 15:09:**
+
+```
+AntivirusSignatureVersion         1.463.72.0        (as 10:30 eu reportei 1.463.56.0)
+AntivirusSignatureLastUpdated     2026-11-01 00:59:50
+  Kind do DateTime                Local             <- conferido, nao suposto
+deteccoes registradas             31/10 19:08 · 19:09 · 19:10  (Kind=Local)  — nenhuma hoje
+```
+
+**A ordem, toda em hora local:** detecção às **31/10 19:10** → atualização de definição às **01/11
+00:59** → build limpo medido às **01/11 ~10:30**. 🔴 **A janela entre "bloqueado" e "não bloqueado"
+CONTÉM uma atualização de definição**, e portanto o argumento que eu usei — *"mesma definição local,
+veredito oposto"* — **perdeu a premissa**. Não é que a conclusão "causa desconhecida" esteja provada
+falsa; é que a **razão** que eu dei para ela não existe.
+
+**O que fica sem reconciliação, e está declarado:** por que a leitura das 10:30 mostrou `1.463.56.0`
+com última atualização em `31/10 00:33`, se uma atualização de `01/11 00:59` já deveria estar visível
+naquela hora. Três candidatos, **nenhum medido**: leitura em cache do `Get-MpComputerStatus`, campo
+diferente lido por engano, ou atualização aplicada depois e reportando carimbo anterior. Não é
+determinável a esta altura.
+
+**O que isto NÃO estabelece:** que a atualização de definição **causou** o desbloqueio. Correlação
+dentro de uma janela não é causa, e o candidato do veredito **em nuvem** (MAPS) continua de pé e
+continua não medido. O que muda é que **a definição deixou de ser um controle** — ela não ficou
+parada.
+
+🔴 **E a lição de forma é a terceira da mesma família em 24 h.** Ontem eu afirmei *"a definição virou
+de madrugada"* e corrigi para *"não virou"*; hoje a medição diz que **virou**. Duas correções em
+direções opostas sobre o mesmo fato, e a causa das duas é a mesma: eu tratei **uma leitura de um campo
+de estado** como se fosse medição. A forma que resiste é a que esta casa já escreve para `rc` e
+wall-clock — **leia duas vezes, com carimbo, e escreva o carimbo ao lado do valor**. Um
+`AntivirusSignatureVersion` sem o `LastUpdated` e sem o `Kind` ao lado não é dado; é impressão.
+
+**Verificado que o campo é local, e não assumido:** `Kind=Local`. Converter como se fosse UTC daria
+`31/10 21:59` — que também é depois da detecção, então aqui a conversão não inverteria o veredito; mas
+a regra desta casa é não repassar carimbo sem saber o fuso, e o `Kind` é o discriminante.
+
+**Nenhuma mudança foi feita no Defender** por este trabalho, hoje nem ontem.
+
+**Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
