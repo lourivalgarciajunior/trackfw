@@ -1,5 +1,6 @@
 # Memory Index — Hades (Security, trackfw)
 
+- [update harness advisory: once per catalog target, no WARN token](project_update_harness_advisory_catalog_target.md) — fix in `harnessCatalogTarget` (update.go:2669); `UpdateOptions` has no stderr writer → os.Pipe needed for counter-arm; "move to UpdateHarness top" fires advisory on guard-only runs
 - [parseLsRemoteSymref second field vector gap](project_parselsremotesymref_second_field_vector_gap.md) — missing test vector `\trefs/heads/HEAD` lets HasSuffix mutation survive; LOW severity; found ML-2A 2026-10-30
 
 - [Hardlink não converge por EvalSymlinks](project_write_scope_hardlink_bypass.md) — comparar caminho exige os.SameFile quando os dois existem; caso do write-scope corrigido no #606
@@ -59,3 +60,4 @@
 - [guard bloqueia git branch em scratchpad — único caminho sancionado: zz_*_test.go](feedback_guard_blocks_git_branch_in_scratchpad.md) — 2026-10-30; `git branch` e `checkout -b` bloqueados pelo guard em qualquer dir; `git switch --create` não testado como evasão; usar `zz_*_test.go`
 - [followRemoteHEAD=never reproduz pré-2.48 em qualquer git](project_followremotehead_never_reproduces_pre248.md) — 2026-10-30 #633; impede fetch de criar symref; confirmado em git 2.54; padrão para fixtures do fix
 - [grep glob sobre *_test.go dispara credential guard — usar paths explícitos](feedback_grep_glob_test_triggers_credential_guard.md) — 2026-10-30; glob inclui fixtures JWT, guard bloqueia grep; especificar arquivos individualmente
+- [harness read-side incontornável; git rev-parse em nested repo retorna inner root](../../vault/notes/harness-memoria-read-side-nao-corrigivel-por-instrucao-e-nested-repo-root-2026-11-01.md) — 2026-11-01 #646 Wave 0; MEMORY.md loaded do cwd-dispatch; AC4 deve excluir nested repos (.git arquivo em submódulo)
