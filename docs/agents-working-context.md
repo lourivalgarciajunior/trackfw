@@ -33009,3 +33009,181 @@ a regra desta casa é não repassar carimbo sem saber o fuso, e o `Kind` é o di
 **Nenhuma mudança foi feita no Defender** por este trabalho, hoje nem ontem.
 
 **Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
+
+---
+
+## 2026-11-01 17:05 — o merge da 11.2.4, o CI vermelho que era timeout, e o critério de merge que estava chumbado
+
+**Continua a entrada das 15:20**, que fechou no PR aberto. Tudo abaixo aconteceu depois dela.
+
+### O merge, com os cinco critérios medidos
+
+```
+PR #301  MERGED 16:12 (local) / 19:12Z   merge commit 08e6646b5d04
+conjunto    25 linhas · 23 nomes · duplicados: gates-locais e gates-windows
+conclusoes  25 success — e a API de check-runs concorda: 25 no sha, todas success
+head        os 25 check-runs em 3147639fc0fe = o nosso HEAD
+attempt     windows-full-suites RE-EXECUTOU no attempt 2 (15:49 -> 16:03), success
+vermelho    zero
+depois      main 08e6646b = origin/main · build rc=0 · validate 3 avisos · 11.2.4
+            branch prune --apply deletou 1, nomeando "merged PR #301 contains this branch"
+```
+
+🔴 **Refinamento do critério 4, aprendido aqui.** No attempt 2, **17 dos 18 jobs vieram herdados** do
+attempt 1 (início 15:25–15:31) e só o `windows-full-suites` re-executou. A leitura ingênua do critério
+seria *"verde herdado não conta, logo o conjunto é inválido"* — e está **errada**: o `head_sha` é o
+**mesmo** nos dois attempts, então aqueles 17 rodaram de verdade contra o commit medido. O critério
+existe para recusar verde herdado de **outro commit**; herdado de outra **tentativa sobre o mesmo
+head** é evidência legítima. Se o head tivesse mudado, nenhum deles contaria.
+
+### 🔴 O CI ficou vermelho, e o que reprovava NÃO era o teste — era o ratchet
+
+```
+windows-full-suites  fail  13m5s
+ML-2A ratchet: NEW Go assertion failure not in known list: 'TestGuardLineShellMatrix'
+ML-2A/2B: 6 observed / 5 active / 33 removed — DESEQUILIBRIO POR CLASSE. Go 6/5 [+1 NOVO]
+```
+
+Um caso de 32 no Windows (4 guards × 2 braços PS × 4 cenários), só no guard `git-branch`:
+`TestGuardLineShellMatrix/git-branch/powershell/RC0-allow`.
+
+**O mecanismo, medido e não inferido:**
+
+```
+internal/generators/guard_line_shell_test.go:248, DENTRO de runGuardLinePS:
+  ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+o subteste que falhou:  15,01 s
+```
+
+🔴 **E o timeout SE DISFARÇOU de duas falhas de asserção** — é esta a parte que vale guardar:
+
+```
+guard_line_shell_test.go:415: FAKE_RC=0: esperado exit 0, obteve 1
+guard_line_shell_test.go:419: stdin nao preservado: got "", want "{...git add -A...}"
+```
+
+As duas decorrem do **mesmo** evento: processo morto sai não-zero e **nunca consome stdin**. Lidas no
+log, parecem defeito de lógica em dois lugares. Foi exatamente por isso que o ratchet as classificou
+como `NEW Go assertion failure` em vez de custo de ambiente — e por isso a primeira leitura humana
+procura bug onde há prazo.
+
+**A nossa árvore foi descartada como causa por quatro medições independentes**, nenhuma delas "o
+código parece certo":
+
+```
+divergencia de produto em internal/        0      o teste e byte a byte o dele
+guard_line_shell_test.go no intervalo      NAO mudou
+.github/workflows/quality.yml              identico — o `cmp` dizia DIFERE, era SO CRLF
+CI dele no MESMO commit bca55ae0           success
+local, O CASO EXATO que falhou             PASS em 1,66 s
+historico de Quality no fork               10 corridas: 9 success, esta a 1a falha, attempt=1
+```
+
+🔴 **Terceira vez no mesmo dia que o `cmp` mentiu por fim de linha.** Comparar saída de `git show` com
+arquivo da árvore acusa diferença falsa — blob em LF, árvore em CRLF. Quem decide conteúdo é o
+`git diff` (que conhece a normalização) ou o `cmp` **depois** de normalizar. Aqui a leitura ingênua
+seria *"divergimos no `quality.yml`"*, que inverteria a atribuição de causa inteira.
+
+### O re-run foi o discriminante, e ele confirmou por efeito
+
+```
+attempt 2, mesmo head, zero linha mudada:
+  o caso que falhou                 PASS em 3,45 s
+  TestGuardLineShellMatrix          PASS 26,02 s
+  ratchet                           5 observed / 5 active / 33 removed. Go 5/5
+```
+
+**A margem, que é o número honesto:**
+
+```
+runner (attempt 2, verde)        3,45 s  contra teto de 15 s  ->  4,3x
+Windows 11 local, mesma arvore   1,66 s  contra teto de 15 s  ->  9,0x
+```
+
+🔴 **Não é "foi flaky, segue o jogo": a margem no runner é 4,3×, não 9×, e isso pode recorrer.** O
+braço `pwsh` **pula** nesta máquina (binário ausente) e o `powershell` 5.1 roda — é por isso que o
+caso que falha no CI é exercitado aqui e passa.
+
+**O remédio que o próprio ratchet imprime está vetado aqui** — *"add to
+`.github/windows-known-failures.json` with a source run id"* —, porque o arquivo é compartilhado com o
+upstream. Mesma classe do episódio #502 → #509. **Nada foi tocado nele**, e o teste **não** foi
+alterado localmente, que criaria divergência de produto onde ela é zero.
+
+### A issue já era dele, e cinco horas mais velha que a nossa falha
+
+```
+issue #649   por kgsaran, 01/11 10:26 (local)   — a nossa falha foi 15:38
+  titulo: "TestGuardLineShellMatrix/powershell/RC0-allow estoura o timeout de 15 s..."
+  cita o fork?  nao
+branch  upstream/fix/powershell-inicio-a-frio-na-matriz-de-guard   4 commits, 15:41->16:24
+PR #652 DRAFT, 16:37
+```
+
+🔴 **A issue que eu ia abrir seria duplicata**, e foi a varredura que impediu — o custo exato que a
+memória do #497/#499 registra. Ele chegou primeiro, sozinho; nós reproduzimos e diagnosticamos a mesma
+causa de forma independente, o que é corroboração e não contribuição.
+
+**O desenho dele responde à cegueira descrita acima:** `psWarmupTimeout = 60s` (aquecimento por
+binário, AC1), `psAssertedTimeout = 15s` mantido para a chamada afirmada, `psWaitDelay = 5s` para
+drenar pipes depois de matar grandchild (P-5), e — o que importa —
+`t.Fatalf("timeout: %s após %.0fs — prazo da chamada afirmada esgotado")`. **Com isso o timeout diz
+que é timeout**, e o ratchet classifica certo sem leitura humana.
+
+**Segundo achado na mesma branch dele, para olhar quando mesclar:**
+`internal/validator/validator_guard_binary_probe.go` (+69), por *"sonda de política **sem
+fail-open**"* (P-1 → AC6/ML-1B). Guard que falha aberto é a classe recorrente deste repositório.
+
+**Comentei na #649** (`issuecomment-6562953214`) com o que a issue dele não tinha: os dois attempts
+sobre o mesmo head, as duas margens, o escopo (1 de 32, só `git-branch`), a frequência (1 em 10
+corridas) e o diagnóstico do disfarce. Declarei no comentário que o código medido é o **dele** —
+divergência zero em `internal/`, arquivo de teste não tocado —, porque sem isso a medição não valeria
+como evidência sobre o produto dele.
+
+### 🔴 O critério de merge do `~/.claude/CLAUDE.md` estava CHUMBADO, e a explicação dele era FALSA
+
+Ele dizia: *"**25 linhas, 23 nomes** (`gates-locais` e `gates-windows` aparecem duas vezes,
+**declarados por dois workflows cada**)"*. A segunda metade é falsa. Medido no PR #301:
+
+```
+quem declara os jobs   .github/workflows/local-gates.yml, linhas 28 e 228 — UMA vez cada
+os gatilhos            on: push:  /  pull_request:   — SEM filtro de branch
+run 41336437389        event=push           gates-locais + gates-windows
+run 41336556610        event=pull_request   gates-locais + gates-windows
+```
+
+É **um** workflow disparado por **dois eventos**: branch no mesmo repositório dispara `push` ao subir e
+`pull_request` ao abrir o PR. O upstream **filtra** (`push: branches: [main]` no `quality.yml`,
+`pull_request: branches: [main]` no `trackfw-gate.yml`); o nosso `local-gates.yml`, que é arquivo **só
+nosso**, não filtra. A assimetria é nossa.
+
+🔴 **E o número chumbado tinha modo de falha que BLOQUEIA trabalho correto**, que é o sentido pior.
+Acrescentar `branches: [main]` ao gatilho de `push` — o que o upstream faz, e o que qualquer um
+chamaria de "o conserto" — levaria o conjunto a **23 linhas / 23 nomes**. Com o `25` escrito como
+critério, um conjunto **completo** seria lido como **incompleto** e um PR bom seria **recusado**. É a
+mesma família do `npm i -g trackfw@9.3.2` que apodreceu em 13 h e do "24 checks" que ficou cinco dias
+errado, com a diferença que importa: ali o chumbo **atrasava**, aqui ele **trava**.
+
+**O critério passou a derivar**, em vez de citar total:
+
+```
+linhas  = toda linha de `gh pr checks <N> --repo lourivalgarciajunior/trackfw`
+nomes   = os distintos dessas linhas
+linhas - nomes  =  os nomes DUPLICADOS, e cada duplicata precisa de EXPLICACAO
+```
+
+Hoje fecha em 25 / 23 / 2. **O comando que o arquivo entrega ao usuário foi rodado em PowerShell
+antes de entrar** — `(gh pr checks … | Measure-Object -Line).Lines` mais a contagem de distintos —, e
+devolveu `25 / 23 / 2`, igual à leitura em Git Bash.
+
+**E ficou escrito que NÃO há conserto pendente no workflow**, com o custo medido: o repo é **público**,
+logo minuto de Actions é gratuito, e a duplicata custa **~71 s** por push (`gates-locais` 35 s +
+`gates-windows` 36 s). Em troca, quando a base tiver andado, o run de `pull_request` testa o
+**resultado da mescla** e o de `push` testa a branch como está — no upstream essa divisão mora em dois
+workflows, aqui num só. Neste PR os dois testaram a **mesma** árvore, conferido: a `main` não andou
+(`08e6646b^1` = `912ac600` = a base da branch).
+
+🔴 **O arquivo corrigido é o `~/.claude/CLAUDE.md`, que está FORA de git** — não há PR nem commit para
+ele, e por isso a correção só existe registrada aqui. Quem quiser auditá-la lê o arquivo; o que esta
+entrada garante é que a mudança foi **medida** antes de ser escrita.
+
+**Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
