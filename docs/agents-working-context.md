@@ -32716,3 +32716,77 @@ usuário**.
   estourou `FileNotFoundError` sobre um arquivo que o bash lê. O caminho nativo resolve.
 
 **Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
+
+---
+
+## 2026-11-01 10:30 — o bloqueio do Defender sumiu, e a minha explicação para isso estava ERRADA
+
+**Complementa a entrada de 31/10 19:14**, que descreve o bloqueio em presente. Ele não existe mais, e
+quem ler a entrada anterior sem esta leria estado falso — é a regra *"datado e no passado não
+envelhece; presente envelhece"* cobrando o próprio handoff.
+
+### O que mudou, medido por efeito
+
+```
+go build -o <qualquer>/trackfw.exe ./cmd/trackfw
+  fonte 11.2.3 — a MESMA de ontem, byte a byte            rc=0 · 0 mencoes a virus
+  fonte dele com o #647 (worktree em upstream/main)       rc=0 · 0 mencoes a virus
+bin/trackfw refeito    -x presente -> a precondicao do agregador passa
+E2E do barrier         go test -run 'TestBarrierContract|TestBarrierFence'   rc=0  ok  10,6 s
+```
+
+🔴 **A última linha fecha a classificação de ontem pela outra direção.** Ontem eu classifiquei os 13
+FAIL um a um — 13 com a mensagem de vírus, 0 sem — e concluí que eram todos do Defender. Hoje, sem
+tocar no código, os mesmos testes passam. A classificação por mensagem estava certa, e agora está
+provada por efeito em vez de por leitura de saída.
+
+### 🔴 E a explicação que eu dei estava errada — a definição NÃO atualizou
+
+Eu afirmei, em conversa, que *"a definição do Defender virou de madrugada"*. Medido:
+
+```
+AntivirusSignatureVersion          1.463.56.0
+ultima atualizacao (hora local)    31/10 00:33    <- ANTES da deteccao das 19:03
+ultima deteccao registrada         31/10 19:10    <- nenhuma hoje
+```
+
+**Mesma definição local, veredito oposto.** O candidato é o veredito **em nuvem** — a detecção `!ml` é
+assistida por MAPS e pode ser revista sem bump local —, e **eu não medi isso**. Fica declarado como
+**causa desconhecida**, do mesmo jeito que os 678 s e o `validate 1 antes · 0 depois` do sync do #557.
+
+### O que isso corrige na conclusão de ontem
+
+Ontem escrevi *"o gatilho são os bytes deste build, não o local nem definição nova"*. A metade do
+**local** continua medida e certa (`/tmp`, scratchpad e `bin/` deram o mesmo veredito). A metade dos
+**bytes** era verdadeira **naquele instante** e é incompleta como regra:
+
+> **Veredito de heurística `!ml` não é propriedade dos bytes — é bytes × avaliador no momento.**
+
+O controle de ontem (11.2.2 compila, 11.2.3 não, no mesmo minuto) separava os bytes **sob o avaliador
+daquele instante**, e isso é tudo que um controle simultâneo consegue separar. Para afirmar "são os
+bytes", faltaria repetir com o avaliador fixo — que é justamente o que não se fixa, porque parte dele
+é remoto.
+
+**Consequência prática: não há remédio a aplicar.** A exclusão no Defender que eu ia propor — e que
+dependia da sua palavra, por ser configuração de segurança da máquina — **deixou de ser necessária**.
+Nenhuma mudança foi feita no Defender, por mim ou por qualquer passo deste trabalho.
+
+### O #647 do upstream não acende nada aqui, e o "bit de execução" dele não nos atinge
+
+```
+conjunto do intervalo      28 arquivos · 10 de produto
+arquivo de hook            0   ->  tripla NAO exigida
+internal/guardforms/       0
+git diff --summary         13 `create mode 100644` · ZERO `mode change`
+validate, binario da arvore          rc=0 · 3 avisos
+validate, binario dele com o #647    rc=0 · 3 avisos      saidas IDENTICAS
+```
+
+🔴 **O título do commit dele diz *"bit de execução dos scripts"*, e a leitura ingênua esperaria modo
+mudando na árvore.** Não muda: ele trocou `os.WriteFile(path, …, 0755)` por
+`pathguard.GuardedWrite(root, path, …, 0755)`, fechando um TOCTOU com `fd.Chmod` em vez de chmod por
+caminho — e isso vale para script **gerado**, não para arquivo rastreado. A nossa convenção `100644` e
+a ordem de 2026-08-29 de **não forçar o bit** seguem inteiras.
+
+O `agent_models` é um `WARN` do comando `agents models`, não regra de `validate`, e por isso o piso de
+3 avisos não se move.
