@@ -32589,3 +32589,204 @@ nenhum ✗ COMPLETUDE, e o agregador seguiu para os gates
   caractere especial de shell dentro de string de comando.
 
 **Esta entrada foi anexada pela própria ferramenta**, que é o primeiro uso real dela.
+
+---
+
+## 2026-10-31 19:14 — sync da 11.2.3 e a tripla; e o Defender passou a comer o CLI compilado aqui
+
+**O que foi feito.** Sync dos dois commits da 11.2.3 do upstream (`c915f0fb` = #644, o `ml_scope` da
+wave N cobrindo wave posterior já iniciada; `a485c637` = #645, o bump) e `npm i -g trackfw@11.2.3`.
+A release foi detectada pelo vigia de release às 17:42, em um ciclo.
+
+### O sync, com a invariante fechada e ancorada na BASE DE MERGE
+
+```
+base de merge    2e0f1817a5f3        upstream/main  a485c637ad3f
+merge toca  29  =  trazidos 14  +  retidos 15
+retido fora de docs/ e vault/                 0
+trazido fora do conjunto do merge             0
+divergencia de produto (indice x upstream)    0
+  24 arquivos diferem, e os 24 sao ADICAO nossa (ausentes no upstream, conferido por ls-tree)
+  internal/, cmd/ e Makefile nao aparecem
+guarda de vacuidade: upstream/main:Makefile legivel   sim
+go build ./...   rc=0        validate   3 avisos antes · 3 depois
+```
+
+### A previsão do predicado dos arquivos de hook acertou de novo — quarto intervalo
+
+Escrita **antes** do merge: zero arquivo de hook no conjunto ⇒ o `validate` fica em 3 avisos e o
+passo 3 da tripla (`update harness`) não é exigido. Cumpriu-se.
+
+| sync | `validate` | arquivo de hook no conjunto? |
+|---|---|---|
+| #595 | 3 → 23 (20 globais) | **sim** |
+| #596/#597 | 3 → 3 | não |
+| #598/#600/#601 | 3 → 3 | não |
+| #644/#645 | 3 → 3 | não |
+
+E o predicado fino concordou: `internal/guardforms/guard_generations.go` fora do conjunto e `cmp`
+idêntico. As quatro bordas do `Caducou:` que o nosso gate espelha estão intactas — a
+`LapsedContinuationRe` é a **mesma regex na linha 58** dos dois lados; só os números de linha dos
+consumidores andaram (675 → 1007, 766 → 1103), porque o `roadmapdoc.go` cresceu +390.
+
+### O passo 2 da tripla, provado por efeito nos três shells
+
+```
+Git Bash    %APPDATA%/npm/trackfw       trackfw 11.2.3
+PowerShell  %APPDATA%/npm/trackfw.ps1   trackfw 11.2.3
+cmd.exe                                 trackfw 11.2.3
+
+guard git-branch, payload real, rc lido sem cano:
+  git status · git log                         0 · 0      <- controle negativo
+  git push origin main · git commit -m x       2 · 2
+  git add -A · git add .                       2 · 2
+  git add docs/x.md                            0          <- caminho explicito
+  git add -A docs/                             0          <- `-A` COM pathspec e pathspec
+```
+
+A penúltima e a última são as que a leitura ingênua erra, e por isso estão medidas.
+
+### 🔴 ACHADO NOVO: o Defender põe em quarentena o CLI compilado desta fonte, nesta máquina
+
+Logo depois de o sync reconstruir os binários da árvore às 19:02, o `bin/trackfw` e o
+`bin/trackfw.exe` ficaram ilegíveis — `Permission denied` **até no `cmp`**, que é leitura, e isso é o
+que descarta bit de execução e ACL de saída. O log do Defender nomeia:
+
+```
+Trojan:Win32/Bearfoos.A!ml   severidade 5   19:03:05 e 19:03:24
+Resources: file:_C:\dev\ferramentas\trackfw-main\bin\trackfw(.exe)
+```
+
+O sufixo `!ml` é heurística por aprendizado de máquina, não assinatura.
+
+**Medido em quatro direções, e a terceira é o controle que inverte a leitura óbvia:**
+
+| | resultado |
+|---|---|
+| fonte 11.2.3, `go build -o <qualquer>/trackfw.exe ./cmd/trackfw` | 🔴 rc=1, *"contains a virus"* no `a.out.exe` do linker |
+| o mesmo em `/tmp` e no scratchpad, fora do repo | 🔴 igual — **o gatilho são os bytes, não o local** |
+| fonte **11.2.2** (worktree em `f07b5d39`), mesma máquina, mesmo minuto | ✅ compila e roda — `trackfw 11.2.2` |
+| 11.2.3 **publicada** (build do CI dele, baixada por `npm pack`) | ✅ lê, hasheia e roda aqui |
+
+🔴 **A terceira linha é a que vale guardar:** sem ela, a conclusão natural seria *"a definição do
+Defender atualizou hoje e agora todo build de Go morre"*, e isso é falso. O que mudou foram os bytes
+desta fonte — a 11.2.3 trouxe +3 225 linhas em `barrier.go` e `roadmapdoc.go`, e o build local caiu
+na região ruim do modelo.
+
+**E o código está bom pelas duas provas independentes:** o artefato que o npm publica, compilado da
+**mesma fonte** pelo CI dele, roda limpo nesta máquina (14 828 032 bytes, contra 21 160 448 do meu
+build); e os **seis** jobs de Windows dele passaram nos dois PRs, inclusive o `windows-full-suites`,
+que compila o CLI.
+
+`go version go1.26.1 windows/amd64`.
+
+#### O custo, medido — e ele é de instrumento, não de produto
+
+```
+go build ./...  (so compila)                 rc=0
+go vet                                       rc=0
+go test ./internal/roadmapdoc/...            rc=0  ok  10,8 s
+trackfw validate (PATH, 11.2.3 publicada)    rc=0  3 avisos
+os 56 testes novos do ml_scope               rc=0  0,77 s   <- os que AFIRMAM a mudanca do #644
+os 16 gates so nossos, rodados um a um       16 rc=0   (157 s somados)
+
+E2E do barrier (barrier_contract, barrier_fence)   13 FAIL
+  FAIL com a mensagem de virus                     13
+  FAIL sem ela                                      0        <- classificado um a um, nao por total
+run-local-gates.sh                           bloqueado: a precondicao exige `-x bin/trackfw`
+```
+
+🔴 **O que está cego é só o que precisa do executável ligado de `cmd/trackfw`.** Binário de teste
+não é comido; os testes que afirmam a mudança rodam e passam. O agregador roda em `ubuntu-latest` no
+CI, que é onde ele de fato cobra — e o `windows-full-suites` do CI é a pergunta aberta, porque o
+runner do GitHub tem Defender próprio e o dele passou nesta fonte.
+
+🔴 **Não apliquei remédio, e a razão é de alçada, não técnica:** exclusão no Defender é mudança de
+configuração de segurança da máquina do usuário, e isso não se faz sem a palavra dele. Mesma
+precedência do `icacls` de 2026-10-16, em que eu medi, escrevi a sequência e **quem rodou foi o
+usuário**.
+
+### Duas armadilhas de instrumento, as duas minhas
+
+- **`git rev-parse --short=12 A B` sai 128** com *"Needed a single revision"* — é o `=N` que força
+  revisão única, e por um momento isso pareceu ref de `origin` faltando. `--short` pelado aceita
+  dois. Lido ao contrário, seria "o `origin/main` não existe", que é diagnóstico errado sobre
+  repositório são.
+- **`/tmp` invisível ao Python nativo do Windows, pela enésima vez** — o classificador dos FAILs
+  estourou `FileNotFoundError` sobre um arquivo que o bash lê. O caminho nativo resolve.
+
+**Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
+
+---
+
+## 2026-11-01 10:30 — o bloqueio do Defender sumiu, e a minha explicação para isso estava ERRADA
+
+**Complementa a entrada de 31/10 19:14**, que descreve o bloqueio em presente. Ele não existe mais, e
+quem ler a entrada anterior sem esta leria estado falso — é a regra *"datado e no passado não
+envelhece; presente envelhece"* cobrando o próprio handoff.
+
+### O que mudou, medido por efeito
+
+```
+go build -o <qualquer>/trackfw.exe ./cmd/trackfw
+  fonte 11.2.3 — a MESMA de ontem, byte a byte            rc=0 · 0 mencoes a virus
+  fonte dele com o #647 (worktree em upstream/main)       rc=0 · 0 mencoes a virus
+bin/trackfw refeito    -x presente -> a precondicao do agregador passa
+E2E do barrier         go test -run 'TestBarrierContract|TestBarrierFence'   rc=0  ok  10,6 s
+```
+
+🔴 **A última linha fecha a classificação de ontem pela outra direção.** Ontem eu classifiquei os 13
+FAIL um a um — 13 com a mensagem de vírus, 0 sem — e concluí que eram todos do Defender. Hoje, sem
+tocar no código, os mesmos testes passam. A classificação por mensagem estava certa, e agora está
+provada por efeito em vez de por leitura de saída.
+
+### 🔴 E a explicação que eu dei estava errada — a definição NÃO atualizou
+
+Eu afirmei, em conversa, que *"a definição do Defender virou de madrugada"*. Medido:
+
+```
+AntivirusSignatureVersion          1.463.56.0
+ultima atualizacao (hora local)    31/10 00:33    <- ANTES da deteccao das 19:03
+ultima deteccao registrada         31/10 19:10    <- nenhuma hoje
+```
+
+**Mesma definição local, veredito oposto.** O candidato é o veredito **em nuvem** — a detecção `!ml` é
+assistida por MAPS e pode ser revista sem bump local —, e **eu não medi isso**. Fica declarado como
+**causa desconhecida**, do mesmo jeito que os 678 s e o `validate 1 antes · 0 depois` do sync do #557.
+
+### O que isso corrige na conclusão de ontem
+
+Ontem escrevi *"o gatilho são os bytes deste build, não o local nem definição nova"*. A metade do
+**local** continua medida e certa (`/tmp`, scratchpad e `bin/` deram o mesmo veredito). A metade dos
+**bytes** era verdadeira **naquele instante** e é incompleta como regra:
+
+> **Veredito de heurística `!ml` não é propriedade dos bytes — é bytes × avaliador no momento.**
+
+O controle de ontem (11.2.2 compila, 11.2.3 não, no mesmo minuto) separava os bytes **sob o avaliador
+daquele instante**, e isso é tudo que um controle simultâneo consegue separar. Para afirmar "são os
+bytes", faltaria repetir com o avaliador fixo — que é justamente o que não se fixa, porque parte dele
+é remoto.
+
+**Consequência prática: não há remédio a aplicar.** A exclusão no Defender que eu ia propor — e que
+dependia da sua palavra, por ser configuração de segurança da máquina — **deixou de ser necessária**.
+Nenhuma mudança foi feita no Defender, por mim ou por qualquer passo deste trabalho.
+
+### O #647 do upstream não acende nada aqui, e o "bit de execução" dele não nos atinge
+
+```
+conjunto do intervalo      28 arquivos · 10 de produto
+arquivo de hook            0   ->  tripla NAO exigida
+internal/guardforms/       0
+git diff --summary         13 `create mode 100644` · ZERO `mode change`
+validate, binario da arvore          rc=0 · 3 avisos
+validate, binario dele com o #647    rc=0 · 3 avisos      saidas IDENTICAS
+```
+
+🔴 **O título do commit dele diz *"bit de execução dos scripts"*, e a leitura ingênua esperaria modo
+mudando na árvore.** Não muda: ele trocou `os.WriteFile(path, …, 0755)` por
+`pathguard.GuardedWrite(root, path, …, 0755)`, fechando um TOCTOU com `fd.Chmod` em vez de chmod por
+caminho — e isso vale para script **gerado**, não para arquivo rastreado. A nossa convenção `100644` e
+a ordem de 2026-08-29 de **não forçar o bit** seguem inteiras.
+
+O `agent_models` é um `WARN` do comando `agents models`, não regra de `validate`, e por isso o piso de
+3 avisos não se move.
