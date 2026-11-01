@@ -34,6 +34,21 @@ docs/roadmaps/.trackfw-credential-guard.json
 # of the dispatching machine; committing them would govern writes on a different checkout.
 .trackfw/leases/
 
+# Despejo de pilha do MSYS/Cygwin: <ferramenta>.exe.stackdump, escrito na raiz do
+# diretorio de trabalho quando um binario do Git Bash morre por sinal. Nasce de
+# subprocesso de gate ou de sync, nunca de codigo nosso, e nao se versiona.
+# Medido em 2026-10-29: um bash.exe.stackdump de 1332 bytes apareceu durante o
+# upstream-sync.sh da 11.2.0 e entrou em `git status` como nao rastreado.
+#
+# 🔴 Este bloco e NOSSO e fica ACIMA do ultimo bloco do upstream DE PROPOSITO. O
+# upstream anexa no FIM deste arquivo, e enquanto a nossa regra morava la os dois
+# appends viravam add/add a cada release. Medido em 2026-11-01, no sync da 11.2.4:
+# o #646 anexou `*/**/.claude/agent-memory/` no fim e o sync abortou com "conflito
+# de PRODUTO" — o unico conflito de produto dos 59 arquivos do intervalo. Nao ha
+# negacao (`!`) neste arquivo, conferido por grep, logo a posicao nao muda
+# semantica nenhuma: mover custa zero e tira a nossa regra da zona de colisao.
+*.stackdump
+
 # Cópias do README raiz geradas pelo release.yml antes de publicar nos canais.
 # release.yml:237 (npm): cp ../README.md README.md (cwd: npm/)
 # release.yml:309 (pypi): cp README.md pypi/README.md
@@ -41,10 +56,3 @@ docs/roadmaps/.trackfw-credential-guard.json
 # ML-1B, ROADMAP-2026-10-28-documentacao-e-canais-refletem-o-produto-11-x.
 npm/README.md
 pypi/README.md
-
-# Despejo de pilha do MSYS/Cygwin: <ferramenta>.exe.stackdump, escrito na raiz do
-# diretorio de trabalho quando um binario do Git Bash morre por sinal. Nasce de
-# subprocesso de gate ou de sync, nunca de codigo nosso, e nao se versiona.
-# Medido em 2026-10-29: um bash.exe.stackdump de 1332 bytes apareceu durante o
-# upstream-sync.sh da 11.2.0 e entrou em `git status` como nao rastreado.
-*.stackdump
