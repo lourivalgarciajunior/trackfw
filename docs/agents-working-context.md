@@ -33441,3 +33441,39 @@ Ela virou **redundância** — o `windows-full-suites` do CI cobriu os mesmos pa
 de ser escrito.
 
 **Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
+
+### ✅ A pendência do `internal/validator` fechou, e ela CONCORDA com o CI
+
+A entrada acima declarou a passada como pendente e escreveu que *"o único resultado interessante dela
+seria discordar do CI"*. **Não discordou.** Medido com o `rc` **dentro** de cada arquivo:
+
+```
+internal/generators   ok    720,2s   rc=0    ·  0 panic de timeout
+internal/validator    FAIL  470,0s   rc=1    ·  0 panic de timeout
+  os 3 FAIL individuais, e SO eles:
+    TestStaleWIPReportsWIPWalkError
+    TestFolderStatus_DiretorioNaoLegivel_P2
+    TestFilenameUniqueness_DiretorioNaoLegivel_P2
+```
+
+Duas coisas ficam provadas **por efeito**, não por raciocínio:
+
+1. **Os 2 `FAIL` de pacote da primeira corrida eram teto, não defeito.** Com `-timeout 30m` e corrida
+   sequencial, **zero** `panic: test timed out` nos dois pacotes. O `validator` fecha em 470 s, bem
+   abaixo dos 600 s do default — ou seja, ele só estourou porque estava disputando a máquina com o
+   `generators`.
+2. **O `rc=1` do `validator` é o esperado, e por nome:** os únicos FAIL são os três Group A
+   declarados na lista de Windows do upstream. O ratchet do CI disse `5 observed / 5 active`, e estes
+   três estão entre os cinco. **Nenhuma discordância a explicar.**
+
+### 🔴 E a notificação mentiu DE NOVO — sétima ocorrência, pega pela regra escrita minutos antes
+
+```
+notificacao da tarefa    "completed (exit code 0)"
+VALIDATOR rc=            1        <- dentro do arquivo
+```
+
+O comando terminava em `echo done`, então o `rc` da notificação é o do `echo`. **Mas desta vez a
+verdade não dependeu dela**, porque cada pacote gravou a própria linha de `rc` **dentro** do seu
+arquivo — exatamente a forma que a seção acima acabou de escrever como regra. A regra se provou na
+hora seguinte à sua escrita, e é por isso que ela fica em vez de um "lembrar melhor".
