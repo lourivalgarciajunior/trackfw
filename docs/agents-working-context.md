@@ -33340,3 +33340,104 @@ medido deste conjunto é o alvo: `TestGuardLineShellMatrix` passou nas quatro pa
 (uma da matriz inteira, três do escopo `git-branch`, mais a segunda da matriz), com 0 FAIL em todas.
 
 **Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
+
+---
+
+## 2026-11-02 10:45 — o merge da 11.2.5, e o ratchet fechando o arco do timeout por efeito
+
+**Continua a entrada das 10:20**, que fechou no PR #303 ainda aberto.
+
+### O merge, com os cinco critérios medidos
+
+```
+PR #303  MERGED 10:31 (local) / 13:31Z   merge commit d1df2435352e
+conjunto    25 linhas · 23 nomes · duplicados: gates-locais e gates-windows
+            (derivado pela regra nova do ~/.claude/CLAUDE.md, nao por total chumbado)
+conclusoes  25 success — a API de check-runs concorda: 25 no sha, todas success
+head        os 25 check-runs em 27397c6da136 = o nosso HEAD
+attempt     attempt=1 nos 6 workflow runs, todos no head medido — nenhum herdado
+vermelho    zero  ·  windows-full-suites pass em 13m15s
+depois      main d1df2435 = origin/main · validate 3 avisos · 11.2.5 na arvore,
+            no PATH e no npm — os tres alinhados · prune deletou 1 nomeando o PR
+```
+
+### 🔴 O ratchet fechou o arco de ontem POR EFEITO, e o número é melhor que o meu
+
+Ontem o `TestGuardLineShellMatrix/git-branch/powershell/RC0-allow` estourou o teto de 15 s no nosso
+CI (15,01 s), o ratchet acusou `NEW Go assertion failure` e eu diagnostiquei timeout disfarçado de
+asserção. Hoje, com o #652 mesclado, **no mesmo job e no mesmo tipo de runner**:
+
+```
+ML-2A/2B: 5 observed / 5 active / 33 removed. Go 5/5    — sem [+1 NOVO], sem DESEQUILIBRIO
+TestGuardLineShellMatrix                    PASS 26,34 s
+git-branch/powershell/RC0-allow             1,47 s
+```
+
+**A margem no runner foi de 4,3× para 10×**, e os **5 observados são exatamente os 5 declarados** —
+os meus 3 FAIL locais (Group A) entre eles. É a confirmação mais forte possível do conserto dele:
+não é "passou desta vez", é o caso que estourava medindo um décimo do teto.
+
+| | antes do #652 | depois |
+|---|---|---|
+| runner, `RC0-allow` | **15,01 s** → estourou | **1,47 s** |
+| margem contra o teto de 15 s | 4,3× no attempt verde | **10×** |
+| ratchet | `Go 6/5 [+1 NOVO]` | `Go 5/5` |
+
+### A passada local de `go test`: 3 FAIL declarados, e 2 que foram instrumento MEU
+
+O PR não afirmou resultado de teste, e isso se mostrou a decisão certa — a corrida reprovou, e nada
+disso era defeito da árvore.
+
+**Os 3 FAIL individuais, conferidos POR NOME contra a lista de Windows do upstream:**
+
+```
+TestStaleWIPReportsWIPWalkError                DECLARADO  Group A: ENOTDIR = ERROR_PATH_NOT_FOUND
+TestFolderStatus_DiretorioNaoLegivel_P2        DECLARADO  Group A: os.Chmod(0o000) no-op em NTFS
+TestFilenameUniqueness_DiretorioNaoLegivel_P2  DECLARADO  Group A: idem
+```
+
+São as fixtures **inconstruíveis nesta máquina** que este arquivo já documenta, e a primeira é o
+`ENOTDIR` que originou a Regra Dura de Reconciliação. 🔴 **Por contagem, "3 FAIL" é indistinguível
+de regressão; por nome, é ambiente conhecido** — e o ratchet do CI concorda, com `5 observed / 5
+active`.
+
+**Os 2 FAIL de pacote eram teto, não asserção, e a causa fui eu:**
+
+```
+1a corrida, os DOIS pacotes num comando so:
+  internal/generators  FAIL 608,2s   panic: test timed out after 10m0s
+  internal/validator   FAIL 605,0s   panic: test timed out after 10m0s
+refeita SEQUENCIAL, com -timeout 30m:
+  internal/generators  ok 720,2s  rc=0
+```
+
+O `go test` **paraleliza entre pacotes**, então os dois disputaram a máquina e estouraram o **default
+de 10 min**. Com o teto levantado e a corrida sequencial, o `generators` fecha em 720 s — acima dos
+600 s do default, o que explica o estouro sem precisar invocar defeito. 🔴 **Limite: 720 s contra os
+435 s medidos em 01/11 é UMA passada, e uma passada de wall-clock nesta máquina não é medida** — não
+está declarado como piora.
+
+### 🔴 A notificação disse `exit code 0` sobre uma corrida que REPROVOU
+
+O comando de medição terminava em `echo "TESTES rc=$?"`, e **o `echo` sai 0 sempre** — então a
+notificação repassou o `rc` do `echo`, não do `go test`. Quem contou a verdade foi a saída, que
+termina em `FAIL`.
+
+É a **sexta** ocorrência registrada da família *"cano/invólucro mascara exit code"*, e foi cometida
+**com a regra escrita na memória**. A forma estreita que resolve, e que vale mais que "lembrar
+melhor":
+
+> **Comando de medição não termina em `echo`. O `rc` vai DENTRO do arquivo de saída, nunca depois
+> dele.**
+
+Na refeita, cada pacote grava a própria linha (`GENERATORS rc=`, `VALIDATOR rc=`) **dentro** do seu
+arquivo, e a notificação deixa de ser a fonte.
+
+### O que fica pendente, declarado
+
+A passada de `internal/validator` com `-timeout 30m` seguia em curso quando esta entrada foi escrita.
+Ela virou **redundância** — o `windows-full-suites` do CI cobriu os mesmos pacotes e o ratchet deu
+`5/5` —, e o único resultado interessante dela seria **discordar do CI**. Se discordar, o motivo tem
+de ser escrito.
+
+**Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
