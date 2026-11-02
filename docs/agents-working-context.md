@@ -33187,3 +33187,156 @@ ele, e por isso a correção só existe registrada aqui. Quem quiser auditá-la 
 entrada garante é que a mudança foi **medida** antes de ser escrita.
 
 **Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
+
+---
+
+## 2026-11-02 10:20 — sync da 11.2.5: o conserto do PowerShell a frio e a sonda de política que falhava aberta
+
+**O que foi feito.** Sync dos dois commits da 11.2.5 e `npm i -g trackfw@11.2.5`.
+
+| commit | PR | o que é |
+|---|---|---|
+| `644f8b7c` | #652 (fecha #649) | PowerShell 5.1 a frio na matriz de guard **e na sonda de política** |
+| `b5a4653c` | #653 | o bump |
+
+### O sync, com a invariante fechada e ancorada na BASE DE MERGE
+
+```
+base de merge    bca55ae03979        upstream/main  b5a4653c3883
+merge toca  25  =  trazidos 13  +  retidos 12
+retido fora de docs/ e vault/                 0
+trazido fora do conjunto do merge             0
+dos 13 trazidos, quantos em docs/             1  — o cli-parity.md, excecao nomeada
+divergencia de produto no NUCLEO              0  (internal/, cmd/, Makefile ausentes)
+guarda de vacuidade: upstream/main:Makefile legivel   sim
+go build rc=0 · go vet rc=0 · validate 3 avisos · 0 mencoes a politica
+```
+
+No filtro largo, **33** diferem: **32 adição nossa** (conferidas contra `git ls-tree`) e **1
+divergência real**, o índice `.claude/agent-memory/hades-tf/MEMORY.md`. **Zero conflito** — e o
+`.gitignore` **não está** no conjunto, então o conserto posicional de ontem **não foi exercitado**
+aqui; ele continua não falsificado por um append real do upstream.
+
+**Os dois predicados**, e o largo decidiu: zero arquivo de hook ⇒ **passo 3 da tripla não exigido**
+(6º intervalo seguido). O fino concordou — `guard_generations.go` **idêntico** (228 linhas) — e o
+`roadmapdoc.go` é **byte a byte** o dele, logo as quatro bordas do `Caducou:` que o nosso gate espelha
+estão intactas.
+
+### A previsão de `validate` estava medida ANTES, não suposta
+
+Em 01/11 eu compilei o binário **dele** de `644f8b7c` e o rodei na **nossa** árvore: `3 avisos`,
+saídas **idênticas** às do nosso, zero menção a política. Hoje, com a árvore mesclada, o nosso binário
+11.2.5 dá o mesmo. A previsão não veio de leitura de diff — veio de execução.
+
+### 🔴 O que o #652 conserta no PRODUTO, e nos atingia: `guardGetPSPolicy` falhava ABERTO
+
+A nota dele no vault diz, sobre a sonda de política do guard:
+
+> *"a mesma causa fazia o `guardGetPSPolicy` (prazo de 5 s) devolver `""`, lido como 'não é
+> Restricted': **fail-open silencioso**. Hoje o prazo é de 20 s, e a política ilegível gera aviso."*
+
+Guard que falha aberto é a classe recorrente deste repositório — é a mesma forma do braço do `sed`
+sem `jq` e do matcher que não cobria `PowerShell`. **Aqui não acendeu**, e o motivo é medido:
+`Get-ExecutionPolicy` devolve `Bypass` (Process) e `RemoteSigned` (CurrentUser), ou seja **legível**.
+
+🔴 **E silêncio tem duas causas, então eu tentei o controle negativo — e ELE FALHOU, declarado.**
+Tirar o `powershell.exe` do PATH só no processo da medição produziu **4 violações em 0 s**,
+**idênticas nos dois binários** (o nosso 11.2.4 e o dele), todas `trackfw binary not found in PATH`.
+A causa é a conversão de PATH do MSYS: `PATH` montado à mão em forma POSIX não chega ao binário
+**nativo** de Windows, e o que quebrou foi a resolução do próprio `trackfw` dentro do validador —
+não a leitura da política. **Sonda inválida**, e é a mesma armadilha do *"controle contaminado pelo
+PATH"* já registrada na seção dos gates de PATH curado.
+
+**O substituto honesto, nomeado como substituto:** rodei os testes **dele** nesta máquina —
+19 testes, 0 FAIL —, e eles cobrem exatamente o que a sonda não alcançou:
+
+```
+TestGuardBinaryProbeOnce_WindowsPS1PolicyUnreadable_Warning
+TestML1C_Validate_PolicyUnreadable_AppearsInWarningsNotViolations
+TestML1C_ValidateTagged_PolicyUnreadable_...
+TestML1C_ValidateUnfiltered_PolicyUnreadable_...
+TestML1C_Validate_CacheSonda_GetPSPolicyChamadaUmaVez
+```
+
+São os **três** pontos de entrada que a nota dele nomeia (`Validate`, `ValidateTagged`,
+`ValidateUnfiltered`) mais o cache que evita pagar os 20 s duas vezes. Então: a regra está **viva** e
+o balde é **aviso** — por teste, não por sonda de ambiente.
+
+### 🔴 Convergência independente com ele sobre o disfarce do timeout
+
+Ele achou o mesmo que eu, e nomeia o discriminante que eu não tinha:
+
+> *"No Windows, o kill do `exec.CommandContext` por prazo sai com **código 1**; no macOS, com -1. Uma
+> falha por prazo **se disfarça de asserção** ('esperado 0, obteve 1'). O discriminante é
+> `ctx.Err() == context.DeadlineExceeded`."*
+
+A frequência também casa: ele mediu *"2,91 a 9,86 s em 17 jobs verdes, e passou de 15 s em **dois**"*;
+eu medi **1 falha em 10** corridas de `Quality` no fork. E o `RC0-allow` dele deu **1,37 s** depois do
+aquecimento, contra os meus 1,66 s locais de ontem.
+
+🔴 **O meu comentário na #649 NÃO entrou no trabalho dele, e isso está medido, não suposto:** zero
+ocorrências nos 9 documentos novos e no corpo do #652; as 4 menções ao fork no `cli-parity.md` são
+antigas (PRs #225, #223, issue #216). A cronologia explica — **o draft dele existia às 16:37 e eu
+comentei às 16:44**. Calibragem: comentário que chega depois de haver draft é corroboração, não
+insumo.
+
+### O aquecimento funciona aqui, e os 9,12 s eram outlier de UMA passada
+
+A primeira leitura deu `git-branch/powershell/RC0-allow` em **9,12 s** — contra 1,66 s ontem —, e a
+tentação era declarar regressão. **Três passadas no mesmo escopo de ontem dizem outra coisa:**
+
+```
+faixa de RC0-allow (git-branch)   1,87 · 2,93 · 5,17 s
+matriz inteira, 2a passada        os quatro guards em 2,2 a 2,5 s
+aquecimento                       0,38 a 0,48 s, e em cache (sync.OnceValues)
+pior caso observado               5,17 s contra o teto de 15 s  ->  2,9x
+```
+
+🔴 **Uma passada de wall-clock nesta máquina não é medida** — a regra que esta casa pagou com os
+678 s publicados por engano. A variância está na **chamada afirmada**, não no aquecimento, que faz o
+que promete.
+
+### Passo 2 da tripla, com sonda ANTES de instalar
+
+```
+npm pack @trackfw-bin/win32-x64@11.2.5, extraido FORA do PATH
+  14 852 608 bytes · sha256 83d07aca…
+  --version  trackfw 11.2.5     ·     guard --help  rc=0
+depois do npm i -g:  Git Bash · PowerShell · cmd.exe  ->  11.2.5 nos tres
+
+guard git-branch pelo binario do PATH, payload real, rc SEM cano:
+  git status · git log                      0 · 0   <- controle negativo
+  git push origin main · git commit -m x    2 · 2
+  git add -A · git add .                    2 · 2
+  git add docs/x.md                         0       <- caminho explicito
+  git add -A docs/                          0       <- `-A` COM pathspec e pathspec
+```
+
+A sonda não é zelo: a linha polyglot transforma **qualquer** não-zero em 2, e binário em quarentena no
+PATH é **sessão em deny-all**.
+
+### Frentes dele abertas, para a próxima varredura
+
+```
+PR #654   docs(governance): ACs entregues marcados, ADR-2026-09-26 aceito...
+branches  chore/fecha-req-2026-09-02-fiacao-do-guard
+          chore/fecha-reqs-prazo-de-rede-e-prune-remoto
+          docs/higiene-de-governanca-reqs-e-adr
+issues    0 abertas
+```
+
+🔴 Três frentes de higiene de governança ao mesmo tempo, e a `fiacao-do-guard` é a
+**`REQ-2026-09-02`** — a frente da regra `guard_wiring_removed`, cuja previsão deste arquivo foi
+confirmada em 2026-10-11. Pelos títulos são `docs`/`chore`, logo o predicado largo provavelmente
+seguirá zero; mas essa é a única que **merece leitura antes de sincronizar**, porque toca o que decide
+se a nossa cerca fica íntegra.
+
+### Limite declarado: a passada local de `go test` dos pacotes tocados ficou em curso
+
+Quando o PR foi aberto, `go test ./internal/generators/... ./internal/validator/...` ainda rodava —
+o `internal/generators` sozinho leva cerca de 7 min nesta máquina. **Nenhum resultado foi afirmado
+no commit nem no corpo do PR**, e o `windows-full-suites` do CI cobre os mesmos pacotes. O que está
+medido deste conjunto é o alvo: `TestGuardLineShellMatrix` passou nas quatro passadas feitas aqui
+(uma da matriz inteira, três do escopo `git-branch`, mais a segunda da matriz), com 0 FAIL em todas.
+
+**Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
