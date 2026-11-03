@@ -33477,3 +33477,181 @@ O comando terminava em `echo done`, então o `rc` da notificação é o do `echo
 verdade não dependeu dela**, porque cada pacote gravou a própria linha de `rc` **dentro** do seu
 arquivo — exatamente a forma que a seção acima acabou de escrever como regra. A regra se provou na
 hora seguinte à sua escrita, e é por isso que ela fica em vez de um "lembrar melhor".
+
+---
+
+## 2026-11-03 09:00 — sync da 11.3.0; o ratchet pegou um IsAbs novo; e a suspensão comeu o teto do `go test`
+
+**O que foi feito.** Sync dos dois commits da 11.3.0 e `npm i -g trackfw@11.3.0`.
+
+| commit | PR | o que é |
+|---|---|---|
+| `58239042` | #654 | governança — ACs marcados, ADR-2026-09-26 aceito, frontmatter no ADR-001 |
+| `566dd593` | #655 | **feat** "primeira experiência" — `req new --adr`, **guard em inglês**, REQ não é reescrita, README e GIF |
+
+### O sync, com a invariante fechada e ancorada na BASE DE MERGE
+
+```
+base de merge    a7bb3f6aadb8        upstream/main  566dd59302e9
+merge toca  50  =  trazidos 34  +  retidos 16
+retido fora de docs/ e vault/                 0
+trazido fora do conjunto do merge             0
+dos 34 trazidos, quantos em docs/             1  — o cli-parity.md, excecao nomeada
+divergencia de produto no NUCLEO              0  (internal/, cmd/, Makefile ausentes)
+guarda de vacuidade: upstream/main:Makefile legivel   sim
+go build rc=0 · go vet rc=0
+validate 3 avisos — e a saida IDENTICA a de antes do merge, por diff
+```
+
+No filtro largo **33** diferem: **32 adição nossa** (conferidas contra `git ls-tree`) e **1
+divergência real**, o índice `.claude/agent-memory/hades-tf/MEMORY.md`. **Zero conflito.**
+
+**Os dois predicados:** zero arquivo de hook ⇒ passo 3 da tripla não exigido;
+`guard_generations.go` **idêntico** (228 linhas) e `roadmapdoc.go` **byte a byte** o dele, logo as
+quatro bordas do `Caducou:` estão intactas.
+
+### O "guard em inglês" não nos atinge, e está provado nas DUAS pontas
+
+```
+rc nos oito payloads, binario 11.3.0 do PATH, sem cano:
+  git status · git log                      0 · 0
+  git push origin main · git commit -m x    2 · 2
+  git add -A · git add .                    2 · 2
+  git add docs/x.md · git add -A docs/      0 · 0
+a mensagem agora:
+  trackfw: raw git push blocked. Use trackfw push (push existing commits), trackfw ship
+  (commit + push + PR in one step) or trackfw release tag (publish a release tag).
+  Nothing before this command was executed (a compound command is blocked as a whole).
+```
+
+Tradução de mensagem **não toca o `rc`**, que é o que o hook consome. E **nenhum instrumento nosso
+casa o texto do guard**: varri os 21 scripts só nossos, e 🔴 **o único casamento era `❌ Bloqueado`,
+que é marcador de status de ML do roadmap** — conferi *o que* casou em vez de contar o casamento,
+porque acerto com sonda larga também é ruído.
+
+### Passo 2 da tripla: a ressalva do publish pela metade foi MEDIDA e fechada
+
+Eu havia escrito que o `@trackfw-bin/win32-x64` subiu em **11.3.0** enquanto a casquinha estava em
+11.2.5, e que a sonda compararia as duas. Comparou:
+
+```
+binario de plataforma 11.3.0   14 859 776 bytes · sha256 d6cf8ab3… · guard --help rc=0
+casquinha 11.3.0               fixa os SEIS pacotes de plataforma em 11.3.0 EXATO
+  -> nao havia casamento de casquinha velha com binario novo
+tres shells depois do npm i -g 11.3.0 em Git Bash, PowerShell e cmd.exe
+```
+
+A espera pelo publish foi armada como `run_in_background` com `until` — **uma** notificação, não
+Monitor —, com teto de 30 min e o veredito gravado **dentro** do arquivo. Saiu `PUBLICADO
+trackfw@11.3.0 na tentativa 1`, às 17:14.
+
+### 🔴 O ratchet de predicado de SO pegou um `IsAbs` novo, e é achado de verdade
+
+```
+FAIL check-os-predicate-classification   exit=1
+  ✗ CLASSIFICACAO NAO DECLARADA: internal/commands/req.go:345 — filepath.IsAbs
+```
+
+O sítio é `adrPortablePath`, que torna absoluto o caminho de ADR contra a raiz quando o `IsAbs` diz
+que ele ainda não é. O valor vem de `ResolveADRFiles` sobre os `adr_dirs` do `trackfw.yaml` — **caminho
+que vem de FORA**, a mesma forma das doze entradas que o baseline já declara.
+
+**Mecanismo medido nesta máquina, com sonda escrita por `Write`:**
+
+```
+/c/Users/louri/.trackfw/adr/x.md   IsAbs=false  ->  Join = raiz + c/Users/...   ERRADO, em silencio
+C:\Users\louri\.trackfw\adr\x.md   IsAbs=true   ->  ramo pulado, correto
+~/.trackfw/adr/x.md                IsAbs=false  ->  Join = raiz + ~ ...
+docs/adr/x.md                      IsAbs=false  ->  Join correto, o caso pretendido
+```
+
+Mesma assimetria que a entrada do `credential.go` registra: **o `IsAbs` exige letra de unidade no
+Windows**. 🔴 **Limite declarado na própria entrada do baseline:** o nosso `adr_dirs` é `docs/adr`,
+relativo, então a entrada explorável **não está na nossa configuração hoje** — o mecanismo está
+medido, a alcançabilidade aqui **não**.
+
+**Nenhuma linha de produto foi tocada**: corrigir o `req.go` aqui criaria divergência, que hoje é
+zero, e pelo escopo negativo da `REQ-2026-09-05-onda-2` achado em produto dele vira **issue**, nunca
+correção local. Depois da declaração o gate sai `rc=0` e os cinco baldes reconciliam:
+
+```
+392 varridos = 263 com teste + 67 D1 + 11 D3 + 28 comentario + 23 D2
+D2: 23 sitios em 14 arquivo(s) declarado(s)
+```
+
+### 🔴 ACHADO NOVO: a suspensão da máquina CONSOME o orçamento do `-timeout` do `go test`
+
+A primeira passada de testes foi atravessada por **três suspensões**, lidas no log de eventos do
+Windows — e não inferidas do relógio:
+
+```
+02/11 17:27:04  entrando em suspensao   <- minutos depois de lancar a cadeia, 17:19
+02/11 20:27:05  saiu da suspensao       (3h)
+02/11 23:36:38  saiu da suspensao       (3h)
+03/11 08:36:34  saiu da suspensao       (9h)
+
+internal/generators   FAIL  wall-clock 10 961 s = 3h02 = 17:24 -> 20:27
+                      panic: test timed out  1   ·   FAIL individuais  0
+o agregador           terminou 03/11 08:38, logo depois da ultima retomada
+```
+
+🔴 **O teste não travou: o timer do `go test` contou 3 h de sono contra um teto de 30 min** e matou a
+corrida no meio, com zero asserção violada. A memória desta casa já dizia que *"o pulso não distingue
+morreu de a máquina dormiu"*; isto é mais afiado e muda o remédio:
+
+> **Corrida atravessada por suspensão é INCONCLUSIVA, não reprovada — e levantar o `-timeout` não
+> resolve, porque o orçamento é consumido pelo sono.** O discriminante é o log de eventos
+> (`Kernel-Power`, ids 42 e 107/1), não o wall-clock.
+
+### Os testes que fecharam
+
+```
+internal/guard      ok   rc=0   6,35s      <- pacote NOVO do 11.3.0
+internal/commands   FAIL rc=1   306,3s     1 FAIL individual:
+  TestShip_Integration_GracefulDegradation_RealBinary  -> DECLARADO, Group C
+```
+
+**Pendente e declarado:** `internal/generators` e o agregador foram relançados (o agregador
+**precisava** rodar de novo, porque o baseline do gate mudou) e seguiam em curso quando o PR foi
+aberto. O gate consertado foi rodado **avulso** e saiu `rc=0`.
+
+### 🔴 E eu violei a regra INVIOLÁVEL de conteúdo autoral de novo
+
+A sonda do `IsAbs` foi escrita primeiro em **heredoc**, e as contrabarras foram comidas: `\\` virou
+`\`, e o Go recusou com *invalid character in hexadecimal escape*. Refeita com `Write`, rodou. É a
+segunda violação da mesma regra nesta sessão — a primeira foi uma mensagem de commit dentro da string
+do comando, que sobreviveu por sorte. **Aqui não sobreviveu**, o que é o melhor desfecho possível
+para uma violação: o defeito apareceu na hora em vez de atravessar para o registro.
+
+**Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
+
+### ✅ As duas pendências fecharam verdes, e a suspensão está provada POR EFEITO
+
+A entrada acima declarou `internal/generators` e o agregador como em curso. Medido com o `rc`
+**dentro** de cada arquivo:
+
+```
+internal/generators   ok  rc=0  576,979s   ·  panic de timeout: 0
+agregador             21 script(s) so nosso(s) derivado(s) de 92 em scripts/
+                      16 executado(s) · 0 falha(s)   ·  rc=0
+```
+
+🔴 **A primeira linha fecha o achado da suspensão pela outra direção.** O mesmo pacote, o mesmo
+código, a mesma flag `-timeout 30m`: com a máquina **acordada** ele termina em **577 s**, bem abaixo
+dos 1800 s do teto. Ontem, atravessado por três suspensões, ele saiu com `test timed out` depois de
+**10 961 s** de wall-clock e **zero** asserção violada. Não havia o que consertar no código — o timer
+contou o sono.
+
+**E agora existe faixa, em vez de uma leitura só** — que é o que esta casa exige para wall-clock:
+
+```
+internal/generators   435 s (01/11)   720 s (02/11)   577 s (03/11)
+```
+
+Nenhuma das três é regressão em relação às outras, e a de 10 961 s **não entra na faixa**: ela não é
+uma medição do pacote, é a medição de uma máquina que dormiu.
+
+**A segunda linha fecha o gate.** O agregador precisava rodar de novo porque o baseline do
+`check-os-predicate-classification` mudou com a declaração do `IsAbs` novo; ele volta a
+`16 executado(s) · 0 falha(s)`, com a guarda de completude sem acusar nada — o que também confirma
+que a edição do baseline não quebrou a derivação dos 21 scripts só nossos.
