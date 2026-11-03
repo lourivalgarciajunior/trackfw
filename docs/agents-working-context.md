@@ -33655,3 +33655,121 @@ uma medição do pacote, é a medição de uma máquina que dormiu.
 `check-os-predicate-classification` mudou com a declaração do `IsAbs` novo; ele volta a
 `16 executado(s) · 0 falha(s)`, com a guarda de completude sem acusar nada — o que também confirma
 que a edição do baseline não quebrou a derivação dos 21 scripts só nossos.
+
+---
+
+## 2026-11-03 09:40 — dois furos na cerca confirmados aqui, e o controle negativo que eu havia declarado impossível
+
+**O que foi feito.** Sync de um commit de memória de agente do upstream, e — antes dele — a reprodução
+independente de dois achados de cerca que um contribuidor novo abriu.
+
+### 🔴 `bash -c "git push"` ATRAVESSA o guard, e isso é cerca nossa
+
+Um contribuidor novo, `bruno-castiglioni`, abriu **7 issues em 8 minutos** em 02/11 (19:38–19:46).
+Duas são de cerca, e as duas reproduzem aqui com o binário **11.3.0 publicado**:
+
+```
+payload                                  rc
+git push origin main                      2   bloqueia   <- controle POSITIVO
+bash -c "git push origin main"            0   🔴 passa
+sh -c "git push origin main"              0   🔴 passa
+bash -lc "git push origin main"           0   🔴 passa
+bash -c "git commit -m x"                 0   🔴 passa
+bash -c "git status"                      0   controle negativo
+```
+
+🔴 **Não é só `bash -c` e não é só `push`** — `sh -c` e `bash -lc` atravessam igual, e `commit`
+também. A classe é *git bloqueado dentro de invólucro de shell*, então conserto que case o literal
+`bash -c` não fecha.
+
+**O que isso significa para nós:** a cerca que impede commit e push direto na `main` é esse guard,
+com **sete grupos** de hook apontando para ele. Com o invólucro atravessando, a proteção passa a
+depender de o agente nunca formar o comando daquela maneira — propriedade do **chamador**, não do
+guard.
+
+🔴 **Medi o GUARD, não a cerca.** Alimentei payloads no `trackfw guard git-branch` por stdin —
+perguntei *"você bloquearia isto?"* — e **não executei** nenhum comando envolvido através do hook. A
+ordem desta casa (*"a falha é conhecida e não se usa — nem para destravar trabalho, nem para
+medir"*) **continua valendo depois do achado**, e é agora que ela importa.
+
+### 🔴 E o guard de credencial é CONSULTIVO: detecta, avisa, devolve 0
+
+```
+Write com conteudo na forma de chave AWS (vetor de exemplo PUBLICO da AWS)
+  rc=0  ·  "trackfw-credential-guard: warning - possible AWS access key detected in tool payload."
+
+Read .env · Read ~/.aws/credentials · Read ~/.ssh/id_rsa · Bash cat ~/.aws/credentials
+  rc=0  ·  NEM AVISO
+```
+
+No `PreToolUse` **só `rc=2` nega**, então ele informa e deixa passar. E a assimetria desarma a leitura
+de que seria convenção do projeto: **o `guard git-branch` devolve 2** no mesmo binário e no mesmo
+instante.
+
+🔴 **O controle positivo é o que torna as leituras legíveis** — sem ele, cinco `rc=0` seguidos são
+**indistinguíveis de sonda malformada**. O vetor da AWS imprime o aviso, o que prova que a sonda
+alcança o guard e que o parse funciona nas duas formas de payload (`Write` com `content`, `Bash` com
+`command`). Foi a primeira coisa que medi depois do quinto zero.
+
+**Comentei nas duas** (`issuecomment-6603826936` e `-6603827536`) com a reprodução, as variantes a
+mais e o método. **Não abri issue**: as duas já existiam, e duplicata é o custo que a memória do
+#497/#499 registra.
+
+### O sync, pequeno e com a invariante fechada
+
+```
+base de merge    7a8a2ccdd366        upstream/main  9aa05dd555d3
+merge toca  6  =  trazidos 2  +  retidos 4
+retido fora de docs/ e vault/                 0
+trazido fora do conjunto do merge             0
+dos 2 trazidos, quantos em docs/              0   — nao houve cli-parity.md neste intervalo
+divergencia de produto no NUCLEO              0
+go build rc=0  ·  validate 3 avisos
+```
+
+Os 2 trazidos são **memória de agente dele** (`zeus-tf`), que esta casa deliberadamente **não retém**
+— é o caso já registrado do #554. O índice do `zeus-tf` mesclou limpo porque a nossa divergência é no
+`hades-tf`.
+
+### 🔴 A nota dele explicou a minha sonda que falhou ontem — e o controle negativo passou a funcionar
+
+A nota `project_path_local_mascara_sonda_de_binario.md` que o sync trouxe diz:
+
+> *"o HOME isolado não isola o PATH, e a sonda é real (`LookPath` + `trackfw guard --help`)"*
+
+Ontem eu curei o PATH para tirar o `powershell.exe` e recebi *"trackfw binary not found in PATH"*, e
+**declarei que o controle negativo era impossível por esse método**. Estava errado sobre a causa: a
+sonda mediu algo **verdadeiro** — o `trackfw` não estava no PATH que eu entreguei —, porque eu montei
+o PATH em **Git Bash, em forma POSIX**, e forma POSIX não chega a um binário **nativo** de Windows.
+
+**Refeito em PowerShell, onde o PATH já é nativo:**
+
+```
+entradas no PATH             36 -> 33   (so as de WindowsPowerShell saem)
+trackfw resolve              SIM        <- a precondicao preservada
+powershell resolve           NAO        <- a premissa montada
+validate                     rc=0 · 4 warning(s)      <- era 3
+mencoes a polic/powershell   1          <- A REGRA ACENDEU
+mencoes a not found in PATH  0          <- nada quebrou por acidente
+```
+
+**O aviso, na íntegra:**
+
+> ⚠ trackfw resolves to a PowerShell script (.ps1) but the execution policy could not be read — if
+> the policy is Restricted, **the hook will fail open (exit 0 instead of exit 2)**; check with:
+> Get-ExecutionPolicy and fix with: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+
+🔴 **Três coisas de uma vez.** Primeiro, a regra do ML-1C dele está **viva e o balde é aviso**, agora
+provado **por efeito** e não pelos testes dele como substituto — o que **corrige o limite que eu
+declarei ontem**. Segundo, `rc=0` com 4 avisos confirma que política ilegível não vira violação.
+Terceiro, o aviso nomeia *"the hook will fail open (exit 0 instead of exit 2)"*, que é **o mesmo modo
+de falha** da #663 por outra porta: o produto já avisa sobre um caminho de fail-open, e o invólucro de
+shell é outro.
+
+**A lição de método, estreita e reutilizável:**
+
+> **PATH curado para binário NATIVO de Windows se monta em PowerShell, não em Git Bash.** Forma POSIX
+> (`/c/Users/...`) não atravessa, e o sintoma é a precondição errada quebrando primeiro — no caso, o
+> próprio `trackfw` deixando de resolver, que *parece* sonda inválida e **é** sonda no shell errado.
+
+**Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
