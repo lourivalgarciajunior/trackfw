@@ -34097,3 +34097,130 @@ contagem: é que **o critério 5 nunca foi suspenso nas duas vezes** — e hoje 
 hora, num PR que o usuário já tinha mandado mesclar.
 
 **Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
+
+---
+
+## 2026-11-03 19:40 — a terceira suspensão virou condição ESCRITA, e o PR que a escreve é o primeiro que ela classifica
+
+**O que foi feito.** O [#309](https://github.com/lourivalgarciajunior/trackfw/pull/309) mesclou
+(`fa03a3f8`, 16:00) como **terceira e última** suspensão avulsa do critério 2, e o
+[#310](https://github.com/lourivalgarciajunior/trackfw/pull/310) (`d72ceba9`, 19:06) escreveu a
+condição no `CLAUDE.md` — `+103 −0`, seção na linha 905 — e **foi mesclado por ela**, não por pedido.
+
+### 🔴 Por que a terceira virou seção em vez de quarta pergunta
+
+Este é o argumento, e ele é sobre **o que o atrito estava produzindo**:
+
+> Pedir caso a caso valia enquanto a pergunta *"isso é transitório?"* estivesse em aberto.
+> `13 de 13, zero recuperações` respondeu. Continuar pedindo transferiria ao usuário uma decisão
+> que a medição já tomou — e é assim que "suspenso" vira o padrão **sem ninguém ter decidido**.
+
+O atrito de perguntar é instrumento enquanto houver informação a ganhar com a resposta. Quando a
+resposta está medida, o mesmo atrito só distribui a decisão para quem não a está tomando.
+
+### A medição do dia, derivada por attempt, com a partição perfeita
+
+```
+09:05:29  success          12:53:50  cancelled
+09:15:18  success          14:28:20  cancelled
+09:19:15  success          14:46:32  cancelled
+09:40:28  success          15:20:42  cancelled
+--------------------        15:30:16  cancelled
+10:20:11  cancelled        16:00:14  cancelled
+10:40:55  cancelled        16:04:19  cancelled
+10:59:57  cancelled        19:06:18  cancelled   <- push do merge do #310
+11:34:01  cancelled
+12:25:55  cancelled        cancelled: 13   success: 4   vao de 8 h 46 min
+```
+
+🔴 **A partição é o que torna isto medição e não impressão:** os quatro verdes são **todos**
+anteriores a 09:40 (runner atribuído, 40 a 58 s) e os treze cancelados **todos** posteriores a
+10:20 (`runner=VAZIO`, 902 a 903 s). **Nenhuma alternância.** O braço `ubuntu-latest` da **mesma
+matriz** terminou em 22 s com runner atribuído no mesmo run — é ele o controle.
+
+### As três propriedades que separam a condição de um afrouxamento
+
+1. **O estado não se afirma, se deriva.** A seção **não** escreve *"o pool está escasso"* — escreve
+   a conta e o **critério de morte**: o primeiro braço de `macos-latest` que receber runner e sair
+   verde **apaga a seção**. Este arquivo já pagou **quatro vezes** por estado em presente.
+2. **A linha de corte é por tipo de diff, escrita:** só documentação mescla com o par vermelho e
+   registrado no commit; diff que toca `npm/`, `scripts/`, `internal/` ou versão **espera, sem
+   exceção e sem pedir**.
+3. 🔴 **O critério 5 não se suspende em hipótese nenhuma**, e a seção registra o episódio que prova
+   que ele morde: o `windows-full-suites` apareceu vermelho no #308 **depois** de o usuário já ter
+   autorizado o merge, eu recusei por uma hora, e **foi a recusa que produziu a
+   [#665](https://github.com/kgsaran/trackfw/issues/665)**.
+
+**E por que não é `continue-on-error` disfarçado**, com a diferença medível em vez de retórica:
+
+```
+esta condicao        o check continua VERMELHO e visivel, e OBRIGA a classificar o diff
+continue-on-error    pinta de verde e PARA DE AFIRMAR byte-identidade
+```
+
+O cascateamento do `shim-byte-identity-gate` **está correto** — o comentário do próprio job decide
+que `cancelled` reprova porque *"um required check verde sobre nada verificado é pior que check
+nenhum"* —, e nada na condição pede para afrouxá-lo.
+
+### 🔴 O #310 é auto-aplicável, e isso é propriedade
+
+O diff dele é `CLAUDE.md`, markdown, `+103 −0`. Pela tabela que **ele mesmo introduz**, cai na
+primeira linha: *mescla com o par vermelho, registrando a suspensão no commit de merge*. A seção que
+ele escreve é a primeira coisa a classificá-lo.
+
+**Regra que não serve para o PR que a traz não serve para nenhum** — e por isso este merge entrou
+registrado como *"merge sob a condição datada, não por exceção avulsa"*, com a classificação do diff
+escrita no corpo.
+
+### Contabilidade das suspensões, datada — e a quarta é de natureza diferente
+
+| quando | PR | diff | natureza |
+|---|---|---|---|
+| 12:55 | #307 | `CLAUDE.md` `+1 −1` | exceção avulsa, pedida |
+| 15:20 | #308 | handoff `+162` | exceção avulsa, pedida; critério 5 bloqueou antes por 1 h |
+| 16:00 | #309 | handoff `+162` | exceção avulsa, **a última** |
+| 19:06 | #310 | `CLAUDE.md` `+103` | 🔴 **primeira pela CONDIÇÃO** — classificada, não pedida |
+
+### Dois instrumentos errados, medidos hoje
+
+**1. Comentário em Discussion não vai pelo REST de issues.**
+
+```
+gh api repos/kgsaran/trackfw/issues/664/comments     HTTP 404 "Not Found"
+gh api graphql  addDiscussionComment  + node id      OK
+  node id da #664: D_kwDOS3zsKc4AqyqP
+```
+
+🔴 **Número de Discussion e número de issue vivem na mesma sequência e não na mesma API** — a #664 e
+a #665 são vizinhas em número e exigem caminhos diferentes. O 404 é honesto e não enganoso; o risco
+era ler "404" como *"a Discussion não existe"*.
+
+**2. Incidente próximo é plausível e falso — segunda vez no mesmo dia.**
+
+```
+Incident with Git Operations   minor   criado 17:57 local   status monitoring
+componentes afetados: Git Operations      <- NAO Actions
+```
+
+Ele começou **7 h 37 min depois** da nossa virada, e em outro componente. É a **segunda** vez hoje
+que um incidente declarado é temporalmente próximo e causalmente irrelevante — o primeiro foi o de
+API/Issues/Copilot das 10:25 às 10:56. 🔴 **A janela é o discriminante, não a proximidade**; e
+`Actions: operational` não se move desde 30/10, o que significa que a escassez continua **não
+declarada**.
+
+### Estado ao fechar, e o custo da condição hoje é ZERO
+
+```
+main         d72ceba9 = origin/main, limpa · validate rc=0 · 3 avisos
+PRs abertos  nenhum
+upstream     9aa05dd5, parado desde 02/11 18:07 — 25 h
+             0 commits a frente · 0 PRs · 8 issues (7 do Bruno + a nossa #665)
+             sem resposta no #664 nem no #665
+macOS        13 cancelamentos, 0 recuperacoes, vao de 8 h 46 min
+```
+
+**Nada está bloqueado** — não há PR esperando, então a condição não está custando nada agora. Ela
+volta a importar no próximo trabalho, e aí decide sozinha. **O dado fresco aparece de graça** na
+corrida de todo PR novo, que é onde eu vou medir em vez de sondar à parte.
+
+**Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
