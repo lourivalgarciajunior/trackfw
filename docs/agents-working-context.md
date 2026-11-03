@@ -33624,3 +33624,34 @@ do comando, que sobreviveu por sorte. **Aqui não sobreviveu**, o que é o melho
 para uma violação: o defeito apareceu na hora em vez de atravessar para o registro.
 
 **Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
+
+### ✅ As duas pendências fecharam verdes, e a suspensão está provada POR EFEITO
+
+A entrada acima declarou `internal/generators` e o agregador como em curso. Medido com o `rc`
+**dentro** de cada arquivo:
+
+```
+internal/generators   ok  rc=0  576,979s   ·  panic de timeout: 0
+agregador             21 script(s) so nosso(s) derivado(s) de 92 em scripts/
+                      16 executado(s) · 0 falha(s)   ·  rc=0
+```
+
+🔴 **A primeira linha fecha o achado da suspensão pela outra direção.** O mesmo pacote, o mesmo
+código, a mesma flag `-timeout 30m`: com a máquina **acordada** ele termina em **577 s**, bem abaixo
+dos 1800 s do teto. Ontem, atravessado por três suspensões, ele saiu com `test timed out` depois de
+**10 961 s** de wall-clock e **zero** asserção violada. Não havia o que consertar no código — o timer
+contou o sono.
+
+**E agora existe faixa, em vez de uma leitura só** — que é o que esta casa exige para wall-clock:
+
+```
+internal/generators   435 s (01/11)   720 s (02/11)   577 s (03/11)
+```
+
+Nenhuma das três é regressão em relação às outras, e a de 10 961 s **não entra na faixa**: ela não é
+uma medição do pacote, é a medição de uma máquina que dormiu.
+
+**A segunda linha fecha o gate.** O agregador precisava rodar de novo porque o baseline do
+`check-os-predicate-classification` mudou com a declaração do `IsAbs` novo; ele volta a
+`16 executado(s) · 0 falha(s)`, com a guarda de completude sem acusar nada — o que também confirma
+que a edição do baseline não quebrou a derivação dos 21 scripts só nossos.
