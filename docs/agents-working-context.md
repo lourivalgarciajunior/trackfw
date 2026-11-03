@@ -33935,3 +33935,165 @@ A exceção ficou registrada **no repositório**, não só na conversa: o corpo 
   para ficar verde seria exatamente o que esta casa chama de ajustar o critério ao estado atual.
 
 **Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
+
+---
+
+## 2026-11-03 15:25 — dois relatos ao upstream em canais diferentes, e o critério 5 BLOQUEANDO um merge foi o que produziu o segundo
+
+**O que foi feito.** Dois relatos ao `kgsaran/trackfw` sobre o CI, cada um no canal que a regra
+desta casa manda, e o merge do [#308](https://github.com/lourivalgarciajunior/trackfw/pull/308) com
+o critério 2 suspenso — a **segunda** exceção datada.
+
+🔴 **A entrada existe principalmente pelo terceiro parágrafo:** o critério 5 recusou um merge que o
+usuário já havia autorizado, por uma hora, e **é essa recusa que produziu a issue #665**. Sem ela o
+achado teria sido engolido como "é a coisa do macOS".
+
+### O canal não é detalhe, e os dois casos o separam bem
+
+| relato | canal | por quê |
+|---|---|---|
+| [#664](https://github.com/kgsaran/trackfw/discussions/664) — escassez de runner de macOS | **Discussion**, `General` | **não é defeito do trackfw**. É capacidade do GitHub, mais uma pergunta de desenho |
+| [#665](https://github.com/kgsaran/trackfw/issues/665) — `TestGuardLineShellMatrix` estourando os 15 s | **issue** | **é defeito medido** no teste dele, e reabre terreno da #649 depois do #652 |
+
+A regra já estava escrita (*issue é para defeito medido*; Discussions ele habilitou ao responder a
+#443). O que este dia acrescenta é o **par**: os dois sintomas chegaram pelo mesmo job vermelho, no
+mesmo PR, e a classificação correta é oposta.
+
+### #664 — a escassez de macOS, e o número se DERIVA
+
+```
+cancelamentos do braco shim-byte-identity (macos-latest) HOJE, derivados por ATTEMPT:
+  10:20:11 · 10:40:55 · 10:59:57 · 11:34:01 · 12:25:55 · 12:53:50 · 14:28:20 · 14:46:32
+  -> 8, com a 9a em curso as 15:20 (corrida de push do merge do #308)
+  todos: conclusion=cancelled · runner=VAZIO · 902 a 903 s
+```
+
+🔴 **Derivar por attempt, nunca por run** — é o erro que a entrada anterior deste handoff corrige:
+um `run_attempt=3` conta **uma** linha no `gh run list` e **três** execuções do job.
+
+**A fronteira**, que é o que torna a causa externa verificável em vez de alegada:
+
+```
+09:05:29 · 09:15:18 · 09:19:15 · 09:40:28   success, runner atribuido, 40 a 58 s
+--------------------------------------------- a virada esta nesta janela de 40 min
+10:20:11                                     cancelled, runner VAZIO, 902 s
+```
+
+A última verde é a corrida de **PR** do #306; a primeira vermelha é a corrida de **push** do merge
+daquele mesmo PR. Mesma árvore, zero byte de diferença.
+
+**Descartado por medição, e a hipótese de cota mudou de argumento:**
+
+```
+cota           o repo e PUBLICO (visibility=public) -> minuto de Actions nao e metrado
+               SKU de macOS: 133 min (set) · 263 min (out) · 15 min (nov)
+               90 min de espera de fila cobraram ~0 -> os jobs nunca receberam maquina
+configuracao   o quality.yml nao mudou no intervalo
+concorrencia   0 runs vivos, 0 jobs de macOS em fila do nosso lado
+incidente      githubstatus: Actions operational, nenhum incidente aberto
+o repositorio  o braco passou QUATRO vezes entre 09:05 e 09:40 do mesmo dia
+```
+
+🔴 **O argumento que eu havia escrito no commit de merge do #307 era FRACO** — *"net 0,00 em todos
+os SKUs"* —, porque `net = 0` é compatível com **duas leituras opostas**: dentro da franquia, ou
+franquia esgotada sem meio de pagamento. O discriminante honesto é estrutural, não contábil.
+
+**E não há alavanca no lado consumidor, medido candidato por candidato:**
+
+```
+timeout-minutes no job             0 ocorrencias -> o corte de 902 s e fila do GitHub
+quality.yml                        existe em upstream/main -> COMPARTILHADO
+macos-latest -> macos-13           troca arm64 por x86_64; o job declara "macOS/arm64",
+                                   logo mudaria O QUE a AC9 afirma — nao e swap neutro
+conjunto R                         vive fora do repo; check-required-full pede credencial dele
+self-hosted de macOS               precisa de um Mac
+```
+
+**A exposição DELE hoje é zero** — último push 02/11 18:07, e os quatro últimos braços de macOS
+dele passaram em 49 a 67 s com runner atribuído. Ele não viu porque não empurrou nada hoje; o fork,
+que mesclou PRs a manhã inteira, pegou a janela toda.
+
+### #665 — e aqui o fato novo é uma CORRELAÇÃO, não uma repetição
+
+O `windows-full-suites` do #308 saiu vermelho, e **não era o par de macOS**:
+
+```
+ML-2A ratchet: NEW Go assertion failure not in known list: 'TestGuardLineShellMatrix'
+```
+
+```
+                 aquecimento de powershell.exe   RC0-allow        veredito
+attempt 1             8.00 s                     >15 s timeout      FAIL
+attempt 2             1.91 s                       1.50 s           PASS
+controle, pwsh        0.47 / 0.32 s              1.59 / 0.87 s      PASS nos dois
+mesmo head · zero byte de diferenca · 30 min de intervalo · `gh run rerun --failed`
+```
+
+🔴 **O aquecimento do #652 dele RODOU, PASSOU, e a chamada afirmada estourou de todo jeito.** Os
+8,00 s estão dentro do teto de 60 s **e** dentro da faixa de verdes que ele mediu (2,91 a 9,86 s em
+18 jobs) — então o aquecimento **não absorve** a lentidão, ele a **MEDE**. O modelo *"a primeira
+chamada é a fria, as seguintes são quentes"* descreve a média e não o caso ruim: na máquina lenta, a
+chamada seguinte também é lenta, e `sync.OnceValues` não muda isso.
+
+**E o crédito ao que o #652 consertou está na issue, porque é verdade e é o que torna o relato
+possível:** o `timedOut` por `ctx.Err()` fez a falha parar de se disfarçar de asserção —
+
+```
+antes   "esperado exit 0, obteve 1"        <- o kill por prazo mentindo
+agora   timeout: ... apos 15s — prazo da chamada afirmada esgotado
+```
+
+Sem esse discriminante eu estaria reportando *"exit 1 intermitente"*, que é o que a #649 teve de
+investigar do zero.
+
+**Limites declarados na própria issue:** dois attempts, um repositório, um dia; sem métrica de carga
+do runner; a correlação tem **dois pontos**, não uma curva; e o candidato que eu sugiro — derivar o
+prazo afirmado do aquecimento medido — está **não medido**, porque mexer no teste aqui criaria
+divergência de produto.
+
+🔴 **Um cuidado de redação que vale copiar:** eu separei *afrouxar critério* de *orçamento de
+instrumento*. A asserção é `exit 0`; o prazo é orçamento. Prazo curto demais faz o instrumento
+reprovar por não ter conseguido rodar — o oposto de verificar. `continue-on-error` seria afrouxar;
+derivar o prazo, não. Sem essa distinção escrita, o candidato 1 soaria como o que esta casa recusa.
+
+### 🔴 O critério 5 bloqueou um merge AUTORIZADO, e foi isso que achou o defeito
+
+O usuário disse *"mescla o 308 com o critério suspenso"* **antes** de o `windows-full-suites`
+aparecer. Eu não mesclei, e a razão é que a autorização era do **critério 2**:
+
+```
+na primeira passada   3 vermelhos
+  shim-byte-identity (macos-latest)   conhecido
+  shim-byte-identity-gate             conhecido (cascata, e CORRETA)
+  windows-full-suites                 🔴 NOVO POR NOME
+                                      pass no #307 · success na main 3ba7d9b0
+```
+
+**A comparação por nome contra o último run da `main` é o que decidiu**, e é literalmente o que a
+regra manda. Com o terceiro vermelho tratado como "é a coisa do macOS", o merge teria passado e o
+defeito teria ficado — invisível, porque o par de macOS já estava normalizado como esperado.
+
+**O conjunto também não estava completo na primeira leitura**, e por um motivo que não é defeito:
+`24 linhas / 22 nomes`, faltando o `shim-byte-identity-gate` — que tem `needs: [shim-byte-identity]`
+e não existe enquanto o braço de macOS está `queued`. Ler o conjunto no meio da corrida dá
+**incompleto**, não **errado**; depois que fechou, `25 / 23` com as duas duplicatas de sempre.
+
+### O merge, e a contabilidade das exceções
+
+```
+1 conjunto    25 linhas / 23 nomes · duplicatas gates-locais + gates-windows      ✓
+3 head        06418b19d3f7 — PR head = commit medido = head dos SEIS runs          ✓
+4 attempt     attempt=1 em cinco; Quality em attempt=2, do re-run SOBRE O MESMO
+              HEAD — nao e verde herdado de outro commit, que e o que o criterio veta  ✓
+5 conhecido   os 2 vermelhos restantes sao o par de macOS, POR NOME                ✓
+2 todo verde  23 pass / 2 fail                                          🔴 SUSPENSO
+```
+
+Mesclado às **15:20**, commit `3cf95008`. O corpo registra a suspensão, a investigação do terceiro
+vermelho e as duas remissões (#664 e #665).
+
+🔴 **Duas exceções não são uma regra, e esta é a segunda.** O que mantém isso honesto não é a
+contagem: é que **o critério 5 nunca foi suspenso nas duas vezes** — e hoje ele cobrou, por uma
+hora, num PR que o usuário já tinha mandado mesclar.
+
+**Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
