@@ -33773,3 +33773,165 @@ shell é outro.
 > próprio `trackfw` deixando de resolver, que *parece* sonda inválida e **é** sonda no shell errado.
 
 **Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
+
+---
+
+## 2026-11-03 14:22 — o ciclo do #307: a célula da vigia, SEIS vezes sem runner de macOS, e um merge com critério suspenso
+
+**O que foi feito.** O PR [#307](https://github.com/lourivalgarciajunior/trackfw/pull/307) corrigiu
+uma célula do `CLAUDE.md` que afirmava estado em presente, e o ciclo gastou a maior parte do tempo
+num CI vermelho cuja causa **não é nossa**. Ele foi mesclado às **12:53** com o **critério 2
+suspenso por decisão explícita do usuário** — e esta entrada existe porque essa suspensão precisa
+ficar legível como **exceção datada**, não como precedente.
+
+### O diff inteiro é uma linha
+
+```
+CLAUDE.md   1 file changed, 1 insertion(+), 1 deletion(-)
+  7c604de6 10:39  o estado da vigia se deriva, nao se afirma em presente
+  608201ae 12:25  o desarme da vigia, datado, e que desarmar sao DOIS passos
+```
+
+A célula dizia *"Hoje ele NÃO está armado, por decisão do usuário em 2026-10-07"* e ficou falsa às
+**10:30**, quando o usuário mandou armar a vigia. É a **quarta** ocorrência da mesma classe neste
+arquivo — estado em presente num documento que sobrevive ao dia —, e a regra que ele próprio
+escreve é *"datado e no passado não envelhece; presente envelhece"*. A célula passou a dar a
+**derivação** (`Get-Process bash` cruzado com a linha de comando de `Win32_Process`, contando
+quantas contêm `vigia`; **zero = desarmada**) e o histórico ficou datado: desarmada em 2026-10-07,
+armada em 2026-11-03 10:30, desarmada de novo em 2026-11-03 12:23.
+
+**O motivo do segundo desarme é medido, não preferência:** três janelas de 30 min com **zero
+eventos**, com o upstream parado havia 17 h, enquanto cada expiração custava limpeza de órfã,
+leitura avulsa e re-arme.
+
+🔴 **E o segundo commit registra o que faltava sobre o procedimento: desarmar são DOIS passos.** O
+`TaskStop` para o `Monitor` e **deixa o bash interno vivo** — medido nas três expirações e também
+no stop, onde a órfã `pid 64708` sobreviveu ao `Successfully stopped` e só caiu por `Stop-Process`
+no PID exato. Sem o segundo passo o daemon segue consultando a API para ninguém, que foi como 23
+órfãs somaram 46 chamadas por ciclo e estouraram o limite de rajada uma vez.
+
+### 🔴 O commit de merge diz CINCO ocorrências, e são SEIS — o número se deriva
+
+Isto é correção do próprio registro, da mesma família que esta casa já pagou várias vezes: eu
+escrevi um total no corpo do commit em vez de derivá-lo, e ele nasceu errado. **Derivado por
+attempt, não por run** — e é justamente aí que o meu `cinco` escorregou, porque um `run_attempt=3`
+conta uma linha no `gh run list` e **três** execuções do job:
+
+```
+run 41643418376  attempt 1   10:20:11   cancelled  runner=VAZIO   902 s
+run 41646502916  attempt 1   10:40:55   cancelled  runner=VAZIO   902 s   <- o que eu nao contei
+run 41646502916  attempt 2   10:59:57   cancelled  runner=VAZIO   903 s
+run 41646502916  attempt 3   11:34:01   cancelled  runner=VAZIO   902 s
+run 41663807606  attempt 1   12:25:55   cancelled  runner=VAZIO   902 s
+run 41668585681  attempt 1   12:53:50   cancelled  runner=VAZIO   902 s   <- pos-merge, na main
+```
+
+**Seis execuções do `shim-byte-identity (macos-latest)`, seis com `runner` vazio, seis em 902–903 s
+— o prazo de fila de 15 min.** O `shim-byte-identity-gate` cascateia de cada uma.
+
+### A fronteira está medida, e ela coincide com o merge do #306
+
+```
+09:05:29  success  runner atribuido   47 s
+09:15:18  success  runner atribuido   58 s
+09:19:15  success  runner atribuido   40 s
+09:40:28  success  runner atribuido   47 s   <- a corrida de PR do #306
+----------------------------------------------  a virada esta nesta janela de 40 min
+10:20:11  cancelled  runner VAZIO    902 s   <- a corrida de PUSH do merge do #306
+```
+
+🔴 **O #306 mesclou com CI verde e a corrida de push do próprio merge dele saiu vermelha** — mesma
+árvore, mesmo workflow, 40 minutos de diferença. É esse par que torna a causa externa verificável
+em vez de alegada: nenhum byte nosso mudou entre as duas.
+
+### Cinco hipóteses alternativas, e a de cota ficou MAIS forte depois de medida de outro jeito
+
+| hipótese | como caiu |
+|---|---|
+| configuração | o workflow não mudou no intervalo |
+| concorrência nossa | 0 runs vivos, 0 jobs de macOS em fila |
+| incidente declarado | o de 03/11 abriu 10:25 e resolveu 10:56, em API/Issues/Copilot — **fora da janela nas duas pontas**, e em componentes que não são Actions |
+| o próprio repositório | o nosso braço de macOS passou **quatro vezes** entre 09:05 e 09:40 |
+| **cota** | ver abaixo — o argumento do commit de merge era **fraco**, e o certo é estrutural |
+
+🔴 **O que eu escrevi no commit de merge sobre cota era ambíguo, e hoje está substituído.** Lá
+estava *"net 0,00 em todos os SKUs"* — e `net = 0` é compatível com **duas** leituras opostas:
+dentro da franquia, ou franquia esgotada sem meio de pagamento. O discriminante honesto é outro, e
+é de **estrutura**:
+
+```
+repositorio   visibility=public   private=false
+  -> minuto de Actions em repo PUBLICO e gratuito e NAO metrado
+
+SKU de macOS no faturamento   3 itens, os 3 do repo `trackfw`, os 3 com net=0
+  2026-09   133 min      2026-10   263 min      2026-11    15 min
+```
+
+**Repo público não consome franquia**, então não há cota a esgotar — e os **15 minutos** de
+novembro, contra 263 em outubro, confirmam por efeito que os seis jobs **nunca receberam máquina**:
+90 minutos de espera de fila cobraram ~0.
+
+**Resta escassez de capacidade de macOS do GitHub, não declarada na página de status.**
+
+### 🔴 O escopo do token foi NECESSÁRIO e INSUFICIENTE — e isso fica escrito
+
+O usuário acrescentou o escopo `user` ao token do `gh` (device flow, no terminal dele; eu **não**
+rodei o `gh auth refresh`, porque é mudança de credencial da conta dele). Medido depois:
+
+```
+Token scopes   'delete_repo', 'gist', 'read:org', 'repo', 'user', 'workflow'
+
+endpoint LEGADO  users/<u>/settings/billing/actions   HTTP 410 "This endpoint has been moved."
+endpoint NOVO    users/<u>/settings/billing/usage     200, e passou a LER com o escopo novo
+   chaves de topo          ["usageItems"]
+   chaves de cada item     date discountAmount grossAmount netAmount pricePerUnit
+                           product quantity repositoryName sku unitType
+   campo de TETO            NENHUM
+```
+
+O escopo destravou *"quanto foi usado"* e **não existe** campo de *"qual é o teto"* — o endpoint
+legado, que tinha `included_minutes`, respondeu **410 permanente**. Então a pergunta original
+(*"a cota estourou?"*) **não é respondível pela API**, com escopo nenhum. Quem a respondeu foi a
+visibilidade do repositório, acima.
+
+**A lição de forma, reutilizável:** conceder escopo para responder uma pergunta só ajuda se o campo
+que responde ainda existir no endpoint. Aqui o caminho barato era ler as **chaves** do retorno
+antes de pedir credencial — teria mostrado em um comando que o teto não está lá.
+
+### O merge, e por que a suspensão é exceção datada
+
+Os outros quatro critérios foram verificados e valem:
+
+```
+1  conjunto completo   25 linhas / 23 nomes, com as duas duplicatas esperadas
+                       (gates-locais e gates-windows: UM workflow, DOIS eventos)
+3  head                608201aea006 em todos os runs
+4  attempt             1 em todos — nenhum verde herdado de commit anterior
+5  vermelho conhecido  os 2 vermelhos sao o par de macOS, comparado POR NOME
+2  todo check verde    🔴 NAO ATENDIDO — 23 pass / 2 fail
+```
+
+O que torna a suspensão defensável **neste** PR é o diff, medido antes de pedir: **1 arquivo,
+`CLAUDE.md`, `+1 −1`, zero arquivo não-markdown**. Uma linha de documentação não pode regredir
+byte-identidade de shim, e os 23 que passam incluem todos os braços de Windows e Linux.
+
+🔴 **E eu disse isto ao usuário antes do merge, e fica aqui também:** *"essa máquina é Windows"* é
+boa razão **para este diff** e má regra geral — o `shim-byte-identity` prova byte-identidade entre
+as **três** plataformas e é contrato do produto, não conveniência da máquina de quem trabalha. **Num
+diff que tocasse `npm/`, `scripts/` ou `internal/`, o braço de macOS volta a ser obrigatório.** A
+autorização permanente de 2026-10-08 continua sendo sobre **pedir**, não sobre o critério: esta
+suspensão foi **pedida e concedida para um PR**.
+
+A exceção ficou registrada **no repositório**, não só na conversa: o corpo do commit de merge
+`3ba7d9b0` abre com ela e carrega a medição inteira.
+
+### O que fica pendente, declarado
+
+- **A `main` do fork continua vermelha** pelo mesmo par de macOS, desde a corrida de push do #306.
+  É fato de infraestrutura; não há conserto nosso, e a cor volta sozinha quando houver capacidade.
+- **O próximo PR vai bater na mesma parede.** Este, inclusive — e se o diff for de documentação,
+  o critério 2 volta a precisar da palavra do usuário; se for de produto, **não se suspende**.
+- 🔴 **Nada aqui autoriza mexer no workflow para contornar.** Tirar o braço de macOS do conjunto
+  para ficar verde seria exatamente o que esta casa chama de ajustar o critério ao estado atual.
+
+**Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
