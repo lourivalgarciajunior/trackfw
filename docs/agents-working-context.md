@@ -34224,3 +34224,121 @@ volta a importar no próximo trabalho, e aí decide sozinha. **O dado fresco apa
 corrida de todo PR novo, que é onde eu vou medir em vez de sondar à parte.
 
 **Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
+
+---
+
+## 2026-11-04 10:40 — a condição datada MORREU, viveu 39 minutos, e é por isso que o critério de morte embutido valeu mais que o prognóstico
+
+**O que foi feito.** O [#311](https://github.com/lourivalgarciajunior/trackfw/pull/311) mesclou
+(`478914cb`, 04/11 10:37) com **os cinco critérios atendidos** — o primeiro merge sem suspensão
+nenhuma desde o #306 —, e a seção *"Condição datada: desde 2026-11-03 10:20 o pool de
+`macos-latest` não atribui runner"* foi **removida do `CLAUDE.md`**, porque o critério de morte que
+ela própria escreveu disparou.
+
+### A prova, por efeito e com runner atribuído
+
+```
+03/11 19:06:18   cancelled  runner=VAZIO                      <- a 13a e ultima
+03/11 19:45:17   success    GitHub Actions 1000015691   46 s   <- O POOL VOLTOU
+04/11 (o #311)   success    runner atribuido            46 s   attempt 1
+```
+
+**A janela de escassez, fechada:**
+
+```
+inicio      03/11 10:20:11      fim      03/11 19:06:18
+cancelamentos  13   ·   recuperacoes durante a janela   0   ·   vao   8 h 46 min
+a recuperacao aconteceu entre 19:06:18 e 19:45:17 — intervalo de 39 min, nao observado
+```
+
+🔴 **A recuperação em si não foi observada**, e isso fica declarado: entre o último cancelamento e a
+primeira verde há 39 minutos em que nenhuma corrida foi disparada. O que está medido é
+`13 cancelados → 1 verde`, com a transição dentro daquele vão.
+
+### 🔴 A ironia é o argumento a favor do desenho, não contra
+
+```
+a condicao foi mesclada     03/11 19:06   (#310, commit d72ceba9)
+o pool voltou               03/11 19:45
+tempo de vida da secao      39 MINUTOS
+```
+
+Eu escrevi uma seção de 103 linhas afirmando um estado que deixou de valer **antes de a tinta
+secar**. E o prognóstico que a sustentava — `13/13 sem recuperação, 8 h 46 min, partição perfeita` —
+**estava certo sobre o passado e errado sobre o futuro imediato**, que é a única coisa que
+importava.
+
+**O que a salvou não foi acertar: foi não depender de ter acertado.** A seção não afirmava *"o pool
+está escasso"* — ela dava a **derivação** e o **critério de morte**. Então a primeira corrida verde
+a apagou sozinha, sem ninguém precisar notar que ela havia envelhecido.
+
+Essa é a diferença prática entre as duas formas que este arquivo vem comparando desde outubro:
+
+| forma | o que acontece quando o mundo muda |
+|---|---|
+| *"hoje o pool está escasso"* | a frase fica **falsa e silenciosa** até alguém reler e notar |
+| derivação + critério de morte | a **próxima medição** a mata, e a morte é um evento verificável |
+
+🔴 **Quatro vezes este arquivo pagou pela primeira forma.** Esta é a primeira em que a segunda forma
+foi exercitada até o fim — e o prazo de validade do conteúdo foi de **39 minutos**, o que torna o
+teste severo em vez de simbólico.
+
+### A remoção é o inverso EXATO da adição, conferido em bytes
+
+```
+diff          0 insertions · 103 deletions
+CLAUDE.md     CR=3291 LF=3291 · 0 linha LF puro
+igual ao pre-#310 (apos normalizar)   True
+secoes vizinhas intactas              `trackfw update` 1 · `make parity-rest` 1 · 44 cabecalhos ##
+cabecalhos ## DENTRO do range removido   1 — so o da propria condicao
+```
+
+🔴 **As fronteiras foram conferidas ANTES de remover**, pela lição que este arquivo já registra:
+*"substituir um bloco 'até a próxima âncora' come o que foi acrescentado no meio"*. O range 905–1007
+tinha **exatamente um** `##` dentro, o da condição, e nada mais havia sido inserido ali no meio.
+
+E a remoção foi por **`Edit`**, nunca por `sed -i` — o `sed` do MSYS converte CRLF em modo texto, e
+aqui isso reescreveria 3 291 fins de linha em silêncio.
+
+### O #311 fechou com os CINCO critérios, e isso tem significado
+
+```
+1 conjunto    25 linhas / 23 nomes · duplicatas gates-locais + gates-windows
+2 todo verde  25 pass · 0 fail            <- ATENDIDO. Primeiro desde o #306
+3 head        e9d0764a49e2 = PR head = commit medido = head dos CINCO workflows
+4 attempt     attempt=1 em todos — nenhum re-run, nenhum verde herdado
+5 conhecido   zero vermelhos, logo nada a comparar por nome
+```
+
+**Contabilidade final das suspensões**, que agora é histórico fechado e não estado:
+
+| quando | PR | natureza |
+|---|---|---|
+| 03/11 12:55 | #307 | exceção avulsa, pedida |
+| 03/11 15:20 | #308 | avulsa; o critério 5 bloqueou antes, por uma hora |
+| 03/11 16:00 | #309 | avulsa, a última |
+| 03/11 19:06 | #310 | primeira pela condição, classificada |
+| 04/11 10:37 | #311 | 🔴 **nenhuma** — os cinco critérios atendidos |
+
+### 🔴 A condição morreu; a PERGUNTA do #664 não
+
+Isto é o que não se deve confundir ao fechar o assunto. O [#664](https://github.com/kgsaran/trackfw/discussions/664)
+pergunta se vale, para o mantenedor, que o veredito da AC9 seja **separável** do veredito de
+`quality` quando a causa é fila e não conteúdo. **Essa pergunta é de desenho e não depende da
+capacidade de hoje** — o pool voltou, e no próximo episódio o acoplamento vai pintar de vermelho os
+mesmos PRs sem relação com shim nenhum.
+
+A [#665](https://github.com/kgsaran/trackfw/issues/665) também segue de pé, e por motivo
+independente: o `TestGuardLineShellMatrix` é intermitente por carga de runner, não por escassez de
+pool. Ela não tinha nada a ver com macOS.
+
+### Estado ao fechar
+
+```
+main         478914cb -> este PR  ·  arvore limpa  ·  validate rc=0 · 3 avisos
+macOS        VOLTOU: 46 s com runner atribuido, attempt 1
+upstream     9aa05dd5, parado desde 02/11 18:07 — 40 h
+             0 commits a frente · 0 PRs · 8 issues · sem resposta no #664 nem no #665
+```
+
+**Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
