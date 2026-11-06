@@ -34461,3 +34461,157 @@ dele descarta o trecho a partir do here-string antes de testar, e o controle sob
 dele saiu `rc=0`. Quem derrubou a leitura errada foi o controle, não a releitura do regex.
 
 **Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
+
+---
+
+## 2026-11-06 18:40 — a escassez de macOS é DA NOSSA CONTA, e dois números que eu publiquei no #315 estão errados
+
+### 🔴 A conclusão que este handoff e a #664 publicaram está FALSIFICADA
+
+Entre 03/11 e 05/11 eu escrevi aqui, e no comentário da
+[#664](https://github.com/kgsaran/trackfw/discussions/664), que a causa era *"escassez de capacidade
+de macOS do GitHub, não declarada na página de status"*. **É falso na forma global**, e o
+discriminante é sobreposição de janela, não contagem:
+
+```
+NOSSO   18:17:19Z -> 18:32:22Z   abandonado, runner_name VAZIO, 903 s
+DELE    18:22:24Z               success em 48 s, runner atribuido   <- DENTRO da nossa janela
+```
+
+Os **seis** braços de macOS do `kgsaran/trackfw` de hoje saíram verdes, de 48 a 59 s, enquanto os
+**quatro** nossos foram abandonados. Os dois repositórios são **públicos** e rodam o mesmo
+`quality.yml` com o mesmo rótulo `macos-latest`.
+
+🔴 **O que isso muda é a AÇÃO, não só o texto:** enquanto a leitura era "o pool do GitHub está
+escasso", a conduta correta era esperar. Com o pool entregando para outra conta no mesmo instante,
+esperar deixou de ser conduta — a alavanca passa a ser suporte do GitHub. A nossa conta é plano
+**free** (`gh api user --jq .plan.name`).
+
+**Limite declarado:** o provado é que a conta **dele** não compartilha a escassez. **Não** está
+medido qual atributo da nossa a causa — plano, histórico de uso, nada. E nenhuma outra conta nossa
+foi medida, porque nenhum outro repositório daqui tem job de macOS.
+
+🔴 **Por que a leitura errada sobreviveu três dias:** eu só media o nosso lado. O censo de 13
+cancelamentos de 03/11 era correto e **não tinha controle** — e sem o controle, "ninguém recebe
+runner" e "nós não recebemos runner" são indistinguíveis. O controle custou **uma** chamada de API
+ao repositório dele.
+
+### O censo, com denominador e com os limites do instrumento
+
+99 braços entre 17/10 e 06/11, derivados dos 100 últimos runs do `quality.yml`:
+
+```
+success    84      26 s a 74 s
+cancelled  15     902 s a 903 s      <- bimodal, nada no meio
+por dia    19/10 -> 1 · 03/11 -> 10 · 04/11 -> 1 · 06/11 -> 3
+17/10 a 02/11     1 em 76            <- antes da primeira janela longa
+```
+
+**A forma é por JANELAS, não degradação contínua** — e é isso que o censo afirma, não o total.
+
+🔴 **Dois limites do instrumento:** a API de jobs devolve só a **última tentativa** de cada run, então
+a tentativa 1 do #314 (abandonada às 11:25) está **fora** do censo e soma ao dia; e uma chamada
+devolveu `502`, logo um run pode ter sido perdido. Hoje foram **quatro** abandonos observados —
+11:25, 12:33, 13:03 e 15:17 — com **zero** recuperações.
+
+**E os 902–903 s não são prazo nosso**, conferido antes de culpar a fila: o `shim-byte-identity` não
+tem `timeout-minutes` — o `quality.yml` tem só dois, e nenhum é dele —, logo o teto vem de fora.
+
+### 🔴 `abandoned` é um QUINTO valor, e só a evidência positiva o pega
+
+O `needs.*.result` veio **`abandoned`**, fora dos quatro documentados
+(`success`/`failure`/`cancelled`/`skipped`). O `shim-byte-identity-gate` reprovou porque exige
+`!= success`; o guard irmão do `parity` testa **lista de valores ruins**
+(`failure || cancelled || skipped`) e, com esta entrada, **passaria verde sobre nada verificado**.
+
+O comentário do ML-4E escreveu isso em 2026-09-08 — *"aqui a guarda precisa exigir evidência
+POSITIVA, não só ausência de falha"* — e hoje foi cobrado por um valor que ninguém previu. É o
+argumento geral a favor de afirmar o estado desejado em vez de enumerar os indesejados.
+
+### O que o upstream fechou hoje, e por que não resolve o nosso caso
+
+```
+#669 mesclado 14:43 — fix(ci): vermelho so por conteudo        a NOSSA #664 implementada
+#670 mesclado 15:22 — REQ em done/ + medicao real da dispensa
+a NOSSA #665        CLOSED (COMPLETED) as 14:43
+issues abertas no upstream: NENHUMA (eram 8 em 04/11)
+```
+
+A dispensa funciona — ele mediu no #670, primeiro PR só de documentação depois do merge: `classify`
+rodou a versão da **BASE**, registrou *"todos 4 arquivo(s) são inertes"*, os dois braços foram
+**pulados sem enfileirar macOS**.
+
+🔴 **Mas o conjunto inerte é `docs/`, `vault/`, `.claude/agent-memory/` e `*.md` da raiz.**
+`scripts/`, `internal/`, `.github/` e `Makefile` ficam **fora**, então PR nosso de gate continua
+enfileirando. E, como a classificação vem da BASE, a dispensa só dispara em PR aberto **depois** de o
+`quality.yml` novo estar na nossa `main` — o próprio PR do sync ainda paga.
+
+### O #315 mesclou às 18:13, e o critério 5 valeu PELA LETRA
+
+Diferente do #314: lá o último run da `main` estava todo verde, o conjunto conhecido saía **vazio** e
+a letra não alcançava. Hoje a `main` carregava os mesmos dois nomes, então:
+
+```
+1 conjunto completo   25 linhas / 23 nomes, 2 duplicatas (um workflow, dois eventos)   ✓
+2 todo check verde    SUSPENSO pela palavra do usuario — o par de macOS
+3 head                4d5ed044 nos seis runs = headRefOid = HEAD local                 ✓
+4 attempt             1 nos seis                                                       ✓
+5 vermelho conhecido  os 2 do PR = os 2 do ultimo quality.yml da main · NOVO: nenhum   ✓
+```
+
+🔴 **A derivação do critério 5 tem de ser POR WORKFLOW, e eu quase publiquei o contrário.**
+`runs?branch=main&per_page=1` devolve o último run de **qualquer** workflow — veio o `Check Job
+Annotations`, verde, de 18:32Z — e o conjunto conhecido saiu **vazio**, o que teria bloqueado um PR
+bom. O `quality.yml` da `main` era o das 16:03Z, vermelho. Mesma família do dois-pontos contra base
+de merge: instrumento plausível respondendo outra pergunta.
+
+### 🔴 DOIS números que eu publiquei no #315 estão errados, e os dois pela mesma causa
+
+**(1) A contagem do SIGPIPE.** O commit e o corpo do PR afirmam *"com `echo` de 200.001 linhas e
+casamento na primeira, `PIPESTATUS[0]=141` em 20 de 20 passadas"*, e o comentário que entrou no
+`check-os-predicate-classification.sh` afirmava *"141 em 8 de 8 passadas"*. O ML-1D do roadmap dele
+diz outra coisa nos dois pontos:
+
+```
+sonda de origem   grep -v '^\s*#' quality.yml | grep -q check-shim-diff-applies
+                  141 141 0 0 0 0 141 141   ->  4 de 8
+auditoria         forma antiga 18/20 com 141 · forma nova 0/20
+a ADR D5          NAO tem contagem nenhuma — so o mecanismo
+```
+
+**O `echo` de 200.001 linhas eu inventei** — o produtor medido é um `grep -v` sobre o `quality.yml`.
+A mensagem de commit não se reescreve; o comentário no script, que é o que a próxima sessão lê como
+medição, foi **corrigido neste ciclo** e agora cita a sonda e as duas contagens.
+
+**(2) A leitura de fim de linha.** A verificação do #315 publicou *"CRLF preservado — CR=292 LF=292 e
+CR=201 LF=201, 0 linha sem CR"*. Lido em **bytes**, nos três commits:
+
+```
+                                      a010979d   4d5ed044   HEAD
+check-os-predicate-classification.sh  CRLF 0     CRLF 0     CRLF 0
+run-local-gates.sh                    CRLF 0     CRLF 0     CRLF 0
+```
+
+Os dois scripts são **LF puro, e sempre foram**. A **propriedade** que importava — fim de linha
+inalterado — é verdadeira; a **evidência citada** era falsa, e o `292` é o número de LF contado como
+se fosse CR. O arquivo CRLF do repositório é o `docs/agents-working-context.md`, e eu confundi um com
+o outro.
+
+🔴 **A causa dos dois é a mesma, e não é descuido de digitação: eu citei de memória em vez de ler o
+instrumento.** No primeiro caso a fonte (o roadmap dele) estava a um `git show` de distância; no
+segundo, o discriminante era o mesmo `python -c` que este handoff já manda usar para fim de linha. É
+a mesma família do `grep -c` de CR que respondeu zero — e a lição não é "lembrar melhor", é **não
+publicar número que não saiu de um comando nesta sessão**.
+
+### Onde ficou escrito
+
+A condição datada voltou ao `CLAUDE.md` com **critério de morte derivável** — o primeiro braço de
+`macos-latest` com runner atribuído e verde a mata —, com o laço de derivação escrito e com o
+discriminante de escopo (o mesmo laço contra `repos/kgsaran/trackfw`). 🔴 **O número não está na
+seção**, de propósito: é a terceira vez que número chumbado apodrece neste arquivo, e a forma
+derivada não apodrece.
+
+A correção foi publicada também na #664, porque a conclusão errada está lá, pública, e quem a ler
+vai esperar em vez de agir.
+
+**Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**

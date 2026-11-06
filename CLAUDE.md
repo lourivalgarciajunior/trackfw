@@ -1260,6 +1260,116 @@ agora **herda o agente da REQ** em vez de ignorá-lo.
 
 Medido por efeito em projeto temporário com os mesmos três agentes, antes de mesclar.
 
+## 🔴 Condição datada: `shim-byte-identity (macos-latest)` abandona na fila — e a escassez é DA NOSSA CONTA, não do GitHub
+
+Vigente desde **2026-11-06 11:25** (local), quarta janela desde 03/11. O braço de macOS fica na fila
+sem receber máquina e é abandonado em **902–903 s**; o `shim-byte-identity-gate` cascateia e o PR sai
+vermelho sem relação nenhuma com o conteúdo.
+
+```
+shim-byte-identity (macos-latest)   cancelled   903 s   runner_name VAZIO
+shim-byte-identity-gate             failure       3 s   RESULT: abandoned
+shim-byte-identity (ubuntu-latest)  success      26 s   runner atribuido
+```
+
+🔴 **Os 902–903 s NÃO são prazo nosso**, e isso foi conferido antes de culpar a fila: o
+`shim-byte-identity` não tem `timeout-minutes` — o `quality.yml` tem só dois, nos jobs do
+`windows-full-suites` e do `parity-falsify-shard` —, logo o teto vem de fora.
+
+### 🔴 A conclusão anterior, publicada na [#664](https://github.com/kgsaran/trackfw/discussions/664), está FALSIFICADA
+
+Entre 03/11 e 05/11 este arquivo e aquela Discussion afirmaram *"escassez de capacidade de macOS do
+GitHub, não declarada na página de status"*. **É falso na forma global.** Medido em 2026-11-06, nos
+**mesmos minutos**:
+
+```
+NOSSO   18:17:19Z -> 18:32:22Z   abandonado, runner VAZIO, 903 s
+DELE    18:22:24Z               success em 48 s, runner atribuido   <- DENTRO da nossa janela
+```
+
+E não foi uma corrida: os **seis** braços de macOS do `kgsaran/trackfw` daquele dia saíram verdes, de
+48 a 59 s, enquanto os **quatro** nossos foram abandonados. Os dois repositórios são **públicos** e
+rodam o mesmo `quality.yml` com o mesmo rótulo `macos-latest`.
+
+🔴 **O escopo é de CONTA, e isso muda a alavanca:** esperar deixou de ser a ação correta, porque o
+pool está entregando para outra conta no mesmo instante. A nossa é plano **free**
+(`gh api user --jq .plan.name`). **Limite declarado:** o que está provado é que a conta **dele** não
+compartilha a escassez — não qual atributo da nossa a causa. Nenhuma outra conta nossa foi medida.
+
+### O censo, com denominador e com o limite do instrumento
+
+99 braços entre 17/10 e 06/11/2026, derivados dos 100 últimos runs do `quality.yml`:
+
+```
+success    84      26 s a 74 s
+cancelled  15     902 s a 903 s      <- bimodal, nada no meio
+por dia    19/10 -> 1 · 03/11 -> 10 · 04/11 -> 1 · 06/11 -> 3
+17/10 a 02/11     1 em 76            <- antes da primeira janela longa
+```
+
+🔴 **Dois limites do instrumento, declarados:** a API de jobs devolve **só a última tentativa** de
+cada run, então re-execuções anteriores não entram — a tentativa 1 do #314, abandonada às 11:25, está
+fora do censo e **soma ao total do dia**; e uma chamada devolveu `502`, logo um run pode ter sido
+perdido. O que o censo afirma é a **forma** (bimodal, por janelas), não o total exato.
+
+### O critério de morte — DERIVÁVEL, nunca escrito aqui
+
+A condição morre no **primeiro braço de `macos-latest` que receber runner e sair verde**. O número
+não se escreve nesta seção: ele se deriva, pela mesma razão que o `npm i -g trackfw@<versão>` da
+tripla não leva número chumbado.
+
+```bash
+for r in $(gh api "repos/lourivalgarciajunior/trackfw/actions/workflows/quality.yml/runs?per_page=12" --jq '.workflow_runs[].id'); do gh api "repos/lourivalgarciajunior/trackfw/actions/runs/$r/jobs?per_page=100" --jq '.jobs[]|select(.name|test("macos"))|"\(.started_at) \(.conclusion) \(((.completed_at|fromdate)-(.started_at|fromdate)))s runner=\(if .runner_name=="" then "VAZIO" else "ok" end)"'; done | sort
+```
+
+`runner=ok` com `success` na linha mais recente = **a condição morreu**, e esta seção sai. O
+discriminante do **escopo** é o mesmo laço com `repos/kgsaran/trackfw`: se os dois abandonarem na
+mesma janela, a leitura global volta a ser candidata.
+
+🔴 **O dado fresco aparece de graça na corrida de todo PR novo** — é ali que se mede, nunca numa
+sonda à parte que gasta fila.
+
+### O que o gate `abandoned` ensina, e vale além do macOS
+
+O `needs.*.result` veio **`abandoned`**, que não é um dos quatro valores documentados
+(`success`/`failure`/`cancelled`/`skipped`). O `shim-byte-identity-gate` reprovou porque exige
+**evidência positiva** (`!= success`); o guard irmão do `parity` testa uma **lista de valores ruins**
+(`failure || cancelled || skipped`) e, com esta entrada, **passaria verde sobre nada verificado**. O
+comentário do ML-4E previu exatamente isso em 2026-09-08, e em 2026-11-06 foi cobrado.
+
+### A dispensa do #669 chegou — e NÃO cobre PR que toca `scripts/`
+
+O [#669](https://github.com/kgsaran/trackfw/pull/669) do upstream (mesclado 06/11 14:43) tornou o
+`shim-byte-identity` condicional ao diff, com classificação feita pela versão da **BASE**:
+
+```
+conjunto inerte:  docs/  vault/  .claude/agent-memory/  *.md da raiz
+```
+
+🔴 **`scripts/`, `internal/`, `.github/` e `Makefile` ficam fora**, então PR com a forma dos nossos
+PRs de gate continua enfileirando macOS. A dispensa é para PR de **documentação pura**. E, como a
+classificação vem da BASE, ela só pode disparar em PR aberto **depois** de o `quality.yml` novo estar
+na nossa `main` — o primeiro PR do sync ainda paga.
+
+### Como mesclar enquanto a condição vive
+
+O critério 5 da autorização de merge resolve o caso **pela própria letra**, e é o que foi aplicado no
+[#315](https://github.com/lourivalgarciajunior/trackfw/pull/315): o conjunto conhecido se deriva do
+último run **de cada workflow** da `main`, e os dois nomes do par de macOS estão nele.
+
+🔴 **A derivação tem de ser POR WORKFLOW.** `runs?branch=main&per_page=1` devolve o último run de
+**qualquer** workflow — em 06/11 veio o `Check Job Annotations`, verde, e o conjunto conhecido saiu
+**vazio**, o que teria bloqueado um PR bom. O `quality.yml` da `main` era o vermelho.
+
+```bash
+gh api "repos/lourivalgarciajunior/trackfw/actions/runs?branch=main&per_page=60" --jq '.workflow_runs[]|"\(.path)\t\(.id)"' | sort -u -t$'\t' -k1,1
+```
+
+Quando a `main` estiver verde e o par aparecer só no PR, o conjunto conhecido volta a sair vazio e o
+critério 5 **não alcança** — foi o que aconteceu no #314, e ali a suspensão foi palavra do usuário.
+🔴 **Nada aqui autoriza mexer no workflow para contornar**: tirar o braço de macOS do conjunto seria
+apagar o sinal em vez de lê-lo.
+
 ## Branch `feat/fix/refactor` custa 3 jobs vermelhos por motivo falso
 
 > 🔴 **Caducou em 2026-09-16, com a v8.0.0 do upstream

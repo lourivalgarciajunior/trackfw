@@ -125,7 +125,10 @@ internal/guard/writescope.go|SEIS sitios num arquivo so, em DUAS familias, e a g
 # opcao `-q` do grep. Sob `set -o pipefail` o grep silencioso sai no PRIMEIRO
 # casamento e o produtor recebe SIGPIPE, entao o cano devolve 141 de forma
 # intermitente -- vermelho sem relacao com o conteudo. Medido pelo upstream em
-# 2026-11-06 (D5 da ADR-2026-11-06, 141 em 8 de 8 passadas numa das grafias), e o
+# 2026-11-06 (D5 da ADR-2026-11-06; o ML-1D do roadmap dele traz os numeros: a sonda
+# de origem, `grep -v '^\s*#' quality.yml | grep -q check-shim-diff-applies`, deu
+# `141 141 0 0 0 0 141 141` -- 4 de 8 --, e a auditoria mediu forma antiga 18/20 com
+# 141 contra forma nova 0/20), e o
 # `check-no-grep-q-under-pipefail.sh` dele impede a volta. Aqui os produtores sao
 # `printf` de variavel, logo o 141 era improvavel na pratica; o que se consertou foi
 # a forma, antes de o gate chegar pelo sync.
