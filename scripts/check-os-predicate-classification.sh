@@ -121,8 +121,16 @@ internal/commands/req.go|adrPortablePath torna absoluto o caminho de ADR contra 
 internal/guard/writescope.go|SEIS sitios num arquivo so, em DUAS familias, e a granularidade do baseline e por ARQUIVO: (a) quatro filepath.IsAbs -- :148 rawFilePath do payload do hook, :217 cwd, :284 entrada da lista de frozen, :440 caminho de config --, MESMA FORMA das doze entradas acima, IsAbs sobre caminho que vem de FORA; (b) dois runtime.GOOS comparado a darwin e a windows nos ajudantes pathEqual e pathHasPrefix, :688 e :696, que ligam comparacao case-insensitive de caminho. A familia (b) e classificacao de plataforma legitima -- semantica de sistema de arquivos, nao string autorada -- e o lint ainda nao tem classe para predicado que seleciona semantica de FS, entao ela entra sob D2 por falta de classe mais fina, como as duas leituras inline de homedir.py e tty.py que o historico deste baseline registra. Produto do upstream, entrou com o #606 em 2026-10-24 (guard write-scope, REQ-2026-10-23). Corrigir aqui criaria divergencia, que hoje e ZERO, e pelo escopo negativo da REQ-2026-09-05-onda-2 achado em produto dele vira issue, nunca correcao local. 🔴 E a primeira redacao desta entrada levava ASPAS DUPLAS em volta de darwin e windows, que FECHAM a string BASELINE de aspas duplas: o gate saiu rc=127 com que: command not found. O aviso no topo deste baseline falava so de backtick -- aspas duplas sao a segunda grafia do mesmo defeito, e agora esta escrito
 "
 
+# 🔴 A forma dos canos deste arquivo e `produtor | grep PADRAO >/dev/null`, nunca a
+# opcao `-q` do grep. Sob `set -o pipefail` o grep silencioso sai no PRIMEIRO
+# casamento e o produtor recebe SIGPIPE, entao o cano devolve 141 de forma
+# intermitente -- vermelho sem relacao com o conteudo. Medido pelo upstream em
+# 2026-11-06 (D5 da ADR-2026-11-06, 141 em 8 de 8 passadas numa das grafias), e o
+# `check-no-grep-q-under-pipefail.sh` dele impede a volta. Aqui os produtores sao
+# `printf` de variavel, logo o 141 era improvavel na pratica; o que se consertou foi
+# a forma, antes de o gate chegar pelo sync.
 esta_no_baseline() {
-  printf '%s' "$BASELINE" | grep -q "^${1}|"
+  printf '%s' "$BASELINE" | grep "^${1}|" >/dev/null
 }
 
 # ---------------------------------------------------------------------------
@@ -136,7 +144,7 @@ eh_comentario() {  # a linha e comentario?
 }
 
 eh_d1_travessia() {  # D1: o predicado recebe um valor de ERRO
-  printf '%s' "$1" | grep -qE 'IsNotExist\((err|readErr|[a-zA-Z_][a-zA-Z0-9_]*[Ee]rr)\)'
+  printf '%s' "$1" | grep -E 'IsNotExist\((err|readErr|[a-zA-Z_][a-zA-Z0-9_]*[Ee]rr)\)' >/dev/null
 }
 
 eh_d3_costura() {  # D3: a plataforma entra por UM ponto -- constante, argumento ou GETTER
@@ -157,12 +165,12 @@ eh_d3_costura() {  # D3: a plataforma entra por UM ponto -- constante, argumento
   #     classificacao. Medido no acervo em 2026-10-15: 1 sitio na forma do getter,
   #     ZERO na forma com comparacao -- a segunda nao existe hoje, e a regra ja a
   #     recusa para quando existir.
-  printf '%s' "$1" | grep -qE "^[[:space:]]*return[[:space:]]+(${PLATAFORMA})[[:space:]]*$" && return 0
+  printf '%s' "$1" | grep -E "^[[:space:]]*return[[:space:]]+(${PLATAFORMA})[[:space:]]*$" >/dev/null && return 0
   # (a) atribuida a uma constante/variavel nomeada, com ou sem anotacao de tipo:
   #       var CurrentGOOS = runtime.GOOS
   #       _current_platform: str = sys.platform
   #       const platform = process.platform
-  printf '%s' "$1" | grep -qE "(let|const|var)?[[:space:]]*[_a-zA-Z][_a-zA-Z0-9]*([[:space:]]*:[[:space:]]*[_a-zA-Z][_a-zA-Z0-9]*)?[[:space:]]*=[[:space:]]*(${PLATAFORMA})" && return 0
+  printf '%s' "$1" | grep -E "(let|const|var)?[[:space:]]*[_a-zA-Z][_a-zA-Z0-9]*([[:space:]]*:[[:space:]]*[_a-zA-Z][_a-zA-Z0-9]*)?[[:space:]]*=[[:space:]]*(${PLATAFORMA})" >/dev/null && return 0
   # (b) PASSADA COMO ARGUMENTO para a funcao que costura:
   #       openBrowser(process.platform, url)   ·   _browser_argv(system, url)
   #     Exige o predicado como argumento INTEIRO -- entre '(' ou ',' e ',' ou ')'.
@@ -176,8 +184,8 @@ eh_d3_costura() {  # D3: a plataforma entra por UM ponto -- constante, argumento
   #     string. A lista de comparadores e literal e curta de proposito: um comparador
   #     novo e nao listado volta a ser aceito como costura, e o remedio e acrescenta-lo
   #     aqui -- nunca alargar a regra (b).
-  printf '%s' "$1" | grep -qE "(${COMPARADORES})[^)]*(${PLATAFORMA})" && return 1
-  printf '%s' "$1" | grep -qE "[,(][[:space:]]*(${PLATAFORMA})[[:space:]]*[,)]" && return 0
+  printf '%s' "$1" | grep -E "(${COMPARADORES})[^)]*(${PLATAFORMA})" >/dev/null && return 1
+  printf '%s' "$1" | grep -E "[,(][[:space:]]*(${PLATAFORMA})[[:space:]]*[,)]" >/dev/null && return 0
   return 1
 }
 
