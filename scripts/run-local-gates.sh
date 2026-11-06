@@ -110,9 +110,14 @@ if [ "$n_so_nossos" -eq 0 ]; then
 fi
 
 nao_listados=0
+# 🔴 `produtor | grep PADRAO >/dev/null`, nunca a opcao `-q`: sob `set -o pipefail` o
+# grep silencioso sai no PRIMEIRO casamento, o produtor recebe SIGPIPE e o cano
+# devolve 141 de forma intermitente. Medido pelo upstream em 2026-11-06 (D5 da
+# ADR-2026-11-06) e vigiado pelo `check-no-grep-q-under-pipefail.sh` dele, que o sync
+# vai trazer. Ver o comentario longo no `check-os-predicate-classification.sh`.
 for s in $so_nossos; do
-  if printf '%s' "$EXECUTAR" | grep -qx "${s}.sh"; then continue; fi
-  if printf '%s' "$FORA" | grep -q "^${s}|"; then continue; fi
+  if printf '%s' "$EXECUTAR" | grep -x "${s}.sh" >/dev/null; then continue; fi
+  if printf '%s' "$FORA" | grep "^${s}|" >/dev/null; then continue; fi
   echo "  ✗ COMPLETUDE: 'scripts/${s}.sh' e so nosso e nao esta nem em EXECUTAR nem em FORA" >&2
   nao_listados=$((nao_listados + 1))
 done

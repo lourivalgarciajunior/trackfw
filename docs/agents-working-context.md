@@ -34342,3 +34342,122 @@ upstream     9aa05dd5, parado desde 02/11 18:07 — 40 h
 ```
 
 **Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
+
+---
+
+## 2026-11-06 — sync da 11.5.0, a fila do macOS no #314, e o `grep -q` sob `pipefail`
+
+### O #314 ficou vermelho por FILA DE MACOS, e o critério 5 não cobria o caso
+
+O sync da 11.5.0 (guards do primeiro usuário externo, #662 e #663) fechou com o braço
+`shim-byte-identity (macos-latest)` **cancelado**, e a assinatura é inequívoca:
+
+```
+conclusion cancelled · runner_name "" (vazio) · 902 s
+o braco ubuntu-latest do MESMO run                 verde em 27 s
+```
+
+🔴 **A partição é o que torna isto diagnóstico e não palpite:** o braço de `ubuntu` do mesmo
+run passou, logo não é conteúdo — é o job nunca ter recebido máquina. E o
+`shim-byte-identity-gate` reprova de propósito sobre `cancelled`, porque o comentário do
+ML-4E recusa *"verde sobre nada verificado"*.
+
+**Falsifiquei "foi só aquele run" com um único re-run**, que é mais barato que esperar: a
+tentativa 2 cancelou em **902 s**, ao segundo, igual à tentativa 1. Teto de fila, não
+variação de carga.
+
+🔴 **E a LETRA do critério 5 não alcançava.** Ele manda comparar vermelho conhecido **por
+nome** contra o último run da `main` — e aquele run não tinha **nenhum** job fora do verde,
+então o conjunto conhecido derivado era **vazio**. Relatei isso em vez de alargar o
+critério, e **a suspensão foi palavra do usuário**, só para o #314.
+
+**Esperar o #669 dele não era saída, e isso foi medido antes de propor:** o diff do sync
+tinha **20 dos 31 arquivos fora do conjunto inerte** (produto em `internal/guard/`), então a
+dispensa dele — que só vale quando **todos** os arquivos do diff são inertes — corretamente
+não se aplicaria a um PR de sync. A dispensa é para PR de documentação, e um sync nunca é
+um.
+
+### 🔴 A D3 dele — o conserto da nossa #665 — foi FALSIFICADA pelo CI DELE, no mesmo dia
+
+Isto é o que a próxima sessão não reconstruiria, e inverte o que ficou escrito na issue. O
+candidato 1 que levamos e que ele adotou era `clamp(4 × aquecimento, 15 s, 60 s)`. A
+premissa — **o aquecimento prevê as chamadas seguintes** — não se sustenta. Dois runs dele,
+**mesmo código**:
+
+| run | pwsh aqueceu | 1ª chamada | 5.1 aqueceu |
+|---|---|---|---|
+| 42237249669 (verde) | 0,26 s | 0,81 s | 3,24 s |
+| 42253593127 (vermelho) | 0,42 s | **> 15 s** | **> 60 s** |
+
+**O aquecimento foi mais RÁPIDO na corrida que estourou.** A máquina para **depois** dele,
+então a amostra mede uma janela que já passou — e nenhum fator multiplicativo conserta uma
+amostra tomada no instante errado.
+
+O desenho novo (ML-2E) não prevê: ele **mede de novo depois do estouro**. Uma sonda `exit 0`
+sem cache decide — sonda lenta significa máquina parada, e a chamada é repetida uma vez com
+prazo derivado da sonda; sonda rápida significa que quem travou foi o guard, e reprova sem
+nova tentativa. Com **orçamento de uma** nova tentativa por binário, porque o executor dele
+mostrou que sem o orçamento paradas repetidas somariam ~48 min.
+
+🔴 **E ele escreveu o limite que a corrida verde não paga:** *"uma corrida verde depois desta
+correção não prova a nova tentativa, porque a parada pode não se repetir — a prova são os
+testes com dublês."* É a mesma forma do nosso "zero com sonda errada é cegueira".
+
+**A lição transferível:** quando a causa é *a máquina para*, amostrar antes e extrapolar é
+instrumento errado por construção. O que funciona é re-medir no momento da falha.
+
+### O red team dele reprovou a Wave 1, e o F1 vale guardar como mecanismo
+
+`GITHUB_PATH` **persiste entre passos do mesmo job**. O job `classify` rodava o `--self-test`
+do HEAD **antes** da classificação da BASE; um PR podia, de dentro do self-test, plantar um
+`git` falso e acrescentá-lo ao PATH, e o passo seguinte — o da BASE, que a decisão existe
+para blindar — usava o falso. **A defesa caía pela porta de fora, não pelo sítio que a
+decisão manda inspecionar.** O remédio foi inverter a ordem dos passos.
+
+Vale por analogia aqui: toda vez que uma defesa diz *"a severidade não vem da fonte
+verificada"*, a pergunta seguinte é **o que mais o objeto verificado consegue escrever** antes
+de a verificação rodar.
+
+### O conserto das 8 ocorrências, e por que o controle é a metade que importa
+
+O ML-1D dele mediu que `produtor | grep -q` sob `pipefail` devolve **141 intermitente**
+(SIGPIPE), e criou gate ligado ao `make parity-rest` — que no nosso CI é o
+`parity-other-gates`. Rodado o gate **dele** sobre a **nossa** árvore:
+
+```
+antes    98 ocorrencias = 90 em arquivo que existe na branch dele + 8 SO NOSSAS
+depois   90 ocorrencias = 90 + 0
+controle: o mesmo gate sobre a arvore DELE  ->  rc=0
+```
+
+🔴 **Sem o controle, o 90 seria lido como dívida nossa.** É ele que mostra que aquelas 90
+são arquivos **compartilhados** ainda na versão pré-conserto, e que somem com o sync — as 8
+eram as únicas que ninguém ia consertar por nós. E os produtores daqui são `printf` de
+variável, logo era violação de **forma**, não defeito vivo; está escrito no commit para que
+ninguém o leia como achado maior do que foi.
+
+**O braço de workflow que o ML-2B acrescentou não acusa nada aqui:** o `local-gates.yml`, o
+único workflow só nosso, tem zero ocorrências.
+
+### 🔴 Duas armadilhas de medição desta sessão, as duas de instrumento
+
+**1. Gate alheio rodado de fora da árvore sai certo pelo motivo errado.** O
+`check-no-grep-q-under-pipefail.sh` deriva os diretórios do **próprio caminho**. Copiado para
+o scratchpad, ele saiu `rc=2` dizendo *"no `*.yml` found"* — veredito plausível, pergunta
+outra. A medição válida foi copiá-lo para `scripts/`, rodar da raiz e apagar a cópia.
+
+**2. `grep -c` de CR mentiu sobre um arquivo 100% CRLF.** Perguntei ao `grep` quantas linhas
+do handoff tinham `\r` e ele respondeu **0**; lendo os **bytes**, são **34 344 CRLF e zero
+LF puro**. O `grep` do MSYS abre em modo texto e come o CR antes de contar. É a terceira
+grafia do mesmo defeito já registrado para o `sed` e para o `cat -A`, e a regra não muda:
+**instrumento que passa por filtro de texto não decide sobre fim de linha.**
+
+### E uma correção minha, porque ela quase virou achado publicado
+
+Eu havia dito que o `check-gates-falsify.sh` **dele** ainda tinha uma ocorrência depois do
+ML-1D. **Era falso positivo da minha sonda:** a linha é
+`grep -qF … <<<"$out" || grep -qF …`, e o meu regex casou o **segundo `|` do `||`**. O gate
+dele descarta o trecho a partir do here-string antes de testar, e o controle sobre a árvore
+dele saiu `rc=0`. Quem derrubou a leitura errada foi o controle, não a releitura do regex.
+
+**Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
