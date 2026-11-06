@@ -34645,3 +34645,34 @@ desconhecido em vez de suposto; o que importa na prática é que **ali o blob pr
 isso que a verificação por efeito do `anexa-crlf.sh` é o instrumento certo para ele.
 
 **Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
+
+### ✅ A janela do macOS FECHOU no mesmo ciclo, e quem disparou foi o critério derivável
+
+Entre abrir o #316 e abrir o sync (#317), o pool voltou. **Eu não notei: o critério que a própria
+seção escreve é que disparou**, quando eu derivei o conjunto de checks do #316 e ele saiu
+`25 linhas / 23 nomes · zero fora do verde`.
+
+```
+15:17 local   cancelled  903 s  runner VAZIO    <- o 4o e ultimo abandono
+18:13 local   success     27 s  runner=ok       <- O POOL VOLTOU (push do merge do #315)
+18:34 local   success     25 s  runner=ok       <- o #316, verde inteiro
+```
+
+**A janela:** 11:25 → 15:17, **4 abandonos, 0 recuperações, vão de 3 h 52 min**. 🔴 **A recuperação
+em si NÃO foi observada** — 2 h 56 min sem corrida entre o último abandono e a primeira verde —,
+então o medido é `4 abandonados → 1 verde` com a transição dentro daquele vão. Mesma forma do
+fechamento de 03/11, cuja lacuna foi de 39 min.
+
+🔴 **E a decisão de 04/11 foi REVERTIDA, por medição e não por gosto.** Naquele dia a seção foi
+**apagada** do `CLAUDE.md` quando a janela fechou, e quatro dias depois tudo teve de ser remedido do
+zero — inclusive a causa, que veio errada. São **quatro janelas em quatro dias** (19/10, 03/11,
+04/11, 06/11), o que faz da condição algo **recorrente**, não um episódio. A seção passou a dizer:
+o que sai quando a janela fecha é a **afirmação em presente**; a causa, a derivação e o censo
+**ficam**.
+
+**O que isso faz com o critério 5 agora:** a `main` voltou ao verde, então o conjunto conhecido
+derivado dela está **vazio** outra vez. Na próxima janela, um PR com o par de macOS vermelho cai no
+mesmo impasse do #314 — critério 5 sem alcance pela letra — e a saída continua sendo palavra do
+usuário, não alargamento do critério.
+
+**Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**

@@ -1262,9 +1262,30 @@ Medido por efeito em projeto temporário com os mesmos três agentes, antes de m
 
 ## 🔴 Condição datada: `shim-byte-identity (macos-latest)` abandona na fila — e a escassez é DA NOSSA CONTA, não do GitHub
 
-Vigente desde **2026-11-06 11:25** (local), quarta janela desde 03/11. O braço de macOS fica na fila
-sem receber máquina e é abandonado em **902–903 s**; o `shim-byte-identity-gate` cascateia e o PR sai
-vermelho sem relação nenhuma com o conteúdo.
+> ✅ **A janela FECHOU em 2026-11-06, entre 15:17 e 18:13 (local), e o critério de morte desta seção
+> é que disparou — não alguém notando.** A seção **fica**, porque o que ela carrega de durável é a
+> **falsificação da causa** (escopo de conta, não pool do GitHub) e a derivação; o que expirou é o
+> "vigente". Medido, com o laço que está escrito mais abaixo:
+>
+> ```
+> 15:17 local   cancelled  903 s  runner VAZIO    <- o 4o e ultimo abandono da janela
+> 18:13 local   success     27 s  runner=ok       <- O POOL VOLTOU (push do merge do #315)
+> 18:34 local   success     25 s  runner=ok       <- o #316
+> ```
+>
+> **A janela:** início 11:25, fim 15:17 — **4 abandonos, 0 recuperações, vão de 3 h 52 min**.
+> 🔴 **A recuperação em si NÃO foi observada**, e isso fica declarado: há **2 h 56 min** entre o
+> último abandono e a primeira verde, sem nenhuma corrida disparada. O medido é
+> `4 abandonados → 1 verde`, com a transição dentro daquele vão — exatamente a mesma forma do
+> fechamento de 03/11, cuja lacuna foi de 39 min.
+>
+> 🔴 **E a quarta janela em quatro dias é a razão de a seção não ser apagada:** 03/11 (10 abandonos),
+> 04/11 (1), 06/11 (4) e a de 19/10 (1). A condição volta; o que não volta é o custo de redescobrir a
+> causa e a derivação.
+
+Vigente de **2026-11-06 11:25 a 15:17** (local), quarta janela desde 19/10. O braço de macOS fica na
+fila sem receber máquina e é abandonado em **902–903 s**; o `shim-byte-identity-gate` cascateia e o PR
+sai vermelho sem relação nenhuma com o conteúdo.
 
 ```
 shim-byte-identity (macos-latest)   cancelled   903 s   runner_name VAZIO
@@ -1322,8 +1343,13 @@ tripla não leva número chumbado.
 for r in $(gh api "repos/lourivalgarciajunior/trackfw/actions/workflows/quality.yml/runs?per_page=12" --jq '.workflow_runs[].id'); do gh api "repos/lourivalgarciajunior/trackfw/actions/runs/$r/jobs?per_page=100" --jq '.jobs[]|select(.name|test("macos"))|"\(.started_at) \(.conclusion) \(((.completed_at|fromdate)-(.started_at|fromdate)))s runner=\(if .runner_name=="" then "VAZIO" else "ok" end)"'; done | sort
 ```
 
-`runner=ok` com `success` na linha mais recente = **a condição morreu**, e esta seção sai. O
-discriminante do **escopo** é o mesmo laço com `repos/kgsaran/trackfw`: se os dois abandonarem na
+`runner=ok` com `success` na linha mais recente = **a janela fechou**; `VAZIO` com `cancelled` em
+902–903 s = **abriu outra**, e aí o cabeçalho acima ganha a data nova. 🔴 **A seção NÃO sai quando a
+janela fecha** — foi o que se fez em 04/11, e quatro dias depois tudo teve de ser remedido do zero.
+Quatro janelas em quatro dias dizem que a condição é **recorrente**, não um episódio; o que sai da
+seção é a afirmação em presente, nunca a causa nem a derivação.
+
+O discriminante do **escopo** é o mesmo laço com `repos/kgsaran/trackfw`: se os dois abandonarem na
 mesma janela, a leitura global volta a ser candidata.
 
 🔴 **O dado fresco aparece de graça na corrida de todo PR novo** — é ali que se mede, nunca numa
