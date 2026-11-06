@@ -34615,3 +34615,33 @@ A correção foi publicada também na #664, porque a conclusão errada está lá
 vai esperar em vez de agir.
 
 **Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
+
+### 🔴 Adendo do mesmo ciclo: o blob do `CLAUDE.md` DIFERE da árvore, e isso é CORRETO
+
+Ao conferir o commit deste ciclo pela regra *"o blob commitado não é o que eu testei"*, o
+`CLAUDE.md` saiu **DIFERE** — e a primeira leitura disso é alarme. Não é. Medido:
+
+```
+git config core.autocrlf              true
+git ls-files --eol
+  CLAUDE.md                           i/lf     w/crlf   attr/
+  docs/agents-working-context.md       i/-text  w/-text  attr/
+  scripts/check-os-predicate-….sh      i/lf     w/lf     attr/text=auto eol=lf
+
+blob do CLAUDE.md em 400e4cc6 e a010979d   CRLF 0 · LF 3291     <- JA era LF antes
+blob do CLAUDE.md em HEAD                  CRLF 0 · LF 3401     <- +110, exatamente o inserido
+```
+
+`core.autocrlf=true` grava LF e entrega CRLF no checkout, e **o `.gitattributes` não tem regra
+`*.md`** — isso é deliberado e está escrito lá: declarar `eol` sobre o que o produto **parseia**
+esconderia a cegueira a CRLF do parser de frontmatter. Logo `i/lf w/crlf` é o estado de sempre, não
+efeito desta edição. 🔴 **O discriminante não é "blob == árvore", é "o blob ANTES == o blob DEPOIS,
+a menos do que eu inseri"** — e para arquivo sob `autocrlf` a primeira forma dá falso alarme.
+
+**E o handoff é o caso oposto, por um motivo que ficou MEDIDO E NÃO EXPLICADO:** o git o classifica
+`-text`, ou seja binário, então grava os bytes **verbatim** com CRLF. A causa usual não se aplica —
+`0` bytes NUL e `0` caracteres de controle no arquivo inteiro, 2 284 955 bytes. Fica declarado como
+desconhecido em vez de suposto; o que importa na prática é que **ali o blob preserva CRLF**, e é por
+isso que a verificação por efeito do `anexa-crlf.sh` é o instrumento certo para ele.
+
+**Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
