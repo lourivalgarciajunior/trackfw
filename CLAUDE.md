@@ -832,6 +832,61 @@ a Regra Dura de Causa Raiz manda. 🔴 **Terceira ocorrência do mesmo sintoma e
 branches `upstream-pr/*`, os 131 refs do `upstream`, e agora o `origin`. O que muda a cada vez é só
 **quem** deixou de podar.
 
+#### 🔴 O `fetch.prune` NUNCA toca `refs/heads` — e aí mora uma lacuna de instrumento
+
+Medido em 07/11/2026, depois de dois merges com `--delete-branch`: sobraram **9 branches locais**
+mescladas na `main`, **todas** com a remota já apagada.
+
+```
+fetch.prune                      true   (ligado pelo upstream-sync.sh)
+remotas das 9 no GitHub          0 de 9
+refs de rastreamento do origin   podadas -> 1 (so a main)
+as 9 branches LOCAIS             SOBREVIVERAM
+```
+
+🔴 **Pelo teste da Regra Dura isto é CAUSA OUTRA, não um quarto sítio da mesma:** podar ref de
+rastreamento não apaga branch local, e apagar branch local não poda ref de rastreamento — nenhuma
+das duas correções fecha a outra.
+
+**E o que isso revela é lacuna de INSTRUMENTO, não de execução.** As três ocorrências acima foram
+todas fechadas pelo `fetch.prune`, que **por construção** só olha `refs/remotes`. Então **nenhum
+passo e nenhum gate mantém a higiene de `refs/heads`**: ela depende de alguém notar, e foi o que
+aconteceu aqui.
+
+**A derivação, para quem precisar** — `-d` e nunca `-D`, porque a recusa do `-d` é o que prova que a
+branch estava mesclada, e **`main` excluída por NOME**:
+
+```bash
+git branch --merged main --format='%(refname:short)' | grep -vx main | xargs -r -n1 git branch -d
+```
+
+🔴 **O `grep -vx main` não é zelo — sem ele o comando APAGA A `main`.** Medido em 07/11/2026, de
+dentro de uma branch de trabalho:
+
+```
+git branch --merged main | grep -v '^\*'      ->  main        <- o argumento do `-d`
+a mesma linha, rodada de DENTRO da main       ->  (as 9)      <- segura por POSICAO
+git branch -d <a branch corrente>             ->  "cannot delete branch ... used by worktree"
+```
+
+A primeira forma é a que eu havia escrito aqui, e ela só não destruiu nada porque a execução real
+aconteceu **de dentro da `main`**, onde o `^\*` a excluía. `git branch --merged main` lista a própria
+`main` — uma branch está mesclada em si mesma —, e o `grep -v '^\*'` protege apenas a **corrente**.
+Fora da `main`, com ela não estando em checkout, o `-d` **teria sucesso**.
+
+**A corrente, essa sim, é protegida pelo git** — a terceira linha acima é a prova por efeito, não
+inferência —, e é por isso que o `--format` (que não imprime o `*`) continua seguro. **O que o git
+não protege é a `main`.**
+
+Mesma família do *"comando que eu nunca executei e entrego como pronto é palpite com cara de
+instrução"*: aqui eu **executei**, e mesmo assim o texto publicado estava errado, porque o teste
+rodou na única posição em que o defeito não aparece. **Controle raso: inclua sempre a posição
+diferente.**
+
+**Não virou gate**, e a razão é a de sempre nesta casa: o acervo foi a zero no mesmo dia, então um
+gate nasceria descrevendo o vazio. Se o sintoma voltar **por esta causa**, aí há caso para
+instrumento.
+
 #### 🔴 E o PRODUTO também lê esses refs — achado no push deste próprio trabalho
 
 > ✅ **CORRIGIDO no upstream em 2026-10-09 pelo [#549](https://github.com/kgsaran/trackfw/pull/549), que fecha a NOSSA [#547](https://github.com/kgsaran/trackfw/issues/547)** — e o que está abaixo

@@ -34879,3 +34879,131 @@ Pelo predicado dos intervalos de 22/10, ausência de arquivo de linha de hook pr
 parado — e parou. 🔴 **O `npm i -g` continua pendente da palavra do usuário**, e agora com o escopo
 exato: ele entrega a **mensagem** que nomeia o arquivo, não o destravamento, que já aconteceu.
 
+
+### ✅ Sexta passada da tripla — e o terceiro controle NEGATIVO dela, com a derivação feita antes
+
+Em 07/11/2026, depois de mesclar o sync do #672/#673, o usuário autorizou o `npm i -g`. O que vale
+registrar não é a instalação: é que **a previsão foi escrita antes de rodar e fechou nos dois
+escopos**.
+
+```
+                          ANTES     DEPOIS
+git bash                  11.5.0 -> 11.5.1
+powershell                11.5.0 -> 11.5.1
+cmd.exe                   11.5.0 -> 11.5.1
+npm ls -g                 trackfw@11.5.1
+
+validate do projeto       3 avisos -> 3 avisos  ·  0 de escopo global
+update harness --dry-run  updated=0 skipped=35 missing=1 failed=0
+```
+
+🔴 **O passo 3 da tripla NÃO era necessário, e isso foi derivado antes de o sync rodar:** zero
+arquivos casando `settings.json|hooks.json|scaffold` no intervalo. O `validate` ficou parado e o
+`--dry-run` **global** confirma `updated=0` — o que o `validate` do projeto não alcança, porque ele
+fala deste repositório e o harness fala de todos os CLIs desta máquina.
+
+**Terceiro controle negativo do predicado dos intervalos** (os dois primeiros foram os syncs de
+22/10, #596/#597 e #598/#600/#601). O predicado deixou de ser observação e está se comportando como
+regra: **arquivo de linha de hook no intervalo → tripla; sem ele → no-op.**
+
+**Os três shells foram conferidos de propósito**, não por zelo: a resolução é diferente em cada um —
+`PATHEXT` põe `.EXE` antes de `.CMD` —, e em 2026-10-07 foi exatamente isso que deixou o `cmd.exe`
+uma versão atrás enquanto bash e PowerShell já estavam na nova.
+
+**O único `missing` é o já documentado**, e o discriminante é o **executável**, nunca a pasta de
+config:
+
+```
+windsurf-credential-guard   missing (~/.codeium/windsurf/hooks.json)
+windsurf no PATH            nao
+AppData/Local/Programs/Windsurf   nao existe
+```
+
+**Passo 4, por efeito, nas duas pontas:**
+
+| | |
+|---|---|
+| `git commit --dry-run` pela ferramenta **Bash** | bloqueado |
+| o mesmo pela ferramenta **PowerShell** | bloqueado |
+| `git status` · `git log` no caminho real | rc=0 · rc=0 — controles negativos |
+| `git push origin main` pelo binário do PATH | rc=2 |
+| `grep -n foo internal/guard/*.go` — o que era **bloqueado** | **rc=0** |
+
+A linha do PowerShell está aí porque foi nela que a cerca ficou **53 dias** com porta aberta: o furo
+não aparece no caminho que se exercita.
+
+### 🔴 QUARTO sítio do "acervo de branches afirma trabalho que não existe" — e a causa é OUTRA
+
+Depois dos dois merges de hoje, sobraram **9 branches locais** mescladas na `main`, **todas** com a
+remota já apagada pelo `--delete-branch`. Elas foram removidas por `git branch -d` (nunca `-D`, e as
+nove aceitaram, o que é a prova de que estavam mescladas), e cada deleção imprimiu o SHA — que é o
+caminho de volta.
+
+```
+branches locais mescladas        9  ->  0
+remota ainda no GitHub           0 de 9
+refs de rastreamento do origin   1   (so a main)
+```
+
+🔴 **E pelo teste da Regra Dura isto é CAUSA OUTRA, não um quarto sítio da mesma:** o
+`fetch.prune=true` estava **ligado** (o `upstream-sync.sh` o liga), as remotas foram apagadas no
+merge, as refs de rastreamento **foram** podadas — e as 9 branches locais **sobreviveram**. Podar ref
+de rastreamento não apaga branch local, e apagar branch local não poda ref de rastreamento: nenhuma
+das duas correções fecha a outra.
+
+**O que isso revela é uma lacuna de instrumento, não de execução.** Este arquivo já registra três
+ocorrências do sintoma — as 14 `upstream-pr/*`, os 131 refs do `upstream`, o `origin` —, e para todas
+elas o remédio foi o `fetch.prune`, que **por construção nunca toca `refs/heads`**. Então não há
+hoje nenhum passo nem gate que mantenha a higiene de branch local: ela depende de alguém notar.
+
+**Não virou gate agora, e a razão está escrita:** o acervo acabou de ir a zero, então um gate
+nasceria descrevendo o vazio, e a derivação (`git branch --merged main` cruzado com
+`git ls-remote --heads origin`) é de duas linhas para quem precisar. Se o sintoma voltar uma quarta
+vez **por esta causa**, aí há caso para instrumento — e o critério é derivável, não uma data.
+
+
+### 🔴 O comando que eu publiquei na entrada ACIMA apagaria a `main` — achado antes de commitar
+
+A entrada anterior deste mesmo ciclo publicou, como derivação de higiene de branch local:
+
+```bash
+git branch --merged main | grep -v '^\*' | xargs -r -n1 git branch -d
+```
+
+**Ela apaga a `main`.** Medido em 07/11/2026, de dentro da branch de trabalho em que eu escrevia a
+própria entrada:
+
+```
+git branch --merged main | grep -v '^\*'      ->  main      <- o argumento do `-d`
+a mesma linha, de DENTRO da main              ->  (as 9)
+git branch -d <a branch corrente>             ->  "cannot delete branch ... used by worktree"
+```
+
+**O mecanismo:** `git branch --merged main` lista a própria `main`, porque uma branch está mesclada
+em si mesma, e o `grep -v '^\*'` protege apenas a **corrente**. Fora da `main`, com ela não estando
+em checkout, o `-d` tem sucesso. A correção é excluir por **nome**:
+`--format='%(refname:short)' | grep -vx main`.
+
+🔴 **E a execução real de hoje foi segura por POSIÇÃO, não por desenho:** eu apaguei as 9 branches
+de dentro da `main`, onde o `^\*` a excluía. O comando funcionou, o resultado foi o certo, e o texto
+que eu derivei dele estava errado — **porque o teste rodou na única posição em que o defeito não
+aparece.**
+
+**A lição é de controle, e esta casa já a tem escrita duas vezes.** A memória diz *"comando que eu
+nunca executei e entrego como pronto é palpite com cara de instrução"*; aqui eu **executei**, e não
+bastou. A forma que pega é a outra memória: *"controle raso: inclua sempre o caso mínimo"* — e o caso
+mínimo aqui não é um argumento, é a **posição do HEAD**.
+
+**O que o git protege e o que não protege**, medido e separado, porque a diferença é o que faz a
+correção ser de uma palavra em vez de um invólucro:
+
+| | |
+|---|---|
+| branch **corrente** | protegida pelo próprio git (`used by worktree`) — prova por efeito acima |
+| branch **mesclada** sem remota | é o alvo legítimo; o `-d` recusa se não estiver mesclada |
+| a **`main`** | 🔴 **nada a protege** — nem o `-d`, nem o `--merged`, nem o `grep -v '^\*'` |
+
+**Pego antes de commitar**, porque eu rodei a derivação publicada em vez de confiar nela — e a rodei
+de uma posição diferente da que usei na execução. Esse é o passo que faltou nas duas vezes
+anteriores.
+
