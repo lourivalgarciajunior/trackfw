@@ -2427,6 +2427,93 @@ conveniência de sync nunca foi exceção.
 > **O procedimento não muda**, porque ele já era o certo antes da release: estagiar por caminho
 > explícito, derivado de `git status --short`. O que mudou é que agora o hook cobra.
 
+## 🔴 O guard de credencial bloqueia leitura benigna NESTE repositório — a causa é a nossa fixture
+
+Medido por efeito em 07/11/2026, no caminho real (pela ferramenta `Bash`, não por sonda):
+
+```
+grep -n foo internal/guard/*.go
+  -> PreToolUse:Bash hook error
+     blocked - possible PEM private key detected in tool payload.
+```
+
+🔴 **A mensagem é falsa no ponto que importa:** não há credencial no payload. O padrão está em
+`internal/guard/credential_patterns_test.go`, uma fixture que o **glob casou**.
+
+### O escopo é o discriminante, e sonda no escopo errado responde outra pergunta
+
+O default de projeto é `warn`; o de `--global` é `block` — lido no `--help`, não suposto. Os dois
+grupos existem no nosso `.claude/settings.json`, e **o que dispara no caminho real é o que
+bloqueia**:
+
+| payload | projeto | `--global` |
+|---|---|---|
+| `grep -n foo internal/guard/*.go` | rc=0, avisa | **rc=2, bloqueia** |
+| `grep -rn foo internal/guard` | rc=0 | rc=0, silêncio |
+| `git status` | rc=0 | rc=0 — controle negativo |
+
+A primeira medição desta linha saiu `rc=0` e pareceu contradizer o relato do mantenedor. Não
+contradizia: estava no escopo de projeto.
+
+### 🔴 O conserto do BLOQUEIO vem do sync; o do TEXTO vem do `npm i -g`. São independentes
+
+O [#672](https://github.com/kgsaran/trackfw/pull/672) foi mesclado em 07/11 11:48 e publicado na
+**11.5.1**. A leitura ingênua — e eu a publiquei ao usuário antes de medir — é que o binário novo
+destrava a leitura. **Ele não destrava.** Medido com o binário 11.5.1 compilado em worktree
+descartável:
+
+```
+binario 11.5.1, cwd = NOSSA arvore    rc=2  BLOQUEIA
+binario 11.5.1, cwd = arvore DELE     rc=0  passa
+token literal na fixture              nossa 1  ·  upstream/main 0
+```
+
+**Mesmo binário, duas árvores, vereditos diferentes** — então o que decide é a **fixture**, não a
+versão. A decisão **D3** da `ADR-2026-11-06` dele é literalmente este caso (*"o repositório que
+desenvolve o guard não pode bloquear quem trabalha nele"*): as fixtures passaram a montar o token em
+tempo de execução, e isso chega pelo **sync**.
+
+O que o `npm i -g` entrega é a **atribuição**, e só ela:
+
+```
+11.5.0   ... detected in tool payload.
+11.5.1   ... detected in file internal\guard\credential_patterns_test.go referenced by the command.
+```
+
+🔴 **Ganho real, mas não é o conserto do bloqueio.** Os dois passos são independentes e nenhum
+substitui o outro. **A versão não se escreve como critério** — ela se deriva, pela regra da tripla:
+`npm view trackfw version` cruzado com `git tag --contains <commit>`.
+
+### O silêncio da forma recursiva é DECISÃO, não acidente
+
+**D2** do mesmo ADR: a segunda camada **não lê diretório recursivamente**, por custo — na raiz seria
+o repositório inteiro a cada chamada de ferramenta. A cobertura é arquivo nomeado e glob, **só** como
+argumento de `cat`, `head`, `tail`, `jq` e `grep`; `rg`, `find -exec`, `xargs` e cópia-seguida-de-
+leitura ficam fora, com o limite escrito no `--help` e no `cli-parity.md`. A postura dele é nomeada:
+*"uma lombada para o caso óbvio, não uma fronteira contra quem quer contorná-la"*.
+
+🔴 **Então não leia a assimetria como defeito remanescente.** O defeito era **cobertura
+inconsistente** (glob resolvia pela pasta do processo e argumento nomeado pela `cwd` do payload, D4);
+a resolução foi **declarar** o limite da recursão, não estendê-lo.
+
+### O contorno de hoje, que NÃO toca o hook
+
+Forma recursiva (`grep -rn foo internal/guard --include='*.go'`) ou caminho explícito — as duas
+devolvem o mesmo conteúdo. 🔴 **Não se contorna o hook**: a ordem é permanente, e conveniência de
+leitura nunca foi exceção.
+
+### O critério de morte desta seção — DERIVÁVEL, nunca a data
+
+A seção morre quando a fixture da nossa árvore deixar de carregar o token literal, o que o sync faz:
+
+```bash
+grep -c 'BEGIN RSA PRIVATE KEY' internal/guard/credential_patterns_test.go
+```
+
+**1 = o bloqueio continua vivo aqui. 0 = a fixture chegou**, e aí o que fica desta seção é o
+discriminante (mesmo binário, duas árvores) e a divisão sync/`npm i -g`, nunca a afirmação em
+presente. É a forma que a seção do macOS aprendeu a ter depois de ser apagada e remedida do zero.
+
 ## ✅ A campanha de Windows do upstream encerrou em 2026-10-16: lista conhecida de 14 para 6
 
 A `REQ-2026-09-03` dele — *"as 217 falhas reais de Windows colapsam em poucas causas"* — fechou

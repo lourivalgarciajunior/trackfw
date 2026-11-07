@@ -34676,3 +34676,138 @@ mesmo impasse do #314 — critério 5 sem alcance pela letra — e a saída cont
 usuário, não alargamento do critério.
 
 **Esta entrada foi anexada pela ferramenta `scripts/anexa-crlf.sh`.**
+
+### 🔴 O guard de credencial bloqueia leitura benigna aqui — e eu anunciei o remédio ERRADO
+
+Em 07/11/2026, numa varredura do upstream, o guard de credencial **bloqueou uma leitura inofensiva
+minha** no caminho real — `grep -n foo internal/guard/*.go`, pela ferramenta `Bash`:
+
+```
+PreToolUse:Bash hook error
+  blocked - possible PEM private key detected in tool payload.
+```
+
+**A mensagem é falsa no ponto que importa:** não há credencial no payload. O padrão está em
+`internal/guard/credential_patterns_test.go`, uma fixture que o glob casou.
+
+#### A assimetria, medida pelo binário do PATH (11.5.0) antes de qualquer conserto
+
+| payload | escopo de projeto | `--global` |
+|---|---|---|
+| `grep -n foo internal/guard/*.go` | rc=0, só avisa | **rc=2, bloqueia** |
+| `grep -rn foo internal/guard` | rc=0 | rc=0, silêncio |
+| `git status` | rc=0 | rc=0 — controle negativo |
+
+🔴 **O escopo é o discriminante, e foi ele que me fez ler o relato dele como contradição na primeira
+passada.** O default de projeto é `warn`, o de `--global` é `block` (lido no `--help`, não suposto);
+os dois grupos existem no nosso settings, e o que dispara no caminho real é o que bloqueia.
+
+#### 🔴 E o remédio que eu anunciei estava ERRADO — o binário novo não muda o veredito
+
+Eu disse ao usuário, naquele mesmo turno, que o [#672](https://github.com/kgsaran/trackfw/pull/672)
+*"conserta o defeito que está vivo aqui"* e que o `npm i -g` seria *"o passo que vai entregar o
+conserto"*. **Medido por efeito depois, com o binário 11.5.1 compilado em worktree descartável:**
+
+```
+binario 11.5.1, cwd = NOSSA arvore    rc=2  BLOQUEIA
+binario 11.5.1, cwd = arvore DELE     rc=0  passa
+token literal na fixture              nossa 1  ·  upstream/main 0
+```
+
+**Mesmo binário, duas árvores, vereditos diferentes.** O que remove o bloqueio é a **fixture**, não
+a versão do binário — e a fixture chega pelo **sync**, não pelo `npm i -g`. A decisão **D3** da
+`ADR-2026-11-06` dele é literalmente este caso: *"o repositório que desenvolve o guard não pode
+bloquear quem trabalha nele"*, e as fixtures passaram a montar o token em tempo de execução.
+
+**O que o `npm i -g trackfw@11.5.1` entrega, então, é a ATRIBUIÇÃO** — e só ela:
+
+```
+11.5.0   blocked - possible PEM private key detected in tool payload.
+11.5.1   blocked - possible PEM private key detected in file
+         internal\guard\credential_patterns_test.go referenced by the command.
+```
+
+Isso é ganho real — a primeira mensagem manda procurar credencial no comando, a segunda nomeia o
+arquivo —, mas **não é o conserto do bloqueio**, e foi isso que eu disse errado. Os dois passos são
+independentes e nenhum substitui o outro.
+
+#### Duas decisões dele que mudam como se lê a assimetria
+
+- **D2: a segunda camada não lê diretório recursivamente**, por custo — na raiz seria o repositório
+  inteiro a cada chamada de ferramenta. Então o silêncio da forma recursiva é **decisão escrita**,
+  com o limite no `--help` e no `cli-parity.md`, e não acidente. Ele nomeia a postura: *"uma lombada
+  para o caso óbvio, não uma fronteira contra quem quer contorná-la"* — a mesma do checker de
+  marcadores de terceiros. 🔴 Eu havia chamado isso de *"a assimetria dele"* como se fosse defeito; o
+  defeito era **cobertura inconsistente**, e a resolução foi **declarar** o limite, não estendê-lo.
+- **D4: glob relativo resolve contra a `cwd` da ferramenta**, e a emenda A-1 do red team **dele**
+  escapa `[`, `*` e `?` da `cwd` como literal. Sem isso, `cwd` com metacaractere produzia falso
+  negativo (`d[1]` liberava a credencial) ou falso positivo com atribuição errada (`a*b`).
+
+#### O contorno de hoje, que NÃO toca o hook
+
+A forma recursiva passa e devolve o mesmo conteúdo (`grep -rn foo internal/guard --include='*.go'`),
+e caminho explícito também. 🔴 **Não se contorna o hook** — a ordem é permanente, e conveniência de
+leitura nunca foi exceção.
+
+#### A tripla não é necessária no sync que vem, derivado antes de rodar
+
+```
+os 2 commits do intervalo tocam        25 arquivos  ·  13 de produto
+.claude/settings.json | .codex/hooks.json | .gemini/settings.json        0
+```
+
+Pelo predicado dos três intervalos de 22/10, `validate` fica **3 → 3** e não há `update harness` a
+fazer. E o sync **não é no-op**: 13 arquivos de produto, entre eles o `internal/guard/credential.go`
+e a fixture que destrava a leitura aqui.
+
+#### 🔴 Armadilha de medição, a mesma de sempre, cometida outra vez
+
+A primeira derivação de *"o que o intervalo traz"* foi `git diff --name-only HEAD..upstream/main` e
+devolveu **136 KB de nomes** — a governança dele que o sync retém, não o intervalo. O
+`CLAUDE.md` já registra isso em três lugares (*"dois-pontos responde 'o upstream andou?'"*), e eu
+caí nele de novo. O que responde é o diff **dos commits**: `108b8d2f..upstream/main`.
+
+
+### ✅ Ele respondeu a nossa #671 em 12:39 — e a medição dele FALSIFICA uma frase minha
+
+A [#671](https://github.com/kgsaran/trackfw/issues/671) — o `trap EXIT` de `run_self_test` citando
+`$tmp`, que é `local` da própria função — recebeu resposta, label (`bug`, `req-aberta`), REQ e
+roadmap em `wip/` no mesmo dia. O ciclo da issue ao artefato de governança dele foi de **17 h**.
+
+**Três coisas que ele trouxe e a nossa medição não tinha:**
+
+1. 🔴 **Nuance de versão, e ela derruba a minha generalização.** Eu escrevi na issue, como ponto
+   forte do relato, que o defeito *"é portável: o trap dispara em **qualquer** falha dentro de
+   `run_self_test`, em **qualquer** sistema"*. A medição dele:
+
+   | saída da função | bash 5.3 | bash 3.2 (macOS) |
+   |---|---|---|
+   | falha por `set -e` | vaza + mensagem espúria | **ok** |
+   | falha por `set -u` | vaza + mensagem espúria | vaza + mensagem espúria |
+   | `exit 1` explícito | ok | ok |
+
+   **A célula `bash 3.2` × `set -e` é o contraexemplo.** O mecanismo existe nos dois, mas o conjunto
+   de gatilhos não — e "qualquer sistema" era mais largo que a minha reprodução mínima, que rodou só
+   aqui, em bash 5. A consequência prática continua valendo (o CI dele é `ubuntu-latest`, bash 5,
+   logo afetado), mas **a afirmação de portabilidade era maior que a medição**, e isso é a mesma
+   classe de defeito que este arquivo cobra dos outros.
+
+2. **A varredura que eu ofereci e não fiz: são DOIS sítios, não um.** O segundo é `self_test` em
+   `scripts/check-req-roadmap-rule-is-status-aware.sh` (`WORK`, sob `set -uo pipefail`). Eu havia
+   declarado o limite — *"não varri os outros scripts"* — e o limite declarado foi o que fez a
+   varredura acontecer, em vez de a issue passar por completa.
+
+3. **A separação que eu fiz foi aceita como escopo negativo.** A parte 5 do self-test (nome de
+   arquivo com quebra de linha, inconstruível pelo git do Windows) ficou **fora** da REQ dele, com a
+   razão escrita: o `classify` roda em ubuntu, e o relato não pedia nada sobre isso. Separar o achado
+   de ambiente do achado portável foi o que deixou a issue acionável.
+
+**E o AC3 dele vira gate**, em `parity-rest`: reprova `trap` com corpo entre aspas simples que cite
+variável declarada `local` na função que o instala, sobre `git ls-files '*.sh'`, com `--self-test` de
+dois braços e guarda de vacuidade. O residual fica declarado — aspas duplas e `trap` via `eval` não
+são cobertos.
+
+🔴 **Nada disso é trabalho nosso.** O sítio é do produto dele, e pelo escopo negativo da
+`REQ-2026-09-05-onda-2` achado em produto do upstream vira **issue, nunca correção local**. O que
+chega aqui chega pelo sync, quando ele mesclar.
+
