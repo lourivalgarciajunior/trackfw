@@ -2427,9 +2427,41 @@ conveniência de sync nunca foi exceção.
 > **O procedimento não muda**, porque ele já era o certo antes da release: estagiar por caminho
 > explícito, derivado de `git status --short`. O que mudou é que agora o hook cobra.
 
-## 🔴 O guard de credencial bloqueia leitura benigna NESTE repositório — a causa é a nossa fixture
+## ✅ O guard bloqueava leitura benigna aqui — FECHADO pelo sync, e o critério de morte DISPAROU
 
-Medido por efeito em 07/11/2026, no caminho real (pela ferramenta `Bash`, não por sonda):
+> ### ✅ Fechado em 07/11/2026 às 14:4x, pelo sync do #672/#673 — e a seção previu o próprio fim
+>
+> O critério derivável escrito no fim desta seção **disparou na primeira oportunidade**, e a
+> previsão que ela carregava foi confirmada por efeito:
+>
+> ```
+> token literal na fixture                 1  ->  0
+> guard do PATH sobre o glob               rc=2  ->  rc=0
+> o comando que era BLOQUEADO, no hook real   grep -n foo internal/guard/*.go   rc=0
+> binario do PATH                          11.5.0 ANTES e DEPOIS   <- nao mudou
+> ```
+>
+> 🔴 **A última linha é a prova do discriminante**, e é por ela que esta seção vale lida: o bloqueio
+> caiu com o binário **parado em 11.5.0**. Quem decidia era a **fixture**, exatamente como medido —
+> e eu havia publicado ao usuário que o conserto viria do `npm i -g`, que era o remédio **errado**.
+>
+> **O que FICA desta seção** é o discriminante (mesmo binário, duas árvores), a divisão
+> sync/`npm i -g` e o escopo como discriminante de sonda. **O que SAI** é a afirmação em presente —
+> a forma que a seção do macOS aprendeu a ter depois de ser apagada e remedida do zero.
+>
+> **E a D3 dele cobriu o PEM, não o JWT**, medido no mesmo minuto: `eyJ` continua literal na fixture,
+> **2 ocorrências antes e depois** do sync. Não é defeito aberto — leitor coberto sobre aquele
+> arquivo sai `rc=0` nos dois binários, logo o detector de JWT pede mais que o prefixo —, mas a
+> assimetria está registrada para quem for ler a D3 como "as fixtures deixaram de disparar".
+>
+> **Transiente declarado, não reproduzido:** o `PostToolUse` do próprio comando do sync foi bloqueado
+> com *"possible JWT detected in tool payload"*. **Quatro sondas com o payload exato, nos dois
+> binários, deram `rc=0`** — causa desconhecida, declarada, como no caso do `validate 1 antes · 0
+> depois`. Ele bloqueou um **PostToolUse**, ou seja, o comando já havia rodado: não houve cerca
+> falhando aberta, e o sync não foi afetado.
+
+**A medição que originou a seção, em 07/11/2026**, no caminho real (pela ferramenta `Bash`, não por
+sonda):
 
 ```
 grep -n foo internal/guard/*.go
@@ -2502,17 +2534,21 @@ Forma recursiva (`grep -rn foo internal/guard --include='*.go'`) ou caminho expl
 devolvem o mesmo conteúdo. 🔴 **Não se contorna o hook**: a ordem é permanente, e conveniência de
 leitura nunca foi exceção.
 
-### O critério de morte desta seção — DERIVÁVEL, nunca a data
+### O critério de morte — DERIVÁVEL, nunca a data — e ele JÁ DISPAROU
 
-A seção morre quando a fixture da nossa árvore deixar de carregar o token literal, o que o sync faz:
+O critério foi escrito antes do sync e disparou nele, o que é a única forma de saber que um critério
+serve. Ele continua aqui porque é o que distingue "o bloqueio voltou" de "a memória envelheceu":
 
 ```bash
 grep -c 'BEGIN RSA PRIVATE KEY' internal/guard/credential_patterns_test.go
 ```
 
-**1 = o bloqueio continua vivo aqui. 0 = a fixture chegou**, e aí o que fica desta seção é o
-discriminante (mesmo binário, duas árvores) e a divisão sync/`npm i -g`, nunca a afirmação em
-presente. É a forma que a seção do macOS aprendeu a ter depois de ser apagada e remedida do zero.
+**1 = o bloqueio está vivo de novo** — divergência nossa na fixture, e aí a medição acima volta a
+valer em presente. **0 = a fixture do upstream está no lugar**, que é o estado em que ele disparou.
+
+🔴 **O que NÃO se escreve aqui é a versão.** Ela se deriva — `npm view trackfw version` cruzado com
+`git tag --contains <commit>` —, e este arquivo já apodreceu três vezes por chumbar número de
+versão e três por chumbar contagem de check.
 
 ## ✅ A campanha de Windows do upstream encerrou em 2026-10-16: lista conhecida de 14 para 6
 
