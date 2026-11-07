@@ -34811,3 +34811,71 @@ são cobertos.
 `REQ-2026-09-05-onda-2` achado em produto do upstream vira **issue, nunca correção local**. O que
 chega aqui chega pelo sync, quando ele mesclar.
 
+
+### ✅ O sync do #672/#673 fez o critério de morte DISPARAR — e a previsão estava escrita antes
+
+Vinte minutos antes deste sync, o PR [#318](https://github.com/lourivalgarciajunior/trackfw/pull/318)
+escreveu no `CLAUDE.md` que o bloqueio de leitura benigna cairia com a **fixture**, não com a versão
+do binário, e deixou o critério derivável para medir isso. **Ele disparou na primeira
+oportunidade:**
+
+```
+token literal na fixture                      1  ->  0
+guard do PATH sobre o glob                    rc=2  ->  rc=0
+o comando que era BLOQUEADO, no hook real     grep -n foo internal/guard/*.go   rc=0
+binario do PATH                               11.5.0 ANTES e DEPOIS
+```
+
+🔴 **A última linha é o que torna isto prova e não coincidência:** o bloqueio caiu com o binário
+**parado em 11.5.0**. Eu havia dito ao usuário que o conserto viria do `npm i -g`; vinha do sync. A
+divisão medida — sync entrega o **veredito**, `npm i -g` entrega a **atribuição** — ficou confirmada
+pelas duas pontas.
+
+#### A proporção do sync, e a derivação à mão perdeu PELA QUARTA VEZ
+
+```
+arquivos de PRODUTO trazidos : 14
+de governanca RETIDOS        : 11   (de 25 no merge)      14 + 11 = 25
+go build ./...   exit 0
+validate         0 antes · 0 depois
+```
+
+A minha derivação à mão, antes de rodar, dizia **13 de produto e 12 retidos**. O script contou
+**14 e 11**, e a diferença é o `docs/cli-parity.md`, que vem **do** upstream pela exceção nomeada
+(contrato de produto lido por gate dele). 🔴 **Quarta ocorrência do mesmo erro de forma** — classificar
+por prefixo de caminho ignora a exceção que só o instrumento conhece.
+
+#### A D3 dele cobriu o PEM e NÃO o JWT, no mesmo arquivo
+
+```
+eyJ literal em internal/guard/credential_patterns_test.go    2 antes  ·  2 depois
+leitor coberto sobre aquele arquivo, nos dois binarios       rc=0 · rc=0
+```
+
+**Não é defeito aberto** — o detector de JWT pede mais que o prefixo, então ler a fixture não
+bloqueia. Mas a assimetria fica registrada para quem for ler a **D3** (*"as fixtures do trackfw
+montam o token em tempo de execução"*) como se valesse para todos os padrões: ela valeu para o PEM,
+que era o que bloqueava.
+
+#### 🔴 Transiente declarado: o `PostToolUse` do sync foi bloqueado, e NÃO reproduz
+
+O comando que rodou o `upstream-sync.sh` teve o **`PostToolUse`** recusado com *"possible JWT
+detected in tool payload"*. **Quatro sondas depois — payload exato, com o caminho real do arquivo de
+saída, nos dois binários — todas `rc=0`.** Causa desconhecida, declarada, como no caso do
+`validate 1 antes · 0 depois` do sync do #557: uma passada desta máquina não é medida.
+
+**O que se sabe com certeza, e é o que importa:** era `PostToolUse`, logo **o comando já havia
+rodado**. Não houve cerca falhando aberta, o sync não foi afetado, e o `rc=0` dele foi lido do
+arquivo, sem cano.
+
+#### A tripla NÃO foi necessária, e isto é o terceiro controle negativo do predicado
+
+```
+.claude/settings.json | .codex/hooks.json | .gemini/settings.json  no intervalo :  0
+validate                                                           0 antes · 0 depois
+```
+
+Pelo predicado dos intervalos de 22/10, ausência de arquivo de linha de hook prevê `validate`
+parado — e parou. 🔴 **O `npm i -g` continua pendente da palavra do usuário**, e agora com o escopo
+exato: ele entrega a **mensagem** que nomeia o arquivo, não o destravamento, que já aconteceu.
+
