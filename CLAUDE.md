@@ -1357,7 +1357,27 @@ agora **herda o agente da REQ** em vez de ignorá-lo.
 
 Medido por efeito em projeto temporário com os mesmos três agentes, antes de mesclar.
 
-## 🔴 Condição datada: `shim-byte-identity (macos-latest)` abandona na fila — e a escassez é DA NOSSA CONTA, não do GitHub
+## ✅ FECHADA em 06/11/2026: a fila de macOS abandonava o `shim-byte-identity` — recorrente, e a escassez era DA NOSSA CONTA
+
+> **Estado, para quem varre cabeçalhos: NÃO há nada aberto aqui.** Última medição em **08/11/2026**:
+> **12 braços de `macos-latest` consecutivos**, de 06/11 21:13Z a 08/11 19:12Z, **todos `success`**
+> com `runner=ok` em 25 a 72 s, **zero abandonos**. A seção fica por ser **condição recorrente**
+> (quatro janelas em quatro dias), não por haver pendência.
+>
+> 🔴 **E o cabeçalho desta seção estava no PRESENTE até 08/11/2026** — *"abandona na fila"*, com 🔴 —,
+> então **toda varredura de "o que está em aberto" a devolvia como pendência**, enquanto o ✅ de
+> fechamento morava dentro, invisível a uma leitura de cabeçalhos. O usuário cobrou isso depois de a
+> seção aparecer como tópico aberto em análises repetidas, e **eu havia escrito que ela "não precisa
+> de emenda"** — estava errado: o conteúdo estava certo e a **forma** mentia.
+>
+> **É a mesma regra que este arquivo já publica duas vezes**, aplicada agora ao cabeçalho e não só ao
+> corpo: *"Datado e no passado não envelhece. Presente envelhece."* E é a mesma família do ruído
+> permanente da [#530](https://github.com/kgsaran/trackfw/issues/530) — aviso que sempre acende deixa
+> de ser lido. 🔴 **Cabeçalho de seção fechada vai para o passado e leva ✅; 🔴 fica para o que está
+> vivo.**
+>
+> **Reabrir é derivável, não uma data:** `VAZIO` com `cancelled` em 902–903 s no laço abaixo abre
+> janela nova, e aí o cabeçalho volta ao presente com a data do dia.
 
 > ✅ **A janela FECHOU em 2026-11-06, entre 15:17 e 18:13 (local), e o critério de morte desta seção
 > é que disparou — não alguém notando.** A seção **fica**, porque o que ela carrega de durável é a
