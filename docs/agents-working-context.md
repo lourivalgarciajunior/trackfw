@@ -35080,3 +35080,61 @@ blocos de gates   29 em done/ · 5 em abandoned/ · 0 em wip/
 
 🔴 **E três sondas seguidas disseram "regra inerte" porque a MUTAÇÃO NÃO HAVIA ACONTECIDO.** Eu plantei um cabeçalho de gates duplicado, rodei o `validate`, não vi violação, e atribuí a escopo errado — duas vezes, com hipóteses plausíveis (`abandoned/` em vez de `wip/`, wave diferente de 0). Só na quarta tentativa eu **imprimi o arquivo antes de medir**, e aí a regra disparou na primeira. **Sem conferir a mutação, "regra inerte" e "sonda que não mutou" são indistinguíveis** — e a hipótese errada é a mais convincente das duas.
 
+
+### 🔴 Cabeçalho no presente faz seção FECHADA aparecer como pendência em toda varredura
+
+Em 08/11/2026 o usuário relatou que o tópico da fila de macOS *"aparece em aberto"* **toda vez** que
+ele pede uma análise. O conteúdo da seção estava certo — o bloco ✅ registrava o fechamento de 06/11,
+com causa, derivação e censo. **A forma é que mentia:**
+
+```
+antes   ## 🔴 Condicao datada: shim-byte-identity (macos-latest) ABANDONA na fila — ...
+depois  ## ✅ FECHADA em 06/11/2026: a fila de macOS ABANDONAVA o shim-byte-identity — ...
+```
+
+🔴 **O ✅ morava DENTRO da seção, e varredura de cabeçalhos não o alcança.** Quem lê a lista de
+`## ` vê 🔴 mais verbo no presente e classifica como aberto — corretamente, dado o que o cabeçalho
+afirma. O leitor não estava errado; o cabeçalho estava.
+
+**E eu havia escrito, no mesmo dia, que a seção "não precisa de emenda"** — justificando que causa,
+derivação e censo deviam ficar, o que continua verdade. O erro foi concluir daí que **nada** mudava:
+o que precisava de emenda não era o conteúdo, era o tempo verbal do título.
+
+**A regra que este arquivo já publica duas vezes, agora estendida ao cabeçalho:**
+
+> **Datado e no passado não envelhece. Presente envelhece.** E cabeçalho de seção **fechada** vai
+> para o passado e leva **✅**; **🔴 fica para o que está vivo.**
+
+**É a mesma família do ruído permanente da [#530](https://github.com/kgsaran/trackfw/issues/530)** —
+aviso que sempre acende deixa de ser lido —, com a diferença de que aqui o custo não é o aviso
+ignorado, é **trabalho proposto em cima de pendência inexistente**, repetidamente.
+
+#### A varredura, e por que o escopo ficou numa seção só
+
+Derivei os cabeçalhos que contêm bloco ✅ no corpo: **12**. Dos cinco que levam 🔴 no título, quatro
+não afirmam condição aberta e ficam como estão:
+
+| cabeçalho | por que fica |
+|---|---|
+| `Conteúdo autoral NUNCA viaja dentro de uma string de comando` | regra **INVIOLÁVEL** viva |
+| `Não rode trackfw update na raiz deste fork` | proibição viva |
+| `BREAKING da 10.0.0: branch new cria da branch padrão do REMOTO` | comportamento vigente do produto |
+| `E o matcher nunca cobriu a ferramenta PowerShell — 53 dias` | passado explícito no verbo |
+
+**O único candidato restante é `O ponto cego MUDOU DE LUGAR: de "sem jq" para "sem guard no PATH"`**,
+e a leitura é que ele também fica: o assunto — *a cerca é a do binário que o PATH entrega* — é fato
+permanente, não defeito aberto. Fica registrado como julgamento, não como medição.
+
+#### E a medição fresca entrou no cabeçalho, datada
+
+```
+12 bracos de macos-latest consecutivos   06/11 21:13Z -> 08/11 19:12Z
+  todos success · runner=ok · 25 a 72 s · ZERO abandonos
+```
+
+🔴 **E 12 verdes NÃO provam resolução**, o que está escrito ao lado do número: a conta segue **free**,
+a causa medida em 06/11 era **escopo de conta** (o upstream entregava nos mesmos minutos), e já houve
+silêncio maior **entre** janelas — **1 abandono em 76 braços** de 17/10 a 02/11, quinze dias. Dois
+dias de verde é indistinguível do vão entre janelas. O que mudou de verificável é a **exposição**: a
+dispensa do #669 tirou o macOS de PR de documentação pura, medido duas vezes em 07/11 e 08/11.
+
