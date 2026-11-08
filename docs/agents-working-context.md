@@ -35007,3 +35007,76 @@ correção ser de uma palavra em vez de um invólucro:
 de uma posição diferente da que usei na execução. Esse é o passo que faltou nas duas vezes
 anteriores.
 
+
+### ✅ Sync do #674/#675 — a previsão do gate novo fechou, e a derivação à mão acertou pela primeira vez
+
+```
+arquivos de PRODUTO trazidos : 6
+de governanca RETIDOS        : 8   (de 14 no merge)      6 + 8 = 14
+go build ./...   exit 0        validate   0 antes · 0 depois
+```
+
+**O que chega:** o conserto do `trap EXIT` que nasceu da nossa [#671](https://github.com/kgsaran/trackfw/issues/671) — `Makefile` mais cinco scripts, entre eles o gate novo `check-no-trap-local-var.sh`.
+
+🔴 **A previsão, escrita antes do sync, confirmou-se por efeito.** Eu havia rodado o gate **dele** contra a **nossa** árvore e medido `5 violações em 3 arquivos, zero dos 21 scripts só nossos` — todos os três acusados eram dele e estavam sendo consertados na mesma branch. Depois do sync:
+
+```
+check-no-trap-local-var.sh             rc=0   "OK — no trap-local-var violations found"
+check-no-trap-local-var.sh --self-test rc=0   26 passed, 0 failed
+```
+
+**Gate e consertos chegaram juntos**, que é o **inverso** do caso do #315: lá as 8 ocorrências de `| grep -q` eram **nossas** e exigiram conserto antecipado, aqui não havia nada a antecipar. A diferença não é sorte — ela foi **medida antes**, e é isso que distingue previsão de esperança.
+
+**E a derivação à mão acertou, pela primeira vez em cinco tentativas:** eu previ `6 de produto` e o script contou `6`. A razão é estreita e vale escrita — **não havia `docs/cli-parity.md` neste intervalo**, que é a exceção nomeada (contrato de produto que vem *do* upstream apesar de morar em `docs/`) e a causa dos quatro erros anteriores. Acertar por ausência da exceção não é acertar por método; o instrumento continua sendo quem decide.
+
+### A nossa #671 fechou, e o resíduo virou a #676
+
+Ele fechou a issue às 18:25 de 07/11 com a REQ `Done`, respondendo pelos três sítios do trap e pelo trap único no `check-validate-rule-pins.sh`. 🔴 **O meu achado do `mktemp` sem trap não foi atendido**, e a versão mesclada ainda tem **3 `mktemp` / 1 trap** — blob `108c66dd`, idêntico na branch que eu medi e na `main`.
+
+**E o fechamento é defensável pela letra do AC1 dele**, o que torna isto observação em vez de crítica: o AC diz *"nos três sítios… medido com falha forçada"*, e a cláusula *"nenhum diretório temporário sobrando"* se satisfaz com a falha forçada **junto ao trap**, porque as linhas 490-491 ainda não executaram. Com a falha na **594**, onde ela acontece sozinha neste ambiente, vazam dois.
+
+🔴 **É o mesmo modo de falha que eu cometi no dia anterior** com o comando de limpeza de branch: *satisfeito pela posição em que se testou, não pelo desenho.* Vinte e quatro horas separam os dois casos, um dele e um meu.
+
+Levado à [#676](https://github.com/kgsaran/trackfw/issues/676), como **issue nova** e não reabertura — pelo teste de causa, consertar *"o trap cita variável `local`"* não fecha *"não há trap nenhum"*. E o gate novo dele é **cego a isto por construção**: ele procura trap citando `local`, e aqui não há trap.
+
+### 🔴 A varredura que eu prometi na #671 NÃO produziu lista — o instrumento mentiu nas duas direções
+
+Tentei triar os 52 scripts dele por contagem de `mktemp` contra contagem de `trap`. **Os dois lados estavam errados:**
+
+```
+sub-conta trap    check-usage-silencing.sh tem trap na linha 95, DEPOIS de um ';'
+                  -> padrao ancorado em inicio de linha o perde; marquei "trap=0"
+super-conta mktemp check-install-checksum.sh tem UM mktemp -d real
+                  -> as outras 3 sao a PALAVRA mktemp em listas de utilitarios
+                     (for util in sh env awk sed uname tr wc mktemp mkdir ...)
+```
+
+Um discriminante honesto precisaria resolver escopo de função e dominância do trap. **Reportei só o sítio medido por efeito, e declarei a varredura como não entregue** — lista derivada de instrumento quebrado é pior que lista ausente, porque ela parece trabalho feito.
+
+### 🔴 A branch `feat/idioma-do-produto-ingles-primeiro`, medida ANTES de mesclar — inerte por ESCOPO
+
+Ela tem 21 commits de 08/11, +5568/−298, red team reprovando **três rodadas**, e toca `internal/roadmapdoc/` — o **leitor dos nossos roadmaps** — com modos de erro novos. Medido com o binário dele (`a413988a`) contra o nosso acervo:
+
+```
+nosso binario            rc=0 · 3 avisos
+binario DELE             rc=0 · 3 avisos
+as duas saidas           IDENTICAS, byte a byte
+```
+
+**Mas isso é escopo, não integridade**, e a diferença é o que decide o risco futuro. O código dele declara: `roadmap_wave0_required` e `roadmap_gate_coverage` valem **só para `wip/`**; `roadmap_duplicate_label`, para `wip` e `blocked`; só `roadmap_unterminated_fence` vale para todos os estados.
+
+```
+censo nosso   done 91 · abandoned 7 · wip 0 · blocked 0        total 98
+blocos de gates   29 em done/ · 5 em abandoned/ · 0 em wip/
+```
+
+**E a regra está viva** — sonda plantada no `wip/` dele dispara nomeando as duas linhas, como **aviso** (`rc=0`).
+
+🔴 **Risco condicional, derivável, declarado:** no próximo roadmap `feat`/`fix`/`refactor` que entrar em `wip/` — e o `branch new` **exige** isso desde o #500 — essas regras passam a valer sobre ele. Hoje elas não nos alcançam porque o `wip/` vive vazio, e é por isso que a saída idêntica **não** é evidência de que o nosso formato de gate está conforme.
+
+### Duas armadilhas de medição minhas, no mesmo ciclo
+
+**Dois-pontos, outra vez.** `git diff --name-only main..upstream/main` devolveu 136 KB de nomes — a governança dele que o sync retém — em vez do intervalo. Este arquivo registra a lição em três lugares e eu caí nela duas vezes em dois dias. O que responde é o diff **dos commits**.
+
+🔴 **E três sondas seguidas disseram "regra inerte" porque a MUTAÇÃO NÃO HAVIA ACONTECIDO.** Eu plantei um cabeçalho de gates duplicado, rodei o `validate`, não vi violação, e atribuí a escopo errado — duas vezes, com hipóteses plausíveis (`abandoned/` em vez de `wip/`, wave diferente de 0). Só na quarta tentativa eu **imprimi o arquivo antes de medir**, e aí a regra disparou na primeira. **Sem conferir a mutação, "regra inerte" e "sonda que não mutou" são indistinguíveis** — e a hipótese errada é a mais convincente das duas.
+

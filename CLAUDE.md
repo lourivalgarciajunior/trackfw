@@ -1293,6 +1293,48 @@ afrouxar a criação. Ver [[antes-de-implementar-issue-dele-alinhar-e-fechar-o-c
 episódio.
 
 
+### 🔴 Previsão escrita ANTES do evento: o `wip/` vazio é o que nos blinda das regras de gate novas
+
+A branch `feat/idioma-do-produto-ingles-primeiro` do upstream (21 commits em 08/11/2026, +5568/−298,
+red team reprovando três rodadas) reescreve o **leitor de roadmap** (`internal/roadmapdoc/`) e cria
+modos de erro novos: cabeçalho de gates duplicado, bloco malformado, **quase-cabeçalho**, máscara não
+fechada, `Lapsed` sem caractere visível.
+
+**Medido com o binário DELE (`a413988a`) contra o NOSSO acervo, antes de mesclar:**
+
+```
+nosso binario     rc=0 · 3 avisos
+binario DELE      rc=0 · 3 avisos
+as duas saidas    IDENTICAS, byte a byte
+```
+
+🔴 **E isso é ESCOPO, não integridade — ler como "o nosso formato está conforme" seria verde pelo
+motivo errado.** O código dele declara: `roadmap_wave0_required` e `roadmap_gate_coverage` valem **só
+para `wip/`**; `roadmap_duplicate_label`, para `wip` e `blocked`; só `roadmap_unterminated_fence`
+alcança todos os estados.
+
+```
+censo medido em 08/11/2026   done 91 · abandoned 7 · wip 0 · blocked 0    total 98
+blocos de gates              29 em done/ · 5 em abandoned/ · 0 em wip/
+```
+
+**E a regra está viva**, conferido por sonda plantada no `wip/` dele — dispara nomeando as duas
+linhas, como **aviso** (`rc=0`), nunca violação.
+
+**A previsão, datada e falsificável:** enquanto o nosso `wip/` estiver vazio, essas regras ficam
+silenciosas aqui. **No primeiro roadmap `feat`/`fix`/`refactor` que entrar em `wip/`** — e o
+`branch new` *exige* isso desde o #500, o que torna o evento inevitável, não hipotético — elas passam
+a valer sobre ele, e os nossos 34 roadmaps com bloco de gates são o formato que será julgado. Se
+aparecer violação, o lugar de olhar é o cabeçalho `**Gates da wave:**` e a cerca de código ao redor.
+
+🔴 **O derivável, para não depender desta seção envelhecer:**
+
+```bash
+ls -1 docs/roadmaps/*/wip/*.md 2>/dev/null | wc -l
+```
+
+**0 = blindados por escopo. ≥ 1 = as regras alcançam, e o `validate` é quem diz.**
+
 ## `req new` e `roadmap new` exigem `--agent` aqui — são três namespaces
 
 Desde o merge da [#330](https://github.com/kgsaran/trackfw/pull/330) do upstream (2026-09-12), em
