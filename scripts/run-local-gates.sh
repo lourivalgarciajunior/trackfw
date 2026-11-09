@@ -58,15 +58,31 @@ check-roadmap-done-com-ml-pendente.sh
 # DECLARADOS FORA — cada um COM MOTIVO. Exclusão sem motivo escrito é o mesmo
 # que não ter regra.
 # ---------------------------------------------------------------------------
-FORA="
+# 🔴 HEREDOC CITADO, nunca aspa dupla. Em `FORA="..."` qualquer BACKTICK no
+# texto do motivo EXECUTA, e a saida do comando entra na string EM SILENCIO.
+# Medido por efeito em 2026-11-09, na propria entrada do leitura-avulsa:
+#
+#   escrito   "A falsificacao dele e por `gh` falso no PATH"
+#   na string "A falsificacao dele e por Work s..."   <- a ajuda do `gh`, costurada
+#
+# Nao houve erro visivel: o motivo ficou corrompido e o agregador seguiu verde,
+# porque a guarda de completude so le o nome antes do `|`. A entrada do
+# censo-macos, acrescentada no mesmo dia, levava `gh api` e `<id>` e aí o erro
+# APARECEU — "accepts 1 arg(s)" e "id: No such file or directory" —, o que foi
+# o que delatou o silencioso. Com <<'FORA_EOF' nada expande, os backticks sao
+# TEXTO, e os apostrofos de 'esperado'/'nativo_windows' continuam valendo.
+# Mesma familia de backtick-na-mensagem-de-commit-e-executado, agora num script.
+FORA=$(cat <<'FORA_EOF'
 check-platform-predicates|so diz algo no Windows: 14 das 20 linhas do corpus divergem entre 'esperado' e 'nativo_windows', e a linha do execbit reprovaria em ubuntu-latest por fato de NTFS. Decisao medida, escrita no CLAUDE.md
 upstream-sync|nao e gate, e ferramenta: faz merge e MODIFICA a arvore. Rodar num CI de verificacao seria absurdo
 anexa-crlf|nao e gate, e ferramenta: anexa o conteudo de uma fonte ao arquivo que recebe como argumento, logo MODIFICA arvore — mesmo precedente do upstream-sync. Invocado sem argumentos ele sai 1 por construcao, entao EXECUTAR o reprovaria por motivo nenhum. O auto-teste dele tem passo proprio no local-gates.yml, com piso no denominador, e trabalha todo em mktemp -d
 vigia-do-upstream|nao e gate, e daemon: laco infinito que vigia o upstream e emite evento. Executa-lo aqui penduraria o agregador; e ele nao reprova nada, nao ha veredito para colher
+censo-macos|nao e gate, e censo: classifica o par shim-byte-identity por run do quality.yml em VERDE/ABANDONADO/DISPENSADO/INDETERMINADO, e fala com a REDE (um `gh api` por run). Em CI o veredito dependeria da fila de runners do GitHub e da cota da API, nao da arvore — e sem credencial sairia 2 por ambiente. Ele existe porque o laco que o CLAUDE.md publicava lia `actions/runs/<id>/jobs`, que devolve conjunto PARCIAL: um abandono real ficou invisivel em 2026-11-09
 leitura-avulsa-do-upstream|nao e gate, e leitura: UMA passada sobre o estado do upstream para sessao fria, e fala com a REDE (git ls-remote + 3 a 4 chamadas da API do GitHub). Num CI de verificacao o veredito dependeria do repositorio alheio e da cota da API, nao da arvore — e sem credencial os bracos sairiam N/A, logo ele sairia 2 por ambiente e nao por defeito. A falsificacao dele e por `gh` falso no PATH, com os quatro cenarios no corpo do script
 check-copia-do-path-esta-atras|so diz algo nesta maquina: compara o binario da arvore com a copia que o PATH entrega, e em ubuntu-latest nao existe %APPDATA%/npm nem o contorno dos shims — ZERO cenario seria exercitado. Mesmo precedente do check-platform-predicates. O instrumento que age sozinho e o passo do upstream-sync.sh, no momento em que a defasagem e criada
 run-local-gates|e o proprio agregador: executa-lo a partir de si mesmo seria recursao infinita. A guarda de completude o pegou na PRIMEIRA execucao, e esta entrada e a prova de que ela funciona
-"
+FORA_EOF
+)
 
 # ---------------------------------------------------------------------------
 # GUARDA DE COMPLETUDE — o coracao deste script.

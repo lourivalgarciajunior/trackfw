@@ -1359,15 +1359,27 @@ Medido por efeito em projeto temporário com os mesmos três agentes, antes de m
 
 ## 🔴 ABERTA de novo em 09/11/2026: a fila de macOS abandona o `shim-byte-identity` — QUINTA janela, e a escassez é DA NOSSA CONTA
 
-> **Estado, para quem varre cabeçalhos: há condição ABERTA aqui.** Derivada pelo laço desta seção em
-> **09/11/2026 às 14:33 local** — **três** abandonos no dia, e a janela **não fechou**:
+> **Estado, para quem varre cabeçalhos: há condição ABERTA aqui.** Derivada pelo
+> `scripts/censo-macos.sh` em **09/11/2026 às 15:26 local** — e 🔴 **não é uma janela contígua: é
+> oscilação, com um VERDE no meio**, o que esta seção nunca havia registrado:
 >
 > ```
-> 12:11 local   cancelled  902 s  runner VAZIO   main, push do merge do #323
-> 12:39 local   cancelled  902 s  runner VAZIO   PR #324, attempt=1, head 2c3ec2b3
-> 14:18 local   cancelled  902 s  runner VAZIO   main, push do merge do #324
-> ultima verde  08/11 18:58 local   36 s   runner=ok      <- o merge do #322
+> 12:11 local   push          f369c551   ABANDONADO (visivel)     merge do #323
+> 12:39 local   pull_request  2c3ec2b3   ABANDONADO (visivel)     PR #324
+> 14:17 local   push          a93afc39   ABANDONADO (visivel)     merge do #324
+> 14:37 local   pull_request  b41ffa13   DISPENSADO (#669)        PR #325, so .md
+> 14:57 local   push          95ac94b6   VERDE  🔴 gate AUSENTE   merge do #325
+> 15:08 local   pull_request  4fb76256   🔴 ABANDONADO (INVISIVEL) PR #326
+>
+> censo de 10 runs:  VERDE 3 · ABANDONADO 4 · DISPENSADO 3 · INDETERMINADO 0   (3+4+3+0=10)
 > ```
+>
+> 🔴 **Eu havia publicado "três abandonos" às 14:33, e são QUATRO** — o quarto é o do #326, que o laço
+> antigo **não via**. Foi o censo novo que o achou, e é por isso que o laço foi trocado.
+>
+> 🔴 **E o VERDE das 14:57 vem com anomalia nomeada:** os dois braços `success` e o
+> `shim-byte-identity-gate` **ausente** dos dois endpoints, com o run saindo `failure`. Algo falhou
+> ali que nenhum dos dois endpoints mostra. Fica declarado em vez de escondido.
 >
 > **No run do #324, os três jobs do par, que é a forma da cascata:**
 >
@@ -1435,7 +1447,7 @@ Medido por efeito em projeto temporário com os mesmos três agentes, antes de m
 > fechamento de 03/11, cuja lacuna foi de 39 min.
 >
 > 🔴 **A recorrência é a razão de a seção não ser apagada**, e a enumeração é datada: 19/10 (1
-> abandono), 03/11 (10), 04/11 (1), 06/11 (4) e **09/11 (3 até 14:33, a quinta e aberta)**. A condição volta; o
+> abandono), 03/11 (10), 04/11 (1), 06/11 (4) e **09/11 (4 até 15:26, com um verde no meio)**. A condição volta; o
 > que não volta é o custo de redescobrir a causa e a derivação. **Apagar a seção em 04/11, quando a
 > janela daquele dia fechou, custou remedir tudo do zero quatro dias depois** — e é por isso que ela
 > fica, mudando só o tempo verbal do cabeçalho.
@@ -1497,17 +1509,48 @@ não se escreve nesta seção: ele se deriva, pela mesma razão que o `npm i -g 
 tripla não leva número chumbado.
 
 ```bash
-for r in $(gh api "repos/lourivalgarciajunior/trackfw/actions/workflows/quality.yml/runs?per_page=12" --jq '.workflow_runs[].id'); do gh api "repos/lourivalgarciajunior/trackfw/actions/runs/$r/jobs?per_page=100" --jq '.jobs[]|select(.name|test("macos"))|"\(.started_at) \(.conclusion) \(((.completed_at|fromdate)-(.started_at|fromdate)))s runner=\(if .runner_name=="" then "VAZIO" else "ok" end)"'; done | sort
+bash scripts/censo-macos.sh 12
 ```
 
-`runner=ok` com `success` na linha mais recente = **a janela fechou**; `VAZIO` com `cancelled` em
-902–903 s = **abriu outra**, e aí o cabeçalho acima ganha a data nova. 🔴 **A seção NÃO sai quando a
-janela fecha** — foi o que se fez em 04/11, e quatro dias depois tudo teve de ser remedido do zero.
-Quatro janelas em quatro dias dizem que a condição é **recorrente**, não um episódio; o que sai da
-seção é a afirmação em presente, nunca a causa nem a derivação.
+O censo classifica cada run em **VERDE · ABANDONADO · DISPENSADO · INDETERMINADO**, imprime o
+denominador e **falha se os baldes não somarem**. `ABANDONADO 0` = a janela fechou; qualquer
+abandono = ela está aberta, e aí o cabeçalho acima ganha a data nova.
 
-O discriminante do **escopo** é o mesmo laço com `repos/kgsaran/trackfw`: se os dois abandonarem na
-mesma janela, a leitura global volta a ser candidata.
+#### 🔴 O laço que esta seção publicava NÃO via abandono real — medido em 09/11/2026
+
+Ele lia `actions/runs/<id>/jobs` e selecionava por `macos`. A API devolveu conjunto **parcial**, em
+**direções opostas**, em dois runs separados por 15 minutos:
+
+```
+run 42669637625 (main)      18 jobs · total_count=18 · TODOS success
+                            e o run e `failure`: o GATE nao esta na lista
+run 42671272723 (PR #326)   10 jobs · total_count=10 · o gate ESTA
+                            e os DOIS bracos da matriz NAO
+```
+
+🔴 **Ela é autoconsistente** (`total_count` = devolvidos), então **não é paginação** — ela reporta um
+conjunto parcial. Para o laço antigo isso virava **nenhuma linha**, indistinguível de "dispensado", e
+um abandono real ficou **invisível**. Mesma família do *verde sem denominador*: a ausência de sinal
+foi lida como ausência de evento.
+
+**O endpoint que funciona é `check-suites/<check_suite_id>/check-runs`**, e 🔴 **não**
+`commits/<sha>/check-runs`: um mesmo sha tem run de `push` **e** de `pull_request` — é a duplicata de
+`gates-locais`/`gates-windows` que este arquivo explica —, então por sha os dois se misturam. O
+`check_suite_id` vem do próprio run e isola. Os quatro casos, medidos:
+
+| o que o suite mostra | veredito |
+|---|---|
+| os dois braços `success` | **VERDE** |
+| `macos cancelled` + `ubuntu success` + gate `failure` | **ABANDONADO (visível)** |
+| só `gate failure` | 🔴 **ABANDONADO (invisível)** — o caso que o laço antigo perdia |
+| `shim-byte-identity` `skipped` + gate `success` | **DISPENSADO** pelo #669 |
+
+🔴 **A seção NÃO sai quando a janela fecha** — foi o que se fez em 04/11, e quatro dias depois tudo
+teve de ser remedido do zero. A recorrência diz que a condição é **recorrente**, não um episódio; o
+que sai da seção é a afirmação em presente, nunca a causa nem a derivação.
+
+O discriminante do **escopo** é o mesmo censo com `REPO_CENSO=kgsaran/trackfw`: se os dois
+abandonarem na mesma janela, a leitura global volta a ser candidata.
 
 🔴 **O dado fresco aparece de graça na corrida de todo PR novo** — é ali que se mede, nunca numa
 sonda à parte que gasta fila.

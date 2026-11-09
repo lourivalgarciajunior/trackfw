@@ -35493,3 +35493,90 @@ branches         4 no remoto · cemiterio 0
 **Nada andou do lado dele**, e o `0 de 1` é o mesmo braço que em 09/11 às 12:18 dizia `1 de 1` — ele
 foi exercitado nas duas direções no mesmo dia, com o acervo real.
 
+
+### 🔴 O laço de censo de macOS não via abandono REAL — e o conserto delatou um backtick executando dentro do agregador
+
+Três coisas, em cascata: o laço publicado estava cego, o censo novo corrigiu um número que eu havia
+publicado uma hora antes, e escrever a declaração dele achou um defeito silencioso na `main`.
+
+#### 1. A API de jobs devolve conjunto PARCIAL, nos dois sentidos
+
+O laço que esta seção publicava lia `actions/runs/<id>/jobs` e selecionava por `macos`. Medido em
+09/11/2026, em dois runs separados por 15 minutos:
+
+```
+run 42669637625 (main)      18 jobs · total_count=18 · TODOS success
+                            e o run e `failure`: o GATE nao esta na lista
+run 42671272723 (PR #326)   10 jobs · total_count=10 · o gate ESTA
+                            e os DOIS bracos da matriz NAO
+```
+
+🔴 **Ela é autoconsistente** (`total_count` = devolvidos), então **não é paginação** — ela reporta um
+conjunto parcial. Para o laço isso virava **nenhuma linha**, indistinguível de *"dispensado"*, e um
+abandono real ficou **invisível**. Mesma família do *verde sem denominador*: ausência de sinal lida
+como ausência de evento.
+
+**E o `commits/<sha>/check-runs` também não serve**, por outro motivo: um mesmo sha tem run de `push`
+**e** de `pull_request` — a duplicata de `gates-locais`/`gates-windows` que o `CLAUDE.md` explica —,
+então por sha os dois se misturam. **O endpoint que isola é `check-suites/<check_suite_id>/check-runs`**,
+e o `check_suite_id` vem do próprio run.
+
+**Os quatro casos, medidos em quatro runs reais:**
+
+| o que o suite mostra | veredito |
+|---|---|
+| os dois braços `success` | VERDE |
+| `macos cancelled` + `ubuntu success` + gate `failure` | ABANDONADO (visível) |
+| só `gate failure` | 🔴 ABANDONADO (invisível) — o que o laço perdia |
+| `shim-byte-identity` `skipped` + gate `success` | DISPENSADO pelo #669 |
+
+`scripts/censo-macos.sh` classifica, imprime o denominador e **falha se os baldes não somarem**.
+
+#### 2. 🔴 O censo corrigiu um número que eu publiquei UMA HORA antes
+
+Às 14:33 eu escrevi na seção *"três abandonos no dia"*. **São quatro** — e há um **VERDE no meio**:
+
+```
+12:11 push          f369c551   ABANDONADO (visivel)      merge do #323
+12:39 pull_request  2c3ec2b3   ABANDONADO (visivel)      PR #324
+14:17 push          a93afc39   ABANDONADO (visivel)      merge do #324
+14:37 pull_request  b41ffa13   DISPENSADO (#669)         PR #325, so .md
+14:57 push          95ac94b6   VERDE  🔴 gate AUSENTE    merge do #325
+15:08 pull_request  4fb76256   🔴 ABANDONADO (INVISIVEL) PR #326
+
+censo de 10 runs:  VERDE 3 · ABANDONADO 4 · DISPENSADO 3 · INDETERMINADO 0   (3+4+3+0=10)
+```
+
+🔴 **Não é janela contígua: é oscilação**, com 2 min entre um braço que recebeu máquina (14:57, 57 s)
+e um que não foi criado (15:08). A seção descrevia janelas de **horas**; isto é outra forma, e está
+registrada.
+
+🔴 **E o VERDE das 14:57 vem com anomalia nomeada:** os dois braços `success`, o
+`shim-byte-identity-gate` **ausente dos dois endpoints**, e o run saindo `failure`. Algo falhou ali
+que nenhum dos dois mostra. Declarado em vez de escondido.
+
+#### 3. 🔴 E a declaração do censo em `FORA` delatou um backtick EXECUTANDO — silencioso na `main`
+
+O `FORA` do `run-local-gates.sh` era `FORA="..."`, **aspa dupla**. Qualquer backtick no texto do
+motivo **executa**, e a saída do comando entra na string. Medido por efeito na entrada que o #324
+mesclou:
+
+```
+escrito    "A falsificacao dele e por `gh` falso no PATH"
+na string  "A falsificacao dele e por Work s..."      <- a ajuda do `gh`, costurada
+```
+
+**Não houve erro visível**: o motivo ficou corrompido e o agregador seguiu verde, porque a guarda de
+completude só lê o nome antes do `|`. O que delatou foi a entrada nova do `censo-macos`, que levava
+`` `gh api` `` e `` `<id>` `` — ali o erro **apareceu** (`accepts 1 arg(s)` e
+`id: No such file or directory`), porque `<id>` é redirecionamento de um arquivo inexistente.
+
+🔴 **Consertado na estrutura, não por vigilância:** `FORA=$(cat <<'FORA_EOF' … )`. Com heredoc citado
+nada expande, os backticks são **texto** — conferido por efeito, as três ocorrências chegam
+literais — e os apóstrofos de `'esperado'`/`'nativo_windows'` continuam valendo. **Mesma família de
+`backtick-na-mensagem-de-commit-e-executado`, agora dentro de um script.**
+
+**Guarda que NÃO existe, declarada:** nenhum instrumento impede um backtick novo ali. Um gate interno
+é impossível — a corrupção acontece na **atribuição**, antes de qualquer verificação rodar —, então
+teria de ser gate externo lendo a fonte. Não foi feito; fica escrito.
+
