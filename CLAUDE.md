@@ -1596,6 +1596,98 @@ critério 5 **não alcança** — foi o que aconteceu no #314, e ali a suspensã
 🔴 **Nada aqui autoriza mexer no workflow para contornar**: tirar o braço de macOS do conjunto seria
 apagar o sinal em vez de lê-lo.
 
+🔴 **E há um terceiro estado, medido em 09/11: a `main` falhando SEM job falho nomeável.** O último
+`quality.yml` dela (`42669637625`) saiu `failure` com os **18** jobs listados em `success` e o
+`shim-byte-identity-gate` **ausente dos dois endpoints**. Aí o conjunto conhecido sai **vazio pela
+terceira razão** — nem verde, nem com nome, mas ilegível —, e o critério 5 **não alcança**. Naquele
+dia a saída foi palavra do usuário, que autorizou mesclar o #326 e o #327 com o vermelho conhecido
+**por causa** em vez de por nome, com a causa medida em oito runs do mesmo dia e o braço de
+`ubuntu-latest` verde ao lado em cada um. **Isso foi decisão dele, não extensão do critério.**
+
+### 🔴 E o abandono NÃO é só de macOS — o `gates-locais` de `ubuntu-latest` também
+
+Medido em 09/11/2026, no evento **`push`** do head `4fb76256`:
+
+```
+local-gates.yml, event=push      run 42671068581   completed/FAILURE
+  jobs listados                  total_count=1 — so `gates-windows`, success
+  gates-locais (ubuntu-latest)   AUSENTE dos dois endpoints
+  gh run view --log-failed       ZERO linhas   <- job que nunca iniciou
+```
+
+🔴 **Declarado como INFERÊNCIA, não medição por efeito:** a assinatura é a mesma do abandono
+invisível de macOS (run `failure` + job ausente + log vazio), mas **não foi confirmada por re-run**,
+como a de macOS foi. O que existe a favor é o **controle**: dos 14 runs de `local-gates.yml` que
+medi, **13 têm 2 jobs e `success`** — só este tem 1 e `failure`. E o mesmo `gates-locais` passa no
+evento `pull_request` do **mesmo head**, e nos dois eventos do head seguinte (`c948ff35`), que
+contém aquele commit mais outro.
+
+**Consequência para a leitura desta seção:** ela está escrita como condição **de macOS**, e a
+escassez pode não ser só de macOS. Uma ocorrência não refaz o enquadramento — o que ela faz é tirar
+"só macOS" do terreno do fato e pôr no terreno do **não medido**.
+
+## 🔴 PR EMPILHADO: o `--delete-branch` do de baixo FECHA o de cima — e a recuperação
+
+Medido por efeito em 09/11/2026, nos nossos [#326](https://github.com/lourivalgarciajunior/trackfw/pull/326)
+e [#327](https://github.com/lourivalgarciajunior/trackfw/pull/327). O #327 tinha `--base` na **branch**
+do #326, que é o que torna o diff de um PR empilhado legível.
+
+```
+gh pr merge 326 --merge --delete-branch
+  -> o #326 mescla
+  -> a branch dele, que era a BASE do #327, e apagada
+  -> o #327 vira  state=CLOSED  mergeable=CONFLICTING
+```
+
+🔴 **O GitHub não retargeta: ele FECHA.** E fechado, o PR não aceita nem uma coisa nem outra —
+
+```
+gh pr edit 327 --base main   "Cannot change the base branch of a closed pull request"
+gh pr reopen 327             "Could not open the pull request"
+```
+
+### A ordem que não quebra
+
+**Retargete o de cima ANTES de mesclar o de baixo**, ou mescle o de baixo **sem** `--delete-branch` e
+apague a branch depois. As duas servem; a primeira é a que deixa o histórico limpo.
+
+### A recuperação, medida — e ela existe
+
+Recriar a ref apagada destrava o `reopen`, e aí o retarget passa a ser aceito:
+
+```bash
+MSYS_NO_PATHCONV=1 gh api -X POST "repos/<owner>/<repo>/git/refs" -f ref="refs/heads/<base>" -f sha="$(git rev-parse <sha>)"
+```
+
+🔴 **O `sha` tem de ser o de 40 caracteres.** Com 8 a API recusa com `422`:
+*"At least 40 characters are required; only 8 were supplied"*. É por isso que o comando leva
+`$(git rev-parse …)` e não o short sha que a gente lê na tela.
+
+Depois: `gh pr reopen <N>`, `gh pr edit <N> --base main`, e **apague a ref restaurada** — ela só
+existia para destravar o reopen. Conferido por efeito: o PR voltou `OPEN`, `base=main`, com o diff
+dos arquivos dele e **com os comentários de verificação ainda anexados**, que é o que se perde ao
+abrir um PR novo no lugar.
+
+## 🔴 Derivação e merge NUNCA na mesma chamada
+
+No mesmo dia, mesclei o #327 com **11 checks `pending`**. A causa não foi pressa: eu pus a
+**derivação do conjunto e o `gh pr merge` no mesmo comando**, então o conjunto foi impresso e o merge
+aconteceu sem ninguém ter lido o conjunto. O retarget para `main` havia disparado corrida nova, e eu
+passei por cima dela.
+
+🔴 **O critério do "conjunto completo" não falhou — ele não foi consultado.** Um critério que se
+imprime ao lado da ação que ele deveria governar não governa nada; é a mesma forma do `rc` depois de
+um cano, em que o sinal existe e responde outra pergunta.
+
+**A regra é mecânica:** derive numa chamada, **leia**, mescle em outra. Sem exceção para "é só um PR
+de docs".
+
+**Sem dano material naquele caso, e isso foi conferido depois, não presumido:** no head `c948ff35`,
+`local-gates.yml` (nos dois eventos), `trackfw-validate.yml` e `pr-closing-keyword.yml` fecharam
+`success`, o único `failure` era o par de macOS autorizado, e os 11 pendentes eram **re-execuções**
+de workflows que já haviam passado naquele mesmo head. **Conferir depois não conserta o processo** —
+o que conserta é a chamada separada.
+
 ## Branch `feat/fix/refactor` custa 3 jobs vermelhos por motivo falso
 
 > 🔴 **Caducou em 2026-09-16, com a v8.0.0 do upstream
