@@ -3122,16 +3122,53 @@ acusados**, então **nenhuma forma de recusa é exercitada por ele** — e `🔄
 `❌ Bloqueado` em `done/` não têm nenhum caso real. São 14 casos sintéticos, com piso de vacuidade
 em 14.
 
-### Os dois instrumentos da vigia, e o arnês de falsificação
+### Os instrumentos da vigia, e o arnês de falsificação
 
-Três scripts nossos que esta seção documenta porque **nenhuma outra o fazia** — e script sem
+Quatro scripts nossos que esta seção documenta porque **nenhuma outra o fazia** — e script sem
 seção é script que a próxima sessão não sabe que existe:
 
 | script | o que é |
 |---|---|
-| `vigia-do-upstream.sh` | **daemon**, não gate: laço que vigia o upstream e emite evento. Declarado `FORA` do agregador — executá-lo penduraria o laço, e ele não produz veredito. 🔴 **O estado dele NÃO se escreve aqui — ele se deriva**, porque esta célula afirmou *"hoje ele NÃO está armado"* em presente e ficou falsa no dia em que foi armado. A derivação, pelo Win32, porque o `ps` do MSYS é **cego** para ela: `Get-Process bash` cruzado com a linha de comando de `Win32_Process`, contando quantas contêm `vigia`. **Zero = desarmada.** Histórico datado, que não envelhece: o usuário a desarmou em **2026-10-07** (*"por hora 2"*: checagem manual), mandou armá-la de novo em **2026-11-03 às 10:30** (por `Monitor` com teto de 30 min e re-arme a cada expiração) e a desarmou outra vez em **2026-11-03 às 12:23**, de volta à checagem manual — motivo medido: **três janelas de 30 min, zero eventos**, com o upstream parado havia **17 h**, enquanto cada expiração custava limpeza de órfã, leitura avulsa e re-arme. 🔴 **Desarmar é DOIS passos**: o `TaskStop` para o Monitor e **deixa o bash interno vivo** — medido nas três expirações e também no stop —, então sem matar por PID exato o daemon segue consultando a API para ninguém. As armadilhas dele — ordem do `comm`, órfãs por expiração, o `ps` do MSYS ser cego para elas — estão na memória `vigia-do-upstream-comm-exige-ordem`, não aqui |
+| `vigia-do-upstream.sh` | **daemon**, não gate: laço que vigia o upstream e emite evento. Declarado `FORA` do agregador — executá-lo penduraria o laço, e ele não produz veredito. 🔴 **O estado dele NÃO se escreve aqui — ele se deriva**, porque esta célula afirmou *"hoje ele NÃO está armado"* em presente e ficou falsa no dia em que foi armado. A derivação, pelo Win32, porque o `ps` do MSYS é **cego** para ela: `Get-Process bash` cruzado com a linha de comando de `Win32_Process`, contando quantas contêm `vigia`. **Zero = desarmada.** Histórico datado, que não envelhece: o usuário a desarmou em **2026-10-07** (*"por hora 2"*: checagem manual), mandou armá-la de novo em **2026-11-03 às 10:30** (por `Monitor` com teto de 30 min e re-arme a cada expiração) e a desarmou outra vez em **2026-11-03 às 12:23**, de volta à checagem manual — motivo medido: **três janelas de 30 min, zero eventos**, com o upstream parado havia **17 h**, enquanto cada expiração custava limpeza de órfã, leitura avulsa e re-arme. 🔴 **Desarmar é DOIS passos na forma COM invólucro**: ali o `TaskStop` para o Monitor e **deixa o bash interno vivo** — medido nas três expirações e também no stop —, então sem matar por PID exato o daemon segue consultando a API para ninguém. 🔴 **A condição não estava escrita, e em 2026-11-09 a medição a cobrou**: armada **direto** como comando do Monitor, com `exec` e sem o invólucro que punha o daemon num cano, o mesmo `TaskStop` deixou **zero** — conferido pelo Win32 duas vezes na hora e re-conferido no fim da sessão, com 9 `bash.exe` meus vivos ao lado. **A limpeza não sai do roteiro de qualquer jeito**: contar zero é resultado de medir, não motivo para parar. As armadilhas dele — ordem do `comm`, órfãs por expiração, o `ps` do MSYS ser cego para elas — estão na memória `vigia-do-upstream-comm-exige-ordem`, não aqui |
 | `check-vigia-forma.sh` | o gate **da forma** do daemon: roda no agregador e afirma a estrutura do script, não o comportamento do laço |
 | `check-req-done-caducou-falsify.sh` | o arnês que exercita o `check-req-done-com-criterio-aberto.sh` contra casos plantados. Ele extrai a função `censo` **do próprio gate** — fonte única —, e foi essa extração que derrubou o custo de 678 s publicados por engano para a faixa de 29–42 s |
+| `leitura-avulsa-do-upstream.sh` | a **leitura de uma passada** para sessão fria, que é o que o roteiro de re-arme sempre pediu e que até 2026-11-09 era **digitada à mão**. Declarado `FORA` do agregador: fala com a rede, então em CI o veredito dependeria de repositório alheio e de cota de API, não da árvore. Reusa as funções do daemon por `VIGIA_TEST=1 . vigia-do-upstream.sh` — **fonte única**, pela mesma razão do `censo` acima |
+
+#### 🔴 A leitura à mão media CEGO, e o daemon não era o cego
+
+Medido em 2026-11-09: a varredura digitada na hora devolveu *"nada novo"* **quatro vezes seguidas**
+enquanto havia resposta do mantenedor esperando desde **08/11 15:43** — ele comentou a nossa
+[#676](https://github.com/kgsaran/trackfw/issues/676) **quatro minutos** depois de eu abri-la.
+
+```
+o conjunto que eu media a mao    main · lista de PR · tag · refs do upstream
+o que ficava FORA dele           comentario em issue aberta
+o daemon                         snap_com le repos/<repo>/issues/comments,
+                                 e diff_com emite "COMENTARIO na issue #N"   <- ja cobria
+```
+
+🔴 **Então não havia furo de cobertura no instrumento — havia furo na leitura humana**, e o remédio
+não era acrescentar braço ao daemon (ele já tinha), era **parar de digitar a varredura**. Zero com
+sonda errada é cegueira, não ausência.
+
+**O braço que o daemon não dá a uma sessão fria** é o que o script acrescenta: o daemon relata o que
+**mudou** desde a base dele, e sessão fria não tem base. O que ela precisa é o **estado** — quais das
+**nossas** issues abertas têm o último comentário de outra pessoa, isto é, a bola está com a gente.
+Isso não se deriva de diff.
+
+**Falsificado por `gh` falso no PATH, quatro cenários, mais os três ramos de issue:**
+
+| | |
+|---|---|
+| bola nossa · bola dele · sem comentário | os três ramos, `1 de 3`, denominador fechando |
+| falha ao listar as nossas issues | `N/A` nomeado, `rc=2` |
+| falha no braço de PRs | `N/A` nomeado, `rc=2`, os outros braços seguem |
+| falha no braço de comentários | `N/A` nomeado, `rc=2` |
+
+🔴 **E ele achou um defeito meu antes de eu falsificar:** `rc=$?` depois de `gh ... | sort` é o do
+**`sort`**, que sai 0 mesmo com o `gh` falhando — então leitura falha viraria `denominador: 0`,
+indistinguível de *"nenhuma issue nossa aberta"*. Os dois passos estão separados no script, com o
+motivo escrito. Família do `cano-mascara-exit-code`, cometida com a lição na memória.
 
 ## Gate de REQ herdada do upstream (`scripts/check-inherited-req.sh`)
 

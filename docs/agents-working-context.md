@@ -35242,3 +35242,104 @@ validate    0 violacoes · 3 avisos
 worktree da branch dele   removido por `git worktree remove`, rc=0, sem --force
 ```
 
+
+### 🔴 A leitura avulsa do upstream era digitada à mão e media cego — e o `grep -c $'\r'` que eu usava para provar CRLF não pode falhar
+
+Dois achados neste ciclo, e o segundo é maior que o trabalho que o produziu.
+
+#### 1. A varredura virou script, e o daemon nunca foi o cego
+
+Em 09/11 a varredura de *"veja se kleber evoluiu"* devolveu **"nada novo" quatro vezes seguidas**
+enquanto havia resposta do mantenedor esperando desde **08/11 15:43** — ele comentou a nossa
+[#676](https://github.com/kgsaran/trackfw/issues/676) **quatro minutos** depois de eu abri-la.
+
+```
+o conjunto que eu media a mao    main · lista de PR · tag · refs do upstream
+o que ficava FORA dele           comentario em issue aberta
+o daemon                         snap_com le repos/<repo>/issues/comments,
+                                 e diff_com emite "COMENTARIO na issue #N"   <- JA cobria
+```
+
+🔴 **Eu propus ao usuário "acrescentar comentário de issue à varredura" e a premissa estava
+errada:** o daemon já tinha o braço. O cego era o **conjunto que eu digitava**, e o remédio não era
+acrescentar read ao daemon, era **parar de digitar a varredura**. Zero com sonda errada é cegueira,
+não ausência.
+
+**`scripts/leitura-avulsa-do-upstream.sh`** faz a passada única que o roteiro de re-arme sempre
+pediu. Ele **reusa as funções do daemon** por `VIGIA_TEST=1 . vigia-do-upstream.sh` — fonte única,
+pela mesma razão que o arnês do `check-req-done` extrai o `censo` do próprio gate — e acrescenta o
+único braço que um daemon **não** dá a uma sessão fria: o daemon relata o que **mudou** desde a base
+dele, e sessão fria não tem base; o que ela precisa é o **estado**, isto é, quais das **nossas**
+issues abertas têm o último comentário de outra pessoa.
+
+**Falsificado por `gh` falso no PATH** — quatro cenários, mais os três ramos de issue:
+
+```
+bola nossa · bola dele · sem comentario   os tres ramos, 1 de 3, denominador fechando
+falha ao listar as nossas issues          N/A nomeado, rc=2
+falha no braco de PRs                     N/A nomeado, rc=2, os outros bracos seguem
+falha no braco de comentarios             N/A nomeado, rc=2
+nao declarado no agregador                a guarda de COMPLETUDE o pegou  ->  declarado em FORA
+```
+
+🔴 **E ele achou um defeito meu antes de eu falsificar:** `rc=$?` depois de `gh ... | sort` é o do
+**`sort`**, que sai 0 mesmo com o `gh` falhando — leitura falha viraria `denominador: 0`,
+indistinguível de *"nenhuma issue nossa aberta"*. Os dois passos estão separados no script, com o
+motivo escrito ao lado. Família do `cano-mascara-exit-code`, cometida com a lição na memória.
+
+#### 2. 🔴 O `grep -c $'\r'` NÃO PODE FALHAR — e eu publiquei números de CRLF com ele
+
+Ao conferir o fim de linha do script novo, o instrumento se delatou:
+
+```
+blob de internal/validator/goos.go        grep -c $'\r'  ->  21 de 21 linhas
+o MESMO blob, contado por bytes           CRs = 0
+grep -c com padrao VAZIO em CLAUDE.md     3796
+grep -c com $'\r'    em CLAUDE.md         3796      <- IDENTICOS
+```
+
+**O `$'\r'` chega vazio ao `grep`, e padrão vazio casa toda linha.** Então `CR = linhas` — que é a
+assinatura de "CRLF integral" — é **indistinguível** de "o padrão não chegou". O instrumento não tem
+como devolver outro resultado, e isso o desqualifica: ele não pode falhar.
+
+🔴 **Isto contamina a verificação que eu publiquei no [#323](https://github.com/lourivalgarciajunior/trackfw/pull/323)**, no mesmo dia: lá está escrito
+*"blob commitado vs árvore — CR 3759=3759 e 35244=35244"*, e os **dois lados** foram contados pelo
+instrumento quebrado, logo aquela linha **não provou nada**. A conclusão de fundo (o blob tem o
+conteúdo que eu medi) continua verdadeira — ela está provada por `diff` de conteúdo e pelo
+`+N/0` do diff —, mas a prova que eu dei era vazia. Corrigido por comentário no próprio PR, sem
+editar o texto errado.
+
+**O instrumento que decide é o byte**, que é a regra que este repositório já publica para o `cat -A`
+depois de `sed`:
+
+```
+CRs = $(wc -c < f) − $(tr -d '\r' < f | wc -c)
+```
+
+**Medido por bytes, e três leituras minhas estavam erradas:**
+
+| | medido |
+|---|---|
+| `CLAUDE.md`, árvore | **CRLF integral** — 3796 CRs em 3796 linhas. A conclusão valia; o instrumento, não |
+| `CLAUDE.md`, **blob** | 🔴 **LF — 0 CRs.** O repositório guarda LF e a árvore vê CRLF (`core.autocrlf=true`) |
+| handoff, blob | **CRLF**, com **4** CRs além das linhas |
+| os 4 CRs extras | **pré-existem** — `excesso=4` antes e depois do meu anexo, nas linhas 115, 152, 162 e 32079 |
+| `scripts/*.sh`, árvore | 🔴 **LF, não CRLF** — eu havia relatado CRLF, e era o `grep` falando |
+
+🔴 **Os dois `.md` nasceram LF no blob** (`0ad21fb2`), e o do handoff virou CRLF depois. **Quando e
+por que não está estabelecido**, e fica declarado assim em vez de adivinhado: os dois têm
+`text: unspecified`, nenhum tem NUL, os dois são tratados como texto pelo `--numstat`, e o
+`anexa-crlf.sh` **não toca em git** — ele só escreve o arquivo. Nada disso explica a divergência, e
+bisseccionar 35 mil linhas de histórico não cabia neste ciclo.
+
+**O que NÃO muda:** nada de comportamento depende disso em markdown, e a garantia do
+`anexa-crlf.sh` — *"LF puro 0 antes e 0 depois"* — é sobre a **árvore**, que é onde ele opera, e
+continua valendo. O que muda é **como se prova**.
+
+#### A célula da vigia no `CLAUDE.md` também foi corrigida
+
+Ela afirmava, sem condição, que *"desarmar é dois passos: o `TaskStop` deixa o bash interno vivo"*.
+Isso vale para a forma **com invólucro**; armada **direto** com `exec`, o mesmo `TaskStop` deixou
+**zero** — medido em 09/11, conferido pelo Win32 duas vezes na hora. A condição entrou na célula, e a
+limpeza continua no roteiro.
+
