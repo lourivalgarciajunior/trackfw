@@ -3172,7 +3172,7 @@ seção é script que a próxima sessão não sabe que existe:
 | `vigia-do-upstream.sh` | **daemon**, não gate: laço que vigia o upstream e emite evento. Declarado `FORA` do agregador — executá-lo penduraria o laço, e ele não produz veredito. 🔴 **O estado dele NÃO se escreve aqui — ele se deriva**, porque esta célula afirmou *"hoje ele NÃO está armado"* em presente e ficou falsa no dia em que foi armado. A derivação, pelo Win32, porque o `ps` do MSYS é **cego** para ela: `Get-Process bash` cruzado com a linha de comando de `Win32_Process`, contando quantas contêm `vigia`. **Zero = desarmada.** Histórico datado, que não envelhece: o usuário a desarmou em **2026-10-07** (*"por hora 2"*: checagem manual), mandou armá-la de novo em **2026-11-03 às 10:30** (por `Monitor` com teto de 30 min e re-arme a cada expiração) e a desarmou outra vez em **2026-11-03 às 12:23**, de volta à checagem manual — motivo medido: **três janelas de 30 min, zero eventos**, com o upstream parado havia **17 h**, enquanto cada expiração custava limpeza de órfã, leitura avulsa e re-arme. 🔴 **Desarmar é DOIS passos na forma COM invólucro**: ali o `TaskStop` para o Monitor e **deixa o bash interno vivo** — medido nas três expirações e também no stop —, então sem matar por PID exato o daemon segue consultando a API para ninguém. 🔴 **A condição não estava escrita, e em 2026-11-09 a medição a cobrou**: armada **direto** como comando do Monitor, com `exec` e sem o invólucro que punha o daemon num cano, o mesmo `TaskStop` deixou **zero** — conferido pelo Win32 duas vezes na hora e re-conferido no fim da sessão, com 9 `bash.exe` meus vivos ao lado. **A limpeza não sai do roteiro de qualquer jeito**: contar zero é resultado de medir, não motivo para parar. As armadilhas dele — ordem do `comm`, órfãs por expiração, o `ps` do MSYS ser cego para elas — estão na memória `vigia-do-upstream-comm-exige-ordem`, não aqui |
 | `check-vigia-forma.sh` | o gate **da forma** do daemon: roda no agregador e afirma a estrutura do script, não o comportamento do laço |
 | `check-req-done-caducou-falsify.sh` | o arnês que exercita o `check-req-done-com-criterio-aberto.sh` contra casos plantados. Ele extrai a função `censo` **do próprio gate** — fonte única —, e foi essa extração que derrubou o custo de 678 s publicados por engano para a faixa de 29–42 s |
-| `leitura-avulsa-do-upstream.sh` | a **leitura de uma passada** para sessão fria, que é o que o roteiro de re-arme sempre pediu e que até 2026-11-09 era **digitada à mão**. Declarado `FORA` do agregador: fala com a rede, então em CI o veredito dependeria de repositório alheio e de cota de API, não da árvore. Reusa as funções do daemon por `VIGIA_TEST=1 . vigia-do-upstream.sh` — **fonte única**, pela mesma razão do `censo` acima |
+| `leitura-avulsa-do-upstream.sh` | a **leitura de uma passada** para sessão fria, que é o que o roteiro de re-arme sempre pediu e que até 2026-11-09 era **digitada à mão**. **Cinco braços:** main, PRs, as nossas issues abertas com o último autor, comentários recentes de outro autor, e as **branches do remoto**. Declarado `FORA` do agregador: fala com a rede, então em CI o veredito dependeria de repositório alheio e de cota de API, não da árvore. Reusa as funções do daemon por `VIGIA_TEST=1 . vigia-do-upstream.sh` — **fonte única**, pela mesma razão do `censo` acima |
 
 #### 🔴 A leitura à mão media CEGO, e o daemon não era o cego
 
@@ -3209,6 +3209,41 @@ Isso não se deriva de diff.
 **`sort`**, que sai 0 mesmo com o `gh` falhando — então leitura falha viraria `denominador: 0`,
 indistinguível de *"nenhuma issue nossa aberta"*. Os dois passos estão separados no script, com o
 motivo escrito. Família do `cano-mascara-exit-code`, cometida com a lição na memória.
+
+##### 🔴 E a primeira versão nasceu sem braço de BRANCHES — a lacuna apareceu em horas
+
+Na varredura seguinte, no **mesmo dia**, a `main` do upstream estava parada e havia **zero** PR: a
+única coisa que respondia *"ele andou?"* era a **branch de trabalho dele**, e eu tive de conferi-la à
+mão — exatamente o defeito que este script existe para fechar. O braço entrou no mesmo dia.
+
+🔴 **Ele lê do REMOTO, por `git ls-remote`, nunca de `refs/remotes` local** — a leitura local já
+mediu **cemitério** aqui (135 refs contra 4 branches reais, com as 4 **mais novas** dando 404), e é a
+seção *"`git fetch` não poda"* deste arquivo. Custo: **zero** chamadas de API, como o `snap_main`.
+
+**Três coisas que ele reporta e que a leitura à mão não dava:**
+
+```
+tip de cada branch, em hora local, e commits sobre a branch padrao
+tip que NAO esta neste checkout     -> "ha commit novo, rode git fetch upstream --prune"
+cemiterio                           -> refs locais que o remoto nao tem mais, nomeadas
+```
+
+🔴 **A branch padrão é DERIVADA do symref do remoto, não `main` chumbado** — e sem symref legível ele
+cai em `main` **e diz que caiu**, porque a contagem de commits passa a poder mentir.
+
+🔴 **Este braço não vem do daemon, e a razão está escrita no script:** o daemon não tem read de
+branches — ele vigia main, PRs, comentários e issues. Não é duplicação, é o **primeiro** sítio; se o
+daemon ganhar esse braço um dia, este passa a reusá-lo como os outros três.
+
+**Falsificado por `git` falso no PATH que intercepta só o `ls-remote` e delega o resto ao git real** —
+delegar é o que faz disto controle, porque o script continua lendo o repositório de verdade:
+
+| cenário | |
+|---|---|
+| `ls-remote --heads` falha | `N/A` nomeado, `rc=2` — e o braço da `main`, que lê o mesmo remoto, **cai junto** com o `N/A` dele |
+| symref ilegível | cai em `main` **e imprime que caiu**, `rc=0` |
+| tip fora do checkout + 3 refs locais órfãs | nomeia a branch nova **e** as três do cemitério, `rc=0` |
+| o acervo real | 4 branches, cemitério **0** — o controle negativo |
 
 ## Gate de REQ herdada do upstream (`scripts/check-inherited-req.sh`)
 
