@@ -35580,3 +35580,84 @@ literais — e os apóstrofos de `'esperado'`/`'nativo_windows'` continuam valen
 é impossível — a corrupção acontece na **atribuição**, antes de qualquer verificação rodar —, então
 teria de ser gate externo lendo a fonte. Não foi feito; fica escrito.
 
+
+### 🔴 Três lições de 09/11: PR empilhado, derivação ao lado do merge, e abandono fora do macOS
+
+Duas são erros meus, medidos por efeito, e a terceira é dado que tira "só macOS" do terreno do fato.
+
+#### 1. O `--delete-branch` do PR de baixo FECHA o de cima
+
+O [#327](https://github.com/lourivalgarciajunior/trackfw/pull/327) tinha `--base` na **branch** do
+[#326](https://github.com/lourivalgarciajunior/trackfw/pull/326) — que é o que torna o diff de um PR
+empilhado legível.
+
+```
+gh pr merge 326 --merge --delete-branch
+  -> o #326 mescla
+  -> a branch dele, que era a BASE do #327, e apagada
+  -> o #327 vira  state=CLOSED  mergeable=CONFLICTING
+```
+
+🔴 **O GitHub não retargeta: ele FECHA.** E fechado, não aceita nem uma coisa nem outra:
+`gh pr edit --base` diz *"Cannot change the base branch of a closed pull request"* e `gh pr reopen`
+diz *"Could not open the pull request"*.
+
+**A ordem que não quebra:** retargete o de cima **antes** de mesclar o de baixo, ou mescle o de baixo
+**sem** `--delete-branch` e apague a branch depois.
+
+**A recuperação, medida:** recriar a ref apagada destrava o `reopen`, e aí o retarget passa.
+
+```bash
+MSYS_NO_PATHCONV=1 gh api -X POST "repos/<owner>/<repo>/git/refs" -f ref="refs/heads/<base>" -f sha="$(git rev-parse <sha>)"
+```
+
+🔴 **O `sha` tem de ser o de 40 caracteres** — com 8 a API recusa com `422` (*"At least 40 characters
+are required; only 8 were supplied"*). Depois: `reopen`, `edit --base main`, e **apague a ref
+restaurada**, que só existia para destravar. Conferido por efeito: o PR voltou `OPEN`, `base=main`,
+com o diff dos arquivos dele e **com os comentários de verificação ainda anexados** — que é
+exatamente o que se perde ao abrir um PR novo no lugar.
+
+#### 2. 🔴 Derivação e merge NUNCA na mesma chamada
+
+No mesmo dia mesclei o #327 com **11 checks `pending`**. A causa não foi pressa: eu pus a derivação
+do conjunto e o `gh pr merge` no **mesmo comando**, então o conjunto foi impresso e o merge aconteceu
+sem ninguém ter lido o conjunto. O retarget para `main` havia disparado corrida nova, e eu passei por
+cima dela.
+
+🔴 **O critério do "conjunto completo" não falhou — ele não foi consultado.** Um critério que se
+imprime **ao lado** da ação que ele deveria governar não governa nada: é a mesma forma do `rc` depois
+de um cano, em que o sinal existe e responde outra pergunta.
+
+**Sem dano material, e isso foi conferido depois, não presumido:** no head `c948ff35`,
+`local-gates.yml` (nos dois eventos), `trackfw-validate.yml` e `pr-closing-keyword.yml` fecharam
+`success`; o único `failure` era o par de macOS que o usuário autorizou; e os 11 pendentes eram
+**re-execuções** de workflows que já haviam passado naquele mesmo head. 🔴 **Conferir depois não
+conserta o processo** — o que conserta é a chamada separada.
+
+#### 3. O abandono NÃO é só de macOS: o `gates-locais` de `ubuntu-latest` também
+
+```
+local-gates.yml, event=push      run 42671068581   completed/FAILURE
+  jobs listados                  total_count=1 — so `gates-windows`, success
+  gates-locais (ubuntu-latest)   AUSENTE dos dois endpoints
+  gh run view --log-failed       ZERO linhas   <- job que nunca iniciou
+```
+
+🔴 **Declarado como INFERÊNCIA, não medição por efeito:** a assinatura é a mesma do abandono
+invisível de macOS, mas **não foi confirmada por re-run**, como a de macOS foi. O que existe a favor
+é o **controle**: dos 14 runs de `local-gates.yml` medidos, **13 têm 2 jobs e `success`** — só este
+tem 1 e `failure`; e o mesmo `gates-locais` passa no evento `pull_request` do **mesmo head** e nos
+dois eventos do head seguinte, que contém aquele commit mais outro.
+
+**Uma ocorrência não refaz o enquadramento da seção** — o que ela faz é tirar *"só macOS"* do terreno
+do fato e pôr no terreno do **não medido**.
+
+#### E um terceiro estado do conjunto conhecido, que o critério 5 não cobria
+
+O último `quality.yml` da `main` saiu `failure` com os **18** jobs listados em `success` e o
+`shim-byte-identity-gate` **ausente dos dois endpoints**. O conjunto conhecido sai **vazio pela
+terceira razão** — nem verde, nem com nome, mas **ilegível** —, e o critério 5 não alcança. A saída
+naquele dia foi **palavra do usuário**, autorizando mesclar com o vermelho conhecido **por causa** em
+vez de por nome, com a causa medida em oito runs e o braço de `ubuntu-latest` verde ao lado em cada
+um. **Decisão dele, não extensão do critério**, e está escrito assim.
+
