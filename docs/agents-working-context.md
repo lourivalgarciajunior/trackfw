@@ -35343,3 +35343,84 @@ Isso vale para a forma **com invólucro**; armada **direto** com `exec`, o mesmo
 **zero** — medido em 09/11, conferido pelo Win32 duas vezes na hora. A condição entrou na célula, e a
 limpeza continua no roteiro.
 
+
+### 🔴 Quinta janela de macOS, e a varredura de `mktemp` que eu havia entregado como não realizada
+
+Duas coisas neste ciclo, e a primeira é a regra de forma de ontem sendo exercitada na direção oposta.
+
+#### 1. A janela reabriu, e o critério derivável disparou por si
+
+O [#324](https://github.com/lourivalgarciajunior/trackfw/pull/324) saiu vermelho no
+`shim-byte-identity-gate`. Não era o conteúdo:
+
+```
+12:11 local   cancelled  902 s  runner VAZIO   main, push do merge do #323
+12:39 local   cancelled  902 s  runner VAZIO   PR #324, attempt=1, head 2c3ec2b3
+14:18 local   cancelled  902 s  runner VAZIO   main, push do merge do #324
+ultima verde  08/11 18:58 local   36 s  runner=ok      <- o merge do #322
+no run do #324:  ubuntu-latest success 20 s runner atribuido   <- o controle
+                 gate  failure 2 s  ·  SHIM_RESULT: abandoned
+```
+
+🔴 **E isto falsificou a leitura que eu havia publicado 24 h antes.** Em 08/11 a seção dizia *"12
+braços consecutivos verdes, zero abandonos"* — e dizia, **ao lado do número**, que 12 verdes **não
+provam resolução**, porque dois dias de verde é indistinguível do vão entre janelas, com precedente
+medido de **1 abandono em 76 braços** em quinze dias. **O vão era vão.** A ressalva escrita junto é o
+que salvou a leitura; o número, sozinho, teria mentido por um dia.
+
+**O cabeçalho deu a volta completa em 24 h:** presente (🔴, até 08/11) → passado (✅, 08/11) →
+presente (🔴, 09/11). 🔴 **Isso é o teste da regra, não vai-e-vem**: nos três estados ele disse o que
+era verdade naquele dia, e a transição de volta foi **disparada pela derivação** — o laço devolveu
+`VAZIO` com `cancelled` em 902 s —, não por alguém reler a seção. Regra de forma que só se exercita
+numa direção não está provada; esta está nas duas.
+
+**Consequência prática: a `main` está vermelha por isto**, então o conjunto conhecido do próximo PR
+já contém os dois nomes e o critério 5 da autorização alcança. **Não afrouxa nada** — a comparação
+continua **por nome**.
+
+**E o #324 foi mesclado com os cinco critérios derivados**, não recordados: 26 linhas / 24 nomes / 2
+duplicatas (`gates-locais`, `gates-windows`, um workflow e dois eventos); head `2c3ec2b3` igual ao
+local; `attempt=1` em todos; vermelho **dentro** do conjunto conhecido comparado por nome (o último
+`quality.yml` da `main`, run `42642135068`, falhou nos **mesmos dois nomes**); e todos os jobs que
+pegariam defeito nosso verdes — `gates-locais` ×2, `gates-windows` ×2, `parity`, 4 shards,
+`parity-other-gates`.
+
+#### 2. A varredura de `mktemp` saiu, e o instrumento de escopo erra no caso da própria issue
+
+Em 08/11 eu entreguei esta varredura como **não realizada**, porque `^\s*trap` subcontava (perde
+`trap` depois de `;`) e `grep -c mktemp` supercontava (casa a palavra em lista de utilitários). O
+mantenedor disse na [#676](https://github.com/kgsaran/trackfw/issues/676) que a dele vai usar
+discriminante com **escopo de função**. Fiz as duas passadas, sobre `scripts/` de `upstream/main`:
+
+```
+passada 1, por ESCOPO     74 arquivos · 94 sitios · 89 com trap no escopo · 5 sem   (89+5=94)
+passada 2, por VARIAVEL   93 atribuidos · 76 cobertos · 17 nao            (76+17=93)
+                          +1 sem guardar em variavel, fora do denominador
+```
+
+🔴 **A passada 1 dá FALSO NEGATIVO no caso da issue**, e isso está provado por efeito: as linhas 490
+e 491 estão em `run_self_test`, que **tem** um `trap` na linha 179 — e aquele trap remove `$q`, não
+`$plumb_repo`. Presença de trap no escopo **não é cobertura**.
+
+**Triando os 17 um a um, 11 são da classe e 6 são falso positivo do discriminante** — e os falsos
+positivos são a parte que vale, porque cada um é uma armadilha para o gate dele:
+
+| mecanismo de falso positivo | sítios |
+|---|---|
+| **variável-apelido** — `local q; printf -v q '%q' "$WORK"` e `trap "rm -rf -- $q"`, que é o **conserto do #674** | 3 |
+| **expansão com padrão** — o trap diz `"${FENCE_TMP:-}"` e o meu padrão procurava `${FENCE_TMP}` | 1 |
+| **containment** — `mktemp -d "$WORK/…"` com o `$WORK` trapado: limpar o pai limpa os filhos | 2 |
+
+Dos **11** genuínos, **3 já estavam na issue** e **8 são novos**: 6 com `rm` só no caminho normal
+(`check-parity-call-site-pins.sh:222`, `check-release-tag-parity.sh:330`,
+`check-usage-silencing.sh:30` e os três dele) e 5 sem nenhuma linha de `rm`/`trap` mencionando a
+variável (`check-gates-falsify.sh:1476` e quatro do `check-no-literal-nul-in-source.sh`).
+
+🔴 **O achado que mais importa para ele está escrito como aviso:** um gate que exija o nome da
+variável dentro do `trap` **reprova o próprio conserto do #671, em três sítios**. Reportado na #676
+com os limites declarados — estático, um nível de indireção, limpeza por caminho literal não vista,
+e o meu mapa de escopo errando nos quatro sítios do `check-no-literal-nul-in-source.sh`.
+
+**Escopo negativo respeitado:** os 8 sítios são **do produto dele**, então viraram **comentário na
+issue**, não correção local.
+

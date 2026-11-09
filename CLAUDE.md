@@ -1357,12 +1357,44 @@ agora **herda o agente da REQ** em vez de ignorá-lo.
 
 Medido por efeito em projeto temporário com os mesmos três agentes, antes de mesclar.
 
-## ✅ FECHADA em 06/11/2026: a fila de macOS abandonava o `shim-byte-identity` — recorrente, e a escassez era DA NOSSA CONTA
+## 🔴 ABERTA de novo em 09/11/2026: a fila de macOS abandona o `shim-byte-identity` — QUINTA janela, e a escassez é DA NOSSA CONTA
 
-> **Estado, para quem varre cabeçalhos: NÃO há nada aberto aqui.** Última medição em **08/11/2026**:
-> **12 braços de `macos-latest` consecutivos**, de 06/11 21:13Z a 08/11 19:12Z, **todos `success`**
-> com `runner=ok` em 25 a 72 s, **zero abandonos**. A seção fica por ser **condição recorrente**
-> (quatro janelas em quatro dias), não por haver pendência.
+> **Estado, para quem varre cabeçalhos: há condição ABERTA aqui.** Derivada pelo laço desta seção em
+> **09/11/2026 às 14:33 local** — **três** abandonos no dia, e a janela **não fechou**:
+>
+> ```
+> 12:11 local   cancelled  902 s  runner VAZIO   main, push do merge do #323
+> 12:39 local   cancelled  902 s  runner VAZIO   PR #324, attempt=1, head 2c3ec2b3
+> 14:18 local   cancelled  902 s  runner VAZIO   main, push do merge do #324
+> ultima verde  08/11 18:58 local   36 s   runner=ok      <- o merge do #322
+> ```
+>
+> **No run do #324, os três jobs do par, que é a forma da cascata:**
+>
+> ```
+> shim-byte-identity (macos-latest)   cancelled   902 s   runner=VAZIO
+> shim-byte-identity (ubuntu-latest)  success      20 s   runner atribuido   <- o controle
+> shim-byte-identity-gate             failure       2 s   SHIM_RESULT: abandoned
+> ```
+>
+> O braço de Ubuntu verde em 20 s, com runner, é o que prova que **não é o conteúdo do job**. E o
+> `SHIM_RESULT: abandoned` é o valor fora dos quatro documentados de `needs.*.result`: o gate exige
+> evidência positiva (`!= success`) e reprova fechado — o irmão dele, que testa **lista de valores
+> ruins**, sairia **verde sobre nada verificado**.
+>
+> 🔴 **Consequência prática: a `main` está vermelha por isto**, então o conjunto conhecido do próximo
+> PR já contém os dois nomes, e o critério 5 da autorização de merge alcança. **Isso não afrouxa
+> nada** — a comparação continua sendo **por nome**, e vermelho de outro nome não se mescla.
+>
+> 🔴 **E a reabertura falsificou a leitura que esta seção publicava um dia antes.** Em 08/11 ela
+> dizia *"12 braços consecutivos verdes, zero abandonos"* — e dizia, **ao lado do número**, que 12
+> verdes **não provam resolução**, porque dois dias de verde é indistinguível do vão entre janelas,
+> com precedente medido de **1 abandono em 76 braços** em quinze dias. **O vão era vão.** A ressalva
+> escrita junto é o que salvou a leitura; o número, sozinho, teria mentido por um dia.
+>
+> **E o critério derivável disparou por si**, que é a única forma de saber que um critério serve: o
+> laço abaixo devolveu `VAZIO` com `cancelled` em 902 s, e foi isso — não alguém notando — que trouxe
+> o cabeçalho de volta ao presente.
 >
 > 🔴 **E o cabeçalho desta seção estava no PRESENTE até 08/11/2026** — *"abandona na fila"*, com 🔴 —,
 > então **toda varredura de "o que está em aberto" a devolvia como pendência**, enquanto o ✅ de
@@ -1378,6 +1410,12 @@ Medido por efeito em projeto temporário com os mesmos três agentes, antes de m
 >
 > **Reabrir é derivável, não uma data:** `VAZIO` com `cancelled` em 902–903 s no laço abaixo abre
 > janela nova, e aí o cabeçalho volta ao presente com a data do dia.
+>
+> ✅ **E ele voltou, em 09/11, dando a volta completa em 24 h: presente (🔴, até 08/11) → passado
+> (✅, 08/11) → presente (🔴, 09/11).** Isso é o teste da regra, não um vai-e-vem: nos três estados o
+> cabeçalho disse o que era verdade naquele dia, e a transição de volta foi **disparada pela
+> derivação**, não por alguém reler a seção. Uma regra de forma que só se exercita numa direção não
+> está provada — esta está nas duas.
 
 > ✅ **A janela FECHOU em 2026-11-06, entre 15:17 e 18:13 (local), e o critério de morte desta seção
 > é que disparou — não alguém notando.** A seção **fica**, porque o que ela carrega de durável é a
@@ -1396,11 +1434,13 @@ Medido por efeito em projeto temporário com os mesmos três agentes, antes de m
 > `4 abandonados → 1 verde`, com a transição dentro daquele vão — exatamente a mesma forma do
 > fechamento de 03/11, cuja lacuna foi de 39 min.
 >
-> 🔴 **E a quarta janela em quatro dias é a razão de a seção não ser apagada:** 03/11 (10 abandonos),
-> 04/11 (1), 06/11 (4) e a de 19/10 (1). A condição volta; o que não volta é o custo de redescobrir a
-> causa e a derivação.
+> 🔴 **A recorrência é a razão de a seção não ser apagada**, e a enumeração é datada: 19/10 (1
+> abandono), 03/11 (10), 04/11 (1), 06/11 (4) e **09/11 (3 até 14:33, a quinta e aberta)**. A condição volta; o
+> que não volta é o custo de redescobrir a causa e a derivação. **Apagar a seção em 04/11, quando a
+> janela daquele dia fechou, custou remedir tudo do zero quatro dias depois** — e é por isso que ela
+> fica, mudando só o tempo verbal do cabeçalho.
 
-Vigente de **2026-11-06 11:25 a 15:17** (local), quarta janela desde 19/10. O braço de macOS fica na
+A quarta janela foi de **2026-11-06 11:25 a 15:17** (local). O braço de macOS fica na
 fila sem receber máquina e é abandonado em **902–903 s**; o `shim-byte-identity-gate` cascateia e o PR
 sai vermelho sem relação nenhuma com o conteúdo.
 
