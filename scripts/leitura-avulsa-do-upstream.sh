@@ -144,8 +144,71 @@ else
 fi
 echo
 
+# ── 5. as branches do upstream ───────────────────────────────────────────────
+# 🔴 LIDAS DO REMOTO, por `git ls-remote`, NUNCA de refs/remotes locais.
+# `git fetch` nao poda sem configuracao, e a leitura local ja mediu CEMITERIO
+# aqui: 135 refs locais contra 4 branches reais, com as 4 MAIS NOVAS dando 404.
+# Ver a secao "git fetch nao poda" do CLAUDE.md.
+#
+# Custo: ZERO chamadas de API — e protocolo git, como o `snap_main` do daemon.
+#
+# 🔴 Este braco NAO vem do daemon, e a razao fica escrita: o daemon nao tem read
+# de branches: ele vigia main, PRs, comentarios e issues. Nao e duplicacao — e o
+# primeiro sitio. Se o daemon ganhar esse braco um dia, este passa a reusa-lo,
+# como os outros tres.
+#
+# Por que ele existe: em 09/11, com a `main` parada e zero PR, a UNICA coisa que
+# respondia "ele andou?" era a branch de trabalho dele — e eu tive de conferi-la
+# a mao, que e exatamente o defeito que este script existe para fechar.
+echo "branches do upstream (lidas do REMOTO, nao de refs locais):"
+# 🔴 O nome da branch padrao e DERIVADO do symref do remoto, nunca `main`
+# chumbado: o `snap_main` do daemon pede refs/heads/main de proposito, mas aqui
+# o conjunto e todas as branches, e chumbar o nome quebraria num repo cuja
+# padrao seja outra. Sem symref legivel, cai em `main` e DIZ que caiu.
+DEFAULT_BR="$(git ls-remote --symref "https://github.com/$REPO.git" HEAD 2>/dev/null \
+  | sed -n 's|^ref: refs/heads/\([^ \t]*\).*|\1|p' | head -1)"
+if [ -z "$DEFAULT_BR" ]; then
+  DEFAULT_BR=main
+  echo "  (symref ilegivel — assumindo '$DEFAULT_BR' como padrao; a contagem de commits pode mentir)"
+fi
+# a base das contagens e o tip da branch padrao lido no braco 1, nao um ref local
+sha_main="${M:-}"
+B="$(git ls-remote --heads "https://github.com/$REPO.git" 2>/dev/null)"
+if [ -z "$B" ]; then
+  na "nao consegui ler as branches de $REPO (git ls-remote)"
+else
+  nb="$(printf '%s\n' "$B" | grep -c .)"
+  echo "  denominador: $nb branch(es) no remoto"
+  printf '%s\n' "$B" | while read -r sha ref; do
+    nome="${ref#refs/heads/}"
+    if git cat-file -e "$sha" 2>/dev/null; then
+      quando="$(git log -1 --format=%ad --date=format-local:'%d/%m %H:%M' "$sha")"
+      if [ "$nome" = "$DEFAULT_BR" ]; then extra=""
+      else
+        n="$(git rev-list --count "$sha" "^$sha_main" 2>/dev/null)"
+        extra="  ${n:-?} commit(s) sobre $DEFAULT_BR"
+      fi
+      echo "    ${sha:0:8}  $nome   tip de $quando$extra"
+    else
+      echo "    ${sha:0:8}  $nome   🔴 tip NAO esta neste checkout — ha commit novo. rode: git fetch upstream --prune"
+    fi
+  done
+  # cemiterio: ref local de rastreamento que o remoto nao tem mais
+  mortas="$(comm -23 \
+    <(git for-each-ref --format='%(refname:short)' "refs/remotes/upstream" | sed 's|^upstream/||' | sort) \
+    <(printf '%s\n' "$B" | awk '{sub(/^refs\/heads\//,"",$2); print $2}' | sort))"
+  nm="$(printf '%s\n' "$mortas" | grep -c .)"
+  if [ "$nm" -eq 0 ]; then
+    echo "  refs locais que o remoto nao tem (cemiterio): 0"
+  else
+    echo "  🔴 refs locais que o remoto NAO tem (cemiterio): $nm — rode: git fetch upstream --prune"
+    printf '%s\n' "$mortas" | sed 's/^/      /'
+  fi
+fi
+echo
+
 if [ "$problemas" -gt 0 ]; then
   echo "🔴 $problemas braco(s) N/A: esta leitura esta INCOMPLETA."
   exit 2
 fi
-echo "leitura completa: os quatro bracos responderam."
+echo "leitura completa: os cinco bracos responderam."

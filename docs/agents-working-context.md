@@ -35424,3 +35424,72 @@ e o meu mapa de escopo errando nos quatro sítios do `check-no-literal-nul-in-so
 **Escopo negativo respeitado:** os 8 sítios são **do produto dele**, então viraram **comentário na
 issue**, não correção local.
 
+
+### 🔴 A leitura avulsa nasceu sem braço de branches, e a lacuna apareceu em HORAS
+
+O script entrou pelo [#324](https://github.com/lourivalgarciajunior/trackfw/pull/324) às 14:17 de
+09/11. Na varredura seguinte, **no mesmo dia**, ele não serviu para a pergunta que o usuário fez.
+
+```
+upstream/main        9fd2d84b   parada desde 08/11 07:46
+PRs abertos          0
+=> a UNICA coisa que respondia "ele andou?" era a BRANCH de trabalho dele
+   e eu tive de conferi-la A MAO
+```
+
+🔴 **Isso é exatamente o defeito que o script existe para fechar** — a varredura digitada que mede um
+conjunto estreito. A primeira versão trocou um conjunto estreito por outro: ela cobria comentário em
+issue (o furo de 08/11) e deixou de fora a branch. **O braço entrou no mesmo dia.**
+
+#### O que ele lê, e de onde
+
+🔴 **Do REMOTO, por `git ls-remote`, nunca de `refs/remotes` local.** A leitura local já mediu
+**cemitério** neste repositório — 135 refs contra 4 branches reais, com as 4 **mais novas** dando
+404 —, e é a seção *"`git fetch` não poda"* do `CLAUDE.md`. Custo: **zero** chamadas de API, mesma
+propriedade do `snap_main` do daemon.
+
+Três coisas que a leitura à mão não dava:
+
+```
+tip de cada branch, em hora local, e commits sobre a branch padrao
+tip que NAO esta neste checkout   -> "ha commit novo, rode git fetch upstream --prune"
+cemiterio                         -> refs locais que o remoto nao tem mais, NOMEADAS
+```
+
+🔴 **A branch padrão é DERIVADA do symref do remoto, não `main` chumbado** — e sem symref legível ele
+cai em `main` **e diz que caiu**, porque dali em diante a contagem de commits pode mentir. Mesma
+regra que este arquivo aplica a número de versão e a contagem de check.
+
+🔴 **O braço NÃO vem do daemon, e a razão está escrita no script:** o daemon não tem read de branches
+— ele vigia main, PRs, comentários e issues. Não é duplicação, é o **primeiro** sítio. Se o daemon
+ganhar esse braço um dia, este passa a reusá-lo, como os outros três. **A observação que fica para
+quem for mexer no daemon:** branch nova ou avançada é evento que ele hoje **não** emite.
+
+#### Falsificado por `git` falso que delega
+
+O `git` falso intercepta **só** o `ls-remote` e passa todo o resto ao git real. **Delegar é o que faz
+disto controle:** o script continua lendo o repositório de verdade, e só a leitura do remoto muda.
+
+| cenário | resultado |
+|---|---|
+| `ls-remote --heads` falha | `N/A` nomeado, `rc=2` — e o braço da `main`, que lê o mesmo remoto, **cai junto** com o `N/A` dele |
+| symref ilegível (saída vazia, não erro) | cai em `main` **e imprime que caiu**, `rc=0` |
+| tip fora do checkout + 3 refs locais órfãs | nomeia a branch nova **e** as três do cemitério, `rc=0` |
+| o acervo real | 4 branches, cemitério **0** — o controle negativo |
+
+A segunda linha é a que separa "não consegui ler" de "leu vazio": saída vazia do `--symref` **não** é
+erro, e tratá-la como erro faria o braço inteiro virar `N/A` por um detalhe que tem remédio.
+
+#### E a varredura do dia, pelo instrumento
+
+```
+main             9fd2d84b  08/11 07:46   0 atras
+PRs abertos      0         ultima tag v11.5.1 (07/11)
+#676             ultimo: nos, 09/11 14:30   ->  a bola e DELE, 0 de 1
+branches         4 no remoto · cemiterio 0
+  feat/idioma-do-produto-ingles-primeiro   a5c7c86d  08/11 18:25  27 commits sobre main
+```
+
+**Nada andou do lado dele**, e o `0 de 1` é o mesmo braço que em 09/11 às 12:18 dizia `1 de 1` — ele
+foi exercitado nas duas direções no mesmo dia, com o acervo real.
+
