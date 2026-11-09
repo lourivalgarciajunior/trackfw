@@ -2698,6 +2698,98 @@ bit**, pela ordem de 2026-08-29 que esta casa já pagou uma vez para aprender.
 falha que **deixou de existir**, não de entrada aposentada por conveniência: a regra **D6** do ADR
 dele exige que entrada resolvida saia no mesmo PR que a corrige, e foi o CI dele que cobrou isso —
 o `windows-full-suites` do #565 ficou **vermelho** justamente porque dois testes da lista passaram.
+
+## 🔴 O Defender põe binário Go recém-compilado em quarentena — e o `rc` do build é 0
+
+`Trojan:Win32/Bearfoos.A!ml`, severidade 5. O sufixo `!ml` é heurística de aprendizado de máquina,
+e o alvo é binário Go **recém-compilado** — não um arquivo do repositório.
+
+**Lido do histórico do Defender, não de recordação** (`Get-MpThreatDetection`):
+
+```
+31/10 19:03:05   bin/trackfw  +  bin/trackfw.exe          <- a NOSSA arvore
+31/10 19:03:24   bin/trackfw  +  bin/trackfw.exe
+31/10 19:06:51   Temp/tf-depois.exe
+31/10 19:08:32   Temp/go-build1005555435/b001/exe/a.out.exe
+31/10 19:09:13   Temp/go-build1725628330/b001/exe/a.out.exe
+31/10 19:10:35   Temp/go-build3512245549/b001/exe/a.out.exe
+                 ( oito dias de silencio )
+08/11 16:51:29   Temp/tfid2.exe
+08/11 16:52:06   Temp/go-build1027373825/b001/exe/a.out.exe  +  Temp/tfid2.exe
+08/11 16:55:19   Temp/go-build1333751793/b001/exe/a.out.exe
+08/11 16:56:21   Temp/go-build3355983319/b001/exe/a.out.exe
+```
+
+🔴 **O `a.out.exe` sob `go-build*/b001/exe/` é binário de TESTE** — é ali que o `go test` compila
+para executar. Então o alcance não é "o build": é a **suíte**. E a primeira linha diz que `bin/` da
+nossa própria árvore já foi alvo, o que mata a leitura reconfortante de que isso só acontece em
+pasta temporária.
+
+### 🔴 A atribuição que eu publiquei estava CONFUNDIDA pelo relógio
+
+Em 08/11 eu relatei *"3 falhas na árvore dele contra 2 sucessos na nossa"* e nomeei **a árvore** como
+discriminante. Os horários dizem outra coisa:
+
+```
+nossos sucessos   15:42:17 e 15:42:20   (mtime de bin/trackfw e bin/trackfw.exe)
+as falhas         16:51:29 a 16:56:21
+distancia         69 min — janelas que NAO se sobrepoem
+```
+
+Os dois grupos estavam separados **no tempo**, não só pela árvore — então o arranjo não isolava a
+variável que eu nomeei. Mesma família do *controle contaminado pelo PATH* e do *controle raso*, que
+este arquivo já paga em duas seções: **o tempo é variável como qualquer outra.**
+
+### Os dois controles emparelhados, medidos em 09/11/2026
+
+**Destino, com a fonte presa** (`9843527e`, mesma passada) — o veredito é a **existência** do
+arquivo, lida 2 s depois:
+
+| destino | |
+|---|---|
+| `bin/` (árvore) | SOBREVIVEU — 21 295 104 bytes |
+| scratchpad, que fica **sob** `%TEMP%` | SOBREVIVEU |
+| raiz de `%TEMP%` | SOBREVIVEU |
+
+**Fonte, com o destino preso** (scratchpad, mesma passada):
+
+| fonte | |
+|---|---|
+| a nossa `9843527e` | SOBREVIVEU — 21 295 104 bytes |
+| a branch dele `a5c7c86d` (`feat/idioma-do-produto-ingles-primeiro`) | SOBREVIVEU — 21 415 936 bytes |
+
+🔴 **Nem o destino nem a fonte é o discriminante** — hoje **nada** reproduz, nem a fonte que falhou
+em 08/11. O candidato que sobra é a **assinatura do dia** (hoje `1.463.207.0`, de 09/11 01:01), e ela
+é exatamente o que **não** se lê retroativamente. **Causa declarada como desconhecida**, como nos
+678 s e no `validate 1 antes · 0 depois` do sync do #557.
+
+**Limite declarado:** a lista de exclusões **não é legível** sem elevação (`Must be an administrator
+to view exclusions`), então não está provado que não exista uma cobrindo `bin/`.
+
+### 🔴 O instrumento é a EXISTÊNCIA do arquivo, nunca o `rc`
+
+```
+go build -o <destino> ./cmd/trackfw     rc=0
+o arquivo em <destino>                  APAGADO
+```
+
+O `go build` termina com **sucesso** e o Defender apaga **depois**. Um `rc` lido sem conferir o
+artefato diz *"compilou"* sobre um build que não deixou binário. 🔴 **E aqui o cano não é a causa** —
+é parente de [[cano-mascara-exit-code]], não um caso dele: mesmo sem cano nenhum, o `rc` responde
+outra pergunta. **Confira o artefato.** (Em 08/11 as duas coisas se somaram: um `| tail -2` imprimiu
+`build rc=0` para um `rc=1`.)
+
+### O que fazer quando um build ou a suíte falhar sem motivo aparente
+
+```powershell
+Get-MpThreatDetection | Sort-Object InitialDetectionTime | Select-Object -Last 5
+```
+
+Detecção com o horário do seu build é a resposta; ausência manda procurar no código. 🔴 **Nada foi
+alterado no Defender, e não se altera:** exclusão é configuração de segurança da máquina do usuário,
+e isso não se faz sem a palavra dele — a mesma ordem de alçada que valeu para a ACL do
+`project_foreign_write_windows`. O que foi feito aqui é **leitura**.
+
 ## Ponto cego local de bit de execução: `pin7-noexec` e as três falhas do Group A
 
 Mesma causa da [#421](https://github.com/kgsaran/trackfw/issues/421): **`os.Chmod` é no-op em NTFS

@@ -35138,3 +35138,107 @@ silêncio maior **entre** janelas — **1 abandono em 76 braços** de 17/10 a 02
 dias de verde é indistinguível do vão entre janelas. O que mudou de verificável é a **exposição**: a
 dispensa do #669 tirou o macOS de PR de documentação pura, medido duas vezes em 07/11 e 08/11.
 
+
+### 🔴 O falso positivo do Defender, e a atribuição que eu havia publicado estava confundida pelo relógio
+
+Enquanto o upstream está parado (`main` em `9fd2d84b` desde 08/11 07:46, a branch do idioma em
+`a5c7c86d` desde 08/11 18:25, zero PR aberto), fechei duas medições nossas que estavam feitas e **não
+estavam escritas em lugar nenhum**.
+
+#### O que o histórico do Defender diz, e o que eu havia dito
+
+`Trojan:Win32/Bearfoos.A!ml` — `!ml` é heurística de aprendizado de máquina, severidade 5, e o alvo é
+binário Go **recém-compilado**. Lido de `Get-MpThreatDetection`, que é histórico com horário e não
+recordação:
+
+```
+31/10 19:03:05   bin/trackfw  +  bin/trackfw.exe          <- a NOSSA arvore
+31/10 19:03:24   bin/trackfw  +  bin/trackfw.exe
+31/10 19:06:51   Temp/tf-depois.exe
+31/10 19:08:32 · 19:09:13 · 19:10:35   tres Temp/go-build*/b001/exe/a.out.exe
+                 ( oito dias de silencio )
+08/11 16:51:29   Temp/tfid2.exe
+08/11 16:52:06   Temp/go-build*/b001/exe/a.out.exe  +  Temp/tfid2.exe
+08/11 16:55:19 · 16:56:21   dois Temp/go-build*/b001/exe/a.out.exe
+```
+
+🔴 **Em 08/11 eu publiquei ao usuário que eram "3 falhas na árvore dele contra 2 sucessos na nossa", e
+atribuí à árvore.** Os horários dizem outra coisa:
+
+```
+nossos sucessos   15:42:17 e 15:42:20   (mtime de bin/trackfw e bin/trackfw.exe)
+as falhas         16:51:29 a 16:56:21
+distancia         69 min — janelas que NAO se sobrepoem
+```
+
+Os dois grupos estavam separados **no tempo**, não só pela árvore — então o arranjo **não isolava a
+variável que eu nomeei**. E a primeira linha da tabela mata a leitura reconfortante de que isso só
+acontece em pasta temporária: `bin/` da nossa própria árvore já foi alvo, em 31/10.
+
+#### Os dois controles emparelhados, medidos hoje
+
+**Destino, com a fonte presa** em `9843527e`, mesma passada, veredito pela **existência** do arquivo
+lida 2 s depois do build:
+
+```
+bin/ (arvore)                SOBREVIVEU   21 295 104 bytes
+scratchpad (sob %TEMP%)      SOBREVIVEU
+raiz de %TEMP%               SOBREVIVEU
+```
+
+**Fonte, com o destino preso** no scratchpad, mesma passada, em worktree descartável para a dele:
+
+```
+a nossa     9843527e   SOBREVIVEU   21 295 104 bytes
+a dele      a5c7c86d   SOBREVIVEU   21 415 936 bytes
+```
+
+🔴 **Nem o destino nem a fonte é o discriminante — hoje nada reproduz, nem a fonte que falhou em
+08/11.** O candidato que sobra é a **assinatura do dia**, e ela é exatamente o que não se lê
+retroativamente. **Causa declarada como desconhecida**, pela mesma regra dos 678 s e do `validate
+1 antes · 0 depois` do sync do #557. **Limite:** a lista de exclusões não é legível sem elevação
+(`Must be an administrator to view exclusions`), então não está provado que não exista uma.
+
+#### Dois achados que valem além deste episódio
+
+🔴 **O `a.out.exe` sob `go-build*/b001/exe/` é binário de TESTE** — é ali que o `go test` compila para
+executar. O alcance nunca foi "o build": é a **suíte**. Seis das dez detecções são desse padrão.
+
+🔴 **E o instrumento é a existência do arquivo, nunca o `rc`:** o `go build` sai **0** e o Defender
+apaga **depois**. Isto é parente de `cano-mascara-exit-code`, não um caso dele — mesmo sem cano, o
+`rc` responde outra pergunta. Em 08/11 as duas coisas se somaram, com um `| tail -2` imprimindo
+`build rc=0` para um `rc=1`.
+
+**Nada foi alterado no Defender, e não se altera:** exclusão é configuração de segurança da máquina do
+usuário, e isso não se faz sem a palavra dele — mesma alçada da ACL do `project_foreign_write_windows`.
+O que foi feito foi **leitura**.
+
+#### E a vigia: o caminho do `TaskStop` também deu zero, que era o controle que faltava
+
+A memória registrava **2 de 2 expirações** com zero órfã, armando direto (`exec bash`, sem o invólucro
+que punha o daemon num cano). Faltava o caminho do `stop` — e a entrada de 2026-09-12 daquele arquivo
+mede o **contrário** nele: o `TaskStop` encerrava o invólucro e a vigia interna sobrevivia.
+
+```
+TaskStop <id>                      ok
+bash.exe com `vigia` (Win32)       0     conferido DUAS vezes na hora
+re-conferido hoje                  0     com 9 bash.exe meus vivos ao lado
+```
+
+🔴 **Então as duas entradas daquele arquivo deixam de se contradizer:** a de 09/12 vale para a forma
+**com invólucro**, esta para a forma **direta**. E os 9 `bash.exe` ao lado são a armadilha que a
+própria memória avisa — contar `bash.exe` sem filtrar por `vigia` na linha de comando diria 9.
+
+🔴 **E eu relatei o número ERRADO ao usuário hoje:** disse *"23 expirações e 1 stop"*, lendo as **23
+órfãs** do incidente antigo como contagem de expirações. São **2 expirações e 1 `stop`**. Número
+recordado em vez de derivado — e a derivação era um `grep` no próprio arquivo de memória. A limpeza
+antes de armar **não sai do roteiro**: contar zero é resultado de medir, não motivo para parar.
+
+#### Verificação
+
+```
+CLAUDE.md   CRLF 3667 -> 3759 · LF puro 0 · 92 adicoes, 0 remocoes
+validate    0 violacoes · 3 avisos
+worktree da branch dele   removido por `git worktree remove`, rc=0, sem --force
+```
+
