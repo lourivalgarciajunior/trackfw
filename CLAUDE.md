@@ -1327,6 +1327,55 @@ silenciosas aqui. **No primeiro roadmap `feat`/`fix`/`refactor` que entrar em `w
 a valer sobre ele, e os nossos 34 roadmaps com bloco de gates são o formato que será julgado. Se
 aparecer violação, o lugar de olhar é o cabeçalho `**Gates da wave:**` e a cerca de código ao redor.
 
+> #### ✅ CONFIRMADA em 10/11/2026, por sonda — certa no mecanismo, e o ALARME era da minha sonda
+>
+> A branch mesclou (`#677` às 09:17; a **11.6.0** às 09:52), então a medição que esperava o merge foi
+> feita. Com o binário **publicado** 11.6.0 na nossa árvore viva, a saída é **idêntica à nossa, byte
+> a byte** — `0 violações · 3 avisos`. 🔴 **E isso continua sendo ESCOPO, não integridade**, porque o
+> `wip/` segue vazio: parar aqui seria verde pelo motivo errado, que é o que esta seção já alerta.
+>
+> **As três sondas, num `wip/` criado para a medição, em worktree descartável.** O `rc` é **1 nas
+> três** — roadmap plantado gera violação de caminho de estado —, então o veredito se lê pelas linhas
+> que mencionam gate/wave, **nunca** pelo `rc`:
+>
+> | sonda | o que a regra disse |
+> |---|---|
+> | o nosso **único** sítio fora do padrão, em `wip/` | **nada** — 0 menções |
+> | um bem-formado, em `wip/` | nada — 0 menções |
+> | o mesmo, com as cercas **removidas** por `sed` | 🔴 **dispara** |
+>
+> A terceira é a `roadmap_gate_coverage` (AC7), e a mensagem é **bilíngue** — nomeia as duas grafias:
+>
+> ````
+> ✗ roadmap "…sem-gate.md" (wip) Wave 0 gate block was not found: '**Wave gates:**' or
+>   '**Gates da wave:**' is not followed by a ```bash fence before the next heading
+>   (AC7, ADR-2026-09-18 decision 4)
+> ````
+>
+> 🔴 **E a sonda explicou por que o nosso sítio cala: o meu censo usava predicado MAIS ESTRITO que o
+> da regra.** Eu contei *"a linha seguinte ao cabeçalho é uma cerca `bash`"* e achei **1 em 59**. A
+> regra pergunta outra coisa — *"existe cerca antes do próximo heading"* —, e por **esse** predicado:
+>
+> ```
+> cabecalhos de gate                    59 em 34 roadmaps
+> em `## Wave 0`                        33      <- os unicos que a roadmap_gate_coverage julga
+> SEM cerca antes do proximo heading     0      (Wave 0: 0)
+> ```
+>
+> No nosso sítio o cabeçalho está na **66**, vêm **5 linhas de blockquote**, a cerca abre na **72**, e
+> o `## Wave 1` só vem na **76**: a regra está **satisfeita**. O *"1 fora do padrão"* era **artefato
+> da minha sonda, não exposição** — e isso está fechado nas duas pontas, por **efeito** (silêncio, 0
+> menções) e por **leitura do predicado** em
+> `upstream/main:internal/validator/validator_roadmap_gates.go`, que declara `wip/` only para
+> `roadmap_wave0_required` e `roadmap_gate_coverage`, **todos os estados** só para
+> `roadmap_unterminated_fence`, e ainda isenta de `roadmap_wave0_required` o roadmap anterior ao
+> `roadmapWave0Cutoff` (2026-09-18) — que é a quase totalidade do nosso acervo.
+>
+> **A lição de forma, mais cara que o número:** derivação minha com predicado diferente do da regra
+> produz alarme que a regra nunca daria. Mesma família do contador que procurou `divergen|inert` e
+> devolveu **0** com o aviso impresso duas linhas acima — **o discriminante é o predicado medido, não
+> o que eu suponho que ele seja.**
+
 🔴 **O derivável, para não depender desta seção envelhecer:**
 
 ```bash
@@ -1334,6 +1383,13 @@ ls -1 docs/roadmaps/*/wip/*.md 2>/dev/null | wc -l
 ```
 
 **0 = blindados por escopo. ≥ 1 = as regras alcançam, e o `validate` é quem diz.**
+
+🔴 **E hoje o 0 vem da AUSÊNCIA do diretório, não de pasta vazia** — medido em 10/11/2026:
+`find docs/roadmaps -maxdepth 2 -type d` devolve `artemis/done`, `claude/abandoned`,
+`claude/backlog` e `claude/done`, e **nenhum `wip/` nem `blocked/`**. O glob acima trata os dois
+casos igual, que é o certo para esta pergunta; o que **não** trata é `ls -1d docs/roadmaps/*/wip`,
+que sai **2** sem casar nada e **aborta uma cadeia `&&`** — foi o que derrubou a minha primeira
+tentativa de sonda. Glob sem `2>/dev/null` numa cadeia é terceiro estado, não zero.
 
 ## `req new` e `roadmap new` exigem `--agent` aqui — são três namespaces
 
@@ -2941,7 +2997,41 @@ em 08/11. O candidato que sobra é a **assinatura do dia** (hoje `1.463.207.0`, 
 **Limite declarado:** a lista de exclusões **não é legível** sem elevação (`Must be an administrator
 to view exclusions`), então não está provado que não exista uma cobrindo `bin/`.
 
-### 🔴 O instrumento é a EXISTÊNCIA do arquivo, nunca o `rc`
+### 🔴 10/11/2026: a terceira passada MOVE a atribuição — hoje o discriminante é a FONTE
+
+Medido ao tentar rodar o leitor da **11.6.0** compilado aqui, com **destino e minuto presos**:
+
+```
+10:11       go build do 11.6.0  ->  arquivo INTEGRO, 21 415 424 bytes, e rodou
+10:14:01    deteccao                       ThreatID 2147731250  (familia Bearfoos)
+10:14:08    deteccao                       a mesma
+executar o MESMO arquivo integro    rc=126
+  "o arquivo contem um virus ou software possivelmente indesejado"
+depois, o proprio BUILD             bloqueado no go-build*/b001/exe/a.out.exe
+  em %TEMP%                                            bloqueado
+  em GOTMPDIR=C:\dev\ferramentas\.gotmp-claude          bloqueado   <- destino NAO discrimina
+CONTROLE, mesmo minuto e mesmo destino:
+  a NOSSA arvore 11.5.1  ->  bin/tf-controle.exe        compilou E RODOU
+  bin/trackfw (compilado em 08/11)                      continuou rodando
+```
+
+🔴 **Com destino e tempo presos, o que resta variando é a fonte** — e isso **move** o veredito de
+09/11, que dizia *"nem o destino nem a fonte"*. **Não é contradição:** naquele dia **nada**
+reproduzia, inclusive a fonte que falhara; hoje reproduz, e aí o arranjo passa a discriminar. A causa
+última segue **desconhecida** (a assinatura do dia não se lê retroativamente); o que está afirmado é
+a **atribuição de hoje**.
+
+**A rota que funcionou não compila nada — é o binário PUBLICADO:**
+
+```bash
+npm pack @trackfw-bin/win32-x64@11.6.0   # em diretorio proprio e vazio
+```
+
+Nunca foi sinalizado: ele chega **pronto e stripped**, em vez de recém-linkado. 🔴 **Sem `npm i -g`**
+— a instalação global e o `PATH` **não** foram tocados, porque trocar o binário do `PATH` muda a
+cerca de **todos** os projetos desta máquina, e a medição não justifica isso.
+
+### 🔴 O instrumento não é o `rc` — e desde 10/11 não é nem a EXISTÊNCIA: é a EXECUÇÃO
 
 ```
 go build -o <destino> ./cmd/trackfw     rc=0
@@ -2953,6 +3043,16 @@ artefato diz *"compilou"* sobre um build que não deixou binário. 🔴 **E aqui
 é parente de [[cano-mascara-exit-code]], não um caso dele: mesmo sem cano nenhum, o `rc` responde
 outra pergunta. **Confira o artefato.** (Em 08/11 as duas coisas se somaram: um `| tail -2` imprimiu
 `build rc=0` para um `rc=1`.)
+
+🔴 **E em 10/11 essa instrução — a que este arquivo prescrevia — mostrou-se INSUFICIENTE.** Três
+sondas voltaram com **zero linha de veredito** e eu quase registrei o silêncio como resultado:
+*"confira o artefato"* **passa** nesse caso, porque o arquivo existia, íntegro e com o tamanho certo.
+O que o Defender bloqueou foi a **execução** (`rc=126`).
+
+**O instrumento é afirmar a execução** — uma linha que o binário tem de imprimir, conferida antes de
+ler qualquer veredito. As três sondas foram **descartadas explicitamente** e refeitas, em vez de
+lidas como *"a regra calou"*. É a mesma família de *zero com sonda errada é cegueira, não ausência*,
+agora com o modo de falha um passo adiante: **arquivo certo que não roda.**
 
 ### O que fazer quando um build ou a suíte falhar sem motivo aparente
 

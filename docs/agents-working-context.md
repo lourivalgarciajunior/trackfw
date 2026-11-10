@@ -35661,3 +35661,63 @@ naquele dia foi **palavra do usuário**, autorizando mesclar com o vermelho conh
 vez de por nome, com a causa medida em oito runs e o braço de `ubuntu-latest` verde ao lado em cada
 um. **Decisão dele, não extensão do critério**, e está escrito assim.
 
+
+### 🔴 10/11/2026: o leitor bilíngue chegou, o alarme era da minha sonda, e o Defender subiu um degrau
+
+O upstream mesclou o [#677](https://github.com/kgsaran/trackfw/pull/677) às **09:17** (merge
+`37a3c07b`, 28 arquivos) e publicou a **11.6.0** às **09:52** (`dc617634`), então a medição que
+estava parada esperando *"o merge"* foi feita. A branch do **PR 2/2** (o gerador) foi empurrada às
+**10:04** e, às 11:56, seguia **sem PR aberto**.
+
+#### O veredito do nosso único sítio fora do padrão: artefato da sonda, não exposição
+
+Com o binário **publicado** 11.6.0 na nossa árvore viva, o `validate` sai **idêntico ao nosso, byte a
+byte** — `0 violações · 3 avisos`. 🔴 Isso é **escopo**, não integridade: o `wip/` está vazio, e
+`roadmap_gate_coverage` / `roadmap_wave0_required` só valem para `wip/`.
+
+As três sondas, num `wip/` criado para a medição, em worktree descartável — `rc=1` nas três, porque
+roadmap plantado gera violação de caminho de estado, então o veredito se lê pelas linhas que
+mencionam gate/wave:
+
+```
+o nosso unico sitio fora do padrao, em wip/     0 mencoes   -> calou
+um bem-formado, em wip/                         0 mencoes   -> calou
+o mesmo, com as cercas REMOVIDAS por sed        DISPARA     -> roadmap_gate_coverage (AC7)
+```
+
+🔴 **E a sonda explicou o silêncio: o meu censo usava predicado MAIS ESTRITO que o da regra.** Eu
+contei *"a linha seguinte ao cabeçalho é uma cerca"* e achei **1 em 59**. A regra pergunta *"existe
+cerca antes do próximo heading"*, e por esse predicado: **59 cabeçalhos em 34 roadmaps, 33 em
+`## Wave 0`, e ZERO sem cerca antes do próximo heading.** No nosso sítio o cabeçalho está na linha
+66, vêm 5 linhas de blockquote, a cerca abre na 72, e o `## Wave 1` só vem na 76.
+
+Fechado nas duas pontas — por **efeito** e por **leitura do predicado** em
+`upstream/main:internal/validator/validator_roadmap_gates.go`. **O número que eu havia publicado
+descrevia a minha sonda, não o risco.**
+
+#### O Defender: a existência do arquivo NÃO é o instrumento — a execução é
+
+Três sondas voltaram com **zero linha de veredito**, e o silêncio quase entrou como resultado. O
+arquivo da 11.6.0 compilado aqui estava **íntegro** (21 415 424 bytes) e o que foi bloqueado foi a
+**execução**: `rc=126`, com detecções às **10:14:01** e **10:14:08** (ThreatID `2147731250`). A
+instrução que este projeto prescrevia — *"confira o artefato"* — **passa** nesse caso.
+
+Depois disso o próprio `go build` passou a ser bloqueado, em `%TEMP%` **e** em
+`GOTMPDIR=C:\dev\ferramentas\.gotmp-claude`: destino não discrimina. 🔴 **O controle, no mesmo minuto
+e no mesmo destino:** a nossa árvore 11.5.1 compilou e **rodou**. Com destino e tempo presos, o que
+resta variando é a **fonte** — o que **move** o veredito de 09/11 (*"nem o destino nem a fonte"*),
+que foi escrito num dia em que **nada** reproduzia.
+
+A rota que funcionou não compila nada: `npm pack @trackfw-bin/win32-x64@11.6.0`, em diretório próprio
+e vazio. Nunca foi sinalizado — chega pronto e stripped. 🔴 **Sem `npm i -g`**: a instalação global e
+o `PATH` não foram tocados.
+
+#### O que fica derivável, e não escrito
+
+O intervalo deste sync **não** exige a tripla: nenhum dos três arquivos de linha de hook
+(`.claude/settings.json`, `.codex/hooks.json`, `.gemini/settings.json`) está no diff dos 2 commits. E
+o `wip/` dá **0** por **ausência do diretório**, não por pasta vazia — `ls -1d docs/roadmaps/*/wip`
+sai **2** sem casar nada, e aborta cadeia `&&`.
+
+O sync dos 2 commits **não foi feito** neste ciclo.
+
