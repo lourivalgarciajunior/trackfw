@@ -35721,3 +35721,49 @@ sai **2** sem casar nada, e aborta cadeia `&&`.
 
 O sync dos 2 commits **não foi feito** neste ciclo.
 
+
+### 10/11/2026, tarde: o sync da 11.6.0, e a atribuição da manhã caiu em 2 h 41
+
+**O sync.** `upstream/main dc617634` sobre `56abe32c` — o [#677](https://github.com/kgsaran/trackfw/pull/677)
+(leitor bilíngue de marcadores e gates fail-closed) mais o [#678](https://github.com/kgsaran/trackfw/pull/678)
+(tag 11.6.0). A previsão foi escrita **antes** de rodar o script e fechou exata:
+
+```
+PRODUTO   internal 11 + npm 2 + pypi 1 + scripts 2 + CHANGELOG 1
+          + .claude/agent-memory 3 (NAO retido) + docs/cli-parity.md 1   =  21
+RETIDO    docs/ 9 + vault/ 3                                              =  12
+                                                                  21 + 12 =  33
+o script devolveu   "21 de PRODUTO, 12 RETIDOS (de 33 no merge)"
+CLAUDE.md no conjunto?   NAO  ->  zero arquivo para decidir a mao
+go build exit 0 · validate 0 antes · 0 depois · 3 avisos · 0 de escopo global
+merge commit   dois pais (56abe32c, dc617634); upstream/main e ancestral
+```
+
+🔴 **A tripla não se aplicou, e isso foi PREVISTO pelo predicado, não descoberto depois:** nenhum
+dos três arquivos de linha de hook estava no diff do intervalo, então não houve `npm i -g` nem
+`trackfw update harness`. Quarto intervalo medido por esse predicado, terceiro no-op.
+
+#### 🔴 E o `bin/` reconstruído falsificou a atribuição que eu havia MESCLADO duas horas antes
+
+O `upstream-sync.sh` reconstrói `bin/trackfw` como parte do AC5 — e a fonte que ele compilou é a
+**mesma 11.6.0** que o Defender bloqueou às 10:14 desta manhã. Apliquei o instrumento de hoje (a
+execução, não a existência):
+
+```
+10:14   fonte 11.6.0 -> bin/tf116.exe     integro · execucao rc=126 · 2 deteccoes
+        controle: a nossa 11.5.1 -> bin/  compilou E RODOU      <- destino e minuto presos
+12:55   fonte 11.6.0 -> bin/trackfw       21 402 624 bytes · rc=0 · "trackfw 11.6.0"
+        deteccoes depois das 12:00         0
+distancia  2 h 41 — MESMA fonte, MESMO destino, veredito OPOSTO
+```
+
+**O que a manhã mediu foi uma janela, não um discriminante.** Dentro dela a leitura estava certa; o
+erro foi escrevê-la **em presente** — *"hoje o discriminante é a FONTE"* —, e o título já está
+corrigido para dizer a janela. Causa última: **desconhecida**, com a assinatura do dia como único
+candidato.
+
+🔴 **2 h 41 é o prazo mais curto de apodrecimento já registrado neste projeto**, contra as 13 h do
+`npm i -g trackfw@9.3.2`. E foi pior em espécie: a frase não envelheceu esperando, ela foi
+**mesclada** e derrubada pela medição seguinte do mesmo dia. **Atribuição de causa sobre ambiente
+desta máquina nasce com janela — hora de início e de fim, nunca presente.**
+
