@@ -2997,7 +2997,7 @@ em 08/11. O candidato que sobra é a **assinatura do dia** (hoje `1.463.207.0`, 
 **Limite declarado:** a lista de exclusões **não é legível** sem elevação (`Must be an administrator
 to view exclusions`), então não está provado que não exista uma cobrindo `bin/`.
 
-### 🔴 10/11/2026: a terceira passada MOVE a atribuição — hoje o discriminante é a FONTE
+### 10/11/2026: a terceira passada moveu a atribuição por 2 h 41 — e a JANELA FECHOU
 
 Medido ao tentar rodar o leitor da **11.6.0** compilado aqui, com **destino e minuto presos**:
 
@@ -3030,6 +3030,30 @@ npm pack @trackfw-bin/win32-x64@11.6.0   # em diretorio proprio e vazio
 Nunca foi sinalizado: ele chega **pronto e stripped**, em vez de recém-linkado. 🔴 **Sem `npm i -g`**
 — a instalação global e o `PATH` **não** foram tocados, porque trocar o binário do `PATH` muda a
 cerca de **todos** os projetos desta máquina, e a medição não justifica isso.
+
+#### 🔴 E a atribuição acima FOI FALSIFICADA 2 h 41 depois, pelo sync da própria 11.6.0
+
+O texto desta seção dizia, em presente, *"hoje o discriminante é a FONTE"*. **Medido às 12:55 do
+mesmo dia**, quando o `upstream-sync.sh` reconstruiu o `bin/` a partir da 11.6.0 já mesclada:
+
+```
+10:14   fonte 11.6.0 -> bin/tf116.exe        arquivo integro · execucao rc=126 · 2 deteccoes
+        controle: a nossa 11.5.1 -> bin/     compilou E RODOU        <- destino e minuto presos
+12:55   fonte 11.6.0 -> bin/trackfw          21 402 624 bytes · --version rc=0 · "trackfw 11.6.0"
+        deteccoes do Defender depois das 12:00   0
+distancia   2 h 41 — MESMA fonte, MESMO destino, veredito OPOSTO
+```
+
+🔴 **Então o que a manhã mediu foi uma JANELA, não um discriminante.** Dentro dela, com destino e
+minuto presos, a fonte era a única variável que diferia — e a leitura estava correta **para a
+janela**. Fora dela, a mesma fonte passa. O que sobra afirmado é o mesmo de 09/11: **causa
+desconhecida**, com a assinatura do dia como único candidato e sem leitura retroativa.
+
+**E a lição de forma é a que este arquivo mais paga, agora no prazo mais curto já registrado:**
+*"Datado e no passado não envelhece. Presente envelhece."* O `hoje` do título anterior apodreceu em
+**2 h 41** — mais rápido que as 13 h do `npm i -g trackfw@9.3.2`, que era o recorde. Eu havia
+escrito e **mesclado** a frase duas horas antes de a medição seguinte derrubá-la. Atribuição de causa
+sobre ambiente desta máquina **nasce com janela**, e o título tem de dizer isso.
 
 ### 🔴 O instrumento não é o `rc` — e desde 10/11 não é nem a EXISTÊNCIA: é a EXECUÇÃO
 
