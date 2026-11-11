@@ -108,6 +108,10 @@ EOF
 
 if [ "${1-}" = "--self-test" ]; then
   T=$(mktemp -d) || exit 1
+  # ADR-2026-11-11 D1/D2: limpeza garantida de EXIT no mesmo escopo, citando ${T:-}
+  # (forma DIRECT do check-mktemp-cleanup.sh). D3: o `rm -rf "$T"` do caminho normal
+  # FICA — ele passa a ser limpeza antecipada, e rm de inexistente sai 0.
+  trap 'rm -rf "${T:-}" 2>/dev/null || :' EXIT
   BS=$(printf '\134')
   N=0; BAD=0
   caso() {
