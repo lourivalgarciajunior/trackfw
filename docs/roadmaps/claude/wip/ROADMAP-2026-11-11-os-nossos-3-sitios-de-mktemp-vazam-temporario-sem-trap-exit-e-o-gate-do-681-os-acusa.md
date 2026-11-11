@@ -94,7 +94,7 @@ grep -q 'TMPD=$(mktemp -d 2>/dev/null) || TMPD=""' scripts/check-copia-do-path-e
 > Dependencies: Wave 0.
 
 ### ML-1A — Sync do `356fb79b`: traz o gate e os 7 sítios dele consertados
-**Status:** ⬜ Pending
+**Status:** 🔄 In progress
 **Files affected:** `Makefile`, `scripts/` (8 alterados + 1 novo), `bin/`
 **Actions:**
 1. `scripts/upstream-sync.sh`, que retém `docs/`, `vault/` e o `trackfw.yaml`, prova a retenção
