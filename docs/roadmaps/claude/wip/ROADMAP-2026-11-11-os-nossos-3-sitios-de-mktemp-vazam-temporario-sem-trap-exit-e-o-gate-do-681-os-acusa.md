@@ -127,7 +127,7 @@ antes do sync chegaram **consertados**, e sobraram só os nossos 3. Se tivesse a
 #681 não teria fechado o que diz ter fechado.
 
 ### ML-1B — Limpeza garantida nos 3 sítios nossos
-**Status:** ⬜ Pending
+**Status:** 🔄 In progress
 **Files affected:** `scripts/anexa-crlf.sh`, `scripts/check-contorno-dos-shims-caducou.sh`, `scripts/check-copia-do-path-esta-atras.sh`
 **Actions:**
 1. Um `trap` de EXIT por sítio, imediatamente após o `mktemp`, citando `${V:-}` (forma DIRECT do
