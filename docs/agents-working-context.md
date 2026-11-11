@@ -35767,3 +35767,121 @@ candidato.
 **mesclada** e derrubada pela medição seguinte do mesmo dia. **Atribuição de causa sobre ambiente
 desta máquina nasce com janela — hora de início e de fim, nunca presente.**
 
+
+### 11/11/2026, manhã: o sync da 11.7.0, e o desconhecido do locale foi FECHADO pelo produto
+
+**O sync.** `upstream/main 1ad14330` sobre `53a13d5d` — o [#679](https://github.com/kgsaran/trackfw/pull/679)
+(*"produto em inglês — gerador, mensagens e saída independente de locale"*, PR 2/2 da REQ do idioma)
+mais o [#680](https://github.com/kgsaran/trackfw/pull/680), que tageou a **11.7.0**. A previsão foi
+escrita **antes** de rodar o script e fechou exata:
+
+```
+PRODUTO   internal 59 + .claude 16 + scripts 3 + npm 2 + pypi 1 + CHANGELOG 1   =  82
+RETIDO    docs/ 5 + vault/ 0 + trackfw.yaml 0                                   =   5
+                                                                         82 + 5 =  87
+o script devolveu   "82 de PRODUTO, 5 RETIDOS (de 87 no merge)"
+```
+
+🔴 **E a ressalva escrita junto NÃO disparou, o que é informação e não sorte.** Eu havia declarado
+que a detecção de renomeação de diretório no acervo de roadmaps — o `docs/roadmaps/wip/` dele
+mapeado para o nosso `docs/roadmaps/claude/done/` — podia acrescentar **1 ou 2 caminhos fantasma** ao
+denominador, e que nesse caso o número a defender seria o **PRODUTO = 82**, não o total. O total
+ficou em 87. A previsão nomeava o que a falsificaria; nada a reescrever.
+
+#### 🔴 O desconhecido que eu declarei às 06:57 foi fechado pelo produto, e pela rota mais forte
+
+A medição da manhã deixou **declarado como desconhecido** se o F1 do red team dele — *"i18n emite PT
+quando `LANG=pt_BR.UTF-8`"* — alcançaria esta máquina, porque aqui `LANG` é vazio no Git Bash e a
+cultura do Windows é `pt-BR`. O discriminante era **o resolvedor dele**, não o meu palpite sobre ele.
+Lido no código que entrou:
+
+```go
+// internal/i18n/i18n.go
+// DetectLocale always returns "en-US". The product emits only English
+func DetectLocale() string { return "en-US" }
+```
+
+**Sem variável de ambiente e sem cultura do SO.** Não houve o que medir deste lado: a pergunta deixou
+de ter sujeito.
+
+🔴 **E a primeira leitura disto saiu ERRADA, por instrumento — eu li deleção como adição.** Publiquei
+que os `pt-BR.json` e `es-ES.json` *"chegaram no pacote"*. **Eles saíram.** O que mostra é
+`--name-status`, não `--name-only`:
+
+```
+--name-only   internal/i18n/locales/{es-ES,pt-BR}.json      <- indistinguivel de adicao
+--name-status D  es-ES.json      D  pt-BR.json
+no NOSSO HEAD, a 11.6.0          en-US · es-ES · pt-BR       <- os tres existiam
+no upstream/main, a 11.7.0       en-US                        <- so um sobrou
+en-US.json                       inalterado no intervalo
+```
+
+**A correção torna a conclusão mais forte, não mais fraca:** não é só que o resolvedor devolve
+`en-US` — o dado de PT e ES **foi removido do produto**. Peguei antes de commitar, por um `D ` que
+apareceu no `git status` e que eu tinha filtrado da leitura anterior.
+
+**A lição é de forma, e é a de sempre nesta casa:** `--name-only` responde *"quais caminhos estão no
+conjunto"*, nunca *"o que aconteceu com eles"* — e eu fiz a segunda pergunta com o instrumento da
+primeira. Mesma família do `--dry-run` dizendo `updated=4` para 62 linhas perdidas.
+
+#### 🔴 E isto ACRESCENTA motivo ao veto do `trackfw update` nesta raiz, em vez de aliviá-lo
+
+Medido por efeito no índice, não lido do PR — o `claudemd.go` veio com **4 linhas trocadas**, e uma
+delas é a legenda de estado que o nosso `CLAUDE.md` carrega **dentro** do bloco gerenciado:
+
+```
+-  `**Status:** ⬜ Pendente` → `**Status:** 🔄 Em andamento` ... `**Status:** ✅ Concluído`
++  `**Status:** ⬜ Pending`  → `**Status:** 🔄 In progress`  ... `**Status:** ✅ Done`
+o nosso CLAUDE.md, hoje   as duas linhas em PORTUGUES, dentro do bloco de regras
+```
+
+Então o preço de rodar o `update` aqui deixou de ser só as **62 linhas de medição** que a seção de
+12/10 mediu: passou a ser as 62 linhas **mais** a legenda traduzida. O **F2** e o **S4** do red team
+dele dizem o mesmo mecanismo pelo lado de fora — o `update` preserva o que está **fora** dos
+sentinels e reescreve o bloco gerenciado —, e é justamente por isso que *"fora dos sentinels é
+preservado"* **não nos salva**: a nossa medição mora **dentro**.
+
+🔴 **E o leitor bilíngue da 11.6.0 é o que torna isso um custo de forma e não uma quebra.** Os nossos
+roadmaps seguem em `✅ Concluído` e o `validate` saiu **0 violações** sobre eles — então a legenda em
+português continua lida. O que se perderia no `update` é o texto, não a validade.
+
+#### O índice do `hades-tf` não abortou — e o gatilho que o `CLAUDE.md` nomeia estava LARGO
+
+A seção do `agent-memory` prevê que o sync aborta *"no dia em que ele editar as mesmas linhas do
+índice"*. Ele editou o índice **neste intervalo**, e não abortou:
+
+```
+ele inseriu na linha   3    (feedback do glifo do alias de `ls`)
+nos inserimos na       29   (as 9 notas do red team do trackfw-radar)
+resultado              Auto-merging — 0 marcador de conflito no arquivo
+depois do merge        a linha DELE presente (1) · as NOSSAS 9 presentes (9)
+```
+
+**O mecanismo da previsão está certo e o gatilho é mais estreito do que ela diz:** não é *"tocar o
+índice"*, é **tocar as mesmas linhas**. Terceiro intervalo em que ele toca o índice sem colidir.
+
+#### Verificação, por efeito
+
+```
+conflito de PRODUTO no merge de ensaio (merge-tree, write-free)   ZERO
+conflitos                        4, TODOS docs/ — resolvidos por retenção
+retencao POR EFEITO              os 5 docs/ dele: nem staged, nem na arvore (0 de 5)
+invariante                       staged ⊆ produto: 0 caminho de docs/ ou vault/ no indice
+go build ./...                   exit 0
+validate                         0 antes · 0 depois · 3 avisos (o piso) · 0 de escopo global
+a tripla                         N/A — nenhum arquivo de linha de hook no intervalo
+bin/ por EFEITO                  os dois executam: --version rc=0, "trackfw 11.7.0"
+copia do PATH                    N/A: o contorno dos shims nao esta em vigor
+```
+
+🔴 **O `bin/` foi conferido pela EXECUÇÃO, não pela existência** — é o instrumento que 10/11 deixou,
+e o Defender não interferiu nesta passada. **Isso não revoga a janela daquele dia**: ausência de
+detecção numa passada é ausência de detecção numa passada.
+
+#### E ele pegou a nossa #676 no mesmo dia
+
+A varredura das 11:50 achou branch nova dele, de 10:48, com **ADR, REQ e roadmap de *mktemp* sem
+limpeza garantida**, citando a **#676** e com o ML-0A em andamento. A issue era nossa, a bola estava
+com ele desde 08/11, e saiu. O que a leitura de PRs não daria: **não há PR** — é branch de trabalho,
+e só o braço de branches a vê.
+
