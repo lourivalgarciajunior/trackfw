@@ -1,14 +1,14 @@
 ---
-status: Open
+status: Done
 date: 2026-11-11
 author: "claude"
 adr: "docs/adr/ADR-2026-11-11-limpeza-garantida-de-mktemp-nos-nossos-scripts-e-por-trap-exit-que-cita-a-variavel-e-o-rm-explicito-fica.md"
-roadmap: "docs/roadmaps/claude/wip/ROADMAP-2026-11-11-os-nossos-3-sitios-de-mktemp-vazam-temporario-sem-trap-exit-e-o-gate-do-681-os-acusa.md"
+roadmap: "docs/roadmaps/claude/done/ROADMAP-2026-11-11-os-nossos-3-sitios-de-mktemp-vazam-temporario-sem-trap-exit-e-o-gate-do-681-os-acusa.md"
 ---
 
 # REQ: os nossos 3 sitios de mktemp vazam temporario sem trap EXIT e o gate do 681 os acusa
 
-> Date: 2026-11-11 | Status: Open
+> Date: 2026-11-11 | Status: Done
 | Linear Issue:
 | Jira Issue:
 
@@ -61,22 +61,22 @@ vale: sítio nosso não entra na REQ dele.
 
 ## Acceptance Criteria
 
-- [ ] AC1 — os 3 sítios têm limpeza garantida de EXIT no mesmo escopo, e o gate **em árvore**
+- [x] AC1 — os 3 sítios têm limpeza garantida de EXIT no mesmo escopo, e o gate **em árvore**
       (depois do sync) sai `rc=0` com `0 achados` sobre a nossa árvore inteira
-- [ ] AC2 — o fechamento do vazamento é provado **por efeito**, com o instrumento que acertou
+- [x] AC2 — o fechamento do vazamento é provado **por efeito**, com o instrumento que acertou
       (vigiar o `TMPDIR`, matar pelo PID no instante em que o diretório aparece), e a medição
       pré-conserto fica ao lado como **controle**
-- [ ] AC3 — o `trap` **não altera o código de saída** dos três scripts, provado nas duas direções:
+- [x] AC3 — o `trap` **não altera o código de saída** dos três scripts, provado nas duas direções:
       self-test que passa continua `rc=0`, e caso que reprova continua reprovando
-- [ ] AC4 — a enumeração fica **declarada fechada**: as 9 ocorrências de `mktemp` nos nossos
+- [x] AC4 — a enumeração fica **declarada fechada**: as 9 ocorrências de `mktemp` nos nossos
       scripts classificadas em 3 acusados + 5 cobertos + 1 prosa, e o denominador reconcilia
-- [ ] AC5 — o sync do `356fb79b` entra **no mesmo PR**, com retenção provada por efeito e
+- [x] AC5 — o sync do `356fb79b` entra **no mesmo PR**, com retenção provada por efeito e
       **zero** conflito de produto
-- [ ] AC6 — `trackfw validate` com 0 violações, e a contagem de avisos **derivada da saída**,
+- [x] AC6 — `trackfw validate` com 0 violações, e a contagem de avisos **derivada da saída**,
       nunca digitada ao lado de um `rc`
-- [ ] AC7 — `scripts/run-local-gates.sh` sobre a árvore **final** (não mista), com o denominador
+- [x] AC7 — `scripts/run-local-gates.sh` sobre a árvore **final** (não mista), com o denominador
       impresso
-- [ ] AC8 — `docs/agents-working-context.md` atualizado, carregando o que **não** se deriva: a
+- [x] AC8 — `docs/agents-working-context.md` atualizado, carregando o que **não** se deriva: a
       medição, o motivo e as sondas que mentiram
 
 ## Linked ADR
@@ -88,4 +88,4 @@ ADR: docs/adr/ADR-2026-11-11-limpeza-garantida-de-mktemp-nos-nossos-scripts-e-po
 
 ## Linked Roadmap
 <!-- Reference the roadmap that implements this requirement -->
-Roadmap: docs/roadmaps/claude/wip/ROADMAP-2026-11-11-os-nossos-3-sitios-de-mktemp-vazam-temporario-sem-trap-exit-e-o-gate-do-681-os-acusa.md
+Roadmap: docs/roadmaps/claude/done/ROADMAP-2026-11-11-os-nossos-3-sitios-de-mktemp-vazam-temporario-sem-trap-exit-e-o-gate-do-681-os-acusa.md

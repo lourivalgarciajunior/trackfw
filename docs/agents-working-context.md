@@ -35984,3 +35984,30 @@ safety check     rm -rf "$VAR" dentro de laco    recusado: refeito SEM remocao n
 
 O primeiro foi num caso em que eu **sabia** que o conteúdo era idêntico ao blob — e o guard não pode
 saber. A saída foi reestagiar o conteúdo idêntico, que não descarta nada.
+
+### 🔴 E a mensagem do commit `6693e0c3` deste próprio ciclo foi corrompida por backtick
+
+A memória `backtick-na-mensagem-de-commit-e-executado` existe, e eu usei a via correta
+(`M=$(cat arquivo)` e depois `-m "$M"`) nos **quatro** commits anteriores deste PR. No quinto escrevi
+a mensagem **inline** em `-m "..."`, com um `` `invalid regexp: Unmatched (` `` dentro — e o bash
+**executou** a substituição de comando:
+
+```
+/usr/bin/bash: command substitution: line 27: syntax error near unexpected token `('
+o commit ACONTECEU, com rc=0 na linha do trackfw commit
+a linha gravada:  "A terceira morreu em  e nao injetou nada"   <- o texto SUMIU
+backticks na mensagem: 0
+```
+
+🔴 **O commit sai com sucesso e o registro sai mutilado** — não há sinal de erro no `rc` do
+`trackfw commit`, só duas linhas de aviso do bash antes dele, fáceis de perder numa saída longa.
+
+**E não há conserto pela via governada:** o `trackfw commit` não tem `--amend` (conferido no
+`--help`, que lista só `-m` e `--suggest`), e o guard bloqueia `git commit` cru, inclusive com
+`--amend`. **Não contornei.** A mensagem corrompida fica no histórico, e o commit seguinte registra
+o que se perdeu — que é, afinal, o que a regra global já prefere (*"prefira criar um commit novo a
+emendar"*).
+
+**A regra, mecânica:** mensagem de commit **sempre** por arquivo —
+`M=$(cat <arquivo>)` e depois `-m "$M"`. Nunca inline quando houver backtick, e **assuma que haverá**,
+porque este repositório escreve nome de comando entre backticks em quase toda mensagem.

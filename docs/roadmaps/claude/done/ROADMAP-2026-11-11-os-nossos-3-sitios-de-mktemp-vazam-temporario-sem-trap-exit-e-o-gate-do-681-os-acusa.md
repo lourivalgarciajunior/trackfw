@@ -1,5 +1,5 @@
 ---
-status: wip
+status: done
 date: 2026-11-11
 req: "docs/requisições/claude/REQ-2026-11-11-os-nossos-3-sitios-de-mktemp-vazam-temporario-sem-trap-exit-e-o-gate-do-681-os-acusa.md"
 squad: "claude"
@@ -7,7 +7,7 @@ squad: "claude"
 
 # Roadmap: os nossos 3 sitios de mktemp vazam temporario sem trap EXIT e o gate do 681 os acusa
 
-> Created: 2026-11-11 | Status: wip
+> Created: 2026-11-11 | Status: done
 
 ## Context
 <!-- Derived from REQ: REQ-2026-11-11-os-nossos-3-sitios-de-mktemp-vazam-temporario-sem-trap-exit-e-o-gate-do-681-os-acusa.md -->
@@ -20,7 +20,7 @@ porque é ele que põe o instrumento no lugar.
 
 ## Acceptance Criteria
 <!-- Consolidated criteria for this roadmap. Detail per ML in the waves below. -->
-- [ ] AC1 a AC8 da REQ vinculada, um a um, com medição ao lado de cada
+- [x] AC1 a AC8 da REQ vinculada, um a um, com medição ao lado de cada
 - [x] o veredito final é do gate **em árvore**, nunca da cópia que usei no scratchpad para prever
 
 ## Status Legend
@@ -182,7 +182,7 @@ bash scripts/check-mktemp-cleanup.sh
 3. Conferir que nenhuma afirmação em **presente** entrou no handoff ou no `CLAUDE.md`.
 **Acceptance criteria:**
 - [x] AC6 — `validate` 0 violações, avisos **derivados** da saída
-- [ ] AC7 — `run-local-gates.sh` sobre a árvore final, com denominador
+- [x] AC7 — `run-local-gates.sh` sobre a árvore final, com denominador
 - [x] AC8 — handoff carregando o que não se deriva
 
 **Medido:**
@@ -209,6 +209,24 @@ sendo acusado, logo o silêncio nos arquivos reais é **cobertura**, não ceguei
 **3. Afirmação em presente.** Conferido: o handoff e os commits datam no passado. A seção do
 `CLAUDE.md` do `wip/` vazio **não** foi editada para dizer que as regras "estão silenciosas" em
 presente — o que entrou no handoff é a medição datada de hoje.
+
+**4. AC7 — o agregador sobre a árvore final, com denominador:**
+
+```
+run-local-gates: 16 executado(s) · 0 falha(s)
+reportaram 16 · FAIL 0 · 596 s (18:54:23 -> 19:04:19)
+```
+
+🔴 **O `exit 0` da tarefa não foi o veredito** — ele sai 0 também de tarefa interrompida por
+desligamento, que já aconteceu aqui. O que decide é a **linha de resumo** com o denominador, lida do
+arquivo; e a saída foi para **arquivo, nunca cano**, porque `| tail` em segundo plano apaga o
+progresso e deixa 0 byte com tudo andando.
+
+🔴 **Limite declarado:** essa passada mediu a árvore **antes** do commit de fechamento, que move o
+roadmap para `done/` e põe a REQ em `Done`. Três gates leem exatamente isso —
+`check-handoff-cobre-o-ciclo`, `check-roadmap-done-com-ml-pendente` e
+`check-req-done-com-criterio-aberto` —, então eles foram **re-rodados** depois do fechamento, e o
+resultado está no corpo do PR. Os outros 13 não têm entrada alterada por esse commit.
 
 **Wave gates:**
 ```bash
