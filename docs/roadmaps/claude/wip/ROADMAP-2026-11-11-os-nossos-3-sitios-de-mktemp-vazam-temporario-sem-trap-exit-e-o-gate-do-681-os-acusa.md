@@ -172,7 +172,7 @@ bash scripts/check-mktemp-cleanup.sh
 > Dependencies: Wave 1.
 
 ### ML-2A — Leitura adversarial antes do PR
-**Status:** ⬜ Pending
+**Status:** 🔄 In progress
 **Files affected:** nenhum (revisão)
 **Actions:**
 1. Confrontar cada teste/medição nova com a conclusão do próprio relatório — a Regra Dura de
