@@ -162,6 +162,10 @@ if [ "${1:-}" = "--self-test" ]; then
   # Caso sintetico aqui e legitimo porque o que se afirma e a LEITURA DA PASTA,
   # e a pasta e construtivel.
   TMPD=$(mktemp -d 2>/dev/null) || TMPD=""
+  # ADR-2026-11-11 D1/D2/D4: limpeza garantida citando ${TMPD:-} (forma DIRECT), com
+  # erro silenciado porque aqui o mktemp PODE falhar e `rm -rf ""` erra. O rm do
+  # caminho normal, na linha 180, fica — D3.
+  trap 'rm -rf "${TMPD:-}" 2>/dev/null || :' EXIT
   if [ -n "$TMPD" ]; then
     cdcaso() { # <esperado> <rotulo> <arquivos...>
       local esp="$1" rot="$2"; shift 2

@@ -127,7 +127,7 @@ antes do sync chegaram **consertados**, e sobraram só os nossos 3. Se tivesse a
 #681 não teria fechado o que diz ter fechado.
 
 ### ML-1B — Limpeza garantida nos 3 sítios nossos
-**Status:** 🔄 In progress
+**Status:** ✅ Done
 **Files affected:** `scripts/anexa-crlf.sh`, `scripts/check-contorno-dos-shims-caducou.sh`, `scripts/check-copia-do-path-esta-atras.sh`
 **Actions:**
 1. Um `trap` de EXIT por sítio, imediatamente após o `mktemp`, citando `${V:-}` (forma DIRECT do
@@ -135,9 +135,32 @@ antes do sync chegaram **consertados**, e sobraram só os nossos 3. Se tivesse a
 2. Manter o `rm` explícito do caminho normal — T1 do threat model.
 3. Provar o fechamento por efeito com o instrumento do AC2, e provar o AC3 nas duas direções.
 **Acceptance criteria:**
-- [ ] AC1 — gate em árvore `rc=0`, `0 achados`, denominador impresso
-- [ ] AC2 — vazamento fechado por efeito nos 3, com a medição pré-conserto como controle
-- [ ] AC3 — código de saída intacto, medido nas duas direções
+- [x] AC1 — gate em árvore `rc=0`, `0 achados`, denominador impresso
+- [x] AC2 — vazamento fechado por efeito nos 3, com a medição pré-conserto como controle
+- [x] AC3 — código de saída intacto, medido nas duas direções
+
+**Medido:**
+
+```
+AC1  gate em arvore, arvore inteira      rc=0 · 0 achados · self-test 32/0
+     sh -n nos tres                      OK · CR-solto=0 antes e depois
+
+AC2+AC3  copia descartavel com `exit 7` injetado entre o mktemp e o rm:
+     com trap    rc=7   vazou=0   (limpo)      <- limpa na saida antecipada
+     sem trap    rc=7   vazou=1   🔴 VAZOU     <- o CONTROLE: so o trap muda
+
+AC3 direcao 2, os self-tests REAIS:
+     anexa-crlf                 rc=0  vazou=0   9 caso(s) · 0 falha(s)
+     check-contorno             rc=0  vazou=0  18 caso(s)
+     check-copia                rc=0  vazou=0  14 caso(s)
+     os dois gates no modo NORMAL   rc=0  vazou=0
+```
+
+🔴 **A primeira versão desta sonda deu `rc=0 · 0 vazou` nas seis leituras — e era sonda VAZIA.**
+O `awk` com regex dinâmico morreu em `invalid regexp: Unmatched (` e **não injetou o `exit 7`**,
+então ela mediu o caminho feliz pela terceira vez nesta REQ. Refeita por **número de linha**, com a
+injeção **conferida antes de ler qualquer `rc`** — é essa conferência, e não o `rc`, que separa
+"o conserto funciona" de "a sonda não testou nada".
 
 **Wave gates:**
 ```bash

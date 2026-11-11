@@ -221,6 +221,10 @@ if [ "${1:-}" = "--self-test" ]; then
   # reverter, o alarme continuaria VERMELHO para sempre — ruido permanente, que e o
   # defeito que levamos ao upstream na #530 e que eu repeti aqui.
   TMPP=$(mktemp -d 2>/dev/null) || TMPP=""
+  # ADR-2026-11-11 D1/D2/D4: limpeza garantida citando ${TMPP:-} (forma DIRECT), com
+  # erro silenciado porque aqui o mktemp PODE falhar e `rm -rf ""` erra. O rm do
+  # caminho normal, na linha 245, fica — D3.
+  trap 'rm -rf "${TMPP:-}" 2>/dev/null || :' EXIT
   if [ -n "$TMPP" ]; then
     pcaso() { # <esperado> <rotulo> <conteudo>
       local esp="$1" rot="$2" conteudo="$3"
