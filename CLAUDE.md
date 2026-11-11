@@ -247,9 +247,36 @@ que esta regra é mecânica em vez de "lembrar melhor".
 
 ### A ordem de escolha, medida
 
-1. **`Edit`** para mudança pontual. **Ele preserva CRLF**, medido em 2026-10-31 no
+1. **`Edit`** para mudança pontual. **Ele preserva o CRLF de FIM DE LINHA**, medido em 2026-10-31 no
    `.github/workflows/local-gates.yml` (CRLF, 243 linhas): depois do acréscimo, `CR=261 LF=261`,
    **0 linhas LF puro**, e o diff saiu `+18` sem churn.
+
+   🔴 **E em 11/11/2026 ele derrubou um CR SOLTO fora da região editada — a medição de 31/10 não
+   alcançava esse caso, por construção.** Ali `CR=261 LF=261` quer dizer **zero CR solto no arquivo**:
+   não havia o que perder. O `docs/agents-working-context.md` tem **4**, de heredocs antigos que
+   escreveram `\r` como byte real, e uma edição na linha ~35800 colapsou o da **32079**:
+
+   ```
+   HEAD      ...endswith(b"<CR><CR>  + LF
+   depois    ...endswith(b"<CR>      + LF        <- um CR colapsado
+   CR solto  4 -> 3     ·     linhas LF puro  0 antes e 0 depois
+   ```
+
+   **Fim de linha intacto, conteúdo alterado** — e é por isso que o número que decide **não** é
+   `CR == linhas`: esse teste passa nas duas versões. O instrumento é **`CR − CRLF`** (o CR solto),
+   que só se lê com slurp binário:
+
+   ```bash
+   cat arquivo | perl -e 'binmode(STDIN); local $/; my $d=<STDIN>; my $cr=()=$d=~/\r/g; my $lf=()=$d=~/\n/g; my $crlf=()=$d=~/\r\n/g; printf("CR=%d LF=%d CRLF=%d LF-only=%d CR-solto=%d\n",$cr,$lf,$crlf,$lf-$crlf,$cr-$crlf);'
+   ```
+
+   🔴 **Três instrumentos de texto mentiram antes deste acertar**, e os três são da família já
+   registrada — `awk '!/\r$/'` disse **35887 linhas sem CR** num arquivo em que todas têm;
+   `grep -Unv $'\r$'` disse **zero** linhas sem CR, que é verdade e responde outra pergunta; e o
+   `sed -n '<n>p' | od -c` **comeu o CR inclusive por cano**, o que me fez localizar o defeito na
+   linha errada e declarar *"achado precisamente"* sobre a saída do `sed`. Antes de editar arquivo
+   com CR solto, **meça `CR − CRLF` antes e depois** — e o `anexa-crlf.sh` não tem esse furo, porque
+   compara os bytes anexados e confere que o conteúdo anterior não mudou.
 2. **`Write`** para arquivo novo ou reescrito inteiro.
 3. **`scripts/anexa-crlf.sh <fonte> <alvo>`** para anexar ao fim de arquivo grande — o caso em que
    o `Edit` pede âncora única e leitura prévia, e o `Write` reescreveria 32 mil linhas. A fonte se
@@ -957,7 +984,7 @@ guarda o defeito.
 agente" e passa a ter consumidor no produto, visível ao usuário a cada push. O sítio é do upstream,
 então vira **issue**, não correção local, pelo escopo negativo de sempre.
 
-## 🔴 Não rode `trackfw update` na raiz deste fork — ele apaga 62 linhas de medição do `CLAUDE.md`
+## 🔴 Não rode `trackfw update` na raiz deste fork — 62 linhas de medição em 12/10, e a legenda traduzida desde 11/11
 
 Medido por efeito em 2026-10-12, com o binário **9.4.3**, em **worktree descartável** e com o
 comando **real**, não com o `--dry-run`:
@@ -983,6 +1010,29 @@ por efeito do `roadmap new` sobrescrevendo em silêncio, a cobrança do
 `check-handoff-cobre-o-ciclo.sh`, e a regra *"Datado e no passado não envelhece. Presente
 envelhece."*. O `update` troca o bloco pelo **template canônico**, que é o trabalho dele; o nosso
 bloco é um **superconjunto** com medição local, e superconjunto não sobrevive a template.
+
+### 🔴 E em 11/11/2026 o preço SUBIU: o template passou a traduzir a legenda de estado
+
+O [#679](https://github.com/kgsaran/trackfw/pull/679) do upstream (11.7.0) trocou **4 linhas** do
+`internal/generators/claudemd.go`, e uma delas é a legenda que o nosso `CLAUDE.md` carrega **dentro**
+do bloco gerenciado. Medido por efeito no índice do sync, não lido do PR:
+
+```
+-  `**Status:** ⬜ Pendente` → `**Status:** 🔄 Em andamento` ... `**Status:** ✅ Concluído`
++  `**Status:** ⬜ Pending`  → `**Status:** 🔄 In progress`  ... `**Status:** ✅ Done`
+o nosso CLAUDE.md, no bloco de regras   as duas linhas em PORTUGUES
+```
+
+Então o custo deixou de ser só as 62 linhas: é as 62 linhas **mais** a legenda traduzida.
+
+🔴 **E o F2/S4 do red team dele descreve o mesmo mecanismo pelo lado de fora — o que NÃO nos salva.**
+Ele mediu que o `update` preserva o que está **fora** dos sentinels e reescreve o bloco gerenciado;
+a nossa medição mora **dentro**, então ler *"fora dos sentinels é preservado"* como alívio é ler a
+garantia errada.
+
+**O que isso NÃO é: quebra.** O leitor bilíngue da 11.6.0 ([#677](https://github.com/kgsaran/trackfw/pull/677))
+aceita as duas grafias, e o `validate` do sync da 11.7.0 saiu **0 violações** sobre os nossos
+roadmaps em `✅ Concluído`. O que se perderia é o **texto**, não a validade.
 
 **Mesma família do `make parity-rest`, com a diferença que importa:** lá havia **defeito** — um gate
 rodava o `init` no cwd e reescrevia o `trackfw.yaml` (#366, corrigido pelo #381). Aqui **não há
