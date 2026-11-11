@@ -94,8 +94,8 @@ grep -q 'TMPD=$(mktemp -d 2>/dev/null) || TMPD=""' scripts/check-copia-do-path-e
 > Dependencies: Wave 0.
 
 ### ML-1A — Sync do `356fb79b`: traz o gate e os 7 sítios dele consertados
-**Status:** 🔄 In progress
-**Files affected:** `Makefile`, `scripts/` (8 alterados + 1 novo), `bin/`
+**Status:** ✅ Done
+**Files affected:** `Makefile`, `scripts/` (7 alterados + 1 novo), `bin/`
 **Actions:**
 1. `scripts/upstream-sync.sh`, que retém `docs/`, `vault/` e o `trackfw.yaml`, prova a retenção
    por efeito e aborta se não puder provar.
@@ -104,9 +104,27 @@ grep -q 'TMPD=$(mktemp -d 2>/dev/null) || TMPD=""' scripts/check-copia-do-path-e
    que o conflito de **produto** é zero.
 3. Não commitar nem empurrar neste ML: o conserto vem antes do push, senão o push nasce vermelho.
 **Acceptance criteria:**
-- [ ] AC5 — retenção provada por efeito, zero conflito de produto
-- [ ] o gate novo existe em `scripts/check-mktemp-cleanup.sh` e o `--self-test` passa **aqui**
-- [ ] `go build ./...` sai 0 e o `bin/` é conferido pela **execução**, não pela existência
+- [x] AC5 — retenção provada por efeito, zero conflito de produto
+- [x] o gate novo existe em `scripts/check-mktemp-cleanup.sh` e o `--self-test` passa **aqui**
+- [x] `go build ./...` sai 0 e o `bin/` é conferido pela **execução**, não pela existência
+
+**Medido:**
+
+```
+previsto   PRODUTO 9 (Makefile + 8 scripts) · RETIDO 10 (docs 8 + vault 2)   = 19
+o script   "9 de PRODUTO, 10 RETIDOS (de 19 no merge)"        <- exato, nome a nome
+o falsificador nomeado (caminho fantasma por deteccao de renomeacao)  NAO disparou
+retencao por efeito      0 de 5 arquivos dele amostrados presentes (indice ou disco)
+invariante               0 caminho de docs/ ou vault/ no indice · staged = 9
+go build ./...           exit 0        validate  0 antes · 0 depois
+bin/ pela EXECUCAO       "trackfw 11.7.0"  rc=0
+gate em arvore           --self-test  32 passed / 0 failed
+gate sobre a nossa       rc=1 · 3 achados · 3 arquivos · TODOS nossos · 0 dele
+```
+
+🔴 **A última linha é a previsão do PR fechando exata** — os 7 arquivos dele que o gate acusava
+antes do sync chegaram **consertados**, e sobraram só os nossos 3. Se tivesse acusado algum dele, o
+#681 não teria fechado o que diz ter fechado.
 
 ### ML-1B — Limpeza garantida nos 3 sítios nossos
 **Status:** ⬜ Pending
