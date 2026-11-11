@@ -21,7 +21,7 @@ porque é ele que põe o instrumento no lugar.
 ## Acceptance Criteria
 <!-- Consolidated criteria for this roadmap. Detail per ML in the waves below. -->
 - [ ] AC1 a AC8 da REQ vinculada, um a um, com medição ao lado de cada
-- [ ] o veredito final é do gate **em árvore**, nunca da cópia que usei no scratchpad para prever
+- [x] o veredito final é do gate **em árvore**, nunca da cópia que usei no scratchpad para prever
 
 ## Status Legend
 ⬜ Pending · 🔄 In progress · ✅ Done · ❌ Blocked
@@ -172,7 +172,7 @@ bash scripts/check-mktemp-cleanup.sh
 > Dependencies: Wave 1.
 
 ### ML-2A — Leitura adversarial antes do PR
-**Status:** 🔄 In progress
+**Status:** ✅ Done
 **Files affected:** nenhum (revisão)
 **Actions:**
 1. Confrontar cada teste/medição nova com a conclusão do próprio relatório — a Regra Dura de
@@ -181,9 +181,34 @@ bash scripts/check-mktemp-cleanup.sh
    cano, contagem digitada ao lado de um `rc` medido.
 3. Conferir que nenhuma afirmação em **presente** entrou no handoff ou no `CLAUDE.md`.
 **Acceptance criteria:**
-- [ ] AC6 — `validate` 0 violações, avisos **derivados** da saída
+- [x] AC6 — `validate` 0 violações, avisos **derivados** da saída
 - [ ] AC7 — `run-local-gates.sh` sobre a árvore final, com denominador
-- [ ] AC8 — handoff carregando o que não se deriva
+- [x] AC8 — handoff carregando o que não se deriva
+
+**Medido:**
+
+**1. Reconciliação.** Nenhum teste novo entrou — o instrumento é o gate **do upstream**, e cada
+medição deste roadmap sustenta um AC nomeado. A sonda que eu escrevi não é artefato entregue: é
+descartável, e está descrita com o defeito que ela teve.
+
+**2. Verde pelo motivo errado, procurado nos três lugares em que esta casa já pagou:**
+
+```
+gate silencioso por ter parado de varrer?   NAO — falsificado por arquivo:
+    trap REMOVIDO          rc=1, acusa          (nos 3)
+    trap 'true' EXIT       rc=1, acusa TAMBEM   (nos 3)   <- presente mas sem citar
+    o arquivo real         rc=0                 (nos 3)
+self-test vacuo?                            NAO — 32 passed / 0 failed, denominador impresso
+`rc` lido depois de cano?                   nenhum cano entre comando e `rc` nesta REQ
+contagem digitada ao lado de `rc` medido?   nenhuma — todas por `grep -c` da saida
+```
+
+🔴 **A segunda linha é a que fecha o buraco:** trap presente que **não cita** a variável continua
+sendo acusado, logo o silêncio nos arquivos reais é **cobertura**, não cegueira do gate.
+
+**3. Afirmação em presente.** Conferido: o handoff e os commits datam no passado. A seção do
+`CLAUDE.md` do `wip/` vazio **não** foi editada para dizer que as regras "estão silenciosas" em
+presente — o que entrou no handoff é a medição datada de hoje.
 
 **Wave gates:**
 ```bash

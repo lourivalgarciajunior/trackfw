@@ -35885,3 +35885,102 @@ limpeza garantida**, citando a **#676** e com o ML-0A em andamento. A issue era 
 com ele desde 08/11, e saiu. O que a leitura de PRs não daria: **não há PR** — é branch de trabalho,
 e só o braço de branches a vê.
 
+
+---
+
+## 2026-11-11 (tarde) — o gate de *mktemp* do #681 chegou e acusou 3 sítios NOSSOS; sync e conserto no mesmo PR
+
+**REQ-2026-11-11** · **ADR-2026-11-11** · roadmap `claude/wip → done` · branch
+`fix/limpeza-garantida-de-mktemp-nos-nossos-3-sitios`
+
+O upstream mesclou o **#681** às **16:51** (local), fechando a **nossa #676** no mesmo minuto, e com
+ele veio `scripts/check-mktemp-cleanup.sh`, ligado no `make parity-rest` — alvo que o `quality.yml`
+compartilhado roda no `parity-other-gates`, com o `parity` dependendo dele.
+
+### A previsão foi escrita ANTES do merge e re-medida contra o que mesclou
+
+🔴 **Eu havia medido a BRANCH (`e5b23438`) e o que mesclou é um squash (`356fb79b`).** Branch anda,
+então re-medi: `cmp` diz que os dois gates são **idênticos**, e é isso que faz a medição da branch
+valer para o merge. Sem o `cmp`, seria previsão sobre código que pode ter mudado no meio — o defeito
+de forma que o registro da #557 já nomeou.
+
+```
+o gate sobre a NOSSA arvore, ANTES do sync   rc=1 · 15 achados em 10 arquivos
+  dele, e o #681 CONSERTA        7 arquivos
+  🔴 NOSSOS, e ninguem conserta  3 arquivos / 3 achados      3+7+0 = 10 ✓
+o mesmo gate sobre a arvore DELE             rc=0 · 0 achados · self-test 32/0
+DEPOIS do sync, o gate em ARVORE             rc=1 · 3 achados · 3 arquivos · 0 dele
+```
+
+A última linha é a previsão fechando exata: os 7 dele chegaram consertados.
+
+### A enumeração fecha em 3 — e corrigiu o MEU classificador, não o dele
+
+Varri `mktemp` nos **23** scripts que só existem neste fork (derivados por
+`git cat-file -e upstream/main:<f>`, não por lista à mão): **9** ocorrências, `3 acusados + 5
+cobertos + 1 prosa`. 🔴 **O meu regex exigia `=$(mktemp` sem aspas e leu `WORK="$(mktemp -d)"` e
+`tmp="$(mktemp -d)"` como "sem atribuição" — 2 falsos em 3.** O gate dele parseia a forma com aspas
+e não acusou nenhum dos dois, que têm trap. Predicado meu mais estreito que o da regra produz alarme
+que a regra nunca daria.
+
+### 🔴 A sonda errada apareceu TRÊS vezes na mesma REQ, e a terceira quase virou registro falso
+
+| sonda | disse | por quê |
+|---|---|---|
+| rodar o self-test normalmente | 0 vazado | mediu o caminho **feliz**, onde o `rm` do fim roda |
+| `timeout -s INT` a 0,35 s e a 2 s | 0, e **1** numa repetição da mesma linha | **não reproduz** — causa declarada desconhecida |
+| `awk` com regex dinâmico injetando `exit 7` | `rc=0 · 0 vazou` em **seis** leituras | morreu em `invalid regexp: Unmatched (` e **não injetou nada** |
+| vigiar o `TMPDIR` + matar pelo PID · injetar por **número de linha** | 🔴 vaza / 🔴 vaza sem trap | as que acertaram |
+
+A terceira é a pior, porque eu estava a um passo de escrever *"o conserto funciona"* sobre uma sonda
+que não testou nada. **O que separou foi conferir a injeção antes de ler qualquer `rc`**
+(`injecao: com=1 sem=1 · trap presente: com=1 sem=0`) — e essa conferência, não o `rc`, é o
+instrumento.
+
+### O que ficou medido do conserto
+
+```
+forma            trap 'rm -rf "${V:-}" 2>/dev/null || :' EXIT   logo apos o mktemp
+                 DIRECT (D1) · ${V:-} por causa de set -u (D2) · o rm do fim FICA (D3)
+                 erro silenciado porque o mktemp pode falhar nos dois gates (D4)
+AC1  gate em arvore, arvore inteira     rc=0 · 0 achados · self-test 32/0
+AC2+AC3  copia com `exit 7` injetado:   com trap rc=7 vazou=0  ·  sem trap rc=7 vazou=1
+AC3 direcao 2, self-tests REAIS         9 · 18 · 14 caso(s), rc=0, vazou=0
+falsificacao, por arquivo               trap removido ACUSA  ·  trap 'true' EXIT TAMBEM ACUSA
+```
+
+🔴 **A última linha é a que fecha o verde-pelo-motivo-errado:** um trap presente mas que **não cita**
+a variável continua sendo acusado, logo o silêncio nos arquivos reais é **cobertura**, não gate que
+parou de varrer.
+
+### O `wip/` deixou de estar vazio — o evento que o `CLAUDE.md` previu, e ele se confirmou
+
+A seção *"o `wip/` vazio é o que nos blinda das regras de gate novas"* diz que no primeiro roadmap
+`feat`/`fix`/`refactor` que entrar em `wip/` as regras de roadmap do upstream passam a valer. Entrou.
+Medido: `roadmap_wave0_required`, `roadmap_gate_coverage`, `roadmap_duplicate_label` e
+`roadmap_unterminated_fence` com **0 menções**, e **0** linhas citando wave/gate/fence. O formato de
+Wave 0 e o bloco de gates escritos aqui satisfazem as quatro. **Primeiro exercício real delas sobre
+roadmap nosso.**
+
+🔴 **E o gate da Wave 0 não é o `exit 1` do template** — substituí-lo é obrigatório (AC13). O que
+entrou afirma que os 3 sítios estão onde o roadmap diz, por `grep` ancorado: proposição **estável**
+antes e depois do conserto, porque o conserto acrescenta trap e não mexe na linha do `mktemp`.
+
+### O ADR não era formalidade — o `validate` cobrou
+
+A primeira passada depois de mover o roadmap para `wip/` saiu **`rc=1`**:
+`req has no linked ADR`. Havia decisão real a registrar — a forma do trap (D1–D4), a invariância do
+código de saída (D5) e a **fronteira D6**: mesma causa do #676, sítios **nossos**, logo REQ nossa.
+A Regra Dura manda mesma causa na mesma REQ, e a REQ dele governa os sítios dele; o escopo negativo
+desta casa tem o inverso, porque os arquivos nem existem lá.
+
+### Três cercas me pararam no caminho, e nenhuma foi contornada
+
+```
+PreToolUse       git checkout -- <path>          recusado: descarta mudanca nao commitada
+PreToolUse       git worktree remove --force     recusado: idem (refeito sem --force)
+safety check     rm -rf "$VAR" dentro de laco    recusado: refeito SEM remocao nenhuma
+```
+
+O primeiro foi num caso em que eu **sabia** que o conteúdo era idêntico ao blob — e o guard não pode
+saber. A saída foi reestagiar o conteúdo idêntico, que não descarta nada.
