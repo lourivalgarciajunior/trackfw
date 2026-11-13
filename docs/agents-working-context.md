@@ -36011,3 +36011,76 @@ emendar"*).
 **A regra, mecânica:** mensagem de commit **sempre** por arquivo —
 `M=$(cat <arquivo>)` e depois `-m "$M"`. Nunca inline quando houver backtick, e **assuma que haverá**,
 porque este repositório escreve nome de comando entre backticks em quase toda mensagem.
+
+---
+
+## 2026-11-13 — sync do #683: a guarda do `parity` virou lista de permitidos, e a minha previsão acertou o número pelo motivo ERRADO
+
+O upstream fechou, entre 11/11 20:37 e 13/11 09:12, cinco commits — #682, #683, #684, #685 e
+#686 —, e um deles é o conserto do nosso achado. O sync entrou em `chore/` com
+`PRODUTO 5 · RETIDO 29 (de 34)`, exatamente a previsão escrita antes.
+
+### 🔴 O #683 é a cobrança do que este repositório já havia publicado
+
+O `quality.yml` trocou a **lista de proibidos** pela **lista de permitidos** no agregador do
+`parity`:
+
+```
+- if: contains(needs.*.result, 'failure') || contains(..., 'cancelled') || contains(..., 'skipped')
++ run: scripts/check-needs-success.sh parity-falsify-shard parity-other-gates check-required-checks
+```
+
+E o comentário que ele **apagou** era o que afirmava que a guarda do `parity` testava só
+`failure` e `cancelled`, com `skipped` passando. É o diagnóstico que o `CLAUDE.md` daqui
+escreveu na seção do macOS: o `needs.*.result` vindo **`abandoned`** — valor fora dos quatro
+documentados — passaria **verde sobre nada verificado**.
+
+O gate novo (`scripts/check-needs-success.sh`, 525 linhas, dele) é **helper de runtime, não
+linter**: recebe `NEEDS_JSON` e os nomes dos jobs, exige `result == "success"` exato — sem case
+folding, sem trim, com `null`/ausente/não-string reprovando — e reprova também se o conjunto
+de chaves não casar com os argumentos.
+
+**A nossa exposição ao mesmo defeito era zero, e isso foi derivado por workflow, não suposto:**
+`local-gates.yml` (o único só nosso) tem **0** guardas de `needs.*.result`; as 3 do
+`quality.yml` são duas de `env` mais uma que **já** era allowlist, e as 2 do `release.yml` são
+`env` e não mudaram no intervalo. Pelo teste da Regra Dura de Causa Raiz não havia sítio nosso
+a corrigir.
+
+### 🔴 A previsão acertou o número e ERROU o mecanismo — e isso é o que vale guardar
+
+Eu previ que a normalização de `status: done` → `Done` do #686 poderia derrubar o denominador
+do `check-req-done-com-criterio-aberto.sh`, e previ que **o gate toleraria as duas grafias**.
+
+O denominador não se moveu — saída **byte a byte idêntica** —, e **não foi por tolerância**:
+
+```
+caminhos de docs/ no estágio do sync     0
+```
+
+O `upstream-sync.sh` **retém `docs/` inteiro**, e os 29 retidos incluem as 17 REQs que o #686
+renomeou. **A normalização nunca chegou aqui.** A tolerância às duas grafias existe de fato, e
+é provada por outro caminho — o nosso próprio acervo já mistura **59 `Done` · 23 `done` ·
+7 `Closed`**, com o `validate` contando as mesmas 82 Done —, mas isso é medição **independente**,
+e não a razão de o número não ter mexido.
+
+A lição de forma: **previsão que acerta o número pode estar errada no mecanismo, e aí ela não
+ensina nada na próxima vez.** Confira a causa, não só o valor.
+
+### 🔴 E o `validate 0 antes · 0 depois` é controle FRACO neste sync
+
+Fica declarado: o intervalo **não toca `internal/`**, então o binário não mudou — os mesmos
+`21392896` bytes, `trackfw 11.7.0` nas duas pontas — e a regra não tinha como mudar de veredito.
+Num sync sem produto em `internal/`, esse par de números prova apenas que nada se rompeu, nunca
+que alguma regra foi exercitada.
+
+### O que foi conferido por efeito
+
+O `bin/trackfw` **existe e executa** (`--version` rc=0), que é o instrumento desde o dia em que
+o Defender deixou arquivo íntegro que saía `rc=126`. O `check-needs-success.sh` **não** entra em
+`EXECUTAR` nem em `FORA` do nosso agregador, porque ele está em `upstream/main` e a derivação
+dos **23** scripts só nossos o exclui por construção — e o `Makefile` do intervalo traz o
+`--self-test`, que é o consumidor que o `check-orphan-gates.sh` dele exige.
+
+**Um número que não é conclusão:** o agregador saiu em **184 s**, contra os ~470–480 s
+registrados em 2026-10-13. É **uma** passada de wall-clock nesta máquina, sem o estado da
+máquina ao lado — e a regra desta casa diz que isso não é medida. Dado datado, nada além.
