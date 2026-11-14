@@ -36162,3 +36162,151 @@ vezes, porque agora sei que a API tem transiente.
 
 **Governança:** branch `docs/`, logo sem exigência de roadmap em `wip/`. Sem REQ porque o entregável
 é texto que passa a dizer a verdade medida, não implementação — mesmo critério das entradas de sync.
+
+---
+
+## 2026-11-14 — o usuário aposentou a previsão sobre produto do upstream, e o registro era a favor dele
+
+> *"não entendo essa questão de previsão, somos um fork do projeto, não faz sentido imaginar o que
+> vai vir de produto"*
+
+O argumento de fundo é de **alavanca**, e é o mais forte: num fork não temos voto no que o mantenedor
+constrói, logo saber antes não muda nada que esteja na nossa mão. É a mesma objeção que este
+repositório já faz a *"aviso que ninguém executa"*, aplicada à prática que eu vinha repetindo.
+
+### O que a derivação dos sete episódios disse
+
+```
+#550, o CLAUDE.md vai conflitar          certa   -> MUDOU uma acao ("mantenha o nosso texto")
+guard_wiring_removed nao vai acusar      certa   -> nao; decidiram as 4 sondas
+.claude/agent-memory/ produto = 0        ERRADA
+wip/ vazio nos blinda                    certa   -> nao; o duravel e o `ls` de uma linha
+#528 matcher byte a byte                 certa   -> nao; decidiu o `cmp`
+git add -A vai travar o sync             meia    -> errou o PRAZO (o binario do PATH)
+#683, a guarda do parity                 meia    -> acertou o numero, errou o MECANISMO
+```
+
+**Uma de sete pagou o próprio custo.**
+
+### 🔴 E o custo não era hipotético — a única que mudou uma ação virou a afirmação falsa mais caprichosa do arquivo
+
+A nota do #550 dizia que o `CLAUDE.md` era *"o único que o sync NÃO retém"*. **No mesmo dia do
+merge** o script passou a retê-lo (`GOVERNANCA_FORA_DE_DOCS="trackfw.yaml CLAUDE.md"`), e a frase
+ficou **um mês** no arquivo até me fazer dizer ao usuário, em 01/11, que sobraria arquivo para
+decidir à mão num sync em que o script já o retinha e **imprimia o diff dele**.
+
+**Texto em futuro não se revisita.** É a mesma família do `hoje` e do número de versão chumbado, com
+a diferença de que aqui a frase estava *certa quando foi escrita* — e foi justamente por isso que
+ninguém voltou para conferi-la.
+
+🔴 **Essa ocorrência ainda estava viva no `CLAUDE.md` hoje**, uma linha, dentro do bloco do #550; o
+handoff de 01/11 registrava **três**, e as outras duas já tinham caído. Saiu com esta emenda, e a
+lista de retenção do parágrafo do sync passou a dizer que se **deriva** do
+`GOVERNANCA_FORA_DE_DOCS`, em vez de ser enumerada à mão.
+
+### O que fica, e por que não é previsão
+
+- **Medir por efeito o código que JÁ EXISTE** contra a nossa árvore. No mesmo dia, do
+  `fix/linha-de-hook-…` dele: a nossa linha vigente sai `rc=127` sob `errexit` herdado — falha
+  **aberta**, porque só `2` bloqueia —, o prefixo `set +eu` fecha nas três direções, e o hook real
+  daqui **não** herda `errexit`, logo a exposição é **latente**. O fix está escrito, a linha é nossa,
+  o `rc` é medido: zero imaginação.
+- **Antecipar a saída de um script que estou a ponto de rodar** (`PRODUTO 5 · RETIDO 29`) — autoteste,
+  não profecia.
+- **O conflito de bloco compartilhado**, que é o caso do #550; ali os dois diffs já existem.
+
+### O que saiu
+
+Os três cabeçalhos `🔴 Previsão escrita ANTES do evento` (#550, `guard_wiring_removed`, `wip/`
+vazio), reescritos no passado com ✅, **mantendo as medições** que cada um carrega — são elas que
+explicam por que o texto existe. A única ocorrência restante da frase é a **citação**, entre
+backticks, dentro da seção que a aposenta.
+
+🔴 **E o `wip/` é o caso que separa as duas coisas, por isso ele não foi apagado:** *"enquanto o
+nosso `wip/` estiver vazio, essas regras ficam silenciosas"* é condição do **nosso acervo**,
+derivável por um `ls` — não palpite sobre o produto dele. O que mudou ali foi só o nome.
+
+---
+
+## 2026-11-14 — os dois pontos fechados: a janela de macOS e a guarda que não existia
+
+O usuário mandou resolver dois pontos que a varredura devolvia como abertos, dizendo *"no meu
+entendimento isso já está resolvido"*. **Ele estava certo nos dois, e nos dois o instrumento é que
+estava errado.**
+
+### 1. A janela de macOS — o veredito era função do `N` de quem chamava
+
+```
+MESMO acervo, 14/11/2026:
+  N=7    ABANDONADO 0  ->  "FECHADA"
+  N=8    ABANDONADO 1  ->  "ABERTA"
+  N=14   ABANDONADO 3  ->  "ABERTA"
+```
+
+Um abandono velho fica dentro da janela até **rolar para fora dela**, então o censo respondia
+"aberta" indefinidamente — e era isso que punha a seção na lista de pendências. O critério passou a
+ser **derivado e independente do `N`**: o abandono mais recente e quantos runs limpos vieram depois.
+
+```
+primeiro abandono  09/11 12:11  push f369c551
+ultimo abandono    11/11 12:57  push 047f6a67
+abandonos no vao   10   ·   duracao 2 dias e 46 min
+anterior ao episodio   08/11 18:34 DISPENSADO (limpo)
+desde o ultimo     7 run(s) — 5 VERDE + 2 DISPENSADO, zero abandono
+```
+
+🔴 **E o cabeçalho contava o mesmo episódio duas vezes:** dizia *"QUINTA janela"* datada em 09/11,
+mas o episódio seguiu por 10/11 (2) e 11/11 (1), com verdes no meio. Não era janela nova — era a
+mesma, mais longa do que o texto afirmava.
+
+**A ressalva fica, porque é ela que já salvou uma leitura:** 7 runs limpos **não** provam resolução —
+precedente de 1 abandono em 76 braços em 15 dias, e em 08/11 doze verdes consecutivos foram
+indistinguíveis do vão entre janelas. *"Fechou"* quer dizer *sem abandono desde então*.
+
+**Limite declarado:** o braço "o run mais novo é um abandono" **não foi exercitado** — o `N` ancora
+sempre no mais novo, e naquele dia o mais novo era verde. Montá-lo exigiria `gh` falso no PATH, que
+não foi construído aqui. Os outros dois braços foram medidos nas duas direções.
+
+### 2. A guarda do backtick nas declarações do agregador — existia como comentário, não como gate
+
+O comentário do `FORA` declarava, por escrito, que nada olhava. Agora olha. 🔴 **E a primeira versão
+da guarda foi REFUTADA pela própria falsificação, no mesmo dia:**
+
+```
+FORA convertido para aspa dupla (o defeito real de 09/11)
+  backticks no fonte das declaracoes   6
+  backticks na variavel                6     <- BATEU
+  entradas fonte/variavel              8/8   <- RECONCILIOU
+  e a variavel tinha 69 linhas da ajuda do `gh` costuradas dentro
+```
+
+A saída injetada trouxe **6 backticks próprios** (`gh <command> --help`, `gh help exit-codes`,
+`gh help accessibility`) e repôs exatamente o número que comeu. **Contagem de caractere não é
+identidade de bytes.**
+
+A invariante que funciona: cada linha de declaração do fonte aparece **idêntica** na variável, por
+`cmp` de duas listas ordenadas. Independente da forma da atribuição — que é o que a versão por
+contagem prometia e não entregava.
+
+**Quatro sondas, com a cópia dentro de `scripts/` para o `ROOT_DIR` resolver certo:** aspa dupla
+FALHA (o `diff` imprime `(um  por run)` e `lia ,`); backtick no `EXECUTAR` FALHA; declarações
+apagadas FALHA por vacuidade (`0 == 0` não passa); cópia intacta OK, com o único vermelho sendo a
+completude reclamando do arquivo de sonda.
+
+🔴 **Detalhe que vazaria e foi pego na leitura:** a guarda de completude instala o `trap ... EXIT`
+dela, e um `trap EXIT` substitui o anterior — o `mktemp -d` da guarda nova vazaria em `%TEMP%` a cada
+execução. A remoção ficou explícita, sem `trap`.
+
+### 🔴 Três sondas minhas saíram malformadas antes de alguma medir o que eu queria
+
+| sonda | o que ela mediu de fato |
+|---|---|
+| `sed` que trocou `FORA_EOF` por `"` e deixou o `)` órfão | erro de sintaxe do bash, `rc=2`, lido por mim como veredito |
+| `\|` dentro de `sed -E` para o caso de vacuidade | corrompeu a linha 1 (`\|#!/usr/bin/env bash`) |
+| teste "isolado" de expansão, digitado no comando | **escapou os backticks** (`\``) e mediu outra coisa |
+
+A fixture que acertou vive em **arquivo escrito por `Write`** — conteúdo com backtick não viaja
+dentro de string de comando, que é a regra inviolável deste arquivo, aplicada ao instrumento que a
+verifica. **E no ARM 1 eu quase registrei `rc=1` como sucesso da guarda:** ela havia dito `OK`, e o
+vermelho vinha da completude reclamando do arquivo de sonda. Ler o `rc` sem ler **qual** linha falhou
+é a mesma família do cano que mascara o exit code.

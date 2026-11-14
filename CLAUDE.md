@@ -536,15 +536,59 @@ git fetch upstream --prune
 scripts/upstream-sync.sh
 ```
 
-O `upstream-sync.sh` mescla, **retém `docs/`, `vault/` e o `trackfw.yaml`** (este desde 2026-09-18, quando o #393 do
-upstream colidiu com o nosso; o sync imprime o diff dele quando ele muda o arquivo) — exceto `docs/cli-parity.md`, que é contrato
+O `upstream-sync.sh` mescla, **retém `docs/`, `vault/`, o `trackfw.yaml` e o `CLAUDE.md`** (o
+`trackfw.yaml` desde 2026-09-18, quando o #393 do upstream colidiu com o nosso, e o `CLAUDE.md`
+desde 2026-10-09, pela mesma causa e com a mesma decisão; o sync imprime o diff dos dois quando o
+upstream os muda) — 🔴 **a lista não se lê aqui, deriva-se de
+`GOVERNANCA_FORA_DE_DOCS` no `scripts/upstream-sync.sh`**, porque esta frase já ficou um mês
+afirmando que o `CLAUDE.md` era *"o único que o sync NÃO retém"* e isso me fez dizer ao usuário, em
+01/11, que sobraria arquivo para decidir à mão quando o script já o retinha — exceto `docs/cli-parity.md`, que é contrato
 de produto lido por gate do upstream e vem dele desde 2026-09-16 (nota na `ADR-2026-08-29`) —, prova a
 retenção por efeito, reporta a
 proporção produto/governança e verifica que o `validate` não mexeu. Não commita nem faz push por
 padrão: o commit carrega a medição, e quem mede é quem escreve. Aborta e devolve a árvore se sobrar
 conflito de produto ou se a retenção não puder ser provada.
 
-### 🔴 Previsão escrita ANTES do evento: o sync do #550 vai conflitar no `CLAUDE.md`
+### 🔴 NÃO se escreve previsão sobre produto do upstream — ordem do usuário, 14/11/2026
+
+**Somos um fork: não temos voto no que o mantenedor constrói, logo saber antes não muda nada que
+esteja na nossa mão.** O usuário cobrou isto depois de a prática aparecer três vezes como cabeçalho
+`🔴 Previsão escrita ANTES do evento`, e **o registro deste repositório é a favor dele.** Derivado
+em 14/11, dos sete episódios que este arquivo carregava:
+
+| episódio | veredito | mudou o que fizemos? |
+|---|---|---|
+| #550 — o `CLAUDE.md` vai conflitar | ✅ certa | **sim** — "mantenha o nosso texto" |
+| `guard_wiring_removed` não vai acusar | ✅ certa | não — decidiram as 4 sondas |
+| `.claude/agent-memory/` → produto = 0 | 🔴 **errada** | — |
+| `wip/` vazio nos blinda | ✅ certa | não — o durável é o `ls` de uma linha |
+| #528 matcher byte a byte | ✅ certa | não — decidiu o `cmp` |
+| `git add -A` vai travar o sync | ⚠️ meia | errou o **prazo** (o binário do PATH) |
+| #683, a guarda do `parity` | ⚠️ meia | acertou o número e errou o **mecanismo** |
+
+**Uma de sete pagou o próprio custo.** E o custo não é hipotético: a única que mudou uma ação — a do
+#550 — **virou a afirmação falsa mais caprichosa deste arquivo**, porque texto em futuro não se
+revisita. Ela dizia que o `CLAUDE.md` era *"o único que o sync NÃO retém"*; o script passou a
+retê-lo no mesmo dia do merge, e **um mês depois** eu repeti a frase ao usuário como estado atual.
+
+🔴 **O que FICA, e não é previsão nenhuma:**
+
+- **Medir por efeito o código que JÁ EXISTE** — branch, PR ou commit — contra a **nossa** árvore, e
+  dizer o que o sync vai custar. Em 14/11 isto deu, do `fix/linha-de-hook-…` dele: a nossa linha
+  vigente sai `rc=127` sob `errexit` herdado (falha **aberta**), o prefixo `set +eu` fecha nas três
+  direções, e o hook real daqui **não** herda `errexit`, logo a exposição é latente. Zero imaginação:
+  o fix está escrito, a linha é nossa, o `rc` é medido.
+- **Antecipar a saída de um script que estou a ponto de rodar** (`PRODUTO 5 · RETIDO 29`) — isso é
+  **autoteste**, não profecia: se o script discordar da minha derivação, um dos dois está errado e eu
+  quero saber qual antes de commitar a medição.
+- **O conflito de bloco compartilhado**, que é o caso do #550 — e ali os dois diffs já existem, então
+  também não há futuro envolvido.
+
+**O que SAI:** o cabeçalho cerimonial, o futuro verbal, e qualquer frase cuja verdade dependa de um
+evento que ainda não aconteceu. As três seções abaixo foram reescritas no passado; as medições que
+elas carregam ficam, porque são elas que explicam por que o texto existe.
+
+### ✅ O sync do #550 conflitou no `CLAUDE.md` — e o conflito de bloco compartilhado é o caso que vale olhar adiante
 
 O [#550](https://github.com/kgsaran/trackfw/pull/550) do upstream (aberto em 2026-10-09 09:57)
 torna o `roadmap new` idempotente **e reescreve o protocolo gerado** — `AGENTS.md`, `GEMINI.md`,
@@ -555,7 +599,8 @@ horas antes, depois de medir a sobrescrita por efeito.
 
 ```
 git merge --no-commit --no-ff <branch dele>   ->  rc=1, 6 conflitos
-  CLAUDE.md                                      <- o unico que o sync NAO retem
+  CLAUDE.md                                      <- naquele dia, o unico NAO retido
+                                                    (o script passou a rete-lo no MESMO dia)
   docs/agents-working-context.md                 } retidos por docs/,
   docs/req/REQ-2026-09-09-…  docs/req/REQ-2026-10-08-…   } resolvidos pelo
   docs/roadmaps/claude/done/…  docs/roadmaps/wip/…        } upstream-sync.sh
@@ -565,16 +610,23 @@ git merge --no-commit --no-ff <branch dele>   ->  rc=1, 6 conflitos
 justamente o que o script existe para fazer, e é por isso que o ensaio foi com `git merge` **cru**:
 ele mostra o conjunto inteiro, e a diferença entre os dois números é o valor do script.
 
-**O que sobra para decidir à mão é um arquivo: o `CLAUDE.md`.** Quando o #550 mesclar, mantenha o
-**nosso** texto do Agent Protocol — ele carrega a medição por efeito e as especificidades locais
-(`--agent` obrigatório com três namespaces, `./bin/trackfw branch new`) — e traga à mão qualquer
-melhoria substantiva do dele. 🔴 **Não resolva por "aceitar o deles"**: a nossa versão é a que
-diz por que a sequência mudou.
+**O que sobrou para decidir à mão foi um arquivo: o `CLAUDE.md`** — e o `upstream-sync.sh` **abortou
+nele**, às 11:12 de 2026-10-09, com `conflito de PRODUTO remanescente. Resolva a mao. Arvore
+devolvida. rc=1`. Mantivemos o **nosso** texto do Agent Protocol — ele carrega a medição por efeito e
+as especificidades locais (`--agent` obrigatório com três namespaces, `./bin/trackfw branch new`) — e
+trouxemos à mão a melhoria substantiva dele.
 
-**Esta previsão está datada e é falsificável:** se o sync não conflitar no `CLAUDE.md`, ela estava
-errada e o motivo tem de ser escrito — provavelmente porque ele editou linhas que nós não tocamos.
+🔴 **A regra que sobrevive ao episódio, e ela não tem prazo: não resolva por "aceitar o deles".**
+Quando os dois lados editam o **mesmo bloco**, a nossa versão é a que diz **por que** a sequência
+mudou, e isso não está na dele. Vale para qualquer bloco compartilhado, não só para aquele.
 
-### 🔴 Previsão escrita ANTES do evento: a `guard_wiring_removed` dele NÃO vai acusar nada aqui
+🔴 **E o próprio texto desta seção foi o que apodreceu:** no mesmo dia do merge o script passou a
+**reter** o `CLAUDE.md` (`GOVERNANCA_FORA_DE_DOCS="trackfw.yaml CLAUDE.md"`), e a frase em futuro
+*"o único que o sync NÃO retém"* ficou aqui um mês até me fazer dizer ao usuário, em 01/11, que
+sobraria arquivo para decidir à mão num sync em que o script já o retinha e **imprimia o diff dele**.
+É a razão de a seção anterior existir.
+
+### ✅ A `guard_wiring_removed` dele não acusou nada aqui — medido com o binário DELE antes do merge
 
 > ✅ **CONFIRMADA em 2026-10-11, e o código MUDOU no meio — foi re-medida no que mesclou.**
 > Ele mesclou o [#557](https://github.com/kgsaran/trackfw/pull/557) às 19:16 de 10/10 e publicou a
@@ -669,11 +721,11 @@ conflito de PRODUTO                        ZERO
 `CLAUDE.md` e exigiu julgamento. Aqui os seis arquivos de `internal/validator/` entram inteiros,
 porque a nossa divergência de produto é zero.
 
-**A previsão, datada e falsificável:** quando esta branch mesclar e o sync entrar, o `validate`
-daqui continua **0 violações · 3 avisos** e o `guard_wiring_removed` não imprime nada. Se imprimir,
-a previsão estava errada e o motivo tem de ser escrito — os dois candidatos já estão nomeados: um
-`settings.local.json` nascido no meio do caminho, ou a nossa fiação divergindo da que a `main`
-guarda.
+**O que a medição afirmava, e o bloco ✅ no topo desta seção é quem o fechou:** com a fiação íntegra,
+o `validate` daqui sai **0 violações · 3 avisos** e o `guard_wiring_removed` não imprime nada. 🔴 **E
+os dois modos de falha ficam nomeados, porque são eles que dizem onde olhar se um dia imprimir:** um
+`settings.local.json` nascido no meio do caminho (veredito disk-only, invisível ao CI), ou a nossa
+fiação divergindo da que a `main` guarda.
 
 ### `.claude/agent-memory/` NÃO entra na retenção — e a razão é a proporção, medida
 
@@ -1343,7 +1395,7 @@ afrouxar a criação. Ver [[antes-de-implementar-issue-dele-alinhar-e-fechar-o-c
 episódio.
 
 
-### 🔴 Previsão escrita ANTES do evento: o `wip/` vazio é o que nos blinda das regras de gate novas
+### ✅ O `wip/` vazio é o que nos blinda das regras de gate novas — e o derivável é uma linha
 
 A branch `feat/idioma-do-produto-ingles-primeiro` do upstream (21 commits em 08/11/2026, +5568/−298,
 red team reprovando três rodadas) reescreve o **leitor de roadmap** (`internal/roadmapdoc/`) e cria
@@ -1371,11 +1423,12 @@ blocos de gates              29 em done/ · 5 em abandoned/ · 0 em wip/
 **E a regra está viva**, conferido por sonda plantada no `wip/` dele — dispara nomeando as duas
 linhas, como **aviso** (`rc=0`), nunca violação.
 
-**A previsão, datada e falsificável:** enquanto o nosso `wip/` estiver vazio, essas regras ficam
-silenciosas aqui. **No primeiro roadmap `feat`/`fix`/`refactor` que entrar em `wip/`** — e o
-`branch new` *exige* isso desde o #500, o que torna o evento inevitável, não hipotético — elas passam
-a valer sobre ele, e os nossos 34 roadmaps com bloco de gates são o formato que será julgado. Se
+🔴 **O escopo, e é condição do NOSSO acervo — não palpite sobre o produto dele:** enquanto o nosso
+`wip/` estiver vazio, essas regras ficam silenciosas aqui. **No primeiro roadmap
+`feat`/`fix`/`refactor` que entrar em `wip/`** — e o `branch new` *exige* isso desde o #500 — elas
+passam a valer sobre ele, e os nossos 34 roadmaps com bloco de gates são o formato julgado. Se
 aparecer violação, o lugar de olhar é o cabeçalho `**Gates da wave:**` e a cerca de código ao redor.
+Quem decide não é esta frase: é o `ls` de uma linha logo abaixo, cruzado com o `validate`.
 
 > #### ✅ CONFIRMADA em 10/11/2026, por sonda — certa no mecanismo, e o ALARME era da minha sonda
 >
@@ -1463,7 +1516,36 @@ agora **herda o agente da REQ** em vez de ignorá-lo.
 
 Medido por efeito em projeto temporário com os mesmos três agentes, antes de mesclar.
 
-## 🔴 ABERTA de novo em 09/11/2026: a fila de macOS abandona o `shim-byte-identity` — QUINTA janela, e a escassez é DA NOSSA CONTA
+## ✅ A sexta janela de macOS FECHOU em 11/11/2026 às 12:57 — a escassez é DA NOSSA CONTA, e a derivação é o que fica
+
+> **Fechada, e o número não se escreve: ele se deriva.** Medido em 14/11/2026 pelo
+> `scripts/censo-macos.sh`, com o episódio inteiro dentro de um conjunto de 28 runs:
+>
+> ```
+> primeiro abandono   09/11 12:11  push f369c551
+> ultimo abandono     11/11 12:57  push 047f6a67      <- a janela fechou AQUI
+> abandonos no vao    10           ·  duracao 2 dias e 46 min
+> o run anterior ao episodio   08/11 18:34  DISPENSADO  (limpo)
+> desde o ultimo      7 run(s) — 5 VERDE + 2 DISPENSADO, ZERO abandono
+> ```
+>
+> 🔴 **E os 7 runs limpos NÃO provam resolução — a ressalva é a mesma que salvou a leitura de
+> 08/11 e continua valendo:** o precedente medido é de **1 abandono em 76 braços ao longo de 15
+> dias**, e naquele dia *"12 braços consecutivos verdes"* foi indistinguível do vão entre janelas —
+> o vão **era** vão, e a condição reabriu no dia seguinte. *"Fechou"* aqui quer dizer **sem abandono
+> desde então**, e nada mais.
+>
+> **A sexta janela, e a enumeração é datada:** 19/10 (1 abandono), 03/11 (10), 04/11 (1), 06/11 (4)
+> e **09–11/11 (10)**. 🔴 **A quinta e a sexta são o MESMO episódio contado duas vezes nesta seção
+> até hoje:** o cabeçalho dizia *"QUINTA janela"* e datava 09/11, mas a medição de 14/11 mostra que
+> ele seguiu por 10/11 (2) e 11/11 (1), com verdes no meio. Não é janela nova — é a mesma, mais
+> longa do que o cabeçalho afirmava.
+>
+> **Reabrir continua derivável, não uma data:** rode o censo e leia a linha do último abandono. Se
+> ela nomear um run **mais novo** que `047f6a67`, a condição voltou e o cabeçalho ganha a data do
+> dia.
+
+### O registro da reabertura de 09/11, que é onde a causa foi falsificada
 
 > **Estado, para quem varre cabeçalhos: há condição ABERTA aqui.** Derivada pelo
 > `scripts/censo-macos.sh` em **09/11/2026 às 15:26 local** — e 🔴 **não é uma janela contígua: é
@@ -1619,8 +1701,31 @@ bash scripts/censo-macos.sh 12
 ```
 
 O censo classifica cada run em **VERDE · ABANDONADO · DISPENSADO · INDETERMINADO**, imprime o
-denominador e **falha se os baldes não somarem**. `ABANDONADO 0` = a janela fechou; qualquer
-abandono = ela está aberta, e aí o cabeçalho acima ganha a data nova.
+denominador e **falha se os baldes não somarem**.
+
+🔴 **O veredito binário `ABANDONADO 0 = fechou` que esta seção publicava era FUNÇÃO DO `N` que quem
+chama escolhe — medido em 14/11/2026, no MESMO acervo:**
+
+```
+N=7    VERDE 5 · ABANDONADO 0    ->  "FECHADA"
+N=8    VERDE 5 · ABANDONADO 1    ->  "ABERTA"
+N=14   VERDE 8 · ABANDONADO 3    ->  "ABERTA"
+```
+
+Um abandono velho continua dentro da janela até **rolar para fora dela**, então o mesmo acervo dava
+vereditos opostos conforme o número digitado. Quem decide passou a ser **derivado e independente do
+`N`**: o **abandono mais recente** e quantos runs limpos vieram depois dele.
+
+```
+ultimo abandono: 11/11 12:57 push 047f6a67
+  3 abandono(s) no conjunto · 7 run(s) mais novos que ele, 0 com abandono
+a janela FECHOU naquele run — nenhum abandono depois dele.
+```
+
+Com `ABANDONADO 0` ele agora **não afirma fechamento**: diz que o conjunto pode ser curto demais para
+alcançar o último abandono, e manda aumentar o `N` até a linha trocar. **Limite declarado:** o braço
+"o run mais novo é um abandono" não foi exercitado — o `N` sempre ancora no mais novo, e no acervo
+daquele dia o mais novo era verde. Os outros dois foram medidos nas duas direções.
 
 #### 🔴 O laço que esta seção publicava NÃO via abandono real — medido em 09/11/2026
 
@@ -4249,6 +4354,82 @@ for f in scripts/*.sh; do grep -qx "$f" /tmp/up.txt || basename "$f"; done
 Medido em 2026-10-05: **16**. O `scripts/run-local-gates.sh` deriva o mesmo conjunto e **reprova** se
 algum deles não estiver em `EXECUTAR` ou em `FORA` — é ele, não esta seção, que mantém o conjunto
 honesto.
+
+### ✅ E as declarações do agregador ganharam guarda em 14/11/2026 — contar backtick NÃO servia
+
+O comentário do `FORA` declarava, por escrito, que **nada olhava**: trocado o heredoc citado por aspa
+dupla, qualquer backtick no texto do motivo **executa** e a saída do comando entra na string em
+silêncio — medido em 09/11/2026, quando *"por `gh` falso no PATH"* virou *"por Work s..."*, a ajuda do
+`gh` costurada. O agregador seguia **verde**, porque a guarda de completude só lê o nome antes do `|`.
+
+🔴 **A primeira versão da guarda contava backticks, e a falsificação a REFUTOU no mesmo dia:**
+
+```
+FORA convertido para aspa dupla
+  backticks no fonte das declaracoes   6
+  backticks na variavel                6     <- BATEU
+  entradas no fonte / na variavel      8/8   <- RECONCILIOU
+  e a variavel estava CORROMPIDA: 69 linhas da ajuda do `gh` costuradas dentro
+```
+
+**A saída injetada trouxe 6 backticks PRÓPRIOS** — `` `gh <command> --help` ``, `` `gh help
+exit-codes` ``, `` `gh help accessibility` `` —, e repôs exatamente o número que havia comido.
+**Contagem de caractere não é identidade de bytes**, e as entradas sobreviveram porque só o *texto do
+motivo* foi corrompido.
+
+**A invariante que funciona é byte a byte:** cada linha de declaração do fonte — `<nome>|<motivo>` no
+`FORA`, `<nome>.sh` no `EXECUTAR` — tem de aparecer **idêntica** na variável, por `cmp` das duas
+listas ordenadas. Isso é independente da forma da atribuição, que é o que a versão por contagem
+prometia e não entregava.
+
+**Falsificada em quatro direções, com a cópia dentro de `scripts/` para o `ROOT_DIR` resolver certo:**
+
+| sonda | veredito |
+|---|---|
+| `FORA` em aspa dupla (o defeito real de 09/11) | **FALHA**, e o `diff` imprime `(um  por run)` e `lia ,` |
+| backtick plantado numa declaração do `EXECUTAR` | **FALHA** |
+| declarações apagadas (extração não acha nada) | **FALHA** por vacuidade — `0 == 0` não passa |
+| cópia intacta | guarda **OK**; o único vermelho é a completude reclamando do arquivo de sonda |
+
+🔴 **Três sondas minhas saíram malformadas antes de alguma medir o que eu queria** — um `sed` que
+deixou o `)` órfão do heredoc (erro de sintaxe lido como veredito), um `\|` dentro de `sed -E` que
+corrompeu a linha 1, e um teste "isolado" que **escapou os backticks** (`\``) e por isso mediu outra
+coisa. A fixture que acertou vive em **arquivo escrito por `Write`**, porque conteúdo com backtick não
+viaja dentro de string de comando — a regra inviolável deste arquivo, aplicada ao próprio instrumento
+que a verifica.
+
+### 🔴 Quatro gates do upstream lintam os NOSSOS `.sh` — rode-os ANTES de subir mudança de script
+
+A primeira versão da guarda acima **reprovou o CI** por um gate que eu não sabia existir, e o custo
+foi uma corrida inteira:
+
+```
+scripts/check-mktemp-cleanup.sh
+scripts/run-local-gates.sh:115: variable TMP_BT created by mktemp without
+                               guaranteed cleanup (ADR D2)
+make: *** [Makefile:235: parity-rest] Error 1     ->  parity cascateia
+```
+
+**O gate estava certo e eu estava errado pelo lado certo:** eu havia tirado o `trap` **de propósito**,
+porque a guarda de completude instala o dela e um `trap … EXIT` substitui o anterior — e o gate chama
+esse mesmo perigo de **`LAST-TRAP RULE`**, com `rm` no caminho normal classificado como *"NOT
+guaranteed cleanup"*. O diagnóstico estava certo; o remédio, não. A saída documentada é a forma
+**`CONTAINED`** — `V=$(mktemp … "$W/…")` com `W` coberto —, então hoje há **um `mktemp` e um `trap`**,
+criados uma vez, e os dois usuários dividem o diretório.
+
+🔴 **E o gate nasceu da `REQ-2026-11-11`, que fecha a NOSSA [#676](https://github.com/kgsaran/trackfw/issues/676)** — levamos o achado e ele voltou como
+instrumento que nos cobra. É o desenho funcionando, não ironia.
+
+**A lista NÃO se escreve aqui — deriva-se**, e são os gates dele que varrem `git ls-files '*.sh'`:
+
+```bash
+for f in scripts/check-*.sh; do b=${f##*/}; git ls-tree -r --name-only upstream/main -- scripts | grep -qx "scripts/$b" && grep -ql "ls-files" "$f" && grep -qE "ls-files.*\*\.sh" "$f" && echo "$b"; done
+```
+
+Medido em 14/11/2026: **4** — `check-mktemp-cleanup`, `check-no-trap-local-var`,
+`check-interpolated-path-in-python` e `check-git-branch-guard-hook-schema`, todos `rc=0` depois da
+correção. 🔴 **Rodar os quatro é barato e NÃO é `make parity-rest`**, que esta casa continua não
+rodando na raiz; o nosso agregador não os conhece, porque ele só executa os `.sh` **só nossos**.
 
 > 🔴 **Esta seção afirmava "os únicos … são 5", e um dos cinco não existia.** De 2026-09-16 (quando o
 > upstream retirou o `check-subcommand-parity.sh`) a 2026-10-05, a lista dizia **5 scripts, incluindo
