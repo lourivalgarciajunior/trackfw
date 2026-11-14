@@ -1710,27 +1710,118 @@ dia a saída foi palavra do usuário, que autorizou mesclar o #326 e o #327 com 
 **por causa** em vez de por nome, com a causa medida em oito runs do mesmo dia e o braço de
 `ubuntu-latest` verde ao lado em cada um. **Isso foi decisão dele, não extensão do critério.**
 
-### 🔴 E o abandono NÃO é só de macOS — o `gates-locais` de `ubuntu-latest` também
+🔴 **Esse terceiro estado hoje tem NOME e denominador, medidos em 13/11:** é a classe **job perdido**
+da seção abaixo — **cinco** ocorrências em **quinze minutos** naquele dia, com incidente de
+`Checks API` declarado pelo GitHub —, e **não** é abandono na fila. O critério 5 continua não
+alcançando; o que mudou é que a causa deixou de ser "ilegível".
 
-Medido em 09/11/2026, no evento **`push`** do head `4fb76256`:
+### ✅ O "abandono em `ubuntu-latest`" NÃO era abandono — é JOB PERDIDO, e foram CINCO em quinze minutos
+
+> **Resolvido em 13/11/2026, por re-run e por censo.** De 09/11 a 13/11 esta seção afirmava que o
+> `gates-locais` de `ubuntu-latest` tinha **a mesma assinatura** do abandono de macOS, e declarava a
+> leitura como **inferência, por falta de re-run**. 🔴 **O re-run foi feito, e a inferência estava
+> errada no MECANISMO.** O que ela acertou foi o **locus** — é do lado do GitHub, não da nossa
+> árvore —, e é só isso que sobrevive dela.
+
+**O re-run, no MESMO commit `4fb76256`, com os dois lados medidos:**
 
 ```
-local-gates.yml, event=push      run 42671068581   completed/FAILURE
-  jobs listados                  total_count=1 — so `gates-windows`, success
-  gates-locais (ubuntu-latest)   AUSENTE dos dois endpoints
-  gh run view --log-failed       ZERO linhas   <- job que nunca iniciou
+tentativa 1    completed/FAILURE   <= 86 s    jobs=1 — so gates-windows=success
+tentativa 2    completed/SUCCESS      61 s    jobs=2 — gates-locais=success em 31 s,
+                                              runner atribuido 1 s depois do run comecar
+tentativa 1 relida 3x em 13/11      jobs=1    (runs/<id>/jobs · attempts/1/jobs · check-runs do suite)
+log da tentativa 1                  2 arquivos, os dois de gates-windows
+                                    ZERO pasta de gates-locais  <- nenhum passo rodou
 ```
 
-🔴 **Declarado como INFERÊNCIA, não medição por efeito:** a assinatura é a mesma do abandono
-invisível de macOS (run `failure` + job ausente + log vazio), mas **não foi confirmada por re-run**,
-como a de macOS foi. O que existe a favor é o **controle**: dos 14 runs de `local-gates.yml` que
-medi, **13 têm 2 jobs e `success`** — só este tem 1 e `failure`. E o mesmo `gates-locais` passa no
-evento `pull_request` do **mesmo head**, e nos dois eventos do head seguinte (`c948ff35`), que
-contém aquele commit mais outro.
+🔴 **Mesmo commit, veredito oposto, e o job nasce em 1 s na segunda vez** — então não é conteúdo, não
+é `if:`, não é `needs`, não é escassez de `ubuntu-latest`. O `local-gates.yml` daquele commit declara
+os dois jobs uma vez cada, sem `if`, sem `needs`, sem `concurrency` e sem `timeout-minutes`.
 
-**Consequência para a leitura desta seção:** ela está escrita como condição **de macOS**, e a
-escassez pode não ser só de macOS. Uma ocorrência não refaz o enquadramento — o que ela faz é tirar
-"só macOS" do terreno do fato e pôr no terreno do **não medido**.
+**Por que NÃO é abandono na fila — o discriminante é o PRAZO:**
+
+```
+macOS abandonado, o visivel          902–903 s   job PRESENTE, cancelled, runner VAZIO
+macOS abandonado no MESMO head           921 s   run 42671272723 (quality.yml, PR #326)
+o nosso gates-locais                  <= 86 s   <- dez vezes menos
+```
+
+Abandono na fila **custa ~900 s**, porque é o teto que o GitHub aplica a job que espera máquina. 86 s
+quer dizer que ele **não esperou**: não havia job na fila.
+
+🔴 **O `updated_at` deriva para DEPOIS, e a direção da deriva é o que torna o `<= 86 s` seguro.**
+Medido nos três runs de 19/10 desta mesma workflow: os jobs levaram 37 a 61 s e o `updated_at` do run
+ficou **16 a 24 min** adiante — dentro de um incidente de Actions declarado pelo GitHub naquele dia.
+Como `updated_at` nunca é **anterior** à conclusão, o nosso run concluiu **em 86 s ou menos**, e a
+desigualdade aponta para o lado certo. 🔴 **Não leia `updated_at − run_started_at` como duração de
+job** — é o que me fez ver "1465 s" em runs cujos dois jobs rodaram em 37 s.
+
+**O instrumento é aritmético, e não depende de nenhuma API nova:**
+
+```
+run `failure`  +  TODOS os jobs listados em `success`   =>   ha job AUSENTE da listagem
+```
+
+**O censo de 09/11, com denominador e com os baldes separados por mecanismo:**
+
+```
+81 runs no dia · 70 success · 11 failure
+
+  JOB PERDIDO — ausente em tudo, log vazio, contador do suite CONCORDA com a listagem
+    42669637625  quality.yml          push      17:57:35Z -> 18:11:47Z   18 de 19 — falta o shim-byte-identity-gate
+    42671068581  local-gates.yml      push      18:06:43Z -> 18:08:09Z    1 de  2 — falta o gates-locais   <- o nosso
+    42671272629  trackfw-gate.yml     PR        18:08:00Z -> 18:09:05Z    0 jobs · count=0 · zip de 22 bytes
+    42671430535  check-annotations    wf_run    18:09:02Z -> 18:10:03Z    0 jobs · idem
+    42671880189  check-annotations    wf_run    18:11:50Z -> 18:12:59Z    0 jobs · idem
+                                                                          5, todos em 15 min
+
+  macOS ABANDONADO — job presente, cancelled, runner vazio, ~900 s
+    6 runs de quality.yml, FORA daquela janela
+```
+
+🔴 **E o GitHub DECLAROU, com `Checks API` no próprio título:**
+
+```
+2026-11-09T18:12:37Z -> 18:59:32Z   [critical]   Webhooks, Actions, Pages
+  "Incident with Actions and Checks API"
+```
+
+Os cinco jobs perdidos estão nos **quinze minutos imediatamente anteriores** à abertura do incidente,
+e o último terminou **22 s depois** dela. Página de status abre **após** o início, então início antes
+das 18:12 é a leitura econômica — 🔴 **declarado como CORRELAÇÃO, não como causa provada**: os
+carimbos publicados não se sobrepõem.
+
+**A consequência: a frase "a escassez pode não ser só de macOS" está RETIRADA.** Pelo teste da Regra
+Dura de Causa Raiz são **causas outras** — corrigir uma não fecha nada da outra, porque **não há
+runner a esperar quando o job nunca foi criado**. A condição de macOS continua sendo de macOS.
+
+🔴 **E o meu re-run MUTOU o artefato, o que fica declarado:** o run `42671068581` hoje está
+`attempt=2 / success`, logo **não aparece mais** entre as 11 falhas de 09/11. Quem refizer a
+derivação encontra **4** jobs perdidos, e a diferença sou eu — a tentativa 1 continua legível por
+`actions/runs/42671068581/attempts/1`, que é por onde os números acima foram relidos.
+
+#### 🔴 E a "ABANDONADO (INVISÍVEL)" era transiente da API — hoje o mesmo run lista tudo
+
+A enumeração do cabeçalho desta seção classifica o run das **15:08 de 09/11** (PR #326, head
+`4fb76256`) como **ABANDONADO (INVISÍVEL)**, e diz que o laço antigo não o via. **Medido em 13/11, o
+mesmo run lista os 19 jobs**, com o braço de macOS à vista:
+
+```
+jobs=19   ·   latest_check_runs_count=19   <- o CONTADOR concorda com a listagem
+  shim-byte-identity (macos-latest)   cancelled   runner=[]
+censo-macos.sh rodado em 13/11        09/11 15:08   ABANDONADO (visivel)
+```
+
+🔴 **A invisibilidade era do MOMENTO DA LEITURA, não do run**, e o incidente de `Checks API` acima é
+o candidato declarado. **O balde do censo continua certo e não se remove:** conjunto parcial não pode
+ser lido como "dispensado", e foi para isso que ele nasceu. O que muda é o tempo verbal — o run não
+**é** invisível; ele **esteve**.
+
+**E o contraste é o que separa as duas classes de ausência:** relida hoje, a ausência do macOS
+**sumiu**, e a dos cinco jobs perdidos **ficou**, com o `latest_check_runs_count` concordando com a
+listagem nos cinco. **Ausência que cura é leitura; ausência que persiste é job que nunca existiu** —
+e o `latest_check_runs_count`, por ser campo contado e não listagem paginada, é o que distingue as
+duas sem depender de re-run.
 
 ## 🔴 PR EMPILHADO: o `--delete-branch` do de baixo FECHA o de cima — e a recuperação
 

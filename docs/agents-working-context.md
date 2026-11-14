@@ -36084,3 +36084,81 @@ dos **23** scripts só nossos o exclui por construção — e o `Makefile` do in
 **Um número que não é conclusão:** o agregador saiu em **184 s**, contra os ~470–480 s
 registrados em 2026-10-13. É **uma** passada de wall-clock nesta máquina, sem o estado da
 máquina ao lado — e a regra desta casa diz que isso não é medida. Dado datado, nada além.
+
+---
+
+## 2026-11-13 — o "abandono em `ubuntu-latest`" NÃO era abandono: é JOB PERDIDO, cinco em quinze minutos
+
+O `CLAUDE.md` carregava, desde 09/11, uma afirmação declarada como **inferência por falta de
+re-run**: o `gates-locais` de `ubuntu-latest` teria *"a mesma assinatura"* do abandono invisível de
+macOS, e por isso a escassez *"pode não ser só de macOS"*. O usuário mandou resolver o caso. O
+re-run foi feito, e **a inferência estava errada no mecanismo** — acertou só o locus (é do lado do
+GitHub, não da nossa árvore).
+
+### O que o re-run decidiu, no MESMO commit
+
+```
+tentativa 1   completed/FAILURE   <= 86 s   jobs=1 — so gates-windows=success
+tentativa 2   completed/SUCCESS      61 s   jobs=2 — gates-locais verde em 31 s,
+                                             runner atribuido 1 s depois do run comecar
+log da tentativa 1    2 arquivos, os dois de gates-windows — ZERO pasta de gates-locais
+```
+
+Mesmo commit, veredito oposto, e o job nasce em 1 s na segunda vez: não é conteúdo, não é `if:`,
+não é `needs`, não é escassez de `ubuntu-latest`.
+
+### O discriminante contra "abandono na fila" é o PRAZO, e ele tem direção
+
+Abandono na fila custa **902–903 s** — é o teto que o GitHub aplica a job que espera máquina —, e o
+caso de macOS do **mesmo head** levou **921 s**. O nosso levou **86 s ou menos**.
+
+🔴 **O `updated_at` deriva para DEPOIS, nunca para antes**, e foi isso que tornou a desigualdade
+utilizável: nos três runs de 19/10 desta mesma workflow os jobs levaram 37 a 61 s e o `updated_at`
+ficou 16 a 24 min adiante. Ler `updated_at − run_started_at` como duração de job me mostrou "1465 s"
+onde havia 37 s — e, como a deriva é só para a frente, o `<= 86 s` do nosso caso é seguro.
+
+### O instrumento, e o censo que ele produziu
+
+```
+run `failure`  +  TODOS os jobs listados em `success`   =>   ha job AUSENTE da listagem
+```
+
+81 runs em 09/11 · 70 `success` · 11 `failure`, e os onze separam em dois mecanismos:
+
+```
+JOB PERDIDO   5, todos entre 17:57:35Z e 18:12:59Z
+  42669637625  quality.yml        push     18 de 19 — falta o shim-byte-identity-gate
+  42671068581  local-gates.yml    push      1 de  2 — falta o gates-locais        <- o nosso
+  42671272629  trackfw-gate.yml   PR        0 jobs · count=0 · zip de 22 bytes
+  42671430535  check-annotations  wf_run    0 jobs · idem
+  42671880189  check-annotations  wf_run    0 jobs · idem
+
+macOS ABANDONADO   6, FORA daquela janela, job presente e cancelled em ~900 s
+```
+
+E o GitHub **declarou**, com `Checks API` no título: incidente `critical` em
+`2026-11-09T18:12:37Z -> 18:59:32Z`. Os cinco perdidos estão nos quinze minutos **anteriores** à
+abertura, e o último terminou 22 s depois dela. 🔴 **Correlação declarada, não causa provada** — os
+carimbos publicados não se sobrepõem, e página de status abre depois do início.
+
+### 🔴 O achado que não foi pedido: a "ABANDONADO (INVISÍVEL)" era transiente da API
+
+O run das 15:08 de 09/11, que o `CLAUDE.md` classifica como **invisível**, hoje lista os **19** jobs,
+com `latest_check_runs_count=19` concordando com a listagem e o braço de macOS `cancelled` à vista. O
+`censo-macos.sh` rodado hoje o classifica como **ABANDONADO (visível)**.
+
+**O balde do censo continua certo e não se remove** — conjunto parcial não pode ser lido como
+"dispensado". O que muda é o tempo verbal. E o contraste é o que separa as duas classes:
+**ausência que cura é leitura; ausência que persiste é job que nunca existiu.** O
+`latest_check_runs_count`, por ser campo contado e não listagem paginada, distingue as duas sem
+precisar de re-run — é o instrumento que esta sessão não tinha em 09/11.
+
+### 🔴 O meu re-run mutou o artefato, e isso fica declarado
+
+O run `42671068581` está hoje em `attempt=2 / success`, logo **saiu** das 11 falhas de 09/11: quem
+refizer a derivação acha **4** jobs perdidos, e a diferença sou eu. A tentativa 1 segue legível por
+`actions/runs/42671068581/attempts/1`, que é por onde todos os números acima foram relidos — três
+vezes, porque agora sei que a API tem transiente.
+
+**Governança:** branch `docs/`, logo sem exigência de roadmap em `wip/`. Sem REQ porque o entregável
+é texto que passa a dizer a verdade medida, não implementação — mesmo critério das entradas de sync.
