@@ -36162,3 +36162,66 @@ vezes, porque agora sei que a API tem transiente.
 
 **Governança:** branch `docs/`, logo sem exigência de roadmap em `wip/`. Sem REQ porque o entregável
 é texto que passa a dizer a verdade medida, não implementação — mesmo critério das entradas de sync.
+
+---
+
+## 2026-11-14 — o usuário aposentou a previsão sobre produto do upstream, e o registro era a favor dele
+
+> *"não entendo essa questão de previsão, somos um fork do projeto, não faz sentido imaginar o que
+> vai vir de produto"*
+
+O argumento de fundo é de **alavanca**, e é o mais forte: num fork não temos voto no que o mantenedor
+constrói, logo saber antes não muda nada que esteja na nossa mão. É a mesma objeção que este
+repositório já faz a *"aviso que ninguém executa"*, aplicada à prática que eu vinha repetindo.
+
+### O que a derivação dos sete episódios disse
+
+```
+#550, o CLAUDE.md vai conflitar          certa   -> MUDOU uma acao ("mantenha o nosso texto")
+guard_wiring_removed nao vai acusar      certa   -> nao; decidiram as 4 sondas
+.claude/agent-memory/ produto = 0        ERRADA
+wip/ vazio nos blinda                    certa   -> nao; o duravel e o `ls` de uma linha
+#528 matcher byte a byte                 certa   -> nao; decidiu o `cmp`
+git add -A vai travar o sync             meia    -> errou o PRAZO (o binario do PATH)
+#683, a guarda do parity                 meia    -> acertou o numero, errou o MECANISMO
+```
+
+**Uma de sete pagou o próprio custo.**
+
+### 🔴 E o custo não era hipotético — a única que mudou uma ação virou a afirmação falsa mais caprichosa do arquivo
+
+A nota do #550 dizia que o `CLAUDE.md` era *"o único que o sync NÃO retém"*. **No mesmo dia do
+merge** o script passou a retê-lo (`GOVERNANCA_FORA_DE_DOCS="trackfw.yaml CLAUDE.md"`), e a frase
+ficou **um mês** no arquivo até me fazer dizer ao usuário, em 01/11, que sobraria arquivo para
+decidir à mão num sync em que o script já o retinha e **imprimia o diff dele**.
+
+**Texto em futuro não se revisita.** É a mesma família do `hoje` e do número de versão chumbado, com
+a diferença de que aqui a frase estava *certa quando foi escrita* — e foi justamente por isso que
+ninguém voltou para conferi-la.
+
+🔴 **Essa ocorrência ainda estava viva no `CLAUDE.md` hoje**, uma linha, dentro do bloco do #550; o
+handoff de 01/11 registrava **três**, e as outras duas já tinham caído. Saiu com esta emenda, e a
+lista de retenção do parágrafo do sync passou a dizer que se **deriva** do
+`GOVERNANCA_FORA_DE_DOCS`, em vez de ser enumerada à mão.
+
+### O que fica, e por que não é previsão
+
+- **Medir por efeito o código que JÁ EXISTE** contra a nossa árvore. No mesmo dia, do
+  `fix/linha-de-hook-…` dele: a nossa linha vigente sai `rc=127` sob `errexit` herdado — falha
+  **aberta**, porque só `2` bloqueia —, o prefixo `set +eu` fecha nas três direções, e o hook real
+  daqui **não** herda `errexit`, logo a exposição é **latente**. O fix está escrito, a linha é nossa,
+  o `rc` é medido: zero imaginação.
+- **Antecipar a saída de um script que estou a ponto de rodar** (`PRODUTO 5 · RETIDO 29`) — autoteste,
+  não profecia.
+- **O conflito de bloco compartilhado**, que é o caso do #550; ali os dois diffs já existem.
+
+### O que saiu
+
+Os três cabeçalhos `🔴 Previsão escrita ANTES do evento` (#550, `guard_wiring_removed`, `wip/`
+vazio), reescritos no passado com ✅, **mantendo as medições** que cada um carrega — são elas que
+explicam por que o texto existe. A única ocorrência restante da frase é a **citação**, entre
+backticks, dentro da seção que a aposenta.
+
+🔴 **E o `wip/` é o caso que separa as duas coisas, por isso ele não foi apagado:** *"enquanto o
+nosso `wip/` estiver vazio, essas regras ficam silenciosas"* é condição do **nosso acervo**,
+derivável por um `ls` — não palpite sobre o produto dele. O que mudou ali foi só o nome.

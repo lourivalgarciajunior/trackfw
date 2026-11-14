@@ -536,15 +536,59 @@ git fetch upstream --prune
 scripts/upstream-sync.sh
 ```
 
-O `upstream-sync.sh` mescla, **retém `docs/`, `vault/` e o `trackfw.yaml`** (este desde 2026-09-18, quando o #393 do
-upstream colidiu com o nosso; o sync imprime o diff dele quando ele muda o arquivo) — exceto `docs/cli-parity.md`, que é contrato
+O `upstream-sync.sh` mescla, **retém `docs/`, `vault/`, o `trackfw.yaml` e o `CLAUDE.md`** (o
+`trackfw.yaml` desde 2026-09-18, quando o #393 do upstream colidiu com o nosso, e o `CLAUDE.md`
+desde 2026-10-09, pela mesma causa e com a mesma decisão; o sync imprime o diff dos dois quando o
+upstream os muda) — 🔴 **a lista não se lê aqui, deriva-se de
+`GOVERNANCA_FORA_DE_DOCS` no `scripts/upstream-sync.sh`**, porque esta frase já ficou um mês
+afirmando que o `CLAUDE.md` era *"o único que o sync NÃO retém"* e isso me fez dizer ao usuário, em
+01/11, que sobraria arquivo para decidir à mão quando o script já o retinha — exceto `docs/cli-parity.md`, que é contrato
 de produto lido por gate do upstream e vem dele desde 2026-09-16 (nota na `ADR-2026-08-29`) —, prova a
 retenção por efeito, reporta a
 proporção produto/governança e verifica que o `validate` não mexeu. Não commita nem faz push por
 padrão: o commit carrega a medição, e quem mede é quem escreve. Aborta e devolve a árvore se sobrar
 conflito de produto ou se a retenção não puder ser provada.
 
-### 🔴 Previsão escrita ANTES do evento: o sync do #550 vai conflitar no `CLAUDE.md`
+### 🔴 NÃO se escreve previsão sobre produto do upstream — ordem do usuário, 14/11/2026
+
+**Somos um fork: não temos voto no que o mantenedor constrói, logo saber antes não muda nada que
+esteja na nossa mão.** O usuário cobrou isto depois de a prática aparecer três vezes como cabeçalho
+`🔴 Previsão escrita ANTES do evento`, e **o registro deste repositório é a favor dele.** Derivado
+em 14/11, dos sete episódios que este arquivo carregava:
+
+| episódio | veredito | mudou o que fizemos? |
+|---|---|---|
+| #550 — o `CLAUDE.md` vai conflitar | ✅ certa | **sim** — "mantenha o nosso texto" |
+| `guard_wiring_removed` não vai acusar | ✅ certa | não — decidiram as 4 sondas |
+| `.claude/agent-memory/` → produto = 0 | 🔴 **errada** | — |
+| `wip/` vazio nos blinda | ✅ certa | não — o durável é o `ls` de uma linha |
+| #528 matcher byte a byte | ✅ certa | não — decidiu o `cmp` |
+| `git add -A` vai travar o sync | ⚠️ meia | errou o **prazo** (o binário do PATH) |
+| #683, a guarda do `parity` | ⚠️ meia | acertou o número e errou o **mecanismo** |
+
+**Uma de sete pagou o próprio custo.** E o custo não é hipotético: a única que mudou uma ação — a do
+#550 — **virou a afirmação falsa mais caprichosa deste arquivo**, porque texto em futuro não se
+revisita. Ela dizia que o `CLAUDE.md` era *"o único que o sync NÃO retém"*; o script passou a
+retê-lo no mesmo dia do merge, e **um mês depois** eu repeti a frase ao usuário como estado atual.
+
+🔴 **O que FICA, e não é previsão nenhuma:**
+
+- **Medir por efeito o código que JÁ EXISTE** — branch, PR ou commit — contra a **nossa** árvore, e
+  dizer o que o sync vai custar. Em 14/11 isto deu, do `fix/linha-de-hook-…` dele: a nossa linha
+  vigente sai `rc=127` sob `errexit` herdado (falha **aberta**), o prefixo `set +eu` fecha nas três
+  direções, e o hook real daqui **não** herda `errexit`, logo a exposição é latente. Zero imaginação:
+  o fix está escrito, a linha é nossa, o `rc` é medido.
+- **Antecipar a saída de um script que estou a ponto de rodar** (`PRODUTO 5 · RETIDO 29`) — isso é
+  **autoteste**, não profecia: se o script discordar da minha derivação, um dos dois está errado e eu
+  quero saber qual antes de commitar a medição.
+- **O conflito de bloco compartilhado**, que é o caso do #550 — e ali os dois diffs já existem, então
+  também não há futuro envolvido.
+
+**O que SAI:** o cabeçalho cerimonial, o futuro verbal, e qualquer frase cuja verdade dependa de um
+evento que ainda não aconteceu. As três seções abaixo foram reescritas no passado; as medições que
+elas carregam ficam, porque são elas que explicam por que o texto existe.
+
+### ✅ O sync do #550 conflitou no `CLAUDE.md` — e o conflito de bloco compartilhado é o caso que vale olhar adiante
 
 O [#550](https://github.com/kgsaran/trackfw/pull/550) do upstream (aberto em 2026-10-09 09:57)
 torna o `roadmap new` idempotente **e reescreve o protocolo gerado** — `AGENTS.md`, `GEMINI.md`,
@@ -555,7 +599,8 @@ horas antes, depois de medir a sobrescrita por efeito.
 
 ```
 git merge --no-commit --no-ff <branch dele>   ->  rc=1, 6 conflitos
-  CLAUDE.md                                      <- o unico que o sync NAO retem
+  CLAUDE.md                                      <- naquele dia, o unico NAO retido
+                                                    (o script passou a rete-lo no MESMO dia)
   docs/agents-working-context.md                 } retidos por docs/,
   docs/req/REQ-2026-09-09-…  docs/req/REQ-2026-10-08-…   } resolvidos pelo
   docs/roadmaps/claude/done/…  docs/roadmaps/wip/…        } upstream-sync.sh
@@ -565,16 +610,23 @@ git merge --no-commit --no-ff <branch dele>   ->  rc=1, 6 conflitos
 justamente o que o script existe para fazer, e é por isso que o ensaio foi com `git merge` **cru**:
 ele mostra o conjunto inteiro, e a diferença entre os dois números é o valor do script.
 
-**O que sobra para decidir à mão é um arquivo: o `CLAUDE.md`.** Quando o #550 mesclar, mantenha o
-**nosso** texto do Agent Protocol — ele carrega a medição por efeito e as especificidades locais
-(`--agent` obrigatório com três namespaces, `./bin/trackfw branch new`) — e traga à mão qualquer
-melhoria substantiva do dele. 🔴 **Não resolva por "aceitar o deles"**: a nossa versão é a que
-diz por que a sequência mudou.
+**O que sobrou para decidir à mão foi um arquivo: o `CLAUDE.md`** — e o `upstream-sync.sh` **abortou
+nele**, às 11:12 de 2026-10-09, com `conflito de PRODUTO remanescente. Resolva a mao. Arvore
+devolvida. rc=1`. Mantivemos o **nosso** texto do Agent Protocol — ele carrega a medição por efeito e
+as especificidades locais (`--agent` obrigatório com três namespaces, `./bin/trackfw branch new`) — e
+trouxemos à mão a melhoria substantiva dele.
 
-**Esta previsão está datada e é falsificável:** se o sync não conflitar no `CLAUDE.md`, ela estava
-errada e o motivo tem de ser escrito — provavelmente porque ele editou linhas que nós não tocamos.
+🔴 **A regra que sobrevive ao episódio, e ela não tem prazo: não resolva por "aceitar o deles".**
+Quando os dois lados editam o **mesmo bloco**, a nossa versão é a que diz **por que** a sequência
+mudou, e isso não está na dele. Vale para qualquer bloco compartilhado, não só para aquele.
 
-### 🔴 Previsão escrita ANTES do evento: a `guard_wiring_removed` dele NÃO vai acusar nada aqui
+🔴 **E o próprio texto desta seção foi o que apodreceu:** no mesmo dia do merge o script passou a
+**reter** o `CLAUDE.md` (`GOVERNANCA_FORA_DE_DOCS="trackfw.yaml CLAUDE.md"`), e a frase em futuro
+*"o único que o sync NÃO retém"* ficou aqui um mês até me fazer dizer ao usuário, em 01/11, que
+sobraria arquivo para decidir à mão num sync em que o script já o retinha e **imprimia o diff dele**.
+É a razão de a seção anterior existir.
+
+### ✅ A `guard_wiring_removed` dele não acusou nada aqui — medido com o binário DELE antes do merge
 
 > ✅ **CONFIRMADA em 2026-10-11, e o código MUDOU no meio — foi re-medida no que mesclou.**
 > Ele mesclou o [#557](https://github.com/kgsaran/trackfw/pull/557) às 19:16 de 10/10 e publicou a
@@ -669,11 +721,11 @@ conflito de PRODUTO                        ZERO
 `CLAUDE.md` e exigiu julgamento. Aqui os seis arquivos de `internal/validator/` entram inteiros,
 porque a nossa divergência de produto é zero.
 
-**A previsão, datada e falsificável:** quando esta branch mesclar e o sync entrar, o `validate`
-daqui continua **0 violações · 3 avisos** e o `guard_wiring_removed` não imprime nada. Se imprimir,
-a previsão estava errada e o motivo tem de ser escrito — os dois candidatos já estão nomeados: um
-`settings.local.json` nascido no meio do caminho, ou a nossa fiação divergindo da que a `main`
-guarda.
+**O que a medição afirmava, e o bloco ✅ no topo desta seção é quem o fechou:** com a fiação íntegra,
+o `validate` daqui sai **0 violações · 3 avisos** e o `guard_wiring_removed` não imprime nada. 🔴 **E
+os dois modos de falha ficam nomeados, porque são eles que dizem onde olhar se um dia imprimir:** um
+`settings.local.json` nascido no meio do caminho (veredito disk-only, invisível ao CI), ou a nossa
+fiação divergindo da que a `main` guarda.
 
 ### `.claude/agent-memory/` NÃO entra na retenção — e a razão é a proporção, medida
 
@@ -1343,7 +1395,7 @@ afrouxar a criação. Ver [[antes-de-implementar-issue-dele-alinhar-e-fechar-o-c
 episódio.
 
 
-### 🔴 Previsão escrita ANTES do evento: o `wip/` vazio é o que nos blinda das regras de gate novas
+### ✅ O `wip/` vazio é o que nos blinda das regras de gate novas — e o derivável é uma linha
 
 A branch `feat/idioma-do-produto-ingles-primeiro` do upstream (21 commits em 08/11/2026, +5568/−298,
 red team reprovando três rodadas) reescreve o **leitor de roadmap** (`internal/roadmapdoc/`) e cria
@@ -1371,11 +1423,12 @@ blocos de gates              29 em done/ · 5 em abandoned/ · 0 em wip/
 **E a regra está viva**, conferido por sonda plantada no `wip/` dele — dispara nomeando as duas
 linhas, como **aviso** (`rc=0`), nunca violação.
 
-**A previsão, datada e falsificável:** enquanto o nosso `wip/` estiver vazio, essas regras ficam
-silenciosas aqui. **No primeiro roadmap `feat`/`fix`/`refactor` que entrar em `wip/`** — e o
-`branch new` *exige* isso desde o #500, o que torna o evento inevitável, não hipotético — elas passam
-a valer sobre ele, e os nossos 34 roadmaps com bloco de gates são o formato que será julgado. Se
+🔴 **O escopo, e é condição do NOSSO acervo — não palpite sobre o produto dele:** enquanto o nosso
+`wip/` estiver vazio, essas regras ficam silenciosas aqui. **No primeiro roadmap
+`feat`/`fix`/`refactor` que entrar em `wip/`** — e o `branch new` *exige* isso desde o #500 — elas
+passam a valer sobre ele, e os nossos 34 roadmaps com bloco de gates são o formato julgado. Se
 aparecer violação, o lugar de olhar é o cabeçalho `**Gates da wave:**` e a cerca de código ao redor.
+Quem decide não é esta frase: é o `ls` de uma linha logo abaixo, cruzado com o `validate`.
 
 > #### ✅ CONFIRMADA em 10/11/2026, por sonda — certa no mecanismo, e o ALARME era da minha sonda
 >
