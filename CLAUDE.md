@@ -1516,7 +1516,36 @@ agora **herda o agente da REQ** em vez de ignorá-lo.
 
 Medido por efeito em projeto temporário com os mesmos três agentes, antes de mesclar.
 
-## 🔴 ABERTA de novo em 09/11/2026: a fila de macOS abandona o `shim-byte-identity` — QUINTA janela, e a escassez é DA NOSSA CONTA
+## ✅ A sexta janela de macOS FECHOU em 11/11/2026 às 12:57 — a escassez é DA NOSSA CONTA, e a derivação é o que fica
+
+> **Fechada, e o número não se escreve: ele se deriva.** Medido em 14/11/2026 pelo
+> `scripts/censo-macos.sh`, com o episódio inteiro dentro de um conjunto de 28 runs:
+>
+> ```
+> primeiro abandono   09/11 12:11  push f369c551
+> ultimo abandono     11/11 12:57  push 047f6a67      <- a janela fechou AQUI
+> abandonos no vao    10           ·  duracao 2 dias e 46 min
+> o run anterior ao episodio   08/11 18:34  DISPENSADO  (limpo)
+> desde o ultimo      7 run(s) — 5 VERDE + 2 DISPENSADO, ZERO abandono
+> ```
+>
+> 🔴 **E os 7 runs limpos NÃO provam resolução — a ressalva é a mesma que salvou a leitura de
+> 08/11 e continua valendo:** o precedente medido é de **1 abandono em 76 braços ao longo de 15
+> dias**, e naquele dia *"12 braços consecutivos verdes"* foi indistinguível do vão entre janelas —
+> o vão **era** vão, e a condição reabriu no dia seguinte. *"Fechou"* aqui quer dizer **sem abandono
+> desde então**, e nada mais.
+>
+> **A sexta janela, e a enumeração é datada:** 19/10 (1 abandono), 03/11 (10), 04/11 (1), 06/11 (4)
+> e **09–11/11 (10)**. 🔴 **A quinta e a sexta são o MESMO episódio contado duas vezes nesta seção
+> até hoje:** o cabeçalho dizia *"QUINTA janela"* e datava 09/11, mas a medição de 14/11 mostra que
+> ele seguiu por 10/11 (2) e 11/11 (1), com verdes no meio. Não é janela nova — é a mesma, mais
+> longa do que o cabeçalho afirmava.
+>
+> **Reabrir continua derivável, não uma data:** rode o censo e leia a linha do último abandono. Se
+> ela nomear um run **mais novo** que `047f6a67`, a condição voltou e o cabeçalho ganha a data do
+> dia.
+
+### O registro da reabertura de 09/11, que é onde a causa foi falsificada
 
 > **Estado, para quem varre cabeçalhos: há condição ABERTA aqui.** Derivada pelo
 > `scripts/censo-macos.sh` em **09/11/2026 às 15:26 local** — e 🔴 **não é uma janela contígua: é
@@ -1672,8 +1701,31 @@ bash scripts/censo-macos.sh 12
 ```
 
 O censo classifica cada run em **VERDE · ABANDONADO · DISPENSADO · INDETERMINADO**, imprime o
-denominador e **falha se os baldes não somarem**. `ABANDONADO 0` = a janela fechou; qualquer
-abandono = ela está aberta, e aí o cabeçalho acima ganha a data nova.
+denominador e **falha se os baldes não somarem**.
+
+🔴 **O veredito binário `ABANDONADO 0 = fechou` que esta seção publicava era FUNÇÃO DO `N` que quem
+chama escolhe — medido em 14/11/2026, no MESMO acervo:**
+
+```
+N=7    VERDE 5 · ABANDONADO 0    ->  "FECHADA"
+N=8    VERDE 5 · ABANDONADO 1    ->  "ABERTA"
+N=14   VERDE 8 · ABANDONADO 3    ->  "ABERTA"
+```
+
+Um abandono velho continua dentro da janela até **rolar para fora dela**, então o mesmo acervo dava
+vereditos opostos conforme o número digitado. Quem decide passou a ser **derivado e independente do
+`N`**: o **abandono mais recente** e quantos runs limpos vieram depois dele.
+
+```
+ultimo abandono: 11/11 12:57 push 047f6a67
+  3 abandono(s) no conjunto · 7 run(s) mais novos que ele, 0 com abandono
+a janela FECHOU naquele run — nenhum abandono depois dele.
+```
+
+Com `ABANDONADO 0` ele agora **não afirma fechamento**: diz que o conjunto pode ser curto demais para
+alcançar o último abandono, e manda aumentar o `N` até a linha trocar. **Limite declarado:** o braço
+"o run mais novo é um abandono" não foi exercitado — o `N` sempre ancora no mais novo, e no acervo
+daquele dia o mais novo era verde. Os outros dois foram medidos nas duas direções.
 
 #### 🔴 O laço que esta seção publicava NÃO via abandono real — medido em 09/11/2026
 
@@ -4302,6 +4354,49 @@ for f in scripts/*.sh; do grep -qx "$f" /tmp/up.txt || basename "$f"; done
 Medido em 2026-10-05: **16**. O `scripts/run-local-gates.sh` deriva o mesmo conjunto e **reprova** se
 algum deles não estiver em `EXECUTAR` ou em `FORA` — é ele, não esta seção, que mantém o conjunto
 honesto.
+
+### ✅ E as declarações do agregador ganharam guarda em 14/11/2026 — contar backtick NÃO servia
+
+O comentário do `FORA` declarava, por escrito, que **nada olhava**: trocado o heredoc citado por aspa
+dupla, qualquer backtick no texto do motivo **executa** e a saída do comando entra na string em
+silêncio — medido em 09/11/2026, quando *"por `gh` falso no PATH"* virou *"por Work s..."*, a ajuda do
+`gh` costurada. O agregador seguia **verde**, porque a guarda de completude só lê o nome antes do `|`.
+
+🔴 **A primeira versão da guarda contava backticks, e a falsificação a REFUTOU no mesmo dia:**
+
+```
+FORA convertido para aspa dupla
+  backticks no fonte das declaracoes   6
+  backticks na variavel                6     <- BATEU
+  entradas no fonte / na variavel      8/8   <- RECONCILIOU
+  e a variavel estava CORROMPIDA: 69 linhas da ajuda do `gh` costuradas dentro
+```
+
+**A saída injetada trouxe 6 backticks PRÓPRIOS** — `` `gh <command> --help` ``, `` `gh help
+exit-codes` ``, `` `gh help accessibility` `` —, e repôs exatamente o número que havia comido.
+**Contagem de caractere não é identidade de bytes**, e as entradas sobreviveram porque só o *texto do
+motivo* foi corrompido.
+
+**A invariante que funciona é byte a byte:** cada linha de declaração do fonte — `<nome>|<motivo>` no
+`FORA`, `<nome>.sh` no `EXECUTAR` — tem de aparecer **idêntica** na variável, por `cmp` das duas
+listas ordenadas. Isso é independente da forma da atribuição, que é o que a versão por contagem
+prometia e não entregava.
+
+**Falsificada em quatro direções, com a cópia dentro de `scripts/` para o `ROOT_DIR` resolver certo:**
+
+| sonda | veredito |
+|---|---|
+| `FORA` em aspa dupla (o defeito real de 09/11) | **FALHA**, e o `diff` imprime `(um  por run)` e `lia ,` |
+| backtick plantado numa declaração do `EXECUTAR` | **FALHA** |
+| declarações apagadas (extração não acha nada) | **FALHA** por vacuidade — `0 == 0` não passa |
+| cópia intacta | guarda **OK**; o único vermelho é a completude reclamando do arquivo de sonda |
+
+🔴 **Três sondas minhas saíram malformadas antes de alguma medir o que eu queria** — um `sed` que
+deixou o `)` órfão do heredoc (erro de sintaxe lido como veredito), um `\|` dentro de `sed -E` que
+corrompeu a linha 1, e um teste "isolado" que **escapou os backticks** (`\``) e por isso mediu outra
+coisa. A fixture que acertou vive em **arquivo escrito por `Write`**, porque conteúdo com backtick não
+viaja dentro de string de comando — a regra inviolável deste arquivo, aplicada ao próprio instrumento
+que a verifica.
 
 > 🔴 **Esta seção afirmava "os únicos … são 5", e um dos cinco não existia.** De 2026-09-16 (quando o
 > upstream retirou o `check-subcommand-parity.sh`) a 2026-10-05, a lista dizia **5 scripts, incluindo

@@ -72,6 +72,13 @@ check-roadmap-done-com-ml-pendente.sh
 # o que delatou o silencioso. Com <<'FORA_EOF' nada expande, os backticks sao
 # TEXTO, e os apostrofos de 'esperado'/'nativo_windows' continuam valendo.
 # Mesma familia de backtick-na-mensagem-de-commit-e-executado, agora num script.
+#
+# ✅ E ate 14/11/2026 isto era CONVENCAO SEM GUARDA — este comentario declarava,
+# por escrito, que nenhum instrumento olhava: quem trocasse o heredoc por aspa
+# dupla reinstalava a corrupcao silenciosa e o agregador seguia verde. A GUARDA
+# DO BACKTICK, logo abaixo das listas, passou a decidir sobre BYTES (conta
+# backticks no fonte e na variavel expandida) em vez de sobre forma de atribuicao
+# — assim ela pega qualquer forma futura que expanda, nao so a aspa dupla.
 FORA=$(cat <<'FORA_EOF'
 check-platform-predicates|so diz algo no Windows: 14 das 20 linhas do corpus divergem entre 'esperado' e 'nativo_windows', e a linha do execbit reprovaria em ubuntu-latest por fato de NTFS. Decisao medida, escrita no CLAUDE.md
 upstream-sync|nao e gate, e ferramenta: faz merge e MODIFICA a arvore. Rodar num CI de verificacao seria absurdo
@@ -83,6 +90,84 @@ check-copia-do-path-esta-atras|so diz algo nesta maquina: compara o binario da a
 run-local-gates|e o proprio agregador: executa-lo a partir de si mesmo seria recursao infinita. A guarda de completude o pegou na PRIMEIRA execucao, e esta entrada e a prova de que ela funciona
 FORA_EOF
 )
+
+# ---------------------------------------------------------------------------
+# GUARDA DAS DECLARACOES — os BYTES do que esta escrito tem de chegar inteiros
+# na variavel. Ate 14/11/2026 isto era convencao sem instrumento (o comentario
+# acima dizia, por escrito, que nada olhava).
+#
+# A propriedade: cada linha de declaracao do FONTE aparece IDENTICA na variavel.
+# Uma expansao — aspa dupla, `$(...)`, qualquer forma futura — altera os bytes, e
+# e isso que se compara. O gate nao precisa conhecer a forma da atribuicao.
+#
+# 🔴 POR QUE NAO CONTAR BACKTICK, que foi a primeira versao desta guarda e esta
+# REFUTADA por medicao: em 14/11/2026, com o FORA convertido para aspa dupla, a
+# variavel saiu com `fonte=6 var=6` e as 8 entradas reconciliando — e estava
+# CORROMPIDA. A ajuda do `gh`, costurada no lugar do texto, trouxe 6 backticks
+# PROPRIOS (`gh <command> --help`, `gh help exit-codes`, `gh help accessibility`),
+# e a contagem bateu por coincidencia. Contagem de caractere nao e identidade de
+# bytes; o que a saida injetada trouxer pode repor exatamente o que ela comeu.
+# ---------------------------------------------------------------------------
+SELF="${BASH_SOURCE[0]}"
+# 🔴 Sem `trap`, de proposito: a guarda de completude abaixo instala o DELA
+# (`trap 'rm -rf "$TMP"' EXIT`) e um trap EXIT substitui o anterior — o meu
+# diretorio vazaria em %TEMP% a cada execucao. Aqui a remocao e explicita.
+TMP_BT=$(mktemp -d)
+
+# As declaracoes se identificam por CONTEUDO, nunca pelos marcadores da
+# atribuicao: `<nome>|<motivo>` no FORA, `<nome>.sh` no EXECUTAR, as duas
+# ancoradas no inicio da linha — comentario comeca com `#` e `echo` com espaco,
+# logo nenhum dos dois casa.
+grep -E '^[a-z0-9][a-z0-9.-]*\|'   "$SELF"              | sort > "$TMP_BT/fora-fonte"
+printf '%s\n' "$FORA"     | grep -E '^[a-z0-9][a-z0-9.-]*\|' | sort > "$TMP_BT/fora-var"
+grep -E '^[a-z0-9][a-z0-9.-]*\.sh$' "$SELF"             | sort > "$TMP_BT/exec-fonte"
+printf '%s\n' "$EXECUTAR" | grep -E '^[a-z0-9][a-z0-9.-]*\.sh$' | sort > "$TMP_BT/exec-var"
+
+falhou_bt=0
+for lista in fora exec; do
+  n=$(wc -l < "$TMP_BT/$lista-fonte" | tr -d ' ')
+  # VACUIDADE: sem declaracao no fonte, o `cmp` compara vazio com vazio e passa
+  # descrevendo o nada. Zero aqui e extracao quebrada, nunca lista legitima.
+  if [ "$n" -lt 1 ]; then
+    echo "run-local-gates: FALHA — zero declaracao de '$lista' no fonte." >&2
+    echo "  A extracao parou de casar; sem ela a comparacao nao verifica nada." >&2
+    falhou_bt=1; continue
+  fi
+  if ! cmp -s "$TMP_BT/$lista-fonte" "$TMP_BT/$lista-var"; then
+    echo "run-local-gates: FALHA — as declaracoes de '$lista' NAO chegaram inteiras." >&2
+    echo "  $n no fonte; a variavel difere. Quase sempre e EXPANSAO na atribuicao:" >&2
+    echo "  a lista tem de ser heredoc CITADO, <<'EOF', onde nada expande." >&2
+    diff "$TMP_BT/$lista-fonte" "$TMP_BT/$lista-var" | head -6 >&2
+    falhou_bt=1
+  fi
+done
+
+# CONTROLE A/B — exercita o discriminante NESTE shell, com texto sintetico, para
+# que o verde nunca venha de "nao havia o que medir". A fixture vive em arquivo
+# proprio, porque conteudo com backtick nao viaja dentro de string de comando.
+CTL="$TMP_BT/ctl.sh"
+{
+  printf '%s\n' 'A="x|motivo com `echo CORROMPIDO` dentro"'
+  printf '%s\n' "B=\$(cat <<'BEOF'"
+  printf '%s\n' 'x|motivo com `echo CORROMPIDO` dentro'
+  printf '%s\n' 'BEOF'
+  printf '%s\n' ')'
+  printf '%s\n' 'printf "%s\n%s\n" "$A" "$B"'
+} > "$CTL"
+_ctl=$(bash "$CTL" 2>/dev/null)
+_ctl_a=$(printf '%s\n' "$_ctl" | sed -n 1p)
+_ctl_b=$(printf '%s\n' "$_ctl" | sed -n 2p)
+if [ "$_ctl_a" = "$_ctl_b" ]; then
+  echo "run-local-gates: FALHA — o controle A/B nao reproduz a corrupcao." >&2
+  echo "  aspa dupla e heredoc citado deram o MESMO byte: [$_ctl_a]" >&2
+  echo "  Sem esse discriminante vivo, o cmp acima nao prova nada." >&2
+  falhou_bt=1
+fi
+N_FORA_OK=$(wc -l < "$TMP_BT/fora-fonte" | tr -d ' ')
+N_EXEC_OK=$(wc -l < "$TMP_BT/exec-fonte" | tr -d ' ')
+if [ "$falhou_bt" -ne 0 ]; then rm -rf "$TMP_BT"; exit 1; fi
+rm -rf "$TMP_BT"
+echo "run-local-gates: guarda das declaracoes OK — $N_FORA_OK no FORA e $N_EXEC_OK no EXECUTAR, identicas na variavel; controle A/B difere."
 
 # ---------------------------------------------------------------------------
 # GUARDA DE COMPLETUDE — o coracao deste script.

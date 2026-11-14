@@ -62,6 +62,13 @@ if [ "$rc" -ne 0 ] || [ -z "$runs" ]; then
 fi
 
 tot=0; verde=0; aband=0; disp=0; indet=0
+# 🔴 O veredito binario "ABERTA/FECHADA" era funcao do N que quem chama escolhe:
+# medido em 14/11/2026, no MESMO acervo, N=7 saia FECHADA e N=8 saia ABERTA,
+# porque um abandono velho continua dentro da janela ate rolar para fora dela.
+# Quem decide passou a ser DERIVADO e independente do N: o abandono mais recente
+# e quantos run(s) limpos vieram depois dele. Os runs chegam do mais novo para o
+# mais velho, entao o PRIMEIRO abandono que o laco encontra e o mais recente.
+ult_ab=""; desde=0; idx=0
 echo "censo do par shim-byte-identity  ($REPO)  agora: $(date '+%d/%m %H:%M')"
 echo
 
@@ -81,10 +88,12 @@ while IFS=$'\t' read -r id criado evento head conc suite; do
   skp="$(printf '%s\n' "$cr" | awk -F'\t' '$1 == "shim-byte-identity" {print $2}' | head -1)"
   gat="$(printf '%s\n' "$cr" | awk -F'\t' '$1 == "shim-byte-identity-gate" {print $2}' | head -1)"
 
+  idx=$((idx+1))
   if [ -n "$mac" ]; then
     case "$mac" in
       success)   v="VERDE"; verde=$((verde+1)) ;;
-      cancelled) v="ABANDONADO (visivel)"; aband=$((aband+1)) ;;
+      cancelled) v="ABANDONADO (visivel)"; aband=$((aband+1))
+                 [ -z "$ult_ab" ] && { ult_ab="$local_h $evento $head"; desde=$((idx-1)); } ;;
       *)         v="INDETERMINADO: macos=$mac"; indet=$((indet+1)) ;;
     esac
     [ -z "$gat" ] && v="$v  🔴 ANOMALIA: gate AUSENTE"
@@ -92,6 +101,7 @@ while IFS=$'\t' read -r id criado evento head conc suite; do
     v="DISPENSADO (#669)"; disp=$((disp+1))
   elif [ "${gat:-}" = "failure" ]; then
     v="🔴 ABANDONADO (invisivel: a API de jobs nao o mostra)"; aband=$((aband+1))
+    [ -z "$ult_ab" ] && { ult_ab="$local_h $evento $head"; desde=$((idx-1)); }
   else
     v="INDETERMINADO: sem braco, sem skipped, gate=${gat:-ausente}"; indet=$((indet+1))
   fi
@@ -119,7 +129,26 @@ if [ "$problemas" -gt 0 ]; then
   exit 2
 fi
 if [ "$aband" -gt 0 ]; then
-  echo "🔴 ha abandono no conjunto: a janela esta ABERTA."
+  echo "ultimo abandono: $ult_ab"
+  echo "  $aband abandono(s) no conjunto · $desde run(s) mais novos que ele, 0 com abandono"
+  # 🔴 LIMITE DECLARADO: este braco (`desde` = 0) NAO foi exercitado em 14/11/2026.
+  # O N sempre ancora no run mais novo, e no acervo daquele dia o mais novo era
+  # verde — nao havia como monta-lo sem `gh` falso no PATH, que e a tecnica usada
+  # na falsificacao do leitura-avulsa e nao foi construida aqui. Os outros dois
+  # bracos foram medidos nas duas direcoes (N=14 e N=7, mesmo acervo).
+  if [ "$desde" -eq 0 ]; then
+    echo "🔴 o run MAIS NOVO do conjunto e um abandono: a janela esta ABERTA."
+  else
+    echo "a janela FECHOU naquele run — nenhum abandono depois dele."
+    echo "🔴 E $desde run(s) limpos NAO provam resolucao: o precedente medido e de"
+    echo "   1 abandono em 76 bracos ao longo de 15 dias, e dois dias de verde ja"
+    echo "   foram indistinguiveis do vao entre janelas em 08/11/2026. 'Fechou'"
+    echo "   aqui quer dizer 'sem abandono desde entao', e nada mais."
+  fi
 else
-  echo "nenhum abandono no conjunto varrido: a janela esta FECHADA para estes $tot run(s)."
+  echo "nenhum abandono nos $tot run(s) varridos."
+  echo "🔴 Isto NAO nomeia o ultimo abandono — o conjunto pode ser curto demais"
+  echo "   para alcanca-lo. Medido em 14/11/2026: N=7 nao achava nenhum e N=8"
+  echo "   achava um, no MESMO acervo. Para datar o fechamento, aumente o N ate"
+  echo "   que esta linha troque pelo bloco 'ultimo abandono'."
 fi
