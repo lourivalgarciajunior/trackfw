@@ -4398,6 +4398,39 @@ coisa. A fixture que acertou vive em **arquivo escrito por `Write`**, porque con
 viaja dentro de string de comando — a regra inviolável deste arquivo, aplicada ao próprio instrumento
 que a verifica.
 
+### 🔴 Quatro gates do upstream lintam os NOSSOS `.sh` — rode-os ANTES de subir mudança de script
+
+A primeira versão da guarda acima **reprovou o CI** por um gate que eu não sabia existir, e o custo
+foi uma corrida inteira:
+
+```
+scripts/check-mktemp-cleanup.sh
+scripts/run-local-gates.sh:115: variable TMP_BT created by mktemp without
+                               guaranteed cleanup (ADR D2)
+make: *** [Makefile:235: parity-rest] Error 1     ->  parity cascateia
+```
+
+**O gate estava certo e eu estava errado pelo lado certo:** eu havia tirado o `trap` **de propósito**,
+porque a guarda de completude instala o dela e um `trap … EXIT` substitui o anterior — e o gate chama
+esse mesmo perigo de **`LAST-TRAP RULE`**, com `rm` no caminho normal classificado como *"NOT
+guaranteed cleanup"*. O diagnóstico estava certo; o remédio, não. A saída documentada é a forma
+**`CONTAINED`** — `V=$(mktemp … "$W/…")` com `W` coberto —, então hoje há **um `mktemp` e um `trap`**,
+criados uma vez, e os dois usuários dividem o diretório.
+
+🔴 **E o gate nasceu da `REQ-2026-11-11`, que fecha a NOSSA [#676](https://github.com/kgsaran/trackfw/issues/676)** — levamos o achado e ele voltou como
+instrumento que nos cobra. É o desenho funcionando, não ironia.
+
+**A lista NÃO se escreve aqui — deriva-se**, e são os gates dele que varrem `git ls-files '*.sh'`:
+
+```bash
+for f in scripts/check-*.sh; do b=${f##*/}; git ls-tree -r --name-only upstream/main -- scripts | grep -qx "scripts/$b" && grep -ql "ls-files" "$f" && grep -qE "ls-files.*\*\.sh" "$f" && echo "$b"; done
+```
+
+Medido em 14/11/2026: **4** — `check-mktemp-cleanup`, `check-no-trap-local-var`,
+`check-interpolated-path-in-python` e `check-git-branch-guard-hook-schema`, todos `rc=0` depois da
+correção. 🔴 **Rodar os quatro é barato e NÃO é `make parity-rest`**, que esta casa continua não
+rodando na raiz; o nosso agregador não os conhece, porque ele só executa os `.sh` **só nossos**.
+
 > 🔴 **Esta seção afirmava "os únicos … são 5", e um dos cinco não existia.** De 2026-09-16 (quando o
 > upstream retirou o `check-subcommand-parity.sh`) a 2026-10-05, a lista dizia **5 scripts, incluindo
 > um apagado**, enquanto o conjunto real crescia para 16. Não é número desatualizado: é **afirmação

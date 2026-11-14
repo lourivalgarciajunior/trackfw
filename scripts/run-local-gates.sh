@@ -109,10 +109,21 @@ FORA_EOF
 # bytes; o que a saida injetada trouxer pode repor exatamente o que ela comeu.
 # ---------------------------------------------------------------------------
 SELF="${BASH_SOURCE[0]}"
-# 🔴 Sem `trap`, de proposito: a guarda de completude abaixo instala o DELA
-# (`trap 'rm -rf "$TMP"' EXIT`) e um trap EXIT substitui o anterior — o meu
-# diretorio vazaria em %TEMP% a cada execucao. Aqui a remocao e explicita.
-TMP_BT=$(mktemp -d)
+
+# 🔴 UM `mktemp` SO, com UM `trap` so — e o diretorio desta guarda nasce DENTRO
+# dele. A primeira versao criava um `mktemp -d` proprio SEM trap, de proposito,
+# porque a guarda de completude instala o dela (`trap 'rm -rf "$TMP"' EXIT`) e um
+# trap EXIT substitui o anterior; a remocao ficava explicita. O
+# `check-mktemp-cleanup.sh` do upstream REPROVOU isso em 14/11/2026 —
+# "variable TMP_BT created by mktemp without guaranteed cleanup (ADR D2)" —, e
+# com razao: `rm` no caminho normal nao roda se o script morrer antes dele.
+# O diagnostico do clobber estava certo e o remedio errado; a LAST-TRAP RULE do
+# proprio gate descreve o perigo, e a forma CONTAINED e a saida documentada:
+# `V=$(mktemp … "$W/…")` com `W` coberto. Hoje o `TMP` e criado aqui, uma vez,
+# e a guarda de completude abaixo o reusa. (O gate nasceu da REQ-2026-11-11, que
+# fecha a NOSSA issue #676.)
+TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
+TMP_BT=$(mktemp -d "$TMP/declaracoes.XXXXXX")
 
 # As declaracoes se identificam por CONTEUDO, nunca pelos marcadores da
 # atribuicao: `<nome>|<motivo>` no FORA, `<nome>.sh` no EXECUTAR, as duas
@@ -165,8 +176,7 @@ if [ "$_ctl_a" = "$_ctl_b" ]; then
 fi
 N_FORA_OK=$(wc -l < "$TMP_BT/fora-fonte" | tr -d ' ')
 N_EXEC_OK=$(wc -l < "$TMP_BT/exec-fonte" | tr -d ' ')
-if [ "$falhou_bt" -ne 0 ]; then rm -rf "$TMP_BT"; exit 1; fi
-rm -rf "$TMP_BT"
+[ "$falhou_bt" -eq 0 ] || exit 1
 echo "run-local-gates: guarda das declaracoes OK — $N_FORA_OK no FORA e $N_EXEC_OK no EXECUTAR, identicas na variavel; controle A/B difere."
 
 # ---------------------------------------------------------------------------
@@ -190,7 +200,10 @@ if ! git rev-parse --verify --quiet "$UPSTREAM_REF" >/dev/null; then
   exit 1
 fi
 
-TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
+# O `TMP` e o `trap` dele sao criados UMA vez, junto da guarda das declaracoes
+# acima. 🔴 Reinstalar o trap aqui nao seria redundancia inofensiva: o segundo
+# `trap … EXIT` SUBSTITUI o primeiro, e e esse clobber que o `check-mktemp-cleanup.sh`
+# chama de LAST-TRAP RULE. Um mktemp, um trap, os dois usuarios no mesmo diretorio.
 git ls-tree -r --name-only "$UPSTREAM_REF" -- scripts > "$TMP/upstream.txt" 2>/dev/null || true
 
 if [ ! -s "$TMP/upstream.txt" ]; then
