@@ -36310,3 +36310,77 @@ dentro de string de comando, que é a regra inviolável deste arquivo, aplicada 
 verifica. **E no ARM 1 eu quase registrei `rc=1` como sucesso da guarda:** ela havia dito `OK`, e o
 vermelho vinha da completude reclamando do arquivo de sonda. Ler o `rc` sem ler **qual** linha falhou
 é a mesma família do cano que mascara o exit code.
+
+---
+
+## 2026-11-16 — três leituras minhas erradas no mesmo dia, e as três pegas por derivação
+
+Dia de varredura do upstream a pedido do usuário, cinco passadas. **O que ele fez está no `#688` e no
+CI dele**; o que vale guardar aqui são os erros de leitura, porque nos três casos o instrumento que me
+corrigiu foi uma derivação, nunca uma releitura mais atenta.
+
+### 1. `::warning::` ecoado lido como saída — e eu apaguei o discriminante antes de contar
+
+O `CLAUDE.md` **já registra** esta armadilha, desde 2026-09-29: *"contar `::warning::` no log acusa 3
+ocorrências que são o código sendo exibido (prefixo `[36;1m`), não saída do ratchet"*. Cometi igual, e
+com um agravante que o registro antigo não previa: eu rodei `sed 's/\x1b\[[0-9;]*m//g'` **antes** de
+contar, ou seja **apaguei o prefixo que é o único discriminante**.
+
+A leitura errada ia ser publicada como *"o `windows-known-failures.json` saiu da `main`"*, porque as
+três linhas ecoadas eram justamente o `Write-Host "::warning::… ausente em origin/main"`. O que
+resolveu:
+
+```
+::warning:: no log                     3
+  ecoadas (grep COM $'\x1b[36;1m')     3
+  saida real (grep -v)                 0
+git cat-file -e upstream/main:<arquivo>   existe
+```
+
+🔴 **Regra que fica: para separar eco de saída, conte no arquivo CRU.** Filtro de ANSI é destrutivo
+para esta pergunta — mesma família do `cat -A` depois de um `sed`, que mente sobre fim de linha.
+
+### 2. "Quem estava rodando" lido como "quem custou" — num `panic: test timed out`
+
+O `panic` do `go test` imprime `running tests:`, e eu li aquela lista como a causa do estouro.
+Publiquei ao usuário, e depois num comentário do PR dele, que o custo vinha dos braços de perfil que o
+ML-2A havia destravado. **A série por head refutou**, porque aqueles braços já estavam no head
+anterior:
+
+```
+head        internal/generators   % do -timeout 2m
+(sem ML-2C)       91 e 93 s            76–78%
+(com ML-2C)      109 e 121 s         91% e 101%
+```
+
+E a atribuição que eu pus no lugar — *"é carga do runner, o diff é inerte em tempo"* — **também não se
+sustentou**: os pacotes não tocados subiram com fatores **discordantes** (×1,13 e ×1,47), então não há
+fator único com que normalizar. Ficou **declarado como não atribuído**, o que é o único veredito que a
+medição sustenta.
+
+🔴 **`running tests:` é a lista do que estava na mão quando o alarme disparou, não a do que consumiu o
+tempo.** Para custo, a série de durações do mesmo job em heads diferentes; e a duração do PACOTE, não
+a do job — o job que falhou levou 152 s e o que passou, 149 s, então o job não distingue.
+
+### 3. Aporte publicado sobre head que já havia morrido — por 2 minutos
+
+Medi o vermelho no head `e7172a9f`, derivei a causa e comentei no `#688`. O conserto dele entrou às
+**16:25:53** (derivado do `created_at` do run que o push disparou, não da data do commit); eu postei às
+**16:27:52**. A conclusão estava certa e o canal estava certo — faltou **reler o head entre medir e
+publicar**, e passou a ser passo fixo: `gh pr view <N> --json headRefOid` imediatamente antes do
+`gh pr comment`. Aplicado nos três comentários seguintes, e no terceiro o head havia andado de novo.
+
+**E a nota de vault dele era superconjunto do meu achado**, com uma segunda causa que eu não tinha
+(`buildShellPath` recebendo o caminho do *link*, deixando o diretório da `msys-2.0.dll` fora do PATH →
+`STATUS_DLL_NOT_FOUND`, que volta como `ExitError` com código **fora de 0–255**) e o `t.Fatalf`
+aplicado em **cinco** sítios, não só no que estava vermelho.
+
+### O que foi ao arquivo em vez de ficar aqui
+
+A correção da seção *"lista conhecida de 14 para 6"* — hoje **5**, desde 20/10/2026 (`28d6d018`,
+`#591`, que tornou os hooks de atenção nativos em Go e com isso **removeu a causa** do
+`TestAttentionScripts_FallbackWithoutJQ`) — foi para o `CLAUDE.md` com a derivação ao lado, porque o
+número tinha de parar de ser enumerado à mão. 🔴 **E lá fica também que `class` NÃO é o grupo:** toda
+entrada tem `class: "assertion"`, e o `Group A/C/D` vive dentro do `reason`. Eu havia relatado ao
+usuário que a nossa tabela errava a classe; **errava só o número**, e quem me corrigiu foi ler o JSON
+antes de editar.
