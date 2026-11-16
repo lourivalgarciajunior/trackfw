@@ -3144,23 +3144,60 @@ valer em presente. **0 = a fixture do upstream está no lugar**, que é o estado
 `git tag --contains <commit>` —, e este arquivo já apodreceu três vezes por chumbar número de
 versão e três por chumbar contagem de check.
 
-## ✅ A campanha de Windows do upstream encerrou em 2026-10-16: lista conhecida de 14 para 6
+## ✅ A campanha de Windows do upstream encerrou em 2026-10-16: lista conhecida de 14 para 6 — e para 5 em 20/10
 
 A `REQ-2026-09-03` dele — *"as 217 falhas reais de Windows colapsam em poucas causas"* — fechou
 pelo [#571](https://github.com/kgsaran/trackfw/pull/571). O arco inteiro, na declaração dele:
 **246 → 39** no primeiro encerramento (06/09), e agora **lista conhecida 14 → 6**, com o censo de
 Windows de **4 → 2 FAIL**.
 
-🔴 **As 6 que restam são TODAS de ambiente, e três já tinham seção própria neste arquivo:**
+🔴 **As 6 que restavam EM 16/10 eram todas de ambiente, e três já tinham seção própria neste
+arquivo** — hoje são **5**, e o número não se escreve aqui: ele se deriva (ver abaixo).
 
 | teste | grupo e causa |
 |---|---|
 | `TestFilenameUniqueness_DiretorioNaoLegivel_P2` | **A** — `os.Chmod(0o000)` é no-op em NTFS sem ACL |
 | `TestFolderStatus_DiretorioNaoLegivel_P2` | **A** — a mesma |
 | `TestStaleWIPReportsWIPWalkError` | **A** — `ENOTDIR` = `ERROR_PATH_NOT_FOUND` no Windows |
-| `TestAttentionScripts_FallbackWithoutJQ` | **C** — `os.Symlink` exige privilégio de desenvolvedor |
+| ~~`TestAttentionScripts_FallbackWithoutJQ`~~ | **C** — `os.Symlink` exige privilégio de desenvolvedor · ✅ **SAIU em 20/10**, ver abaixo |
 | `TestShip_Integration_GracefulDegradation_RealBinary` | **C** — `git.exe` falso no PATH dispara a defesa anti-fork-bomb do runner |
 | `TestChecksum_StableAndMatchesSHA256Sum` | **D** — `shasum -a 256` com caminho de barra invertida |
+
+### ✅ A quarta linha saiu em 20/10/2026, e a lista está em 5 desde então
+
+Derivado em 16/11/2026, contando `entries` em cada commit que tocou o arquivo:
+
+```
+entries=5   28d6d018  20/10 14:11  feat(attention): hooks de atencao nativos em Go (#591)
+entries=6   bcde12ac  16/10 18:22  <- o estado que esta secao descrevia
+entries=11  b5416c0f  16/10 14:07
+entries=12  8b040300  15/10 19:52
+entries=14  746b041b  29/09 19:04
+entries=38  cd34a2aa  10/09 17:34
+```
+
+🔴 **A causa foi REMOVIDA, não contornada**, e é a mesma forma do #527 com o guard: o
+`TestAttentionScripts_FallbackWithoutJQ` exercitava o **script** `.sh` de atenção sem `jq`, e o
+[#591](https://github.com/kgsaran/trackfw/pull/591) tornou os hooks de atenção **nativos em Go** — o
+teste do fallback deixou de existir. A entrada está em `removed[]` com `removal_note: "corrected"`.
+
+**E a nossa seção ficou 27 dias afirmando 6**, enquanto o commit da saída (`28d6d018`) **já estava
+citado neste arquivo**, na seção da tripla. Número enumerado à mão apodrece; o que não apodrece é a
+derivação, que cabe numa linha:
+
+```bash
+MSYS_NO_PATHCONV=1 git show upstream/main:.github/windows-known-failures.json | jq '.entries|length'
+```
+
+🔴 **E `class` NÃO é o grupo — a tabela acima está certa e eu quase a "corrigi" errado.** Toda
+entrada tem `class: "assertion"`, que é o *tipo* de falha; o **Group A/C/D** vem dentro do campo
+`reason` (`"Group C: os.Symlink requires developer privilege on Windows … (MEASURED)"`). Ler o
+`class` como grupo faz as cinco parecerem a mesma coisa.
+
+**Medido por efeito em 16/11/2026**, no `windows-full-suites` verde do #688 (head `946711ee`, job
+133591778865): **5 `FAIL` e 60 `SKIP`**, e os cinco nomes são **iguais por nome** à lista ativa — que
+é idêntica em `upstream/main` e na branch dele. 🔴 **O job sai verde COM esses 5**, porque o ratchet
+compara por nome; `FAIL` no log não é regressão enquanto o conjunto não muda.
 
 **A terceira linha é o `ENOTDIR`** — a mesma medição que originou a **Regra Dura de Reconciliação**
 deste arquivo, em 2026-09-05: o ML mediu que `ENOTDIR` é indistinguível de "ausente" no Windows e,
