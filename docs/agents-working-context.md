@@ -36431,3 +36431,52 @@ para nada é pior que `origin` ausente, porque parece respaldado**, e nos três 
 cópia. O precedente desta casa é o `project_management`, que ganhou bundle em `~/repos-aposentados/`
 antes de a pasta ser apagada. Nada a fazer neste repositório; fica anotado porque foi esta varredura
 que achou.
+
+---
+
+## 2026-11-17 — pasta de config sem o app: a segunda grafia, e ela afirma em vez de omitir
+
+**Por que esta entrada existe.** O usuário perguntou se este projeto funciona sob o `opencode` com
+GLM 5.3. A resposta do harness é sim-pela-metade, e está no `CLAUDE.md`. O que **não** se deriva, e
+por isso mora aqui, é o motivo de a medição ter virado seção: ela inverte a severidade da armadilha
+que o arquivo já registrava para o Windsurf.
+
+**O que a medição de 17/11 encontrou**, com o binário 11.7.0: `~/.config/opencode/` com **12
+agentes** e **17 skills** nossos, e o aplicativo ausente em **4 grafias de executável** e **9
+caminhos de instalação**. Até aqui é a grafia conhecida.
+
+🔴 **O que é novo, e foi o `update harness --dry-run` que mostrou:** no Windsurf há
+`windsurf-credential-guard: missing`, isto é, **um sinal de ausência**. Para o opencode há
+`opencode-agents: skipped` e nada mais — **zero `missing`** —, enquanto `agents list` e
+`skills list` declaram os **29 artefatos** em estado `current`. A armadilha do Windsurf pedia que
+alguém lesse errado uma **ausência**; esta entrega uma **afirmação positiva** de instalado-e-em-dia.
+Leitura por instrumento, que é a defesa de sempre nesta casa, aqui leva ao veredito errado.
+
+🔴 **E a causa de não haver `missing` é a MESMA que desliga a cerca** — não são dois fatos, é um. Sem
+implementação de hook (`hooks.go`: *silent skip* para opencode e antigravity), não existe arquivo de
+hook para ser reportado `missing`. O gap que tira o `git commit` na `main` de dentro da cerca é o
+mesmo que apaga o único sinal que teria sugerido a ausência do aplicativo. Isso não é defeito a
+reportar: está declarado e **fora de escopo** na `REQ-2026-08-04` do upstream, que o chama de *"gap
+real de arquitetura"*.
+
+**Alargar a sonda importou, e quase não aconteceu.** A minha primeira passada sondou as três grafias
+óbvias de Windows (`Programs`, `Program Files`, `Roaming`) e devolveu "ausente" — veredito certo e
+**por acidente**, porque o opencode se instala por `curl | bash`, por `npm` e por `bun`. As nove
+sondas da versão publicada cobrem o conjunto. É a lição que a própria seção denuncia, cometida na
+redação dela.
+
+**Duas leituras minhas erradas no caminho**, as duas pegas por medição e não por releitura:
+
+| | o erro | o que corrigiu |
+|---|---|---|
+| 1 | disse ao usuário que `opencode` não aparecia no `update harness` | rodar o comando: aparece, duas vezes, como `skipped` |
+| 2 | a substituição no `CLAUDE.md` estragou a linha vizinha (`outra qu    pergunta`) | o `diff --stat` sair `+72 −0` em vez de `+73 −1` — adição pura é o que prova que a linha voltou inteira |
+
+O item 2 é da família já registrada do *"confira o que está DENTRO do range antes de substituir"*: a
+âncora incluía a última linha do bloco anterior, e reescrevê-la é o que abriu espaço para o erro de
+digitação. **`+N −0` é o instrumento**, não a releitura do trecho.
+
+**O que fica derivável, para não depender desta entrada:** `command -v opencode` cruzado com
+`trackfw agents list --targets opencode`. Executável ausente **com** 12 deployments `current` é a
+armadilha ativa; `current` sozinho não afirma nada sobre o aplicativo.
+

@@ -1123,6 +1123,78 @@ AppData/Local/Windsurf                      nao existe
 executável** — `command -v` mais os três caminhos de instalação —, nunca a pasta de config. Mesma
 família do *zero com sonda errada é cegueira*: a sonda óbvia responde outra pergunta.
 
+### 🔴 Segunda grafia, com o `opencode` — e ela é PIOR, porque o instrumento afirma em vez de omitir
+
+Medido em 17/11/2026, com o binário **11.7.0**, porque o usuário perguntou se este projeto funciona
+sob o `opencode`. A pasta de config está lá, com **29 artefatos nossos**, e o aplicativo **não
+existe nesta máquina**:
+
+```
+~/.config/opencode/agents/      12 arquivo(s)   trackfw-architect.md, -backend, -frontend, ...
+~/.config/opencode/skills/      17 pasta(s)     trackfw-architecture-skill, ...
+~/.config/opencode/plugins/     AUSENTE         <- e e nela que o hook do opencode moraria
+
+executavel, em 4 grafias   opencode · opencode.exe · opencode.cmd · opencode-ai   ausentes
+caminhos de instalacao     9 sondados (Programs, Program Files, ~/.opencode, Roaming,
+                           ~/.local/bin, ~/.bun/bin, npm global, scoop)            ausentes
+npm ls -g                  nao instalado
+```
+
+🔴 **O que muda em relação ao Windsurf, e é o que faz esta grafia valer seção própria: lá havia
+sinal, aqui não há.** As duas saídas do mesmo comando, no mesmo instante:
+
+```
+• windsurf-credential-guard: missing (~/.codeium/windsurf/hooks.json)   <- HA sinal de ausencia
+• windsurf-agents: skipped        • windsurf-skills: skipped
+• opencode-agents: skipped        • opencode-skills: skipped            <- NENHUM "missing"
+
+trackfw update harness --dry-run   updated=0 skipped=35 missing=1 failed=0
+   o unico `missing` e o do Windsurf
+```
+
+E o `list` não omite — ele **afirma**:
+
+```
+agents list --targets opencode   12 deployment(s)  ·  estado `current`: 12 de 12
+skills list --targets opencode   17 deployment(s)  ·  estado `current`: 17 de 17
+```
+
+**Vinte e nove artefatos declarados `current`, e zero `missing`, para um CLI que não está na
+máquina.** A armadilha do Windsurf pedia que alguém **lesse errado uma ausência**; esta entrega uma
+**afirmação positiva** de instalado-e-em-dia. Leitura por instrumento, que é a defesa de sempre
+nesta casa, aqui leva ao veredito errado.
+
+🔴 **E a causa de não haver `missing` é a MESMA que desliga a cerca** — não são dois fatos, é um:
+
+```go
+// internal/generators/hooks.go
+// CLIs without an Inject*Hooks implementation (opencode, antigravity) are
+// intentionally absent — callers that pass unknown names get a silent skip.
+```
+
+Sem implementação de hook, **não existe arquivo de hook para ser reportado `missing`**. O gap que
+tira o `git commit` na `main` de dentro da cerca é o mesmo que apaga o único sinal que teria
+sugerido a ausência do aplicativo. O gap está declarado na
+`REQ-2026-08-04-compatibilidade-com-opencode…` do upstream (`status: Done`), que o nomeia *"gap real
+de arquitetura"* e o põe **fora de escopo**: os outros nove alvos recebem hook como JSON
+`PreToolUse`/`PostToolUse` + shell, e o opencode usa **plugin JS/TS** com
+`tool.execute.before`/`after`.
+
+**A regra que generaliza as duas grafias**, e ela não depende de qual CLI:
+
+> Estado de artefato **nosso** não é estado do **aplicativo**. `current` diz *"o que o trackfw
+> escreveu está em dia"*, e responde outra pergunta.
+
+O discriminante continua sendo o **executável**, agora com a sonda alargada — e **alargar importou**:
+o opencode se instala por `curl | bash`, por `npm` e por `bun`, então as três grafias óbvias de
+Windows (`Programs`, `Program Files`, `Roaming`) **não** cobrem o conjunto. Uma sonda estreita teria
+devolvido "ausente" pelo motivo certo e por acidente.
+
+**Limite declarado:** `~/.config/opencode/` **não** é escrito por `trackfw update harness` — ele sai
+`skipped` ali. Os 29 artefatos vieram de `agents install` / `skills install` em escopo global, em
+data que **não** foi derivada (o `mtime` da pasta diz 29/08 para `skills/` e 05/11 para `agents/`, e
+mtime não é prova de autoria). O que está medido é o **estado de hoje**, não quando ele nasceu.
+
 ## Não rode `make parity-rest` na raiz deste fork
 
 > ✅ **Resolvido em 2026-09-17 pelo [#381](https://github.com/kgsaran/trackfw/pull/381) do upstream,
