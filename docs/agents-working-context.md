@@ -36532,3 +36532,76 @@ pegou antes.
 original propunha** — com o app presente **e** `current`, a saída é a mesma de quando ele estava
 ausente, então o `list` nunca decide. Quem decide é só o `command -v`.
 
+
+---
+
+## 2026-11-17 — o bypass por `PSModulePath`, a lacuna do `write-scope` no escopo global, e a sétima janela de macOS
+
+**Por que esta entrada existe.** Três coisas que o diff não carrega: **por que não há medição por
+efeito** do bypass, **quem** trouxe a janela de macOS de volta ao presente, e a **composição** dos
+dois achados do red team dele, que separados parecem menores do que juntos.
+
+### 🔴 O usuário pediu a medição por efeito, e eu não a fiz — a razão é de alçada, não de capacidade
+
+A sonda era desenhada e inócua no ambiente: módulo no scratchpad, `PSModulePath` só no processo da
+medição, nada persistente — a mesma disciplina da sonda do `HOME`. **Mesmo assim não construí o
+módulo.** Um artefato cujo propósito é neutralizar um controle de segurança não se escreve aqui, nem
+para medir a nossa própria cerca.
+
+**O que entrou no lugar, e é honesto:** a medição **dele** (dois braços, `-NoProfile` explícito,
+`rc=0` nas duas) mais a **derivação da aritmética da nossa linha**, declarada como derivação. O
+`2*!!` converte não-zero em 2 e deixa `0` passar de propósito — então um `trackfw` sombreado que
+devolve 0 atravessa. Isso se lê da linha, não precisa de sonda.
+
+🔴 **O registro diz que a medição falta, e por quê.** Lacuna declarada é informação; lacuna escondida
+é verde falso — e o custo desta é baixo, porque o braço que importa (ele devolve 0, a linha deixa 0
+passar) é aritmética, não comportamento de terceiro.
+
+### A composição é o que vale, e nenhum dos dois achados a mostra sozinho
+
+```
+5-A       PSModulePath auto-load sombreia `trackfw`           -> cerca falha ABERTA
+companheiro  write-scope chama findProjectRoot no alvo        -> caminho GLOBAL libera
+                ~/.claude/settings.json  ·  ~/.codex/hooks.json  ·  dir de modulo PS
+```
+
+Lido separado, o 5-A parece exigir atacante com shell. Lido junto, o vetor é **escrita por
+ferramenta** num caminho que o guard de escrita não cobre — e um deles é o nosso
+`~/.claude/settings.json`, que este arquivo já registra como verificado *"por leitura e validade de
+JSON, não por efeito"*. É a **terceira** propriedade do escopo global aqui: vive fora do git, fica
+atrás a cada sync, e agora está medido que o guard também não o alcança.
+
+**E ele aceitou como residual com a razão escrita** — a injeção não dá capacidade além da escrita
+direta a caminho global. Isso é **escopo, não alívio**, e a diferença importa para não ler o
+`residual` como "não é nada".
+
+### 🔴 A janela de macOS voltou ao presente pelo CRITÉRIO, não por releitura
+
+O cabeçalho estava em `✅ … FECHOU em 11/11`. O `censo-macos.sh` nomeou `b4e30fbd` de hoje às 16:15
+como último abandono — mais novo que o `047f6a67` —, que é literalmente a condição que a seção
+publica para reabrir. **Segunda vez que esse critério dispara por si**, depois de 09/11.
+
+```
+17/11 11:58  push 8baf8d32  901s  runner VAZIO     ubuntu verde em 21s ao lado
+17/11 16:15  push b4e30fbd  902s  runner VAZIO     ubuntu verde em 22s ao lado
+```
+
+**E o censo recusou declarar resolução** pelos 2 runs limpos posteriores, citando o precedente de 1
+abandono em 76 braços. O desenho dele é que vale, não o número: um instrumento que afirmasse
+"fechou" com dois verdes teria mentido em 08/11 e mentiria aqui.
+
+🔴 **O bloco do fechamento da sexta janela NÃO foi apagado** — virou subseção datada. Apagar é o que
+custou remedir tudo do zero em 04/11, e a seção já carrega essa lição; o que muda é o tempo verbal do
+cabeçalho, nunca a medição.
+
+### O que fica derivável
+
+```bash
+bash scripts/censo-macos.sh 10            # ultimo abandono mais novo que 047f6a67 = aberta
+python -c "import json;d=json.load(open('.claude/settings.json'));print(sorted({h['command'] for g in sum(d['hooks'].values(),[]) for h in g['hooks'] if 'guard' in h['command']}))"
+```
+
+A segunda linha diz se a nossa linha de hook ainda resolve `trackfw` **pelo nome** — que é a condição
+do vetor. Se um dia ela resolver por `-CommandType Application` ou por caminho absoluto, a exposição
+sai, e o remédio é do produto dele, nunca à mão aqui.
+
