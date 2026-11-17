@@ -36480,3 +36480,55 @@ digitação. **`+N −0` é o instrumento**, não a releitura do trecho.
 `trackfw agents list --targets opencode`. Executável ausente **com** 12 deployments `current` é a
 armadilha ativa; `current` sozinho não afirma nada sobre o aplicativo.
 
+
+---
+
+## 2026-11-17 — a seção do opencode envelheceu em 2 h 43, e a correção a deixou mais forte
+
+**Por que esta entrada existe.** O que não se deriva do diff é a ordem dos eventos, e é ela que faz
+a lição: a medição foi às ~13h, o `opencode` foi instalado às **15:43**, e o PR que publicou a seção
+mesclou às **16:15** — ou seja, **a premissa caiu 32 minutos antes do próprio merge**, e eu não
+soube. Quem pegou foi a releitura obrigatória antes de postar no upstream.
+
+🔴 **O apodrecimento mais rápido já registrado aqui: 2 h 43.** O recorde anterior eram as **2 h 41**
+do Defender (10/11), e antes dele as **13 h** do `npm i -g trackfw@9.3.2`. Os três pelo mesmo
+mecanismo — afirmação em presente sobre estado de ambiente desta máquina —, e o intervalo está
+encurtando porque as medições de ambiente ficaram mais frequentes, não porque o ambiente mudou mais.
+
+**A correção NÃO foi apagar a medição.** Ela foi datada e passada para o passado, e a coluna do
+estado novo entrou ao lado. O resultado é mais forte do que a seção original:
+
+```
+                              app AUSENTE (13:00)        app INSTALADO 2.3.0 (16:30)
+update harness --dry-run      skipped=35 missing=1       skipped=35 missing=1
+opencode-agents / -skills     skipped / skipped          skipped / skipped
+agents / skills list          12 e 17 `current`          12 e 17 `current`
+~/.config/opencode/plugins/   AUSENTE                    AUSENTE
+```
+
+Com **uma** coluna, a afirmação possível era *"o instrumento omite uma ausência"* — e um leitor
+podia responder que omitir ausência é defensável. Com **duas**, o que está medido é que a saída é
+**constante**: ela não responde à pergunta em nenhuma das direções. 🔴 **Uma medição que envelhece
+pode ser o segundo braço de si mesma**, se o primeiro estiver datado; foi o que aconteceu aqui por
+acidente, e é a razão de a regra ser *datar*, não *evitar medir ambiente*.
+
+**E a exposição deixou de ser hipotética**, o que a seção original não podia dizer: o CLI instalado
+é justamente o que não tem guard.
+
+**Duas coisas foram levadas ao upstream no #688**, nos comentários `6958743718` e `6958747585`:
+
+| | o que mudou por reler o head antes de postar |
+|---|---|
+| série do `go` | eu ia postar 5 pontos terminando em vermelho; os 3 runs novos têm o `go` **verde** (as falhas são de `windows-full-suites`, job diferente), e apareceu um **segundo** par de diff zero — `fafcbe76` 92,425 s → `385f5fe6` 120,595 s, ×1,30, com `git diff --stat … -- internal/generators` vazio. O ×1,11 do par anterior tinha a ressalva "dispersão entre heads"; com 9 pontos ela morreu |
+| opencode | eu ia postar "o app não está na máquina" — e estava, desde 15:43 |
+
+🔴 **A segunda linha é o caso em que a releitura evitou publicar falsidade no repositório de outra
+pessoa**, que é o custo que a memória `antes-de-implementar-issue-dele-alinhar-e-fechar-o-ci`
+registra de 16/11. Ali eu comentei dois minutos depois de ele empurrar o conserto; aqui a disciplina
+pegou antes.
+
+**O que fica derivável, e não depende desta entrada:** `command -v opencode` cruzado com
+`trackfw agents list --targets opencode`. 🔴 **E o cruzamento NÃO é mais o discriminante que a seção
+original propunha** — com o app presente **e** `current`, a saída é a mesma de quando ele estava
+ausente, então o `list` nunca decide. Quem decide é só o `command -v`.
+
