@@ -1632,7 +1632,36 @@ agora **herda o agente da REQ** em vez de ignorá-lo.
 
 Medido por efeito em projeto temporário com os mesmos três agentes, antes de mesclar.
 
-## ✅ A sexta janela de macOS FECHOU em 11/11/2026 às 12:57 — a escassez é DA NOSSA CONTA, e a derivação é o que fica
+## 🔴 A janela de macOS REABRIU em 17/11/2026 — é a SÉTIMA, a escassez é DA NOSSA CONTA, e a derivação é o que fica
+
+**Estado, para quem varre cabeçalhos: há condição ABERTA aqui.** E 🔴 **quem a trouxe de volta ao
+presente foi o critério derivável escrito no fim desta seção, não alguém relendo o texto** — foi o
+`censo-macos.sh` que nomeou um run mais novo que o `047f6a67`, exatamente como ele manda.
+
+```
+17/11 11:58  push 8baf8d32  macos-latest cancelled  901s  runner VAZIO   gate failure
+17/11 16:15  push b4e30fbd  macos-latest cancelled  902s  runner VAZIO   gate failure
+             ubuntu-latest  success em 21 e 22 s, COM runner atribuido   <- o controle
+censo (N=10)  VERDE 3 · ABANDONADO 2 · DISPENSADO 4 · INDETERMINADO 1    soma 10 de 10
+```
+
+**Assinatura idêntica à de todas as janelas anteriores:** 901–902 s, `runner` vazio, braço de Ubuntu
+verde ao lado em ~21 s — logo **não é o conteúdo do job**. Os dois abandonos são de `push` na `main`,
+que é o evento sem dispensa.
+
+🔴 **Consequência prática: a `main` está vermelha no `quality.yml`** desde o merge do #338, por esta
+causa, então o conjunto conhecido do próximo PR já contém os dois nomes do par. **Isso não afrouxa
+nada** — a comparação continua por nome, e vermelho de outro nome não se mescla.
+
+**Os PRs de docs não são afetados**, e a razão é a dispensa do #669: nos runs de `pull_request` de
+diff inerte o shim sai `skipped`, e os #338 e #339 fecharam com os 25 checks verdes no mesmo dia em
+que o `push` abandonava.
+
+**A enumeração, datada:** 19/10 (1 abandono), 03/11 (10), 04/11 (1), 06/11 (4), 09–11/11 (10) e
+**17/11 (2)**. 🔴 **O censo RECUSOU declarar resolução** pelos 2 runs limpos posteriores, citando o
+precedente de 1 abandono em 76 braços — e é esse desenho, não o número, que faz dele instrumento.
+
+### O registro do fechamento da sexta janela, que continua verdadeiro e datado
 
 > **Fechada, e o número não se escreve: ele se deriva.** Medido em 14/11/2026 pelo
 > `scripts/censo-macos.sh`, com o episódio inteiro dentro de um conjunto de 28 runs:
@@ -2834,6 +2863,88 @@ grupos"*, que é falso. Mesma classe da armadilha do controle contaminado pelo P
 seção dos gates de PATH curado.
 
 **Os avisos do `validate` aqui foram de 3 para 5 com este sync**, e os 2 novos são exatamente estes.
+
+## 🔴 `PSModulePath` faz a cerca falhar ABERTA, e a nossa linha é a forma afetada — achado 5-A do red team dele, em 17/11/2026
+
+Achado **dele**, no red team que **reprovou** a `REQ-2026-11-15` (laudo de 481 linhas,
+`docs/portabilidade/2026-11-17-red-team-req-2026-11-15-windows.md`), e **aceito por ele como
+residual** no commit `1e60bfb4`. Medido na máquina dele, com `-NoProfile` explícito e **dois
+braços**:
+
+```
+modulo PS em diretorio do PSModulePath exportando
+  function trackfw { $global:LASTEXITCODE = 0; return }
+
+Arm A  binario no PATH    + modulo    ->  rc=0   FAIL-OPEN
+Arm B  binario AUSENTE    + modulo    ->  rc=0   (sem "not recognized" na saida)
+```
+
+🔴 **`-NoProfile` não protege, e isso é o ponto:** ele suprime script de perfil, **não** a resolução
+de módulo. O auto-loading do PowerShell é independente dele — então a defesa que fecha o ataque *de
+perfil* (o Codex 0.169 passa `-NoProfile`, medido no `d9ef0614` dele) **não alcança este vetor**.
+
+### A nossa linha é a polyglot do #536, e o `2*!!` não barra isto
+
+Lido do nosso `.claude/settings.json` (**5** formas, 4 grupos com guard) e do
+`~/.claude/settings.json` (**2** formas, 2 grupos cada):
+
+```
+trackfw guard credential; LASTEXITCODE=$((2*!!$?)); $LASTEXITCODE=2*!!$LASTEXITCODE; exit $LASTEXITCODE
+```
+
+O `2*!!` converte **qualquer não-zero em 2** — e **`0` continua `0`, de propósito**, porque é assim
+que comando inofensivo passa. Um `trackfw` sombreado que devolve 0 atravessa a linha inteira:
+`2*!!0` é `0` nas duas pernas, e o `exit 0` libera.
+
+🔴 **Declarado: isto é DERIVAÇÃO da aritmética da nossa linha, não medição por efeito aqui.** E a
+razão de não haver medição está escrita de propósito, porque ela é decisão e não lacuna: **não se
+constrói aqui um artefato que neutraliza a cerca**, nem para medir a nossa própria. A medição que
+existe é a dele, em VM, com os dois braços acima.
+
+### O achado companheiro: o `write-scope` NÃO protege caminho global
+
+`RunWriteScope` chama `findProjectRoot` no alvo do `Write`. `writescope.go` congela
+`.codex/hooks.json` **relativo ao root de um projeto trackfw** — então um alvo fora de qualquer
+projeto com `trackfw.yaml` devolve `found=false` e o guard **libera**:
+
+```
+Write  ->  ~/.codex/hooks.json            NAO barrado
+Write  ->  ~/.claude/settings.json        NAO barrado
+Write  ->  diretorio do PSModulePath      NAO barrado   (mesmo controle, ou falta dele)
+```
+
+🔴 **A segunda linha é exatamente o arquivo que corrigimos à mão em 2026-10-07**, e cuja verificação
+este arquivo já declara ter sido *"por leitura e validade de JSON, não por efeito"*. É a terceira
+propriedade do escopo global registrada aqui — ele vive **fora do git**, fica atrás a cada sync, e
+agora está medido que **o guard também não o cobre**.
+
+**E é por isso que ele aceitou o 5-A como residual**, com a razão escrita: a injeção no
+`PSModulePath` **não oferece capacidade além da escrita direta a caminho global** — as duas exigem
+write local que o trackfw já não controla. Não é alívio; é escopo.
+
+### A correção candidata é dele, e pede VM
+
+```
+& (Get-Command trackfw -CommandType Application).Source guard credential
+```
+
+`-CommandType Application` força a resolução ao **binário externo**, ignorando função de módulo.
+🔴 **Não aplicamos aqui**: a linha de hook é gerada pelo produto, então mudá-la à mão criaria
+divergência que todo sync pagaria — e o sítio é dele. O que muda do nosso lado é só **saber**.
+
+### O derivável, para não depender desta seção
+
+```bash
+python -c "import json;d=json.load(open('.claude/settings.json'));print(sorted({h['command'] for g in sum(d['hooks'].values(),[]) for h in g['hooks'] if 'guard' in h['command']}))"
+```
+
+Linha que resolve `trackfw` **pelo nome** está exposta ao vetor; linha que resolva por
+`-CommandType Application` (ou por caminho absoluto) não está. Hoje são as do nome.
+
+**Limite declarado:** o terceiro achado do laudo — três padrões que o gate `internal/winskips` não
+vê (`switch` sem tag, `goos := runtime.GOOS` em variável local, e `continue` em ramo de Windows) — é
+**interno ao produto dele**, com varredura dando **zero ocorrências** na árvore hoje. Não é exposição
+nossa, e está citado só para que a próxima leitura do laudo não o confunda com os dois de cima.
 
 ## `HOME` ≠ `%USERPROFILE%` desliga a cerca GLOBAL em silêncio — aqui a exposição é zero, medida
 
