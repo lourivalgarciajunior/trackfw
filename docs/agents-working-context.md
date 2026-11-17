@@ -36384,3 +36384,50 @@ número tinha de parar de ser enumerado à mão. 🔴 **E lá fica também que `
 entrada tem `class: "assertion"`, e o `Group A/C/D` vive dentro do `reason`. Eu havia relatado ao
 usuário que a nossa tabela errava a classe; **errava só o número**, e quem me corrigiu foi ler o JSON
 antes de editar.
+
+---
+
+## 2026-11-17 — o Pages do fork estava desligado desde sempre, e a pendência que eu listava no lugar dele não existia
+
+**O que foi feito:** Pages habilitado no fork (`build_type=workflow`, igual ao upstream), e o
+`deploy-docs.yml` fechou verde pela primeira vez em quatro corridas na vida do fork. A medição, a
+causa e a derivação de reabertura foram para o `CLAUDE.md`, em seção própria — aqui fica só o que
+não se deriva de lá.
+
+### 🔴 A lição é sobre a MINHA lista de pendências, não sobre o Pages
+
+Na varredura de 16/11 eu carregava uma linha chamada **"gate do parque local nunca rodou no CI —
+secret ausente desde 16/10"**. Ela **não tinha lastro**: `grep -ril 'parque local'` em todo o
+`C:\dev` devolve zero, o fork não tem secret nenhum, e os três workflows que nunca rodaram têm razão
+de desenho — `windows-census.yml` e `windows-probe.yml` são `workflow_dispatch`, e o `release.yml` é
+por tag, que o fork não cria.
+
+**No lugar dela havia uma pendência real que eu não tinha visto.** A diferença entre as duas é de
+forma, não de sorte: a falsa descrevia um mecanismo que eu nunca medi; a verdadeira estava num run
+vermelho, com o job nomeado, esperando alguém abrir.
+
+🔴 **Pendência que não se ancora em artefato é palpite com cara de item.** Este arquivo já cobra isso
+de afirmação de estado — *"o que é derivável não entra como afirmação de estado"* —, e vale igual na
+direção contrária: **item de lista se ancora em artefato que se pode abrir**, ou sai da lista. O
+sintoma de ter errado foi o mesmo das três leituras de 16/11: a linha sobreviveu porque ninguém
+tentou derivá-la.
+
+### Dois itens que saíram da lista por NATUREZA, não por idade
+
+- **"Guarda do backtick em `FORA`"** não era falta: é decisão escrita, com o motivo, na seção *"Por
+  que NÃO existe gate de repositório para isto"*. A corrupção é sintaticamente válida, logo um gate
+  textual daria falso positivo na prosa que cita `\n` de propósito; o instrumento honesto é a
+  pós-condição dentro da ferramenta, declarada fora do agregador porque é ferramenta, não gate.
+- **A janela de macOS** já estava no passado com ✅, e o censo de 16/11 concorda (`a janela FECHOU
+  naquele run`). O que estava velho era a minha linha, não o registro — e escrever "11 runs limpos"
+  ali seria plantar exatamente o número que aquela seção proíbe, porque ele **se deriva** do último
+  abandono e não do `N` que quem chama escolhe.
+
+### O que fica aberto do lado de fora deste repo
+
+Os três clones cujo `origin` devolve 404 — `Indie-Expert/mellea-ops`,
+`lourivalgarciajunior/anymarket_integration` e `Mentorstec/Atman-etl-n3-dw`. 🔴 **`origin` apontando
+para nada é pior que `origin` ausente, porque parece respaldado**, e nos três o clone local é a única
+cópia. O precedente desta casa é o `project_management`, que ganhou bundle em `~/repos-aposentados/`
+antes de a pasta ser apagada. Nada a fazer neste repositório; fica anotado porque foi esta varredura
+que achou.
