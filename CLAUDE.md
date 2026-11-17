@@ -1125,9 +1125,10 @@ família do *zero com sonda errada é cegueira*: a sonda óbvia responde outra p
 
 ### 🔴 Segunda grafia, com o `opencode` — e ela é PIOR, porque o instrumento afirma em vez de omitir
 
-Medido em 17/11/2026, com o binário **11.7.0**, porque o usuário perguntou se este projeto funciona
-sob o `opencode`. A pasta de config está lá, com **29 artefatos nossos**, e o aplicativo **não
-existe nesta máquina**:
+Medido em 17/11/2026 **às ~13h**, com o binário **11.7.0**, porque o usuário perguntou se este
+projeto funciona sob o `opencode`. A pasta de config está lá, com **29 artefatos nossos**, e o
+aplicativo **não existia nesta máquina naquele momento** — 🔴 **ele foi instalado às 15:43 do mesmo
+dia, e o bloco ✅ no fim desta seção mede os DOIS estados**:
 
 ```
 ~/.config/opencode/agents/      12 arquivo(s)   trackfw-architect.md, -backend, -frontend, ...
@@ -1159,8 +1160,8 @@ agents list --targets opencode   12 deployment(s)  ·  estado `current`: 12 de 1
 skills list --targets opencode   17 deployment(s)  ·  estado `current`: 17 de 17
 ```
 
-**Vinte e nove artefatos declarados `current`, e zero `missing`, para um CLI que não está na
-máquina.** A armadilha do Windsurf pedia que alguém **lesse errado uma ausência**; esta entrega uma
+**Vinte e nove artefatos declarados `current`, e zero `missing`, para um CLI que naquele momento não
+estava na máquina.** A armadilha do Windsurf pedia que alguém **lesse errado uma ausência**; esta entrega uma
 **afirmação positiva** de instalado-e-em-dia. Leitura por instrumento, que é a defesa de sempre
 nesta casa, aqui leva ao veredito errado.
 
@@ -1193,7 +1194,50 @@ devolvido "ausente" pelo motivo certo e por acidente.
 **Limite declarado:** `~/.config/opencode/` **não** é escrito por `trackfw update harness` — ele sai
 `skipped` ali. Os 29 artefatos vieram de `agents install` / `skills install` em escopo global, em
 data que **não** foi derivada (o `mtime` da pasta diz 29/08 para `skills/` e 05/11 para `agents/`, e
-mtime não é prova de autoria). O que está medido é o **estado de hoje**, não quando ele nasceu.
+mtime não é prova de autoria). O que está medido é o estado **daquele momento**, não quando ele
+nasceu.
+
+> #### ✅ O `opencode` FOI INSTALADO às 15:43 do mesmo dia, e a saída do instrumento NÃO MUDOU — a propriedade está medida nos DOIS estados
+>
+> A medição acima é de ~13h e **envelheceu em 2 h 43**. O recorde anterior desta casa eram as **2 h
+> 41** do Defender, e o mecanismo é o mesmo: afirmação em presente sobre estado de ambiente desta
+> máquina. Às **15:43** o `opencode` foi instalado aqui (`@opencode/cli@2.3.0`, `opencode v2.3.0`
+> conferido por `--version`, shims em `%APPDATA%/npm`) — **32 minutos antes** de o PR que publicou
+> esta seção mesclar, às 16:15.
+>
+> 🔴 **E isso FORTALECE a seção em vez de desmenti-la, porque o mesmo comando, nos dois estados, na
+> mesma máquina, dá saída IDÊNTICA:**
+>
+> ```
+>                               app AUSENTE (13:00)        app INSTALADO 2.3.0 (16:30)
+> update harness --dry-run      skipped=35 missing=1       skipped=35 missing=1
+>   o unico `missing`           windsurf-credential-guard  o MESMO
+> opencode-agents / -skills     skipped / skipped          skipped / skipped
+> agents list --targets         12 `current`               12 `current`
+> skills list --targets         17 `current`               17 `current`
+> ~/.config/opencode/plugins/   AUSENTE                    AUSENTE
+> ```
+>
+> **A saída não carrega informação sobre o aplicativo em NENHUMA das duas direções** — nem *"não está
+> aí"*, nem *"agora está"*. Com uma coluna só, a leitura possível era *"o instrumento omite uma
+> ausência"*; com as duas, o que está medido é mais forte: **ele não responde a essa pergunta, e a
+> resposta dele é constante.** `current` continua dizendo *"o que o trackfw escreveu está em dia"*.
+>
+> 🔴 **E a exposição deixou de ser hipotética:** o CLI que agora está instalado é justamente o que não
+> tem guard. Sob o `opencode`, nesta máquina, `git commit` na `main` não é bloqueado e `git add -A`
+> não é recusado — a cerca não está lá, e nada no instrumento diz isso.
+>
+> **Levado ao upstream** no [#688](https://github.com/kgsaran/trackfw/pull/688), porque o escopo
+> negativo da `REQ-2026-11-17` dele (guard de credencial no Antigravity) deixa o OpenCode fora do
+> escopo inicial e diz que ele entra como ML *"se a investigação mostrar a mesma causa"* — e a causa é
+> a mesma: o *silent skip* do `hooks.go:16`, que o tip dele mantém. 🔴 **Não é correção nossa**: o
+> sítio é produto do upstream, e o veículo que já existe lá é o `withD5NoticeCodex`, que pendura aviso
+> informativo em resultado `TargetSkipped` — exatamente onde o opencode cai.
+>
+> **Dois limites declarados.** A coluna *"app ausente"* **não se reproduz mais aqui**, e está datada
+> acima para isso; e **não sondei o opencode** — não medi se ele executa comando de um jeito que um
+> hook interceptaria. O que está medido é o lado do **trackfw**, não o lado do CLI, e essa é
+> justamente a AC-2 da REQ dele, que segue aberta.
 
 ## Não rode `make parity-rest` na raiz deste fork
 
