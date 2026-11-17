@@ -4487,3 +4487,102 @@ rodando na raiz; o nosso agregador não os conhece, porque ele só executa os `.
 > como registro do defeito e da correção; o que caducou foi a afirmação de que ela só existe aqui.
 > Documentação que descreve divergência inexistente faz o próximo merge procurar conflito onde não
 > há.
+
+## ✅ O `deploy-docs.yml` deste fork NUNCA tinha passado — o Pages estava desligado, e configuração não vem no fork
+
+Habilitado em **17/11/2026 às 08:29** (local), depois de 18 dias vermelho. O workflow rodou **quatro
+vezes na vida do fork**, e as três primeiras reprovaram todas no mesmo passo:
+
+```
+17/11 08:29  workflow_dispatch  success    <- build + deploy, os dois
+30/10 19:12  push               failure
+30/10 10:11  push               failure
+29/10 18:57  push               failure
+
+nas tres:   build  success   ·   deploy  failure
+                                 passo "Deploy to GitHub Pages"
+```
+
+🔴 **O build sempre passou, então o vermelho não falava do conteúdo do site — e o job de cima levava
+para o lugar errado.** O que faltava era destino: o `actions/deploy-pages` publica num site que o
+repositório precisa ter habilitado, e ele não estava.
+
+```
+Pages no fork       404 em `repos/lourivalgarciajunior/trackfw/pages`
+Pages no upstream   ativo · build_type=workflow · https://kgsaran.github.io/trackfw/
+```
+
+### A causa durável: o fork copia o workflow, não a configuração
+
+O `deploy-docs.yml` chegou aqui pelo fork, como todo arquivo do upstream. **A habilitação do Pages não
+é arquivo** — é configuração de repositório, vive **fora do git**, e por isso não atravessa o fork. O
+resultado é um workflow que afirma uma capacidade que o repositório não tem.
+
+🔴 **É a mesma família do escopo global dos hooks**, que este arquivo já registra em cinco ocorrências:
+*"consequência de o escopo global viver fora do git"*. Lá são os CLIs de agente que ficam atrás de um
+sync; aqui é o destino de publicação que nunca existiu. Nos dois casos **não há defeito de código** —
+há estado fora do versionamento, que nenhum merge carrega e nenhum gate alcança.
+
+### Por que sobreviveu 18 dias sem ninguém ver
+
+O gatilho é `push` em `site/**`, então o workflow **só acende quando a documentação muda** — três
+vezes em três semanas.
+
+🔴 **É o inverso da [#530](https://github.com/kgsaran/trackfw/issues/530), e o custo é o mesmo.** Lá o
+defeito era ruído **permanente**: aviso que sempre acende deixa de ser lido. Aqui é ruído **raro**:
+vermelho que acende a cada três semanas, num caminho que ninguém observa, não chega a ser lido nenhuma
+vez. São as duas pontas da mesma propriedade — **sinal só vale onde a frequência cabe na atenção de
+alguém.**
+
+### O que foi feito, e o que NÃO precisou mudar
+
+```
+POST repos/lourivalgarciajunior/trackfw/pages   build_type=workflow   <- igual ao upstream
+html_url                                        https://lourivalgarciajunior.github.io/trackfw/
+site/.vitepress/config.mts                      base: '/trackfw/'     <- JA casava
+```
+
+**Nada a editar no repositório**, e a razão é que o fork **tem o mesmo nome** do upstream: o `base` do
+VitePress é o caminho do site, e `lourivalgarciajunior.github.io/trackfw/` termina no mesmo sufixo que
+`kgsaran.github.io/trackfw/`. Num fork renomeado, o `base` teria de mudar junto — então a ausência de
+edição aqui é **coincidência de nome**, não propriedade do VitePress.
+
+### A prova é a página servida, nunca o verde do Actions
+
+Os caminhos foram **derivados** de `find site -name '*.md'`, nunca digitados de memória:
+
+```
+200   /                                   <- site/index.md          <title>trackfw</title>, 19807 b
+200   /en/                                <- site/en/index.md
+200   /guide/{ai-agents,commands,getting-started}.html
+200   /en/guide/{ai-agents,commands,getting-started}.html
+                                             8 de 8
+404   /guia/                              <- controle negativo, caminho inexistente
+```
+
+Verde de `deploy` diz que a ação terminou; `200` com título diz que o GitHub está servindo.
+
+### 🔴 Duas armadilhas de leitura, as duas medidas
+
+- **`status: null` na API NÃO é defeito.** O upstream devolve o mesmo `null` com o site no ar há meses:
+  o campo reporta build **por branch**, e `build_type=workflow` não passa por ali. Quem ler o `null`
+  como "não publicado" conclui o contrário do real.
+- **O primeiro 404 era do meu caminho inventado.** Testei `/guia/` por hábito de pt-BR, e o site usa
+  `/guide/`. O 404 era legítimo, e quase entrou no relato como falha do deploy. O discriminante foi
+  derivar os caminhos da listagem de arquivos em vez de supô-los — mesma família do *zero com sonda
+  errada é cegueira*. **O controle negativo ficou no bloco acima de propósito:** ele é o que separa
+  "o site responde" de "o site responde a qualquer coisa".
+
+### Reabrir é derivável, e o número não se escreve aqui
+
+```bash
+gh api repos/lourivalgarciajunior/trackfw/pages --jq '.build_type'
+```
+
+`workflow` = habilitado e casando com o que o workflow faz. **404** = voltou ao estado de 29/10, e aí o
+próximo push a `site/**` reprova no passo de deploy. A contagem de corridas vermelhas sai de
+`gh run list --workflow deploy-docs.yml --repo lourivalgarciajunior/trackfw`, pela mesma razão que a
+regra da tripla não leva versão chumbada.
+
+🔴 **E `gh run list` sem `--repo` responde pelo UPSTREAM** — o checkout tem `origin` e `upstream` e
+nenhum default, que é a mesma pegadinha já registrada para o `gh pr checks`.
