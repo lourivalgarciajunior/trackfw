@@ -36605,3 +36605,73 @@ A segunda linha diz se a nossa linha de hook ainda resolve `trackfw` **pelo nome
 do vetor. Se um dia ela resolver por `-CommandType Application` ou por caminho absoluto, a exposição
 sai, e o remédio é do produto dele, nunca à mão aqui.
 
+
+---
+
+## 2026-11-17 — a sétima janela de macOS abriu e fechou no mesmo dia, e o censo tem ponto cego de ~15 min
+
+**Por que esta entrada existe.** Duas coisas que não se derivam: o **ponto cego do instrumento** (que
+só aparece em quem rodou o censo dois minutos depois de um push) e o fato de que **o critério
+derivável moveu o cabeçalho nas duas direções no mesmo dia** — o que é a prova mais forte que esta
+casa tem de que o desenho dele serve.
+
+### O arco completo, em 6 h 15 min
+
+```
+17/11 11:58  push 8baf8d32  macos cancelled  901s  runner VAZIO
+17/11 16:15  push b4e30fbd  macos cancelled  902s  runner VAZIO       <- merge do #338
+17/11 17:22  push c027fe2a  macos cancelled  902s  runner VAZIO       <- merge do #339
+17/11 18:13  push 1ef6c309  macos SUCCESS     28s  runner=1000017337  <- merge do #340
+```
+
+🔴 **Primeira janela em que a volta do pool tem runner e número.** Em 03/11 e 06/11 a recuperação
+**não** foi observada: havia 39 min e 2 h 56 min sem nenhuma corrida no vão. Aqui o vão é de **51
+min**, então a transição continua dentro dele — o medido é `3 abandonados → 1 verde com runner`, e não
+o instante em que o pool voltou. **A ressalva fica**, porque é ela que distingue "observamos a volta"
+de "observamos um verde depois".
+
+### 🔴 O ponto cego, que é o achado durável desta entrada
+
+```
+17:22  push c027fe2a disparado
+17:24  censo rodado   ->  "ultimo abandono: 16:15"   <- VERDADE naquele instante
+17:37  o run conclui  ->  cancelled 902s
+18:13  publico "17/11 (2)" no #340                   <- ja eram 3
+```
+
+**O abandono leva ~900 s para se manifestar**, então um censo rodado logo depois de um push **não pode
+vê-lo**. Isso não é erro de leitura: é propriedade do instrumento, e ela não estava escrita em lugar
+nenhum.
+
+🔴 **Terceira grafia de *"zero com sonda errada é cegueira"* registrada aqui**, e a variante é nova:
+as duas anteriores eram **sonda mal construída** (predicado mais estrito que o da regra; `\t` que não
+é tabulação em `grep -oE`). Esta é **o evento ainda não aconteceu** — a sonda está certa, o
+denominador está certo, e o resultado é incompleto porque o tempo não passou. A defesa é diferente:
+não se conserta a sonda, conserta-se **quando** se roda.
+
+### E a minha própria frase apodreceu em UMA HORA
+
+O #340, mesclado às 18:13, publicou *"a `main` está vermelha no `quality.yml`"*. O run das 18:13 —
+disparado **pelo próprio merge dele** — saiu verde. 🔴 **O PR tornou falsa a sua própria afirmação, no
+ato de ser mesclado.**
+
+Isso bate o recorde do dia, que já era curto: a seção do opencode apodreceu em **2 h 43** (e antes
+dela, o Defender em 2 h 41, e o `npm i -g trackfw@9.3.2` em 13 h). **Quatro afirmações em presente
+caídas em um dia**, todas pelo mesmo mecanismo, e a lição é a que o arquivo já publica duas vezes:
+*"Datado e no passado não envelhece. Presente envelhece."*
+
+**A forma que não apodrece, e foi a adotada:** o estado de CI deixou de ser afirmado e passou a ter a
+derivação escrita ao lado (`gh api .../runs?branch=main` por workflow). O que **ficou** afirmado é só
+o que não envelhece — *quando* o par de macOS estiver vermelho na `main`, os dois nomes entram no
+conjunto conhecido, e a comparação continua por nome.
+
+### O que fica derivável
+
+```bash
+bash scripts/censo-macos.sh 8      # e NAO rode logo depois de mesclar: espere o run do push concluir
+```
+
+**Último abandono mais novo que o anterior = janela nova.** Verde com `runner` atribuído depois dele =
+sem abandono desde então, que é tudo o que *"fechou"* quer dizer — o censo **recusa** declarar
+resolução, e é esse desenho, não o número, que faz dele instrumento.
+

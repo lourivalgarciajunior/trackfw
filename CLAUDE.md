@@ -1632,34 +1632,71 @@ agora **herda o agente da REQ** em vez de ignorá-lo.
 
 Medido por efeito em projeto temporário com os mesmos três agentes, antes de mesclar.
 
-## 🔴 A janela de macOS REABRIU em 17/11/2026 — é a SÉTIMA, a escassez é DA NOSSA CONTA, e a derivação é o que fica
+## ✅ A SÉTIMA janela de macOS abriu E FECHOU em 17/11/2026, entre 11:58 e 18:13 — a escassez é DA NOSSA CONTA, e a derivação é o que fica
 
-**Estado, para quem varre cabeçalhos: há condição ABERTA aqui.** E 🔴 **quem a trouxe de volta ao
-presente foi o critério derivável escrito no fim desta seção, não alguém relendo o texto** — foi o
-`censo-macos.sh` que nomeou um run mais novo que o `047f6a67`, exatamente como ele manda.
+🔴 **Quem abriu e quem fechou esta seção foi o critério derivável escrito no fim dela, não alguém
+relendo o texto** — nas duas direções, no mesmo dia: o `censo-macos.sh` nomeou um run mais novo que o
+`047f6a67` (abriu), e depois nomeou um verde mais novo que o último abandono (fechou).
 
 ```
-17/11 11:58  push 8baf8d32  macos-latest cancelled  901s  runner VAZIO   gate failure
-17/11 16:15  push b4e30fbd  macos-latest cancelled  902s  runner VAZIO   gate failure
-             ubuntu-latest  success em 21 e 22 s, COM runner atribuido   <- o controle
-censo (N=10)  VERDE 3 · ABANDONADO 2 · DISPENSADO 4 · INDETERMINADO 1    soma 10 de 10
+17/11 11:58  push 8baf8d32  macos cancelled  901s  runner VAZIO       gate failure
+17/11 16:15  push b4e30fbd  macos cancelled  902s  runner VAZIO       gate failure
+17/11 17:22  push c027fe2a  macos cancelled  902s  runner VAZIO       gate failure
+17/11 18:13  push 1ef6c309  macos SUCCESS     28s  runner=1000017337  <- O POOL VOLTOU
+             ubuntu-latest  success em 21 e 22 s, COM runner, nos tres    <- o controle
+censo (N=8)  VERDE 1 · ABANDONADO 3 · DISPENSADO 4 · INDETERMINADO 0      soma 8 de 8
 ```
 
 **Assinatura idêntica à de todas as janelas anteriores:** 901–902 s, `runner` vazio, braço de Ubuntu
-verde ao lado em ~21 s — logo **não é o conteúdo do job**. Os dois abandonos são de `push` na `main`,
-que é o evento sem dispensa.
+verde ao lado em ~21 s — logo **não é o conteúdo do job**. Os três abandonos são de `push` na `main`,
+que é o evento sem dispensa; a janela durou **6 h 15 min**.
 
-🔴 **Consequência prática: a `main` está vermelha no `quality.yml`** desde o merge do #338, por esta
-causa, então o conjunto conhecido do próximo PR já contém os dois nomes do par. **Isso não afrouxa
-nada** — a comparação continua por nome, e vermelho de outro nome não se mescla.
+🔴 **E esta é a PRIMEIRA janela em que a volta do pool foi medida com runner e número** — `success` em
+**28 s** com `runner=1000017337`. Nos fechamentos de 03/11 e 06/11 a recuperação **não** foi
+observada, porque havia 39 min e 2 h 56 min sem nenhuma corrida no vão. Aqui o vão é de **51 min**
+(17:22 → 18:13), então a transição continua **dentro** dele — o que está medido é
+`3 abandonados → 1 verde com runner`, não o instante em que o pool voltou.
 
-**Os PRs de docs não são afetados**, e a razão é a dispensa do #669: nos runs de `pull_request` de
-diff inerte o shim sai `skipped`, e os #338 e #339 fecharam com os 25 checks verdes no mesmo dia em
-que o `push` abandonava.
+### 🔴 A enumeração que o #340 publicou dizia `17/11 (2)` e eram TRÊS — o censo tem ponto cego de ~15 min depois de qualquer push
 
 **A enumeração, datada:** 19/10 (1 abandono), 03/11 (10), 04/11 (1), 06/11 (4), 09–11/11 (10) e
-**17/11 (2)**. 🔴 **O censo RECUSOU declarar resolução** pelos 2 runs limpos posteriores, citando o
-precedente de 1 abandono em 76 braços — e é esse desenho, não o número, que faz dele instrumento.
+**17/11 (3)**.
+
+O `(2)` não foi descuido: **o abandono leva ~900 s para se manifestar**. Eu rodei o censo às 17:24,
+dois minutos depois do push das 17:22, e aquele run só concluiria por volta das 17:37 — então o
+terceiro abandono **ainda não existia** para o instrumento.
+
+```
+17:22  push c027fe2a disparado
+17:24  censo rodado   ->  "ultimo abandono: 16:15"   <- verdade naquele instante
+17:37  o run conclui  ->  cancelled 902s
+18:13  publico "17/11 (2)" no #340                   <- ja eram 3
+```
+
+🔴 **É propriedade do instrumento, não erro de leitura**, e é a terceira grafia de *"zero com sonda
+errada é cegueira"* registrada aqui — agora na variante **o evento ainda não aconteceu**. As outras
+duas foram a sonda com predicado mais estrito que o da regra, e o `grep -oE` com `\t` que não é
+tabulação.
+
+**A consequência prática: não meça o censo logo depois de mesclar.** Espere o run do `push` concluir,
+ou leia o estado dele (`status != completed` quer dizer que o veredito ainda não existe).
+
+🔴 **E a frase que o #340 publicou — *"a `main` está vermelha no `quality.yml`"* — apodreceu em uma
+hora**, porque o run das 18:13 saiu verde. Estado de CI em presente é da mesma família do `hoje` e da
+versão chumbada; o que vale é derivar:
+
+```bash
+gh api "repos/lourivalgarciajunior/trackfw/actions/runs?branch=main&per_page=60" --jq '.workflow_runs[]|"\(.path)\t\(.id)\t\(.conclusion)"' | sort -u -t$'\t' -k1,1
+```
+
+**O que NÃO envelheceu, e é o que importa para mesclar:** quando o par de macOS estiver vermelho na
+`main`, os dois nomes entram no conjunto conhecido do próximo PR — e **isso não afrouxa nada**, porque
+a comparação continua por nome e vermelho de outro nome não se mescla. **Os PRs de docs não são
+afetados** pela dispensa do #669: nos runs de `pull_request` de diff inerte o shim sai `skipped`, e os
+#338, #339 e #340 fecharam com os 25 checks verdes no mesmo dia em que o `push` abandonava.
+
+🔴 **O censo RECUSOU declarar resolução** pelos 2 runs limpos posteriores, citando o precedente de 1
+abandono em 76 braços — e é esse desenho, não o número, que faz dele instrumento.
 
 ### O registro do fechamento da sexta janela, que continua verdadeiro e datado
 
