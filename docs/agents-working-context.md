@@ -36675,3 +36675,117 @@ bash scripts/censo-macos.sh 8      # e NAO rode logo depois de mesclar: espere o
 sem abandono desde então, que é tudo o que *"fechou"* quer dizer — o censo **recusa** declarar
 resolução, e é esse desenho, não o número, que faz dele instrumento.
 
+
+---
+
+## 2026-11-18 — sync do #687/#688/#689, e o discriminante da tripla me enganou por âncora
+
+**Por que esta entrada existe.** Três coisas que não se derivam: o **erro de âncora** no discriminante
+da tripla (que publiquei errado e usei errado no mesmo dia), a **medição por efeito** do que o #687
+conserta — com a linha legacy do escopo global servindo de controle no mesmo minuto —, e o fato de o
+Defender ter interceptado **a minha própria sonda**, com o carimbo batendo ao segundo.
+
+### O autoteste da previsão fechou exato
+
+Antes de rodar o script, derivei o que ele deveria imprimir. Isto não é profecia: se ele discordasse,
+um dos dois estaria errado e eu queria saber **antes** de commitar a medição.
+
+```
+previsto    PRODUTO 88 · RETIDO 39   (de 127; docs/cli-parity.md fora, porque vem DELE)
+o script    PRODUTO 88 · RETIDO 39   (de 127)
+validate    0 violacoes antes · 0 depois
+```
+
+### 🔴 O erro que importa: ancorei o discriminante na minha ÚLTIMA LEITURA
+
+O `CLAUDE.md` publica o discriminante da tripla como *"arquivo de hook no conjunto do intervalo"*,
+derivável por `git diff --name-only <base>..upstream/main`. Eu tomei `<base>` como o commit da
+varredura anterior (`6b28e547`) e obtive o veredito **oposto**:
+
+```
+6b28e547..upstream/main      0 arquivo(s) de hook   ->  "nao exige a tripla"
+merge-base(HEAD, upstream)   3 arquivo(s) de hook   ->  exige
+```
+
+🔴 **E a causa é a mais traiçoeira possível: o `6b28e547` *é* o commit que traz a forma nova.**
+Ancorar nele o põe fora do próprio intervalo — a âncora **come o achado que ela deveria encontrar**.
+
+Quarta vez que âncora errada engana neste fork, e a primeira em que ela não era o dois-pontos: era a
+**minha leitura anterior**, tratada como se fosse a nossa base. O que decide não é quando eu olhei
+pela última vez; é o que a nossa árvore já tem. A emenda está no `CLAUDE.md`, com o comando ancorado
+em `git merge-base`.
+
+### A decomposição dos avisos, que é o que separa sync de tripla
+
+```
+binario DELE na arvore ANTIGA    20 avisos  =  3 isencoes + 17 D18 legacy
+  dos 17:  7 de PROJETO + 10 de GLOBAL
+depois do sync                   13 avisos  =  3 isencoes + 10 D18 legacy
+  de PROJETO                      0   <- consertados PELO SYNC (os arquivos vieram dele)
+```
+
+O passo 2 da tripla está **bloqueado**: nenhuma tag contém o `6b28e547`, e o `npm latest` é a 11.7.0.
+Então os 10 globais ficam — propriedade já registrada de o escopo global viver fora do git, não
+esquecimento.
+
+### 🔴 O que o #687 entrega, medido por EFEITO com controle no mesmo minuto
+
+A linha legacy ainda vive no `~/.claude/settings.json`, então ela é o controle — e o controle é do
+**mesmo instante**, que é a lição de 09/11 sobre o tempo ser variável como outra qualquer:
+
+```
+bash -eu   LEGACY (195 bytes, sem `set +eu`)   status rc=127   push rc=127
+bash -eu   NOVA   (333 bytes, com `set +eu`)   status rc=0     push rc=2
+```
+
+🔴 **`127` não bloqueia — só `2` bloqueia.** Sob `errexit`/`nounset` herdado a linha antiga sai 127
+**nas duas direções**: para de discriminar e falha **aberta**. A nova discrimina. Enquanto a tripla
+não rodar, este projeto está coberto e os **outros** desta máquina não.
+
+**E a forma nova NÃO exige o binário novo** — medido pelo `trackfw` do PATH, que é a 11.7.0,
+anterior ao #687: `push` e `commit` saem 2, `status` sai 0. É isso que torna segura a ordem
+sync-primeiro-tripla-depois.
+
+### 🔴 O Defender interceptou a MINHA sonda, e o carimbo bate ao segundo
+
+Medindo o binário dele antes do merge, em worktree descartável:
+
+```
+07:53:31  compilado    --version -> trackfw 11.7.0        ok
+07:54:27  validate dos 20 avisos                          ok   <- VALIDO, 77 s antes
+07:55:44  sonda de PATH curado   rc=126 Permission denied
+07:55:44.53  deteccao do Defender   .../wt-f5ec2a94/tf-f5ec.exe
+arquivo depois: 21.468.160 bytes, integro, NAO roda
+```
+
+**A sonda do PATH curado foi a execução que o Defender interceptou** — não é coincidência de janela,
+é o mesmo evento. As medições anteriores sobrevivem porque precedem a detecção, e isso só é
+afirmável porque os carimbos foram lidos. Quarta ocorrência; nada no Defender foi alterado.
+
+🔴 **A sonda que ficou sem medição por efeito está declarada:** `windows_sh_missing` com `sh` fora do
+PATH. O fonte responde o que decide — é **`warning`** (`applyRuleWarnOnly`), premissa
+`GOOS=windows` + `sh` ausente, e aqui `sh` está em `/usr/bin/sh` e executa. Cala **pela premissa**, e
+aviso não reprova PR.
+
+### O que o #688 traz e que nos toca
+
+- 🔴 **O 5-A NÃO foi corrigido** — zero `CommandType Application` no produto, e o roadmap dele declara
+  *"5-A aceito como residual pelo KG em 2026-11-17"*, com a razão escrita. A nossa seção do
+  `PSModulePath` descreve o estado de hoje.
+- **FIFO hang em `InertClaudeGuardPath`**, cujo caller `validator_home_divergence_rule.go` é
+  **Windows-only** — ou seja, nosso. O sync traz o conserto (`internal/fileutil` com O_NONBLOCK).
+  Limite: plantar FIFO aqui é o caso que a nossa própria memória já registra como impossível pelo
+  `mkfifo` do MSYS, então a exposição real seria por named pipe, e isso não foi medido.
+- **`windows-skips.json`**, novo, com 23 skips declarados — e a causa nº 1 é `os.Chmod` ser no-op em
+  NTFS, o mesmo Group A que este arquivo registra como ponto cego local, agora formalizado no produto.
+- `entries` do known-failures: **5 antes · 5 depois**. A lista conhecida não cresceu.
+- **Dois nomes novos no conjunto de checks** — `windows-package-smoke` e `windows-arm64`. Quarta
+  ocorrência do padrão: o conjunto cresce **por adição**, e a derivação `linhas − nomes = duplicatas`
+  absorve isso sem edição.
+
+### E o `CLAUDE.md` gerenciado dele foi traduzido
+
+A legenda de estado e o item 6 do protocolo passaram a inglês. O sync **retém** o nosso e imprime o
+diff; custo zero, porque o leitor bilíngue da 11.6.0 aceita as duas grafias. É a previsão que a seção
+do `trackfw update` já carregava, agora acontecida.
+
