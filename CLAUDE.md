@@ -1239,6 +1239,162 @@ nasceu.
 > hook interceptaria. O que está medido é o lado do **trackfw**, não o lado do CLI, e essa é
 > justamente a AC-2 da REQ dele, que segue aberta.
 
+### ✅ O pedido de ML foi FEITO em 18/11/2026 às 14:51 — [#691](https://github.com/kgsaran/trackfw/issues/691), e o OpenCode não andou um byte em dez MLs
+
+A cláusula do escopo negativo dele diz que o OpenCode *"entra como ML desta REQ"* se a causa for a
+mesma. **A causa é a mesma**, e o pedido foi levado com **duas** saídas — registrar como ML em wave
+posterior, **ou** atualizar a cláusula para dizer que não vai acontecer. Hoje ela deixa escrito um
+caminho que ninguém percorre, e é essa ambiguidade que o pedido fecha.
+
+🔴 **A assimetria é DERIVADA, não lida de prosa** — e é ela que faz o argumento, porque não depende
+de ninguém concordar com a leitura:
+
+```
+cliDetectors (internal/generators/hooks.go)                       9 chaves
+  claude codex gemini kiro copilot cursor windsurf antigravity amazonq
+alvos do catalogo (internal/commands/agents_skills_test.go:298)  10
+diferenca                                                         opencode
+```
+
+**O OpenCode é o único alvo do catálogo sem hook.** Para agentes e skills ele é par dos outros nove;
+só na fiação do guard fica fora.
+
+🔴 **E o que mudou é que o skip deixou de ser comentário e virou invariante com asserção:**
+
+```
+internal/generators/antigravity_hooks_test.go:309
+    t.Run("contra_opencode_still_skips", ...)
+        "opencode should still be a silent skip; got entries: %v"
+```
+
+Isso **aperta** a decisão em vez de afrouxá-la — um ML futuro passa a ter de **mudar um teste**, e
+quem ler o teste sem o contexto da REQ lê *"é assim de propósito"*, que é exatamente a leitura que a
+cláusula não quis deixar. **Não é defeito dele:** prender o comportamento vigente é a forma certa.
+
+**E o acervo medido confirma a inércia, por delta e não por impressão.** Entre o `f0f03053` (13:59) e
+o `861c52b5` (16:44) — **cinco** MLs, 25 arquivos, +2040 −69 —, `grep -ci opencode` no diff devolve
+**0**. Somado às cinco entregas anteriores do mesmo dia, são dez MLs sem um byte.
+
+🔴 **Por que issue, e não comentário na REQ — e isso é medição de canal, não preferência:** a branch
+`feat/guard-de-credencial-no-google-antigravity-…` **não tem PR aberto**, e comentário de commit **se
+desgarra no squash** do merge dele, que é como ele mescla. O veículo literal seria o mais frágil
+justamente por ser o literal. A issue oferece mover para Discussions, que é o canal que este arquivo
+já registra como o dele para planejamento.
+
+**Limite declarado, e ele está dentro da própria issue:** **não sondei o OpenCode**. A forma do
+`tool.execute.before`/`after` vem da `REQ-2026-08-04` **dele**, não de medição minha — então o pedido
+é de **registro**, não de implementação, e o ML não é *"copiar o ML-3B"*: é a decisão de o plugin
+entrar ou não.
+
+## ✅ A `REQ-2026-11-17` dele acendeu DUAS regras aqui, e as duas foram medidas por efeito em 18/11/2026
+
+Medido com o binário dele compilado de `861c52b5`, na **nossa** árvore, com o nosso `bin/trackfw.exe`
+servindo de controle **no mesmo minuto** — que é a lição de 09/11 sobre o tempo ser variável como
+outra qualquer:
+
+```
+binario DELE (861c52b5)     14 aviso(s)   ·  "is legacy for individual accounts": 1
+binario NOSSO (11.7.0)      13 aviso(s)   ·  a mesma busca: 0        <- controle, 18:06
+rc=0 nos dois — sao AVISOS, nenhum reprova PR
+```
+
+### A regra que acende: `gemini_cli_legacy`, e as duas pernas do predicado são nossas
+
+```
+.gemini/settings.json    EXISTE   7 linha(s) com `trackfw guard`   <- perna 1
+.agents/hooks.json       AUSENTE                                   <- perna 2
+```
+
+> ⚠ Gemini CLI is legacy for individual accounts since 2026-06-18 (D7, ADR-2026-11-18): project has
+> Gemini CLI guard (`.gemini/settings.json`) but no Antigravity guard (`.agents/hooks.json`)
+
+🔴 **E o contra-braço é o que separa aviso ACIONÁVEL de ruído permanente** — a pergunta da
+[#530](https://github.com/kgsaran/trackfw/issues/530), e ela se responde rodando o remédio que a
+própria mensagem imprime, em fixture descartável:
+
+```
+fixture com so o guard do gemini                      1 ocorrencia   <- reproduz a nossa arvore
+depois de `agents install --targets antigravity`       0             <- o remedio SILENCIA
+  o que o gerador escreveu: .agents/hooks.json, 888 bytes, 4 guard
+```
+
+**O remédio funciona**, então o aviso não é ruído permanente. 🔴 **Não o apliquei na árvore viva** —
+ele escreve `.agents/` no projeto, e isso é mudança que não foi pedida.
+
+### A regra que CALA, e silêncio tem duas causas: `credential_guard_presence_warning`
+
+O D17 dela avisa quando um arquivo de hook **de projeto** de um dos 6 CLIs **existe em disco** e está
+**sem** a entrada do guard. Aqui ela cala **por premissa satisfeita**, não por estar morta:
+
+```
+.claude/settings.json   EXISTE   8 guard      .cursor .copilot .agents .kiro .windsurf .amazonq
+.codex/hooks.json       EXISTE   5 guard        -> todos AUSENTES (ausencia nao e o caso da regra)
+.gemini/settings.json   EXISTE   7 guard
+```
+
+**Os três braços, em fixture descartável** — o arquivo é o nosso `.claude/settings.json` copiado, e o
+guard é removido por programa, nunca na árvore viva:
+
+| braço | `is present but has no credential guard` |
+|---|---|
+| presente **com** o guard (reproduz a nossa árvore) | **0** — o nosso caso |
+| o **mesmo** arquivo, guard removido | **3**, nomeando `PreToolUse[Bash\|PowerShell]`, `[Read]`, `[Write\|Edit]` |
+
+### O conserto do F3 (ML-FA2): `enabled:false` no grupo `trackfw`, medido nas três direções
+
+O red team **dele** reprovou a wave (F1, F2, F3, F5 — *"F2+F3 formam cadeia explorável com evidência
+limpa"*), e o corretivo entrou no commit seguinte. O que ele passou a acusar é o grupo desligado com
+as entradas presentes — guard **inerte** com aparência de instalado:
+
+```
+{"trackfw": {"enabled": false, "PreToolUse": [...]}}     <- o grupo e a chave de TOPO
+```
+
+| `enabled` no grupo `trackfw` | `guard is inactive` |
+|---|---|
+| **ausente** (como o gerador escreve) | **0** — controle |
+| **`false`** | **3**, nomeando o evento |
+| **`true`** | **0** — controle negativo |
+
+🔴 **E a detecção é do schema do ANTIGRAVITY, não do `.claude`.** Minha primeira sonda pôs
+`enabled:false` no `.claude/settings.json` e deu **0** — eu quase registrei o silêncio como lacuna do
+conserto. A terceira sonda é que mediu: o comentário do código diz *"the Antigravity runtime
+suppresses the whole group"*, e o grupo é a chave de topo, não o matcher. **Zero com sonda errada é
+cegueira**, agora na variante *schema errado* — e foram **três** sondas antes de uma medir o que eu
+queria.
+
+### O que NÃO mudou no intervalo, e é o que decide exposição
+
+```
+.github/ no delta f0f03053..861c52b5    NAO MUDOU   -> o -timeout 2m do #690 segue de pe
+known-failures `entries`                5 antes · 5 depois
+commits a trazer na main                0           -> nao ha sync a rodar
+```
+
+### ML-3B2: o `internal/agentconfig` generaliza o conserto do `HOME` ≠ `USERPROFILE`
+
+O pacote novo resolve o home **por plataforma** e nomeia, no próprio comentário, a `ADR-2026-10-14` e
+a `REQ-2026-09-01` — a *ghost installation* que a seção do `HOME` ≠ `%USERPROFILE%` deste arquivo
+documenta. Agora o guard **global** do Antigravity vai para `~/.gemini/config/hooks.json`, e no
+Windows o home é `os.UserHomeDir()` (`USERPROFILE`), não `$HOME`.
+
+**A nossa exposição a essa classe continua ZERO, relida em 18/11 (só leitura):**
+
+```
+HOME         /c/Users/louri        realpath  c:/users/louri
+USERPROFILE  C:\Users\louri        realpath  c:/users/louri      <- o MESMO diretorio
+~/.gemini/config/hooks.json   ausente     ~/.agents/hooks.json   ausente
+~/.gemini/settings.json       EXISTE, 4 linha(s) com guard
+```
+
+🔴 **O limite é o mesmo de sempre, e vale repetir porque é de configuração e não de plataforma:**
+basta alguém apontar `HOME` para outro lugar e a cerca de **todos** os projetos desta máquina fica
+inerte. O que está medido é o estado de hoje.
+
+**Limite declarado:** a regra `gemini_cli_legacy` que eu medi é de **projeto**. O escopo global tem a
+mesma forma de condição — `~/.gemini/settings.json` com guard e `~/.agents/hooks.json` ausente —, e
+**isso não foi medido**.
+
 ## Não rode `make parity-rest` na raiz deste fork
 
 > ✅ **Resolvido em 2026-09-17 pelo [#381](https://github.com/kgsaran/trackfw/pull/381) do upstream,
