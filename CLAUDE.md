@@ -2724,6 +2724,64 @@ o roteiro está escrito acima, e não só na memória da sessão.
 > `git diff --name-only <base>..upstream/main` **antes** de mesclar. No terceiro sync eu previ
 > `3 → 3` por aquela ausência e fechou.
 >
+> ### 🔴 E o `<base>` é a BASE DE MERGE — a minha leitura anterior NÃO serve, medido em 18/11/2026
+>
+> Eu ancorei o discriminante no commit da **última varredura** (`6b28e547`) em vez de
+> `git merge-base HEAD upstream/main`, e ele deu o veredito **oposto** no mesmo acervo:
+>
+> ```
+> 6b28e547..upstream/main      0 arquivo(s) de hook   ->  "o sync nao exige a tripla"
+> $(git merge-base …)..main    3 arquivo(s) de hook   ->  exige
+> ```
+>
+> 🔴 **E a causa é a mais traiçoeira possível: o `6b28e547` É o commit que traz a forma nova** (o
+> #687, 15/11 19:01). Ancorar nele o põe **fora do próprio intervalo** — a âncora come o achado que
+> ela deveria encontrar. Quem lê `0` conclui que não há tripla a pagar, e o `validate` cobra depois.
+>
+> **É a quarta vez que âncora errada engana neste fork**, e a primeira em que a âncora não era o
+> dois-pontos: era a **minha própria leitura anterior**, tratada como se fosse a nossa base. O que
+> decide não é quando eu olhei pela última vez; é o que a nossa árvore já tem.
+>
+> ```bash
+> BASE=$(git merge-base HEAD upstream/main)
+> git diff --name-only "$BASE"..upstream/main -- .claude/settings.json .codex/hooks.json .gemini/settings.json
+> ```
+>
+> ### ✅ SEXTA ocorrência da regra da tripla — 18/11/2026, sync do #687/#688/#689
+>
+> O discriminante (ancorado certo) deu **3**, e o `validate` cobrou. A decomposição é o que vale,
+> porque ela separa o que o sync conserta do que só a tripla conserta:
+>
+> ```
+> binario DELE, na nossa arvore ANTIGA     20 avisos  =  3 isencoes + 17 D18 legacy
+>   dos 17:  7 de PROJETO  +  10 de GLOBAL
+> depois do sync                           13 avisos  =  3 isencoes + 10 D18 legacy
+>   de PROJETO                              0   <- o SYNC os consertou: os arquivos vieram dele
+>   `set +eu` em .claude / .codex / .gemini   8 · 5 · 7 ocorrencia(s)
+> ```
+>
+> 🔴 **O passo 2 está BLOQUEADO, e por isso os 10 globais ficam:** `npm view trackfw version` dá
+> **11.7.0** e `git tag --contains 6b28e547` não devolve **nenhuma** tag. Não é defeito nem
+> esquecimento — é a propriedade já registrada de o escopo global viver **fora do git**.
+>
+> **E a propriedade que o #687 entrega está medida por EFEITO, não lida do diff** — com a linha
+> legacy que ainda vive no `~/.claude/settings.json` servindo de controle, no mesmo minuto:
+>
+> ```
+> bash -eu   linha LEGACY (global, 195 bytes, sem `set +eu`)   status rc=127   push rc=127
+> bash -eu   linha NOVA   (projeto, 333 bytes, com `set +eu`)  status rc=0     push rc=2
+> ```
+>
+> 🔴 **`127` não bloqueia — só `2` bloqueia.** Sob `errexit`/`nounset` herdado, a linha antiga sai
+> 127 **nas duas direções**: ela para de discriminar e **falha aberta**. A nova discrimina. Então,
+> enquanto a tripla não rodar, a cerca deste projeto está coberta e a dos **outros** projetos desta
+> máquina **não** — e a exposição continua latente só porque o hook real daqui não herda `errexit`,
+> que é a mesma ressalva escrita em 14/11.
+>
+> **Controle negativo, pelo binário que o PATH entrega (11.7.0, anterior ao #687):** a forma nova
+> funciona com binário antigo — `push` e `commit` saem **2**, `status` sai **0**. A forma nova não
+> exige o binário novo, o que é o que torna a ordem sync-antes-de-tripla segura.
+>
 > **Consequência prática:** dá para saber se um sync vai exigir a tripla **antes** de rodá-lo, em vez
 > de descobrir pelo `validate` depois. A regra dos quatro passos não muda; o que muda é que ela deixa
 > de ser surpresa.
