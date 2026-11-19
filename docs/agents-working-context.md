@@ -36789,3 +36789,70 @@ A legenda de estado e o item 6 do protocolo passaram a inglês. O sync **retém*
 diff; custo zero, porque o leitor bilíngue da 11.6.0 aceita as duas grafias. É a previsão que a seção
 do `trackfw update` já carregava, agora acontecida.
 
+
+---
+
+## 2026-11-18 — o pedido de ML do OpenCode (#691) e as duas regras da REQ-2026-11-17 dele, medidas aqui
+
+**Por que esta entrada existe.** Três coisas que não se derivam: o **canal** escolhido para o pedido e
+a razão (medição, não preferência), o **contra-braço** que separa aviso acionável de ruído permanente,
+e as **três sondas erradas** que precederam a medição do `enabled:false` — a terceira é a que mediu.
+
+### O pedido foi feito: #691, às 14:51 local
+
+Duas saídas, de propósito: registrar o OpenCode como ML da `REQ-2026-11-17` em wave posterior, **ou**
+atualizar a cláusula do escopo negativo para dizer que não vai acontecer. A cláusula dele diz que ele
+*"entra como ML desta REQ"* se a causa for a mesma; hoje ela deixa escrito um caminho que ninguém
+percorre.
+
+🔴 **O canal foi decidido por medição.** A branch dele não tem PR aberto, e comentário de commit **se
+desgarra no squash** do merge — que é como ele mescla. O veículo literal seria o mais frágil
+justamente por ser o literal. A issue oferece mover para Discussions.
+
+E o head foi **relido um minuto antes de postar** (`f0f03053`, 0 PRs), que é a emenda de 16/11: ali eu
+comentei o #688 dois minutos depois de ele empurrar o conserto, descrevendo estado morto.
+
+### 🔴 Três sondas erradas antes de uma medir — e a causa foi SCHEMA, não predicado
+
+O conserto do F3 (ML-FA2) acusa `enabled:false` no grupo `trackfw`. As minhas três tentativas:
+
+```
+1  enabled:false nos MATCHERS do .claude/settings.json      0 ocorrencias
+2  o mesmo, procurando a mensagem que eu SUPUNHA             0 ocorrencias
+3  enabled:false na chave de TOPO do .agents/hooks.json      3   <- mediu
+```
+
+A 1 e a 2 eram zero vacuoso: a detecção é do **schema do Antigravity**, e o grupo é a chave de topo,
+não o matcher. O comentário do código diz *"the Antigravity runtime suppresses the whole group"* — eu
+li o predicado só depois de duas sondas calarem. **Zero com sonda errada é cegueira**, agora na
+variante *schema errado*; e eu quase registrei o silêncio como lacuna do conserto dele.
+
+O braço que fechou tem controle nas duas direções: `enabled` ausente → 0, `false` → 3, `true` → 0.
+
+### O contra-braço que importa é o do REMÉDIO, não o da regra
+
+A `gemini_cli_legacy` acende aqui, e a pergunta decisiva não é *"ela está viva?"* — é a da
+[#530](https://github.com/kgsaran/trackfw/issues/530): **o remédio que a mensagem imprime silencia o
+aviso?** Rodado em fixture descartável, `agents install --targets antigravity` escreve
+`.agents/hooks.json` e o aviso vai a **0**. Então não é ruído permanente.
+
+🔴 **Não apliquei na árvore viva** — ele escreve `.agents/` no projeto, e isso é mudança que não foi
+pedida.
+
+### O que decide exposição, e por que não houve sync
+
+```
+commits a trazer na main    0        -> nao ha sync a rodar
+.github/ no delta           NAO MUDOU -> o -timeout 2m do #690 segue de pe
+known-failures entries      5 antes · 5 depois
+OpenCode no delta           0 ocorrencias, em dez MLs
+```
+
+### Resíduo de processo: o worktree nasceu DENTRO do repo
+
+`git -C <repo> worktree add --detach .wt-<sha>` resolve o caminho relativo **ao cwd do git**, que o
+`-C` já mudou para o repo — então o worktree foi criado em `trackfw-main/.wt-<sha>`, dentro da árvore
+que os gates varrem. Desfeito e recriado com caminho **absoluto** fora do repo. A remoção foi sem
+`--force` nas duas vezes: o hook recusa o `--force`, e apagar o binário antes é o que torna o
+`remove` simples suficiente.
+
