@@ -2576,6 +2576,43 @@ censo.
 acervo, e o sítio é do upstream — o delta dele de 18/11 à noite (4 commits, só documentação) **não
 tocou** o `guard_line_shell_test.go`, então o arnês segue como está.
 
+#### ✅ O limite acima CAIU em 19/11/2026: o `ETXTBSY` reproduziu NO REPO DELE, em outro shell
+
+A frase *"uma ocorrência"* durou meio dia. O `go` do [#692](https://github.com/kgsaran/trackfw/pull/692)
+reprovou no head `2d3d116c` com a **mesma** assinatura, e a diferença entre os dois casos é o que
+transforma o achado em classe:
+
+```
+seu 2d3d116c    .../git-branch/sh-e/RC2-deny     got "/usr/bin/sh: 1: trackfw: Text file busy"
+nosso #343      .../git-branch/dash-e/RC2-deny   got "/usr/bin/dash: 1: trackfw: Text file busy"
+mesmo sitio de assercao: guard_line_shell_test.go:861 e :864
+```
+
+🔴 **Dois shells, dois repositórios, dois `rc` de jobs diferentes, mesma assinatura** — então a leitura
+*"é coisa do ambiente do fork"* ou *"é do `dash`"* está morta. O que a segunda ocorrência acrescenta não
+é confirmação, é **escopo**: o `sh-e` é um braço distinto da matriz, e a corrida não é de um shell.
+
+**O que continua NÃO medido, e vale distinguir do que caiu:** se o `ETXTBSY` já aparecia antes do #687
+(que levou o `TestGuardLineShellMatrix` de 3 para 10 subtestes). O que caiu foi *"uma ocorrência"*; a
+pergunta sobre o histórico segue aberta, e é dele, não nossa.
+
+🔴 **E o re-run continua sendo o discriminante, não a reprodução dele.** Eu re-executei no **fork**
+(`attempt 1 FAIL` / `attempt 2 SUCCESS`, código byte a byte igual); do lado dele o que está afirmado é
+a **assinatura**, idêntica, sem re-execução minha no repositório dele. São forças de evidência
+diferentes, e misturá-las seria dizer que medi o que não medi.
+
+**Levado ao #692**, junto da outra causa do mesmo run — e as duas são independentes:
+
+| vermelho | causa |
+|---|---|
+| `go` | o `ETXTBSY`, que é **flake** e não é desta PR dele |
+| `windows-full-suites` | o ML-3B2 colidindo com os próprios testes: a fixture planta sob `HOME`, o resolvedor lê `USERPROFILE` |
+| `parity` | cascata — os `needs` saem `skipped` e o `check-needs-success.sh` exige `success` |
+
+🔴 **O conjunto dele é 21 linhas / 21 nomes / 0 duplicatas**, e isso é o controle negativo da assimetria
+que este arquivo já explica: a dupla `gates-locais`/`gates-windows` é **nossa**, do `local-gates.yml`
+sem filtro de branch. No repositório dele ela não existe.
+
 ## Branch `feat/fix/refactor` custa 3 jobs vermelhos por motivo falso
 
 > 🔴 **Caducou em 2026-09-16, com a v8.0.0 do upstream
