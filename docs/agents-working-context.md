@@ -36978,3 +36978,51 @@ do mesmo repositório; a pergunta de contrato é o ML-5A **dele**, por fonte pri
 seria fazer o ML de outro. Mesma razão pela qual o ML-5B continua sendo dele: o que oferecemos é o
 **ambiente v2**, que a VM dele não tem.
 
+
+---
+
+## 2026-11-19 — a terceira regra da `REQ-2026-11-17` cala aqui com a IDE instalada
+
+**Por que esta entrada existe.** Três coisas que não se derivam: por que o **silêncio** desta regra é
+mais perigoso que a inércia das outras duas, o que a perna vacuosa ensinou sobre o instrumento, e a
+decisão de canal que mudou de ontem para hoje.
+
+### Silêncio com exposição real é pior que regra inerte
+
+As duas regras de 18/11 eram legíveis: a `gemini_cli_legacy` **acende** aqui, e a
+`credential_guard_presence_warning` **cala por premissa satisfeita** — nos dois casos o `validate`
+diz a verdade. A `antigravity_ide_global_guard` é de outra classe: ela cala porque o predicado procura
+`<home>/.antigravity-ide`, que é a forma do **macOS**, enquanto a IDE desta máquina mora em
+`%LOCALAPPDATA%\Programs\Antigravity`. **O instrumento afirma nada sobre um risco que existe.**
+
+🔴 **E o discriminante continua sendo o executável, não a pasta de config** — é a terceira vez que
+isso decide nesta casa (Windsurf: pasta existe, app não; OpenCode: 29 artefatos `current`, app ausente
+naquele momento; agora: app instalado, pasta que o predicado procura ausente). As três grafias têm a
+mesma forma e o mesmo remédio.
+
+### A perna vacuosa foi pega pela LINHA DE VEREDITO, não pelo `rc`
+
+A perna E saiu `0` ocorrências como as outras duas silenciosas — e não era silêncio, era o binário
+não rodando. O `rc` não separava: a E deu `126` na primeira passada e `127` na segunda, e nenhum dos
+dois é "a regra calou". **O que separou foi contar a linha de veredito do `validate`**
+(`✓ No violations found.` / `N warning(s)` / `Error:`): presente = rodou, ausente = cegueira.
+
+🔴 **Essa é a forma reusável**, e é mais forte que *"confira o artefato"*: o arquivo existia, íntegro,
+com o tamanho certo, nas duas passadas. Quem conferisse existência teria lido quatro silêncios.
+
+### O canal mudou de ontem para hoje, e por isso o achado foi a PR e não a issue
+
+Em 18/11 o #691 teve de ser issue, porque a branch dele não tinha PR e comentário de commit se
+desgarra no squash. Em 19/11 o **#692 existe** (rascunho), então o achado foi para lá: fica anexado ao
+código que está em revisão, e comentário de conversa de PR **não** se perde no squash. A decisão de
+canal se refaz a cada vez; ela não é propriedade do repositório.
+
+### Resíduo de processo: o Defender comeu dois binários em quinze minutos
+
+O primeiro às 10:58:53 (no mesmo segundo da perna E) e o `a.out.exe` do `go build` seguinte. A rota do
+binário publicado — que funcionou em 10/11 — **não serve** aqui, porque a regra não está em release:
+ela vive na branch dele. Sem rota, a perna E fica **declarada como não medida** em vez de inventada.
+
+E eu repeti o cano: `go build … | tail -2; echo "build rc=$?"` imprimiu `build rc=0` para um build que
+falhou, porque o `rc` era do `tail`. Sétima ocorrência da mesma lição, cometida com ela na memória.
+

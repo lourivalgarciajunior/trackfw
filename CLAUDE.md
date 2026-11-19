@@ -1466,6 +1466,106 @@ inerte. O que está medido é o estado de hoje.
 mesma forma de condição — `~/.gemini/settings.json` com guard e `~/.agents/hooks.json` ausente —, e
 **isso não foi medido**.
 
+## 🔴 A TERCEIRA regra da mesma REQ: o predicado da IDE é de macOS, e aqui ele CALA com a IDE INSTALADA — medido em 19/11/2026
+
+A seção acima diz *"DUAS regras"*, e isso era verdade em 18/11. No dia seguinte o
+[#692](https://github.com/kgsaran/trackfw/pull/692) ganhou a `antigravity_ide_global_guard` (ML-4E,
+ADR D8, commit `59b08322`): ela avisa quando a IDE do Antigravity está instalada **sem** guard global,
+porque a IDE **ignora** o hook de projeto.
+
+🔴 **Medido por efeito com o binário DELE, e o resultado é pior que inerte: ela cala com exposição
+real.** As três condições do D8, todas obrigatórias, derivadas nesta máquina:
+
+```
+COND 1  .agents/hooks.json no projeto           AUSENTE   -> falha
+COND 2  <home>/.antigravity-ide e diretorio     AUSENTE   -> falha
+COND 3  ~/.gemini/config/hooks.json sem guard   AUSENTE   -> SATISFEITA
+```
+
+🔴 **Mas o discriminante desta casa é o EXECUTÁVEL, não a pasta de config — e a IDE ESTÁ instalada:**
+
+```
+%LOCALAPPDATA%\Programs\Antigravity\Antigravity.exe   EXISTE  (+ "Uninstall Antigravity.exe")
+%APPDATA%\Antigravity\                                EXISTE  (Preferences, Local State, Cache…)
+%LOCALAPPDATA%\Antigravity\staging\                   EXISTE  (staging do updater)
+%LOCALAPPDATA%\agy\bin\agy.exe                        EXISTE  ->  `agy --version` = 1.0.5
+
+<home>\.antigravity-ide                               AUSENTE
+qualquer .antigravity* sob o perfil                   AUSENTE
+qualquer `extensions` sob o perfil, 3 niveis          so .vscode e .duckdb
+```
+
+Instalação **por usuário, com desinstalador** — é a IDE, não resíduo de config. E `.antigravity-ide`
+não existe em lugar nenhum do perfil, então a **condição 2 é falsa com a IDE instalada**.
+
+### A prova por efeito: três pernas, com a linha de veredito conferida
+
+Binário dele compilado de `59b08322`, em worktree **fora** do repo. O `.agents/hooks.json` foi escrito
+pelo **gerador real** (`agents install --targets antigravity --scope project`), 888 bytes, 4 linhas com
+guard — nunca JSON à mão. O home é controlado **só no processo da sonda** (`USERPROFILE`/`HOME`); o
+ambiente real e a árvore viva nunca foram tocados.
+
+| perna | marca | rc | linha de veredito |
+|---|---|---|---|
+| **B** `<home>/.antigravity-ide` · global SEM guard | **1** | 0 | `1 warning(s)` |
+| **C** `%LOCALAPPDATA%\Programs\Antigravity` (a forma REAL) | **0** | 0 | `✓ No violations found.` |
+| **D** `<home>/.antigravity-ide` · global COM guard | 0 | 1 | (violation de forma, à parte) |
+
+A **B** prova que a regra está viva, com a mensagem inteira:
+
+> ⚠ Antigravity IDE ignores the project hook `.agents/hooks.json` (measured on 2.6.0 and 2.7.0,
+> ADR-2026-11-18 D8); only the global guard protects it — run `trackfw update harness --targets
+> antigravity-credential-guard --install-missing` (`~/.gemini/config/hooks.json`)
+
+🔴 **A C é o achado:** mesmo projeto, mesma regra, IDE presente na forma do Windows, e o `validate`
+**não imprime nada** — com o binário comprovadamente executando, porque a linha de veredito está lá.
+**Silêncio não é ausência de exposição.**
+
+### E o ADR dele declara exatamente esta lacuna — não é defeito escondido
+
+> *"No macOS isso foi medido (`~/.antigravity-ide/extensions`); **no Windows o caminho não foi
+> medido**"* — D8, condição 2. E o residual: *"App e IDE do Antigravity no **Windows** não foram
+> medidos […] a VM não tem App/IDE. Só o CLI `agy` tem prova real no Windows."*
+
+Então a nossa medição **responde um residual declarado**, com o ambiente que a VM dele não tem. Levada
+ao [#692](https://github.com/kgsaran/trackfw/pull/692#issuecomment-7011440986) — e **não** como issue,
+porque desde 19/11 a branch dele **tem** PR, o que muda o canal que o #691 teve de usar.
+
+🔴 **Não propus o predicado**, e a razão é que há dois candidatos e a escolha é dele: o diretório de
+**instalação** (`%LOCALAPPDATA%\Programs\Antigravity`, que desaparece ao desinstalar) ou o de **dados**
+do Electron (`%APPDATA%\Antigravity`, que pode sobreviver como resíduo). É o mesmo trade-off que o
+`~/.config/opencode` expôs: **pasta de config presente não é aplicativo instalado.**
+
+### 🔴 A perna E (controle negativo) é VACUOSA — o Defender, cronometrado ao segundo
+
+```
+out-B  10:58:39  veredito presente      out-D  10:58:51  veredito presente
+out-C  10:58:44  veredito presente      out-E  10:58:53  SEM veredito  -> vacuosa
+deteccao do Defender                    10:58:53       <- o MESMO segundo
+```
+
+O rebuild também não saiu: ele passou a bloquear o `a.out.exe` do **próprio `go build`**, e a rota do
+binário publicado **não serve** porque a regra não está em release. 🔴 **É por isso que o zero da C é
+silêncio e o da E é cegueira** — o discriminante foi a **linha de veredito** na saída, não o `rc`.
+Fica como **janela datada**, não como propriedade.
+
+**Outros três limites:** a perna **D** usou no global o `hooks.json` na forma de **projeto**, então
+produziu uma violation de forma à parte (`expected "trackfw guard credential --global || exit 2"`) — o
+silêncio do aviso está certo, a fixture não é a canônica. **Uma máquina, uma instalação**: não sei se
+o Antigravity tem instalador por máquina (`C:\Program Files\Antigravity` não existe aqui). E o `agy`
+daqui é **1.0.5** contra o **1.5.11** do ML-1A dele, diferença **não interpretada**.
+
+### O derivável, para quando a REQ mesclar
+
+```bash
+ls -d ~/.antigravity-ide 2>/dev/null || echo "COND 2 falsa — a regra cala aqui"
+ls -d "$LOCALAPPDATA/Programs/Antigravity" 2>/dev/null && echo "e a IDE ESTA instalada"
+```
+
+As duas linhas juntas são o estado que esta seção mede. **Se a primeira passar a existir**, o
+predicado dele alcançou esta máquina; **se a segunda deixar de existir**, a exposição acabou. Até lá,
+`validate` silencioso sobre a IDE aqui **não** é prova de cerca.
+
 ## Não rode `make parity-rest` na raiz deste fork
 
 > ✅ **Resolvido em 2026-09-17 pelo [#381](https://github.com/kgsaran/trackfw/pull/381) do upstream,
