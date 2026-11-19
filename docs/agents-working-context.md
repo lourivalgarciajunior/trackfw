@@ -37026,3 +37026,52 @@ ela vive na branch dele. Sem rota, a perna E fica **declarada como não medida**
 E eu repeti o cano: `go build … | tail -2; echo "build rc=$?"` imprimiu `build rc=0` para um build que
 falhou, porque o `rc` era do `tail`. Sétima ocorrência da mesma lição, cometida com ela na memória.
 
+
+---
+
+## 2026-11-19 — o `ETXTBSY` reproduziu no repositório dele, e o limite que eu havia escrito caiu em meio dia
+
+**Por que esta entrada existe.** Duas coisas que não se derivam: a distinção entre as **forças de
+evidência** dos dois lados, e o que a segunda ocorrência acrescenta — que não é confirmação.
+
+### O limite durou meio dia, e isso é o instrumento funcionando
+
+Em 19/11, pela manhã, registrei *"Limite declarado: uma ocorrência"* no PR #344. À tarde o `go` do
+#692 reprovou com a mesma assinatura. 🔴 **Isto não é o registro envelhecendo mal** — é o oposto: o
+limite estava escrito **como limite**, então a segunda ocorrência o fechou sem desmentir nada. Se eu
+tivesse escrito *"é flake do nosso ambiente"*, a tarde teria produzido uma correção; escrito como
+limite, produziu um fechamento.
+
+A diferença com os casos caros deste arquivo é a forma, não a sorte: o `hoje` do título do Defender
+apodreceu em 2 h 41 porque afirmava **presente**; o *"uma ocorrência"* apenas delimitava o que havia
+sido visto.
+
+### 🔴 As duas pontas NÃO têm a mesma força de evidência
+
+```
+no fork    re-executei o MESMO commit:  attempt 1 FAIL / attempt 2 SUCCESS
+           codigo byte a byte identico  ->  flake PROVADO
+no repo dele   a assinatura, identica   ->  mesma CLASSE, sem re-execucao minha
+```
+
+Dizer *"reproduziu nos dois"* sem essa distinção seria afirmar que medi o que não medi. O que o lado
+dele acrescenta é **escopo** — outro shell (`sh-e` contra `dash-e`), outro repositório —, e escopo mata
+duas leituras alternativas de uma vez: *"é o ambiente do fork"* e *"é o `dash`"*.
+
+### O que a segunda ocorrência NÃO responde
+
+Se o `ETXTBSY` já aparecia **antes** do #687, que levou o `TestGuardLineShellMatrix` de 3 para 10
+subtestes. Essa pergunta é do histórico dele, não do nosso, e segue aberta — o que caiu foi só a
+contagem.
+
+### O remédio que o ratchet sugere, e por que ele enterraria o achado irmão
+
+No mesmo run, o `windows-full-suites` acusou **três nomes novos**, e a mensagem do ratchet oferece
+*"add to `windows-known-failures.json`"* se for dívida herdada. **Não é**: os três têm 0 ocorrências
+na `main` dele. Registrá-los marcaria como "conhecida" uma falha que diz que **o resolvedor e o teste
+discordam sobre como o home é injetado** — a forma exata que deu origem à Regra Dura de Reconciliação
+deste fork, e que já custou uma auditoria externa aqui.
+
+🔴 **Foi isso que levou o precedente ao comentário, não a correção.** O sítio é dele; o que temos é a
+memória de ter pago o mesmo erro.
+
