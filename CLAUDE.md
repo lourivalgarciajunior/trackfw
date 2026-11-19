@@ -2328,6 +2328,83 @@ de docs".
 de workflows que já haviam passado naquele mesmo head. **Conferir depois não conserta o processo** —
 o que conserta é a chamada separada.
 
+## 🔴 A contagem de LINHAS do conjunto de checks não é comparável entre corridas — matriz `skipped` colapsa, executada expande
+
+Medido em 19/11/2026, no nosso [#343](https://github.com/lourivalgarciajunior/trackfw/pull/343), nas
+duas tentativas do **mesmo** head `25363c8d`:
+
+```
+attempt 1   24 linhas   `parity-falsify-shard`  skipping         <- UMA linha, colapsada
+attempt 2   27 linhas   `parity-falsify-shard (0) (1) (2) (3)`   <- QUATRO linhas, todas pass
+diferenca   +3          e NENHUM check entrou ou saiu do conjunto
+```
+
+🔴 **O `parity-falsify-shard` é matriz de 4, e o `gh pr checks` imprime a matriz NÃO EXECUTADA como um
+nome só.** O total de linhas passou a depender de a matriz ter rodado — não do conjunto de checks.
+
+**A derivação do critério de merge CONTINUA VÁLIDA, e é por isso que ela foi escrita como diferença
+e não como total:**
+
+```
+linhas − nomes = duplicatas
+```
+
+Os shards têm **nomes distintos** (`(0)`…`(3)`), logo não entram como duplicata: nas duas tentativas
+a conta deu **2**, com os mesmos dois nomes de sempre — `gates-locais` e `gates-windows`, um workflow
+disparado por dois eventos.
+
+🔴 **O que NÃO se compara é o total de linhas contra um número de outro dia.** O `26 linhas / 24
+nomes` que o `~/.claude/CLAUDE.md` registra como medição de 06/11 foi lido com a matriz **executada**;
+a mesma árvore com a matriz dispensada daria menos. É a quarta vez que contagem de check engana neste
+fork, e a **primeira em que a causa não é adição de job pelo upstream**: é o estado da matriz na
+corrida que se está lendo.
+
+**Consequência prática:** leia `linhas − nomes` e os vereditos. O total serve para a subtração, nunca
+para comparação histórica.
+
+### ✅ E o vermelho daquele PR era FLAKE — `ETXTBSY` no arnês do upstream, medido por re-execução
+
+O `go` reprovou em `TestGuardLineShellMatrix/git-branch/dash-e/RC2-deny`, e a mensagem é o diagnóstico
+inteiro:
+
+```
+guard_line_shell_test.go:861  stderr nao contem 'motivo-deny-fake';
+                              got "/usr/bin/dash: 1: trackfw: Text file busy"
+guard_line_shell_test.go:864  stdin nao preservado: got ""      <- o stub NUNCA RODOU
+```
+
+A segunda linha é **consequência** da primeira, não um segundo defeito: sem executar, o stub não
+escreve o `stdin.out` que a asserção lê.
+
+**A causa está no arnês dele.** O `makeFakeTrackfw` faz `os.WriteFile(stub, …, 0755)` e o subteste
+executa o stub em seguida, **com `t.Parallel()`**. Entre o `create` e o `close`, o `fork` de outro
+subteste herda o fd de escrita deste arquivo, e o kernel recusa o `exec` com `ETXTBSY` — a corrida da
+[golang/go#22315](https://github.com/golang/go/issues/22315). O #687 subiu o
+`TestGuardLineShellMatrix` de **3 para 10** subtestes, o que alarga a janela.
+
+**O discriminante é a re-execução do MESMO commit, e ele fechou:**
+
+```
+head 25363c8d, codigo byte a byte identico
+  attempt 1   go  FAIL      "Text file busy"
+  attempt 2   go  SUCCESS
+  parity      cascata nas duas: os `needs` saiam `skipped`, e o check-needs-success.sh exige success
+```
+
+🔴 **E isto NÃO é o `-timeout 2m` do [#690](https://github.com/kgsaran/trackfw/issues/690)** — o
+`internal/generators` fechou em **106 s**, longe do teto. Mesmo **nome** de job, **causa outra**: na
+`main` do mesmo dia o `go` saía `panic: test timed out after 2m0s`. Pelo critério de merge o vermelho
+estava no conjunto conhecido **por nome**; pela causa eram dois mecanismos, e só a leitura do log
+separa os dois.
+
+🔴 **A re-execução MUTA o artefato:** a tentativa 1 sai da listagem padrão da API e só se relê por
+`actions/runs/<id>/attempts/1`. Mesma emenda de 13/11, quando um re-run meu tirou um job perdido do
+censo.
+
+**Limite declarado: uma ocorrência.** Não derivei se o `ETXTBSY` já havia aparecido antes neste
+acervo, e o sítio é do upstream — o delta dele de 18/11 à noite (4 commits, só documentação) **não
+tocou** o `guard_line_shell_test.go`, então o arnês segue como está.
+
 ## Branch `feat/fix/refactor` custa 3 jobs vermelhos por motivo falso
 
 > 🔴 **Caducou em 2026-09-16, com a v8.0.0 do upstream

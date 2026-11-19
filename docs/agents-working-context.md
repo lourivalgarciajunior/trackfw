@@ -36856,3 +36856,60 @@ que os gates varrem. Desfeito e recriado com caminho **absoluto** fora do repo. 
 `--force` nas duas vezes: o hook recusa o `--force`, e apagar o binário antes é o que torna o
 `remove` simples suficiente.
 
+
+---
+
+## 2026-11-19 — matriz `skipped` colapsa a linha do conjunto, e o vermelho do #343 era flake
+
+**Por que esta entrada existe.** Quatro coisas que não se derivam: por que o achado da matriz **não
+pode ser consertado por PR daqui**, o que o re-run provou e o que ele destruiu, a sonda errada que
+quase me fez concluir o oposto sobre a `main`, e a classificação da branch local que sobrou.
+
+### O achado mora num arquivo que este repositório não versiona
+
+A derivação `linhas − nomes = duplicatas` e a medição datada `26 linhas / 24 nomes` vivem no
+`~/.claude/CLAUDE.md` — instrução global, **fora de qualquer repositório**. O achado da matriz refina
+aquele texto, e um PR daqui não o alcança: o que entrou no `CLAUDE.md` do projeto é o **registro
+medido**, e a emenda do arquivo global fica como ação separada, fora de PR.
+
+🔴 **A derivação não precisou de emenda, e é isso que vale guardar:** ela foi escrita como
+**diferença** (`linhas − nomes`) em vez de total justamente porque total apodrece. Os shards têm nomes
+distintos, então a subtração deu `2` nas duas tentativas, com os mesmos dois nomes. O texto global se
+protegeu sozinho; o que falta nele é só o aviso de que o **total** não se compara.
+
+### O re-run provou o flake e destruiu a leitura anterior
+
+O discriminante foi re-executar o **mesmo** head: `attempt 1 FAIL` / `attempt 2 SUCCESS`, com o código
+byte a byte igual. É o mais forte que se consegue sem instrumentar o kernel.
+
+🔴 **E ele mutou o artefato**, que é o custo: a tentativa 1 saiu da listagem padrão da API. Quem
+refizer a derivação do PR #343 vê um conjunto inteiramente verde e **não encontra** o `Text file busy`
+— ele só se relê por `actions/runs/44401189233/attempts/1`. Declarado aqui porque é a segunda vez que
+um re-run meu apaga a evidência que o motivou; a primeira foi em 13/11, com um job perdido do censo.
+
+### 🔴 Sonda errada, e o backtick foi a causa
+
+Ao classificar a branch local que sobrou, perguntei se o conteúdo dela já estava na `main`:
+
+```
+grep -c 'deploy-docs.yml deste fork NUNCA tinha passado' CLAUDE.md    ->  0
+grep -c 'deste fork NUNCA tinha passado'                 CLAUDE.md    ->  1
+```
+
+O título tem **backticks** em volta de `deploy-docs.yml`, e o meu padrão não. O `0` me deixou a um
+passo de relatar que o trabalho do Pages **não** havia chegado à `main` — quando ele chegou, pelo
+`8baf8d32`. É a mesma família já registrada três vezes (predicado mais estrito que o da regra,
+`divergen|inert` contra a mensagem real, `\t` que não é tabulação), agora com a marcação de código
+como causa. **O discriminante é o texto medido, nunca a grafia que eu suponho.**
+
+### A branch local era TERMINAL, não pendente
+
+`docs/pages-desligado-no-fork-deixava-o-deploy-docs-vermelho`, 1 commit de 17/11, **sem remoto**, e o
+`git branch -d` recusava. A recusa não significava trabalho pendente: o conteúdo está na `main` pelo
+`8baf8d32`, que é o **squash** do #337 — e squash reescreve o patch, então nem o `-d` nem o
+`git cherry` conseguem ver a entrega. Apagada com `-D` depois da prova, não antes.
+
+🔴 **É a segunda vez que squash engana a classificação de branch neste fork.** A primeira foram as 14
+`upstream-pr/*`, em que seis das dez entregues saíam `+` no `git cherry`. O discriminante continua
+sendo o **conteúdo na base**, nunca o veredito do `-d`.
+
