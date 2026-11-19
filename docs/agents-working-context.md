@@ -36913,3 +36913,68 @@ como causa. **O discriminante é o texto medido, nunca a grafia que eu suponho.*
 `upstream-pr/*`, em que seis das dez entregues saíam `+` no `git cherry`. O discriminante continua
 sendo o **conteúdo na base**, nunca o veredito do `-d`.
 
+
+---
+
+## 2026-11-19 — o #691 foi aceito, e `opencode` v1 × v2 são canais do mesmo repositório transferido
+
+**Por que esta entrada existe.** Três coisas que não se derivam: o **discriminante** que respondeu a
+AC do ML-5A dele, o **canal duplo** da resposta dele e o que isso ensina sobre a varredura, e o
+arquivo errado em que eu procurei os MLs da Wave 5.
+
+### O discriminante é o REDIRECT, e comparar nomes dá o veredito oposto
+
+A pergunta dele era *"mesmo produto ou outro?"*. Pelos nomes de pacote — `opencode-ai` 1.19.6 contra
+`@opencode/cli` 2.3.2, escopos diferentes, orgs diferentes, linhas de major diferentes — a leitura
+econômica é **dois produtos**. O que decide é que a API do GitHub **segue a transferência**:
+
+```
+gh api repos/sst/opencode  ->  full_name = anomalyco/opencode
+                               created 2025-04-30 · 227.965 estrelas
+```
+
+Mesmo repositório, renomeado de org. 🔴 **Isto generaliza além do OpenCode:** sempre que dois pacotes
+parecerem produtos distintos, peça o `full_name` de cada repositório declarado — o redirect do GitHub
+é prova de identidade, e o nome do pacote não é.
+
+E a **hierarquia** entre os canais não se infere do número de versão: ela está escrita no README do
+repositório, com `brew install opencode` marcado *"official brew formula, updated LESS"*. O 1.19.5 do
+Mac dele é a fórmula atrasada; o 2.3.0 desta máquina é a linha recomendada.
+
+### 🔴 Ele respondeu DUAS vezes, por canais diferentes, e o documento veio PRIMEIRO
+
+```
+10:48   commit 1f8e82c0   a clausula riscada na REQ + a Wave 5 no roadmap
+11:13   comentario na issue #691
+```
+
+Entre 10:48 e 11:13 a decisão **existia e a issue não sabia**. Uma varredura que só olhasse
+comentários teria dito *"sem resposta"* por 25 minutos — e o que delatou no intervalo foi o braço de
+**branch** da leitura avulsa, não o de issues. É a mesma lição de 09/11, com o lado invertido: lá
+faltava o braço de comentários, aqui o de comentários chegaria tarde.
+
+**Confirma a memória `kleber-responde-por-documento-nao-por-comentario`**, agora com os dois canais
+datados e a distância medida entre eles.
+
+### 🔴 Os MLs da Wave 5 estão no ROADMAP, e eu procurei na REQ
+
+O commit dele toca **dois** arquivos de nome quase idêntico:
+
+```
+docs/req/REQ-2026-11-17-guard-de-credencial-no-google-antigravity-…md
+docs/roadmaps/wip/ROADMAP-2026-11-17-guard-de-credencial-no-google-antigravity-…md
+```
+
+Eu rodei `grep -cE 'ML-5-0|ML-5A'` **na REQ** e recebi **0**, depois de ter lido os dois MLs no diff
+minutos antes. O arquivo parecia o certo pelo nome. Terceira grafia de *zero com sonda errada é
+cegueira* em dois dias — as outras foram o schema errado e o backtick no padrão —, e aqui a variante é
+**arquivo errado com nome quase igual**. O discriminante foi listar os caminhos do commit em vez de
+escrever o que eu supunha que eles fossem.
+
+### O que NÃO foi medido, e está declarado nos dois lugares
+
+Se o contrato do `tool.execute.before` **difere** entre v1 e v2. O medido é que são canais distintos
+do mesmo repositório; a pergunta de contrato é o ML-5A **dele**, por fonte primária, e avançar nela
+seria fazer o ML de outro. Mesma razão pela qual o ML-5B continua sendo dele: o que oferecemos é o
+**ambiente v2**, que a VM dele não tem.
+

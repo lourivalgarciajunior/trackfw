@@ -1286,6 +1286,77 @@ já registra como o dele para planejamento.
 é de **registro**, não de implementação, e o ML não é *"copiar o ML-3B"*: é a decisão de o plugin
 entrar ou não.
 
+### ✅ ACEITO em 19/11/2026 às 11:13 — o OpenCode é a Wave 5, e a cláusula foi REVOGADA no arquivo
+
+> *"Aceito. O OpenCode entra na REQ-2026-11-17 como Wave 5 […] a cláusula do escopo negativo foi
+> revogada no próprio arquivo da REQ."*
+
+```
+ML-5-0  threat model do plugin        hades-tf      🔄 In progress
+ML-5A   contrato por fonte primaria   prometeu-tf   🔄 In progress
+ML-5B   medicao no binario real       KG + zeus-tf  ⬜ Pending
+ML-5C   ADR  ·  ML-5D...  implementacao, revisao (hefesto), red team (hades)
+```
+
+A primeira AC da wave é justamente o limite que a issue declarava — *"não sondei o OpenCode"* virou
+**medição no binário real**, com o braço do `trackfw` fora do PATH nomeado por ele. E a Wave 5 é quem
+troca o `contra_opencode_still_skips`, que era o aperto registrado acima.
+
+🔴 **Ele respondeu DUAS vezes e por canais diferentes, e só uma delas aparece numa varredura de
+comentários:** primeiro no **documento** (commit `1f8e82c0`, 10:48, com a cláusula riscada na REQ e a
+Wave 5 no roadmap), e só depois na **issue** (11:13). É o padrão já registrado em memória — *"Kleber
+responde por documento, não por comentário"* —, e é por isso que a varredura tem braço de **branch**:
+às 11:13 a issue delatou, mas às 10:48 só o `git log` dele sabia.
+
+🔴 **E os MLs da Wave 5 NÃO estão na REQ — estão no ROADMAP.** O commit toca dois arquivos de nome
+quase idêntico (`docs/req/REQ-2026-11-17-…` e `docs/roadmaps/wip/ROADMAP-2026-11-17-…`), e um
+`grep 'ML-5' ` na REQ devolve **0**. Mais uma grafia de *zero com sonda errada é cegueira*: o arquivo
+parecia o certo pelo nome.
+
+### ✅ `opencode` 1.19.x e `@opencode/cli` 2.3.x são CANAIS DO MESMO REPOSITÓRIO — medido em 19/11/2026
+
+Respondendo a AC do ML-5A dele (*"mesmo produto ou outro?"*). 🔴 **O discriminante é o
+redirecionamento do GitHub, não a semelhança de nome** — comparar os nomes de pacote daria *"dois
+produtos"*:
+
+```
+gh api repos/sst/opencode        ->  full_name = anomalyco/opencode   <- a API SEGUE a transferencia
+gh api repos/anomalyco/opencode  ->  full_name = anomalyco/opencode
+                                     created 2025-04-30 · 227.965 estrelas · archived=false
+```
+
+Mesmo repositório, mesma data de criação, mesmas estrelas: o `sst/opencode` foi **transferido** para a
+org `anomalyco`.
+
+**Os dois canais do npm, e os dois estão VIVOS:**
+
+```
+opencode          404 no registro — este nome NAO existe no npm
+opencode-ai       1.19.6 latest · bin `opencode` · publicado 17/11 · NAO deprecado
+@opencode/cli     2.3.2 latest  · repository -> git+https://github.com/anomalyco/opencode.git
+```
+
+🔴 **E o README do repositório declara a hierarquia, com a palavra dele:**
+
+```
+curl -fsSL https://opencode.ai/v2/install | bash
+npm i -g @opencode/cli@latest            # a linha v2
+brew install anomalyco/tap/opencode-v2   # (recommended, always up to date)
+brew install opencode                    # (official brew formula, updated LESS)
+```
+
+**O que isso quer dizer para nós:** o **2.3.0 desta máquina** (`@opencode/cli` por npm, instalado em
+17/11 15:43) é a linha **v2**, a recomendada. O **1.19.5 do Mac dele** vem da fórmula
+`brew install opencode`, que o próprio projeto marca como atrasada — linha **v1**.
+
+🔴 **Consequência que não é cosmética:** a `REQ-2026-08-04` dele, de onde sai a forma do
+`tool.execute.before`, foi escrita em **agosto**, quando só havia v1. Se o contrato mudou entre v1 e
+v2, *"o binário real"* do ML-5B precisa dizer **qual** — e o ambiente v2 é o nosso, não o dele.
+
+**Limite declarado: não medi se o contrato DIFERE entre v1 e v2.** O que está medido é que são canais
+distintos do mesmo repositório, com linhas de major distintas. A pergunta de contrato é o ML-5A
+**dele**, por fonte primária, e avançar nela seria fazer o ML de outro.
+
 ## ✅ A `REQ-2026-11-17` dele acendeu DUAS regras aqui, e as duas foram medidas por efeito em 18/11/2026
 
 Medido com o binário dele compilado de `861c52b5`, na **nossa** árvore, com o nosso `bin/trackfw.exe`
