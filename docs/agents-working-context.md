@@ -37191,3 +37191,79 @@ listado três linhas acima, no mesmo comando.
 pede `GEMINI_API_KEY` dele. As nossas issues #690 e #691 seguem com a bola do lado dele. 🔴 **Nada
 aqui autoriza rodar sonda que peça credencial de provedor nesta máquina** — é decisão do usuário, e
 ele já disse que o C7 fica com o mantenedor.
+
+---
+
+## 2026-11-20 (tarde) — o #692 mesclou sem a rota, o veículo virou o #693, e o sync trouxe 56 de produto
+
+**Por que esta entrada existe.** Três coisas que não se derivam: por que o `trackfw branch prune` é melhor que
+o laço de `git branch -d` que este arquivo publicava, por que a confirmação dele no #690 é do **sintoma** e não
+do diagnóstico, e por que o piso de avisos deixou de ser 13.
+
+### 🔴 O remédio de limpeza de branch que eu entreguei ao usuário NÃO teria funcionado
+
+Eu dei o laço `git branch --merged main | grep -vx main | xargs git branch -d`, com o alerta do `grep`. Medido
+na hora de usar:
+
+```
+git for-each-ref --merged main   ->   so `main`      <- a branch do #349 NAO aparecia
+porque a main LOCAL estava 2 commits atras (e3d3172f contra cc035c80)
+```
+
+**O laço não teria apagado nada** antes do fast-forward, e o veredito seria lido como *"não havia o que
+limpar"*. O `trackfw branch prune` decide por **PR mesclado** mais a heurística de arquivos tocados — por
+desenho, justamente para sobreviver a merge por squash, que é como o upstream mescla —, e protege a `main`
+**no produto** (`keep  default branch — never pruned`) em vez de depender de eu lembrar o `grep -vx main`.
+Ele também nunca avalia a branch **corrente**, o que torna o `checkout main` passo obrigatório e não zelo.
+
+### 🔴 A confirmação dele no #690 é do SINTOMA, não do diagnóstico — e a distinção é minha de dever
+
+Ele adotou a nossa opção 2 (`-timeout` por pacote) e reproduziu a faixa com o acervo dele: 91–119 s no #692, e
+um commit **só de docs** (`d83ca83a`) estourando os 2 min — a mesma forma do nosso #349, o que fecha a
+pergunta *"é só aqui?"*. Acrescentou duas runs que eu não medi (`3ff02a8b`, `121b8ce5`) com o `ETXTBSY`.
+
+**Mas o mecanismo que ele escreve — `makeFakeTrackfw` + `os.WriteFile(…, 0755)` + `t.Parallel()` +
+golang/go#22315 — é o que eu levei no comentário de 19/11 15:07.** Então não é derivação independente: é
+reprodução independente do sintoma sobre o nosso diagnóstico. Dizer *"ele chegou à mesma conclusão"* seria
+inflar a evidência. O limite que este arquivo declara segue aberto: **se o `ETXTBSY` já aparecia antes do
+#687, ninguém mediu.**
+
+### Por que o #693 é o veículo da rota, e por que havia prazo
+
+O #692 mesclou às 14:57 com a lista de residuais **reescrita** e a rota fora dela; o meu comentário é de
+13:44, 1h13 antes. Ele também não respondeu **por documento** — o diff do #693 é mecânico (`Open → Done`,
+`wip → done`, marcadores `**Status:** ✅ Done`), com zero menções. O #693 é a PR que **fecha a REQ**, logo o
+último veículo vinculado a ela: depois dele a decisão sobre a rota não tem onde morar. Foi por isso que o
+comentário foi antes do sync, e não depois.
+
+### A armadilha de instrumento desta sessão: CRLF contra LF faz TODA linha divergir
+
+Ao conferir se as nossas 9 linhas do índice do `hades-tf` sobreviveram ao merge, o `diff` de listas ordenadas
+devolveu **74 só nossas e 65 dele sumidas** — leitura que diria *"o merge comeu o índice inteiro"*. A causa é
+que o nosso arquivo é CRLF e o `git show` entrega LF. Com `tr -d '\r'` nas duas pontas: **9 só nossas, 0
+dele sumidas**, que é a propriedade declarada em 22/10.
+
+🔴 É a mesma família já registrada, na direção contrária: lá o filtro de texto **esconde** o CR e mente sobre
+fim de linha; aqui a ausência de filtro faz o fim de linha **virar** a diferença. **Comparação de conteúdo
+entre árvore e blob normaliza o fim de linha primeiro.**
+
+### O piso de avisos virou 14 — e o arquivo sobreviveu, porque o 13 estava DATADO
+
+O `gemini_cli_legacy` passou a acender aqui com o binário do merge — o remédio dele já estava medido em
+fixture descartável (18/11) e **não foi aplicado na árvore viva**, porque escreve `.agents/` no projeto e isso
+não foi pedido. As outras duas regras novas calam, e a do meio é a que importa:
+
+```
+gemini_cli_legacy             1   acionavel, remedio medido
+antigravity_ide_global_guard  0   CALA, com a IDE INSTALADA (COND 2 falsa)  <- a exposicao do #692
+opencode (plugin/auditoria)   0
+```
+
+A exposição que levei ao [#692](https://github.com/kgsaran/trackfw/pull/692#issuecomment-7011440986)
+atravessou o merge **intacta** e agora está em produto mesclado na nossa árvore: `%LOCALAPPDATA%\Programs\Antigravity`
+existe, `<home>/.antigravity-ide` não, e o `validate` não diz nada.
+
+🔴 **E o `13` NÃO apodreceu no `CLAUDE.md`, de propósito:** a única ocorrência dele está dentro do bloco
+datado da sexta passada da tripla (18/11), como **medição**, não como critério. *"Datado e no passado não
+envelhece"* não é slogan — aqui ele é a razão de um número mudar sem o arquivo ficar falso. O que apodreceu
+foi o corpo das minhas PRs, que escreviam *"13 avisos (o piso)"* em presente.
