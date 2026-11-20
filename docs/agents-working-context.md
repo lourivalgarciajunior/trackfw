@@ -37267,3 +37267,60 @@ existe, `<home>/.antigravity-ide` não, e o `validate` não diz nada.
 datado da sexta passada da tripla (18/11), como **medição**, não como critério. *"Datado e no passado não
 envelhece"* não é slogan — aqui ele é a razão de um número mudar sem o arquivo ficar falso. O que apodreceu
 foi o corpo das minhas PRs, que escreviam *"13 avisos (o piso)"* em presente.
+
+---
+
+## 2026-11-20 (noite) — o achado do stderr descartado foi ao #690, e a medição derrubou a lição que eu ia publicar
+
+**Por que esta entrada existe.** Três coisas que não se derivam: por que o veículo foi a **issue** e não
+um comentário de PR, por que a re-execução fecha a classificação do flake sem fechar a causa, e o fato de
+a medição do `git show` ter desmentido o texto que eu ia commitar.
+
+### O veículo foi a issue porque NÃO havia PR — o inverso do caso do #692
+
+Ele criou a `REQ-2026-11-20` e um threat model de Wave 0 de 724 linhas (`4525e191`, 18:15 local) na branch
+`fix/estabilidade-do-job-go-timeout-e-etxtbsy`, e **não abriu PR para ela**. Em 18/11, no #691, o veículo
+literal (comentar na REQ) era o mais frágil porque não havia PR e comentário de commit se desgarra no
+squash; em 19/11 passou a haver PR e o canal mudou para lá. Hoje a leitura foi refeita **no minuto de
+postar** — branch parada em `4525e191`, issue aberta, zero PRs no repositório dele — e a issue voltou a
+ser o canal. 🔴 **O canal se deriva a cada vez; não se herda da vez anterior.**
+
+### O que o achado é, e o que ele NÃO é
+
+O `RC0-allow` descarta o stderr (`code, _, captured`), enquanto o `RC2-deny` o captura. As duas ocorrências
+anteriores — o nosso #343 e a dele no #692 — caíram no braço que **confere**, e é de lá que a string
+`Text file busy` veio nas duas. No braço que descarta, ela é inobservável por construção, então
+`grep 'Text file busy'` dando zero **não é ausência do ETXTBSY**.
+
+O threat model dele nomeia `runGuardLine` 8 vezes e `TestGuardLineShellMatrix` 4, com **zero** menções a
+`RC0`, `RC2`, `stderr`, `allow` ou `descarta` — foi esse censo, e não impressão, que disse que o achado era
+novo. O AC4 dele cobre `exit -1` + stdin vazio; a nossa ocorrência é `exit 2` + stdin vazio, outro ponto.
+
+🔴 **E o reforço que eu não tinha previsto:** o `2*!!$?` da linha colapsa **todo** não-zero em 2, logo 1,
+126, 127 e o `rc` de um ETXTBSY imediato saem iguais. O `-1` escapa porque vem do SIGKILL — então o lado
+`não-(-1)` do discriminante dele é **sempre 2** e não distingue ETXTBSY de outra falha de exec. O stderr é
+o único canal que carrega causa, e é justamente o que três dos quatro braços da matriz jogam fora.
+
+### A re-execução classifica o flake — e não mede a causa
+
+```
+mesmo head f1c0e7d8, codigo byte a byte identico
+  attempt 1   go FAIL · parity FAIL (cascata por needs skipped)
+  attempt 2   go SUCCESS · parity SUCCESS · run conclusion=success
+```
+
+Terceira vez que a re-execução fecha a classificação nesta família. 🔴 **Ela não mede a causa**, e o limite
+que o `CLAUDE.md` declara segue aberto: se o `ETXTBSY` já aparecia antes do #687 dele, ninguém mediu.
+A medição por efeito que foi ao #690 reproduz a **classe** — stub existe, bit ligado, não executa —, com
+shebang inexistente, que dá `ENOENT` e não `ETXTBSY`. O que está provado é que o diagnóstico existe no
+stderr no mesmo instante em que o braço o perde.
+
+### 🔴 A medição desmentiu o parágrafo que eu ia commitar
+
+A primeira redação do bloco novo do `CLAUDE.md` dizia que a armadilha do `git show --name-only` em merge
+*"não se conserta com flag"*. Medi antes de escrever e o `--first-parent` **conserta**, casando com o
+`git diff HEAD^1..HEAD` no mesmo 58. E o `-m` reconcilia a conta: 58 + 1627 = 1685.
+
+Isto não é zelo de redação — é a diferença entre registrar uma lição e registrar uma crença. O número
+errado (3) era **plausível**, que é a propriedade que faz este tipo de erro sobreviver: ninguém confere um
+total que não parece estranho.

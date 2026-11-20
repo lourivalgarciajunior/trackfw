@@ -1849,6 +1849,36 @@ arquivo já registra como *"instrumento errado"*: o git guarda LF e entrega CRLF
 **A regra prática: comparação de CONTEÚDO entre árvore e blob normaliza o fim de linha primeiro; comparação
 de FIM DE LINHA lê os bytes.** Os dois nunca pelo mesmo instrumento.
 
+#### 🔴 E `git show --name-only` num commit de MERGE disse 3 onde o merge trouxe 58
+
+Medido no commit deste próprio sync, `f1c0e7d8`, que tem **dois pais** — `cc035c80` nosso e `5c3bb296`
+dele. Cinco instrumentos, **quatro respostas**:
+
+```
+git show --name-only --format= HEAD                   3   <- o DEFAULT: diff COMBINADO
+git show --name-only --format= -m HEAD             1685   (1682 distintos)
+git show --name-only --format= --first-parent HEAD    58
+git diff --name-only HEAD^1..HEAD                     58   <- o que o merge trouxe para NOS
+git diff --name-only HEAD^2..HEAD                   1627   <- o que a nossa main tem e a dele nao
+                                                    58 + 1627 = 1685, e o `-m` RECONCILIA
+```
+
+O default do `git show` num merge é o diff **combinado**, que só lista arquivo diferente de **todos**
+os pais — então os 55 que vieram idênticos do lado dele **desaparecem**. Os três que sobram são
+exatamente os que têm conteúdo dos dois lados (o índice do `hades-tf`) ou só do nosso.
+
+🔴 **Eu quase relatei *"3 arquivos no commit"* como verificação do sync**, e o 3 é **plausível** —
+que é a pior forma de errado, porque não convida a conferir. O instrumento para *"o que este merge
+trouxe"* é o diff contra o **nosso pai**, nomeado.
+
+🔴 **E a primeira redação deste bloco dizia que "não se conserta com flag" — a medição derrubou isso
+antes de o texto ser commitado.** O `--first-parent` conserta, e casa com o `git diff` no **mesmo
+58**. Afirmação sobre instrumento se mede, inclusive — e principalmente — quando é a que eu ia
+publicar como lição.
+
+**É a mesma família do `rc` depois de um cano**, que este arquivo registra em seis grafias: o sinal
+existe, responde outra pergunta, e o número que ele devolve não tem cara de errado.
+
 ## Não rode `make parity-rest` na raiz deste fork
 
 > ✅ **Resolvido em 2026-09-17 pelo [#381](https://github.com/kgsaran/trackfw/pull/381) do upstream,
