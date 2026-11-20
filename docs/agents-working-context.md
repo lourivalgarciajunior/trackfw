@@ -37131,3 +37131,63 @@ O ambiente **x64 / 2.3.0** está oferecido no [#692](https://github.com/kgsaran/
 qualquer braço do ML-5B que não precise de credencial dele. 🔴 **Autenticar o OpenCode aqui para
 fechar o C7 é decisão do usuário**, não consequência de a medição ter parado.
 
+
+---
+
+## 2026-11-20 — o C7 fechou pelo lado dele, e a rota ficou fora da lista de residuais reescrita no mesmo commit
+
+**Por que esta entrada existe.** Duas coisas que não se derivam: por que o cabeçalho do C7 estava
+mentindo em **forma** enquanto o conteúdo estava certo, e por que o P1/P3 dele **não** cobrem a rota
+que eu medi — a confusão que o próprio `shell` produz no spec.
+
+### O que o usuário pediu, e em que ordem
+
+Três pedidos: a varredura (*"veja se kleber evoluiu"*), levar o achado da rota ao #692, e registrar.
+Os três feitos. Nenhum trabalho novo foi iniciado.
+
+### 🔴 O cabeçalho do C7 era pendência NOSSA numa varredura, e o C7 nunca foi nosso
+
+A seção dizia `### 🔴 O braço C7 dele NÃO fecha nesta máquina`, em presente e com 🔴 — então toda
+leitura de *"o que está em aberto"* a devolvia como dívida daqui. **O C7 é braço declarado pendente no
+ADR dele**, e o bloqueio que eu medi (`provider.auth`) é propriedade **desta máquina**, não do
+produto. Conteúdo certo, forma mentindo: é a terceira vez que este arquivo paga pela mesma coisa, e a
+regra já estava escrita três vezes.
+
+O ML-5H dele fechou o braço às 11:52, com **modelo** (`claude-haiku-5-5`), 7/7 por máquina, Mac e
+Windows ARM64 iguais. 🔴 **A medição daqui não foi substituída — ela foi respondida pelo lado que
+tinha a credencial**, e é por isso que o registro do bloqueio fica em vez de sair.
+
+### 🔴 Por que o P1/P3 dele não cobrem a rota, e esta é a parte que eu quase deixei implícita
+
+Os dois exercitam a **ferramenta** `shell`, que chega ao `tool.execute.before`. A rota emite
+`Session.Message.Shell`, outro tipo de mensagem, sem campo de tool. **`shell` nomeia duas coisas no
+spec dele**, e sem dizer isso o comentário soaria como *"mediste errado"* em vez de *"mediste outra
+superfície"*. O censo das rotas — duas com a mesma `summary` `"Run shell command"`, mais a família
+`pty` — é o dado que 19/11 não tinha, e ele mostra que o limite daquele dia era **mais largo** do que
+soava.
+
+A recomendação levada foi a **(b)**, a dele: fora do modelo de ameaça por decisão escrita. O que foi
+levado é a **ausência** na lista reescrita, não a severidade.
+
+### O que o diagnóstico de 19/11 rendeu, e por que o conserto o CONFIRMA
+
+O `windows-full-suites` dele fechou com `t.Setenv("USERPROFILE", homeDir)` em três testes, **zero
+produto**. Se a causa fosse o resolvedor, o conserto seria em `internal/agentconfig`; sendo a fixture,
+é `t.Setenv`. **O lugar do conserto é a confirmação**, e isso vale além deste caso.
+
+### A armadilha de instrumento que a conferência expôs
+
+`wc -c` conta **bytes** e `.body|length` do jq conta **codepoints** — 4336 contra 4247, com as duas
+hipóteses naturais (truncamento, CRLF) refutadas. O discriminante foi contar **byte e codepoint no
+mesmo arquivo**, nunca comparar dois números de origens diferentes.
+
+E o `b.json` do spec **não** tinha sido limpo do scratchpad: o `/c/...` dentro do código Python é que
+não resolve. Eu escrevi *"o scratchpad foi limpo"* a partir de um `FileNotFoundError` com o arquivo
+listado três linhas acima, no mesmo comando.
+
+### O que fica com ele, e o que não se faz sozinho
+
+`AC2 / M12 do Gemini CLI` é a última AC aberta do #692: a sonda está **escrita** e não rodada, porque
+pede `GEMINI_API_KEY` dele. As nossas issues #690 e #691 seguem com a bola do lado dele. 🔴 **Nada
+aqui autoriza rodar sonda que peça credencial de provedor nesta máquina** — é decisão do usuário, e
+ele já disse que o C7 fica com o mantenedor.

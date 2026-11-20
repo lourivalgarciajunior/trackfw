@@ -1404,7 +1404,7 @@ campo de tool no Shell?          NAO
 São tipos de mensagem distintos, então o `tool.execute.before` **não alcança esse caminho por
 construção**. Quem chega lá é cliente da API e a interface — o modelo emite `Assistant.Tool`.
 
-### 🔴 O braço C7 dele NÃO fecha nesta máquina, e o bloqueio tem nome
+### ✅ O braço C7 não fechava nesta máquina, e o bloqueio tinha nome — ele FECHOU pelo lado dele em 20/11/2026
 
 ```
 opencode run --standalone --archived --auto
@@ -1418,6 +1418,35 @@ nenhum braço produziu chamada de ferramenta de espécie alguma**, logo *"essa r
 *"o hook nunca dispara aqui"* **não foram distinguidos**. O que sustenta o item acima é documental —
 o schema —, e não há controle positivo por efeito. Levado ao
 [#692](https://github.com/kgsaran/trackfw/pull/692#issuecomment-7021555208) exatamente nessa forma.
+
+> #### ✅ O ML-5H dele fechou o C7 às 11:52 de 20/11/2026 — com modelo, que é exatamente o que faltava aqui
+>
+> O `2b1aa002` rodou a **prova real com o plugin do produto**: opencode **2.3.2**,
+> `anthropic/claude-haiku-5-5`, trackfw da branch em `d3bcc446`, **7/7 chamadas por máquina**, e
+> macOS e Windows 11 ARM64 com o **mesmo** resultado.
+>
+> ```
+> P1  chave fake em `shell`                    bloqueado · marker ausente
+> P2  echo hello                               liberado  · marker criado
+> P3  git commit --allow-empty                 BLOQUEADO · commits 1 -> 1   <- fecha o C7
+> P4  `read` de arquivo com a chave            BLOQUEADO                    <- fecha o gap do C4
+> P5  `write` em .opencode/plugins/evil.js     bloqueado pela autoprotecao D4
+> P6  `webfetch` com a chave na URL            bloqueado
+> P7  so plugin global                         bloqueado · global removido ao final
+> ```
+>
+> `ML-5B ✅ Done (C7 coberto pelo P3 do ML-5H)`, `ML-5H ✅ Done`, e a **rodada 4 do hades foi
+> dispensada** por decisão dele no mesmo dia.
+>
+> 🔴 **A medição daqui não foi substituída — ela foi RESPONDIDA pelo lado que tinha a credencial.** O
+> bloqueio nomeado acima (`provider.auth`) é propriedade **desta máquina**, não do produto, e por isso
+> o registro fica: ele é o que explica por que o C7 não saiu daqui e por que o limite *"sem controle
+> positivo"* vale para a rota, que é outra coisa.
+>
+> 🔴 **E o cabeçalho desta seção estava no PRESENTE com 🔴 até hoje**, então toda varredura de *"o que
+> está em aberto"* a devolvia como pendência **nossa** — e o C7 nunca foi trabalho nosso em aberto: era
+> braço declarado pendente no ADR **dele**. Mesma regra que este arquivo já publica três vezes:
+> *"Datado e no passado não envelhece. Presente envelhece."*
 
 ### Duas armadilhas que a sonda achou, e as duas valem além dela
 
@@ -1441,6 +1470,64 @@ global nunca foi tocada); `~/.claude/settings.json` e `~/.gemini/settings.json` 
 inalterado; **nada estagiado na fixture em momento algum**, de propósito, para que um `git commit`
 executado não pudesse criar commit — e não criou; worktree removido **sem `--force`**; `opencode.exe`
 vivos de volta a 1, o do usuário.
+
+### 🔴 A lista de residuais dele foi REESCRITA no commit que fechou o C7, e a rota não entrou — e `shell` tem DOIS sentidos no spec
+
+Medido em 20/11/2026, na branch `6ac4ac3e`, por derivação e não por leitura de prosa:
+
+```
+git grep 'session/\{|session/[^ ]*/shell|Message\.Shell|/api/shell|/api/pty'
+  em docs/ e internal/ da branch dele      0 ocorrencia(s)
+git log d3bcc446..6ac4ac3e -- .../ADR-2026-11-19-…-opencode-via-plugin.md
+  2b1aa002   <- o MESMO commit do ML-5H reescreve o bloco `**Residual:**`
+```
+
+Os nove residuais de hoje falam todos do **agente** — `shell` apagando o plugin, `shell` escrevendo
+no diretório de plugin, MCP/`task`/plugin de terceiro (T9), `--pure`,
+`OPENCODE_CONFIG_PROJECT_DISABLE`. **Nenhum fala de cliente da API.**
+
+🔴 **E o P1/P3 dele NÃO cobrem a rota, porque `shell` nomeia duas coisas diferentes.** O `shell` dos
+braços dele é a **ferramenta** — o §8 do contrato dele registra *"nomes medidos das ferramentas em V2:
+`shell` e `read`"* —, e a chamada dela chega ao `tool.execute.before`. A rota emite
+`Session.Message.Shell`, que não tem campo de tool. **O discriminante é o tipo de mensagem, não o
+nome.**
+
+**E a superfície é uma FAMÍLIA, não um endpoint** — censo derivado do spec 2.3.0, que é o dado novo
+em relação à medição de 19/11:
+
+```
+POST /api/session/{sessionID}/shell   summary "Run shell command"    <- o que eu medi
+POST /api/shell                       summary "Run shell command"    <- NAO medido
+POST /api/pty                         summary "Create PTY session"   <- NAO medido
+      (+ /api/shell/{id}, /api/shell/{id}/output, e a familia experimental/persistent-pty)
+```
+
+**Duas rotas com a mesma `summary`, e eu exercitei uma.** O limite de 19/11 dizia *"não medi
+`/api/shell` nem `/api/pty`"*; o censo mostra que aquele limite era mais largo do que soava.
+
+Levado ao [#692](https://github.com/kgsaran/trackfw/pull/692#issuecomment-7045169201) com **duas
+saídas**, e a recomendação foi a **dele**: (a) entra como residual declarado, ou (b) fica **fora do
+modelo de ameaça** por decisão escrita, porque quem chama a rota já tem a senha do `serve` e o shell
+da máquina — o mesmo argumento com que ele aceitou o 5-A como residual. 🔴 **O que foi levado é a
+AUSÊNCIA, não a severidade:** hoje um leitor que vê `ML-5B ✅` com P1/P3 verdes conclui *"shell sob o
+OpenCode está coberto"*.
+
+#### `wc -c` e `.body|length` do jq respondem perguntas diferentes
+
+Ao conferir por efeito que o comentário tinha chegado inteiro, as duas contagens discordaram em **89**,
+e a leitura óbvia — truncamento — está refutada:
+
+```
+wc -c do arquivo              4336   <- BYTES
+.body|length no jq            4247   <- CODEPOINTS
+len(bytes) - len(str)           89   = o excesso de UTF-8 multibyte (ç, ã, —, 🔴)
+CR=0 no arquivo                      -> nao e fim de linha
+ultima linha, local x remoto   IDENTICA
+```
+
+🔴 **Nem truncamento nem CRLF**, que eram as duas hipóteses naturais. O discriminante foi contar
+**byte e codepoint no mesmo arquivo**, não comparar dois números de origens diferentes. Mesma família
+do *verde sem denominador*: dois instrumentos com unidades distintas sobre o mesmo objeto.
 
 ## ✅ A `REQ-2026-11-17` dele acendeu DUAS regras aqui, e as duas foram medidas por efeito em 18/11/2026
 
@@ -2697,6 +2784,30 @@ diferentes, e misturá-las seria dizer que medi o que não medi.
 🔴 **O conjunto dele é 21 linhas / 21 nomes / 0 duplicatas**, e isso é o controle negativo da assimetria
 que este arquivo já explica: a dupla `gates-locais`/`gates-windows` é **nossa**, do `local-gates.yml`
 sem filtro de branch. No repositório dele ela não existe.
+
+> ### ✅ O `windows-full-suites` da tabela acima FECHOU em 20/11/2026, com o mecanismo que eu nomeei — e sem tocar produto
+>
+> Ele abriu o **ML-FB2** às 12:09 e o conserto às 12:22 (`82947751`), e a causa escrita no roadmap é a
+> da segunda linha da tabela, com as palavras dela:
+>
+> > *"os testes põem o diretório do IDE ou o esperado sob `HOME`, mas no Windows o resolvedor lê
+> > `USERPROFILE` […] É o mesmo mecanismo do D8 do `ADR-2026-11-18`."*
+>
+> ```
+> internal/agentconfig/agentconfig_test.go                            +1
+> internal/validator/validator_antigravity_ide_global_guard_test.go   +7
+>   t.Setenv("USERPROFILE", homeDir)   nos TRES testes
+> codigo de PRODUTO alterado           ZERO
+> ```
+>
+> 🔴 **O conserto é de TESTE, e isso é o que confirma o diagnóstico em vez de só obedecê-lo:** se a
+> causa fosse o resolvedor, o conserto seria em `internal/agentconfig`; sendo a fixture, ele é
+> `t.Setenv`. O `windows-full-suites` estava vermelho **desde o primeiro run do #692** (`44533169241`),
+> e no `6ac4ac3e` sai **`pass` em 15 min 5 s**, com o conjunto dele em **24 linhas / 24 nomes / 0
+> duplicatas**.
+>
+> **O `go` daquele run continua sendo o `ETXTBSY`** — flake, não desta PR dele —, e o `parity` era
+> cascata. As três causas eram independentes, como a tabela diz; o que fechou foi uma.
 
 ## Branch `feat/fix/refactor` custa 3 jobs vermelhos por motivo falso
 
