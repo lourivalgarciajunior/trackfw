@@ -37075,3 +37075,59 @@ deste fork, e que já custou uma auditoria externa aqui.
 🔴 **Foi isso que levou o precedente ao comentário, não a correção.** O sítio é dele; o que temos é a
 memória de ter pago o mesmo erro.
 
+
+---
+
+## 2026-11-19 — o C7 do OpenCode não fechou, e o que a tentativa achou vale mais que o braço
+
+**Por que esta entrada existe.** Três coisas que não se derivam: por que a medição **parou** onde
+parou, por que o achado é mais fraco que *"bypass"* e as duas armadilhas de ambiente que ela expôs.
+
+### O que o usuário pediu, e o que foi entregue
+
+Pediu medir o braço **C7** da `REQ-2026-11-17` dele — *"`git commit` real sob o OpenCode"*, o único
+dos sete que o ADR dele declara pendente. Entregue: os braços de **carga** do plugin no x64, o
+baseline do guard, e um achado de **alcance** que não era o braço. O C7 em si **não fechou**.
+
+### 🔴 O bloqueio, e por que ele não se contorna
+
+```
+opencode auth list   ->  "No authenticated integrations"
+opencode run …       ->  step_start, depois provider.auth
+                         "Missing auth credential: Google Application Default Credentials"
+```
+
+Autenticar provedor é configuração de conta do usuário. O turno **começou** e morreu antes de
+qualquer token, então nem custo houve — mas sem modelo **nenhuma chamada de ferramenta acontece**, e
+o C7 é exatamente uma.
+
+### 🔴 Por que o achado é de ALCANCE e não de bypass — e isto é o que eu quase escrevi errado
+
+A sonda mostrou `v2setup` e `v2hook:registrado` e **nenhum** `v2before:`, com o `git commit`
+executando pela rota `POST /api/session/{id}/shell`. A leitura tentadora é *"o hook foi burlado"*.
+**Ela não se sustenta**, porque não houve controle positivo: nenhum braço produziu tool call de
+espécie alguma, logo *"a rota não é tool call"* e *"o hook nunca dispara aqui"* ficam
+indistinguíveis por efeito.
+
+O que decide é **documental**: `Session.Message.Shell` e `Session.Message.Assistant.Tool` são tipos
+distintos no schema dele, e o `Shell` não tem campo de tool. Daí o enunciado honesto — o guard cobre
+**tool call**, e esse caminho não é um — em vez do enunciado forte.
+
+### As duas armadilhas, que valem fora desta medição
+
+**`trackfw init --scope` tem default `global`.** Eu quase rodei `init --ai-tools opencode` sem
+`--scope project`, o que teria escrito o plugin no home **real** e mudado a cerca de todos os
+projetos da máquina com o que parece comando de projeto. Lido do `--help` antes de rodar, não
+depois.
+
+**O `TaskStop` deixou `opencode.exe` escutando.** Já é a terceira grafia da lição da vigia nesta
+casa. O que a fechou foi o **Win32** — `Get-CimInstance Win32_Process` cruzado com
+`Get-NetTCPConnection` —, porque o `ps` do MSYS não vê; morte por PID, e o `serve --service` de
+17/11 é do usuário e fica.
+
+### O que fica oferecido, e o que não se faz sozinho
+
+O ambiente **x64 / 2.3.0** está oferecido no [#692](https://github.com/kgsaran/trackfw/pull/692) para
+qualquer braço do ML-5B que não precise de credencial dele. 🔴 **Autenticar o OpenCode aqui para
+fechar o C7 é decisão do usuário**, não consequência de a medição ter parado.
+

@@ -1357,6 +1357,91 @@ v2, *"o binário real"* do ML-5B precisa dizer **qual** — e o ambiente v2 é o
 distintos do mesmo repositório, com linhas de major distintas. A pergunta de contrato é o ML-5A
 **dele**, por fonte primária, e avançar nela seria fazer o ML de outro.
 
+### 🔴 O guard do OpenCode cobre TOOL CALL, e o shell da sessão NÃO é um — medido em 19/11/2026, no x64
+
+A Wave 5 saiu do papel às 15:36 de 19/11 (`f7f0c8a3`, +2905 linhas) e o corretivo do red team dele às
+~20h (`d941ec64`, ML-5I). O gap do `hooks.go:16` que levamos no
+[#688](https://github.com/kgsaran/trackfw/pull/688) **fechou por código**: `internal/opencodeplugin/trackfw-guard.js`,
+CommonJS, `go:embed`, zero dependência de npm, mais regra de `validate` e alvo no `update harness`.
+
+**Medido com o binário dele de `d941ec64`**, em worktree fora do repo, fixture descartável, plugin
+escrito pelo **gerador real** (`init --ai-tools opencode --scope project`, 13 572 bytes, marca na
+linha 1) — e o ambiente é o que ele não tem:
+
+```
+o dele (ADR)   macOS  +  Windows 11 ARM64   ·   opencode 2.3.2
+o nosso        Windows 11 x64               ·   opencode 2.3.0
+```
+
+**Os braços de carga fecham**, por sonda que **só registra** — ela existe para separar *"plugin não
+carregado"* de *"rota não passa pelo hook"*, e é um segundo plugin solto, nunca alteração do dele:
+
+```
+load:modulo-avaliado
+v2setup:…\scratchpad\c7\fix2      <- ctx.location.project.directory = a raiz do projeto
+v2hook:registrado                 <- ctx.tool.hook("execute.before") aceito
+log do opencode   "loading plugin" para os DOIS arquivos  ·  "failed to load"  0 em todo o dia
+baseline do guard  git commit -> rc=2 (`raw git commit blocked`)  ·  ls -> rc=0
+```
+
+🔴 **E aí vem o achado, que não é falha do plugin:**
+
+```
+POST /api/session/{id}/shell  {"command":"git commit -m sonda-c7"}  ->  204
+  type="shell"  status=exited  exit=1
+  "On branch main … nothing added to commit but untracked files present"   <- EXECUTOU
+  controle  {"command":"ls"}  ->  exit=0        probe.log nos dois: NENHUM `v2before:`
+```
+
+**O discriminante é a taxonomia da API dele, não inferência:**
+
+```
+Session.Message.Shell            props: id metadata time type shellID command status exit output
+Session.Message.Assistant.Tool   props: type id name executed native state time
+campo de tool no Shell?          NAO
+```
+
+São tipos de mensagem distintos, então o `tool.execute.before` **não alcança esse caminho por
+construção**. Quem chega lá é cliente da API e a interface — o modelo emite `Assistant.Tool`.
+
+### 🔴 O braço C7 dele NÃO fecha nesta máquina, e o bloqueio tem nome
+
+```
+opencode run --standalone --archived --auto
+  step_start                                     <- o turno comecou
+  error  provider.auth  "Missing auth credential: Google Application Default Credentials"
+opencode auth list   ->  "No authenticated integrations"
+```
+
+Autenticar provedor é alçada do usuário. 🔴 **A consequência honesta é um limite, não um veredito:
+nenhum braço produziu chamada de ferramenta de espécie alguma**, logo *"essa rota não é tool call"* e
+*"o hook nunca dispara aqui"* **não foram distinguidos**. O que sustenta o item acima é documental —
+o schema —, e não há controle positivo por efeito. Levado ao
+[#692](https://github.com/kgsaran/trackfw/pull/692#issuecomment-7021555208) exatamente nessa forma.
+
+### Duas armadilhas que a sonda achou, e as duas valem além dela
+
+🔴 **`trackfw init --scope` tem default `global`.** Um `init --ai-tools opencode` sem `--scope
+project` escreve o plugin no home **real** do usuário — muda a cerca de **todos** os projetos desta
+máquina com o que parece comando de projeto. Não é defeito (o default está no `--help`), é leitura: o
+`--scope` se escreve sempre.
+
+🔴 **O `TaskStop` deixou `opencode.exe` ESCUTANDO na porta.** Terceira grafia da mesma lição já
+registrada para a vigia: o invólucro morre, o processo fica. Conferido pelo **Win32**
+(`Get-CimInstance Win32_Process` + `Get-NetTCPConnection`), porque o `ps` do MSYS é cego para isso, e
+morto por PID. O `serve --service` de 17/11 é do usuário e **não** se mata.
+
+**E `opencode api GET /rota` é recusado pelo parser dele** (*"Expected an operation name or an HTTP
+method and path"*, nas quatro grafias). O que entra é HTTP direto com **Basic, usuário `opencode`** e
+a senha que se passa em `OPENCODE_PASSWORD` ao subir o `serve` — senha local da sonda, nunca
+credencial do usuário.
+
+**Higiene, conferida por efeito:** `~/.config/opencode/plugins` **ausente antes e depois** (a cerca
+global nunca foi tocada); `~/.claude/settings.json` e `~/.gemini/settings.json` com mtime de 22/10
+inalterado; **nada estagiado na fixture em momento algum**, de propósito, para que um `git commit`
+executado não pudesse criar commit — e não criou; worktree removido **sem `--force`**; `opencode.exe`
+vivos de volta a 1, o do usuário.
+
 ## ✅ A `REQ-2026-11-17` dele acendeu DUAS regras aqui, e as duas foram medidas por efeito em 18/11/2026
 
 Medido com o binário dele compilado de `861c52b5`, na **nossa** árvore, com o nosso `bin/trackfw.exe`
