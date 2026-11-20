@@ -37191,3 +37191,136 @@ listado três linhas acima, no mesmo comando.
 pede `GEMINI_API_KEY` dele. As nossas issues #690 e #691 seguem com a bola do lado dele. 🔴 **Nada
 aqui autoriza rodar sonda que peça credencial de provedor nesta máquina** — é decisão do usuário, e
 ele já disse que o C7 fica com o mantenedor.
+
+---
+
+## 2026-11-20 (tarde) — o #692 mesclou sem a rota, o veículo virou o #693, e o sync trouxe 56 de produto
+
+**Por que esta entrada existe.** Três coisas que não se derivam: por que o `trackfw branch prune` é melhor que
+o laço de `git branch -d` que este arquivo publicava, por que a confirmação dele no #690 é do **sintoma** e não
+do diagnóstico, e por que o piso de avisos deixou de ser 13.
+
+### 🔴 O remédio de limpeza de branch que eu entreguei ao usuário NÃO teria funcionado
+
+Eu dei o laço `git branch --merged main | grep -vx main | xargs git branch -d`, com o alerta do `grep`. Medido
+na hora de usar:
+
+```
+git for-each-ref --merged main   ->   so `main`      <- a branch do #349 NAO aparecia
+porque a main LOCAL estava 2 commits atras (e3d3172f contra cc035c80)
+```
+
+**O laço não teria apagado nada** antes do fast-forward, e o veredito seria lido como *"não havia o que
+limpar"*. O `trackfw branch prune` decide por **PR mesclado** mais a heurística de arquivos tocados — por
+desenho, justamente para sobreviver a merge por squash, que é como o upstream mescla —, e protege a `main`
+**no produto** (`keep  default branch — never pruned`) em vez de depender de eu lembrar o `grep -vx main`.
+Ele também nunca avalia a branch **corrente**, o que torna o `checkout main` passo obrigatório e não zelo.
+
+### 🔴 A confirmação dele no #690 é do SINTOMA, não do diagnóstico — e a distinção é minha de dever
+
+Ele adotou a nossa opção 2 (`-timeout` por pacote) e reproduziu a faixa com o acervo dele: 91–119 s no #692, e
+um commit **só de docs** (`d83ca83a`) estourando os 2 min — a mesma forma do nosso #349, o que fecha a
+pergunta *"é só aqui?"*. Acrescentou duas runs que eu não medi (`3ff02a8b`, `121b8ce5`) com o `ETXTBSY`.
+
+**Mas o mecanismo que ele escreve — `makeFakeTrackfw` + `os.WriteFile(…, 0755)` + `t.Parallel()` +
+golang/go#22315 — é o que eu levei no comentário de 19/11 15:07.** Então não é derivação independente: é
+reprodução independente do sintoma sobre o nosso diagnóstico. Dizer *"ele chegou à mesma conclusão"* seria
+inflar a evidência. O limite que este arquivo declara segue aberto: **se o `ETXTBSY` já aparecia antes do
+#687, ninguém mediu.**
+
+### Por que o #693 é o veículo da rota, e por que havia prazo
+
+O #692 mesclou às 14:57 com a lista de residuais **reescrita** e a rota fora dela; o meu comentário é de
+13:44, 1h13 antes. Ele também não respondeu **por documento** — o diff do #693 é mecânico (`Open → Done`,
+`wip → done`, marcadores `**Status:** ✅ Done`), com zero menções. O #693 é a PR que **fecha a REQ**, logo o
+último veículo vinculado a ela: depois dele a decisão sobre a rota não tem onde morar. Foi por isso que o
+comentário foi antes do sync, e não depois.
+
+### A armadilha de instrumento desta sessão: CRLF contra LF faz TODA linha divergir
+
+Ao conferir se as nossas 9 linhas do índice do `hades-tf` sobreviveram ao merge, o `diff` de listas ordenadas
+devolveu **74 só nossas e 65 dele sumidas** — leitura que diria *"o merge comeu o índice inteiro"*. A causa é
+que o nosso arquivo é CRLF e o `git show` entrega LF. Com `tr -d '\r'` nas duas pontas: **9 só nossas, 0
+dele sumidas**, que é a propriedade declarada em 22/10.
+
+🔴 É a mesma família já registrada, na direção contrária: lá o filtro de texto **esconde** o CR e mente sobre
+fim de linha; aqui a ausência de filtro faz o fim de linha **virar** a diferença. **Comparação de conteúdo
+entre árvore e blob normaliza o fim de linha primeiro.**
+
+### O piso de avisos virou 14 — e o arquivo sobreviveu, porque o 13 estava DATADO
+
+O `gemini_cli_legacy` passou a acender aqui com o binário do merge — o remédio dele já estava medido em
+fixture descartável (18/11) e **não foi aplicado na árvore viva**, porque escreve `.agents/` no projeto e isso
+não foi pedido. As outras duas regras novas calam, e a do meio é a que importa:
+
+```
+gemini_cli_legacy             1   acionavel, remedio medido
+antigravity_ide_global_guard  0   CALA, com a IDE INSTALADA (COND 2 falsa)  <- a exposicao do #692
+opencode (plugin/auditoria)   0
+```
+
+A exposição que levei ao [#692](https://github.com/kgsaran/trackfw/pull/692#issuecomment-7011440986)
+atravessou o merge **intacta** e agora está em produto mesclado na nossa árvore: `%LOCALAPPDATA%\Programs\Antigravity`
+existe, `<home>/.antigravity-ide` não, e o `validate` não diz nada.
+
+🔴 **E o `13` NÃO apodreceu no `CLAUDE.md`, de propósito:** a única ocorrência dele está dentro do bloco
+datado da sexta passada da tripla (18/11), como **medição**, não como critério. *"Datado e no passado não
+envelhece"* não é slogan — aqui ele é a razão de um número mudar sem o arquivo ficar falso. O que apodreceu
+foi o corpo das minhas PRs, que escreviam *"13 avisos (o piso)"* em presente.
+
+---
+
+## 2026-11-20 (noite) — o achado do stderr descartado foi ao #690, e a medição derrubou a lição que eu ia publicar
+
+**Por que esta entrada existe.** Três coisas que não se derivam: por que o veículo foi a **issue** e não
+um comentário de PR, por que a re-execução fecha a classificação do flake sem fechar a causa, e o fato de
+a medição do `git show` ter desmentido o texto que eu ia commitar.
+
+### O veículo foi a issue porque NÃO havia PR — o inverso do caso do #692
+
+Ele criou a `REQ-2026-11-20` e um threat model de Wave 0 de 724 linhas (`4525e191`, 18:15 local) na branch
+`fix/estabilidade-do-job-go-timeout-e-etxtbsy`, e **não abriu PR para ela**. Em 18/11, no #691, o veículo
+literal (comentar na REQ) era o mais frágil porque não havia PR e comentário de commit se desgarra no
+squash; em 19/11 passou a haver PR e o canal mudou para lá. Hoje a leitura foi refeita **no minuto de
+postar** — branch parada em `4525e191`, issue aberta, zero PRs no repositório dele — e a issue voltou a
+ser o canal. 🔴 **O canal se deriva a cada vez; não se herda da vez anterior.**
+
+### O que o achado é, e o que ele NÃO é
+
+O `RC0-allow` descarta o stderr (`code, _, captured`), enquanto o `RC2-deny` o captura. As duas ocorrências
+anteriores — o nosso #343 e a dele no #692 — caíram no braço que **confere**, e é de lá que a string
+`Text file busy` veio nas duas. No braço que descarta, ela é inobservável por construção, então
+`grep 'Text file busy'` dando zero **não é ausência do ETXTBSY**.
+
+O threat model dele nomeia `runGuardLine` 8 vezes e `TestGuardLineShellMatrix` 4, com **zero** menções a
+`RC0`, `RC2`, `stderr`, `allow` ou `descarta` — foi esse censo, e não impressão, que disse que o achado era
+novo. O AC4 dele cobre `exit -1` + stdin vazio; a nossa ocorrência é `exit 2` + stdin vazio, outro ponto.
+
+🔴 **E o reforço que eu não tinha previsto:** o `2*!!$?` da linha colapsa **todo** não-zero em 2, logo 1,
+126, 127 e o `rc` de um ETXTBSY imediato saem iguais. O `-1` escapa porque vem do SIGKILL — então o lado
+`não-(-1)` do discriminante dele é **sempre 2** e não distingue ETXTBSY de outra falha de exec. O stderr é
+o único canal que carrega causa, e é justamente o que três dos quatro braços da matriz jogam fora.
+
+### A re-execução classifica o flake — e não mede a causa
+
+```
+mesmo head f1c0e7d8, codigo byte a byte identico
+  attempt 1   go FAIL · parity FAIL (cascata por needs skipped)
+  attempt 2   go SUCCESS · parity SUCCESS · run conclusion=success
+```
+
+Terceira vez que a re-execução fecha a classificação nesta família. 🔴 **Ela não mede a causa**, e o limite
+que o `CLAUDE.md` declara segue aberto: se o `ETXTBSY` já aparecia antes do #687 dele, ninguém mediu.
+A medição por efeito que foi ao #690 reproduz a **classe** — stub existe, bit ligado, não executa —, com
+shebang inexistente, que dá `ENOENT` e não `ETXTBSY`. O que está provado é que o diagnóstico existe no
+stderr no mesmo instante em que o braço o perde.
+
+### 🔴 A medição desmentiu o parágrafo que eu ia commitar
+
+A primeira redação do bloco novo do `CLAUDE.md` dizia que a armadilha do `git show --name-only` em merge
+*"não se conserta com flag"*. Medi antes de escrever e o `--first-parent` **conserta**, casando com o
+`git diff HEAD^1..HEAD` no mesmo 58. E o `-m` reconcilia a conta: 58 + 1627 = 1685.
+
+Isto não é zelo de redação — é a diferença entre registrar uma lição e registrar uma crença. O número
+errado (3) era **plausível**, que é a propriedade que faz este tipo de erro sobreviver: ninguém confere um
+total que não parece estranho.

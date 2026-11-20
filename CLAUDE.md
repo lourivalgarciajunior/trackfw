@@ -962,6 +962,49 @@ instrução"*: aqui eu **executei**, e mesmo assim o texto publicado estava erra
 rodou na única posição em que o defeito não aparece. **Controle raso: inclua sempre a posição
 diferente.**
 
+#### ✅ E a derivação acima NÃO funcionou quando foi usada — o instrumento é o `trackfw branch prune`
+
+Medido em 20/11/2026, ao limpar a branch do nosso PR #349 logo depois de mesclá-lo:
+
+```
+git for-each-ref --merged main   ->   so `main`      <- a branch do #349 NAO aparecia
+porque a main LOCAL estava 2 commits atras (e3d3172f contra cc035c80)
+o laco acima, rodado ali          teria apagado NADA
+```
+
+🔴 **E o veredito vazio seria lido como *"não havia o que limpar"*.** A causa é a mesma que torna o
+`--merged` frágil para este acervo: o upstream mescla por **squash**, e a nossa `main` local fica atrás
+até alguém fazer o fast-forward — então a ancestralidade do git responde sobre uma `main` que não é a do
+remoto.
+
+**O `trackfw branch prune` decide por outro predicado, e ele está escrito no `--help` dele:**
+
+```
+mb      = git merge-base origin/main <branch>
+touched = git diff --name-only mb <branch>
+diverg  = git diff --name-only origin/main <branch> -- touched
+touched vazio  ou  diverg vazio   ->  integrada (apaga)
+diverg so de doc/config           ->  marcada para revisao, NUNCA apagada
+```
+
+Rodado ali, ele acertou com a razão escrita: `delete  merged PR #349 contains this branch`.
+
+🔴 **Três propriedades dele que o laço à mão não tem**, e as três foram exercitadas no caso real:
+
+- **`--dry-run` é o default** — a primeira passada imprime o veredito e não apaga nada.
+- **A `main` é protegida NO PRODUTO** (`keep  default branch — never pruned`), em vez de depender de
+  alguém lembrar o `grep -vx main` — que é a armadilha que esta seção documenta como *"sem ele o comando
+  APAGA A `main`"*.
+- **Ele tenta `git branch -d` primeiro** e só cai no `-D` quando o `-d` recusa, que é o caso esperado de
+  squash — então a recusa do `-d` continua sendo evidência, sem travar a limpeza.
+
+**O passo que não se pula:** ele **nunca avalia a branch corrente**, então o `checkout main` antes não é
+zelo, é pré-condição — e o fast-forward também, porque o predicado lê `origin/main`.
+
+**A derivação à mão fica escrita acima** por uma razão só: ela é o que explica a armadilha do `grep -vx
+main`, e o hook recusa `git branch` cru pela minha mão de qualquer forma. 🔴 **Quem vai limpar usa o
+comando.**
+
 **Não virou gate**, e a razão é a de sempre nesta casa: o acervo foi a zero no mesmo dia, então um
 gate nasceria descrevendo o vazio. Se o sintoma voltar **por esta causa**, aí há caso para
 instrumento.
@@ -1737,6 +1780,104 @@ ls -d "$LOCALAPPDATA/Programs/Antigravity" 2>/dev/null && echo "e a IDE ESTA ins
 As duas linhas juntas são o estado que esta seção mede. **Se a primeira passar a existir**, o
 predicado dele alcançou esta máquina; **se a segunda deixar de existir**, a exposição acabou. Até lá,
 `validate` silencioso sobre a IDE aqui **não** é prova de cerca.
+
+### ✅ A REQ MESCLOU em 20/11/2026 às 14:57, e o derivável acima foi rodado com o produto — a regra CALA com a IDE instalada
+
+O [#692](https://github.com/kgsaran/trackfw/pull/692) mesclou (`5c3bb296`) e fechou a nossa
+[#691](https://github.com/kgsaran/trackfw/issues/691) **dois segundos depois**, pelo closing keyword. Então
+o *"para quando a REQ mesclar"* do título anterior deixou de ser hipótese: as três regras novas foram
+medidas **pelo binário do merge, sobre a árvore viva**, e não mais por binário compilado da branch dele.
+
+```
+gemini_cli_legacy             1   <- o aviso NOVO, acionavel
+antigravity_ide_global_guard  0   <- CALA, com a IDE INSTALADA
+opencode (plugin/auditoria)   0
+avisos do validate            13 -> 14   ·  violacoes 0 -> 0   ·  rc=0
+nenhum aviso SUMIU            o diff das duas saidas tem so a linha do gemini_cli_legacy
+```
+
+🔴 **A linha do meio é a exposição deste arquivo passando de previsão a fato em produto mesclado**, e as
+condições do D8 relidas no mesmo minuto dizem por quê:
+
+```
+COND 1  .agents/hooks.json no projeto             AUSENTE
+COND 2  <home>/.antigravity-ide                   AUSENTE   -> a regra cala
+%LOCALAPPDATA%\Programs\Antigravity               EXISTE    -> e a IDE esta instalada
+```
+
+A medição de 19/11, feita com o binário dele compilado de `59b08322`, **previu exatamente este silêncio** —
+e agora ele está confirmado pelo caminho mais forte: o produto publicado no merge, sem worktree, sem
+fixture, sem `USERPROFILE` controlado. **Silêncio não é ausência de exposição** continua sendo a leitura.
+
+**O custo do sync, medido pelo próprio script:**
+
+```
+upstream-sync.sh    PRODUTO 56  ·  governanca RETIDA 34  ·  90 no merge     56 + 34 = 90
+  internal/ 46   .claude/agent-memory/ 7   scripts/ 2   docs/cli-parity.md 1
+go build ./...      exit 0        validate   0 antes · 0 depois (violacoes)
+docs/ NOVOS dele que entraram     0        <- a retencao alcanca ADICAO, nao so conflito
+roadmaps em wip/                  0        <- a blindagem de escopo segue intacta
+```
+
+🔴 **A tripla NÃO foi exigida, e isso se derivou ANTES de mesclar**, ancorado na base de merge e não na
+leitura anterior: `git diff --name-only $(git merge-base HEAD upstream/main)..upstream/main -- .claude/settings.json
+.codex/hooks.json .gemini/settings.json` devolveu **0**. Os 10 avisos globais de D18-legacy seguem de pé
+pelo motivo já escrito — nenhuma tag publicada contém o `6b28e547`.
+
+**E o índice compartilhado do `hades-tf` sobreviveu**, que é o limite declarado em 22/10 sendo exercitado:
+
+```
+linhas SO NOSSAS no indice    9        linhas DELE que sumiram    0
+```
+
+#### 🔴 Comparar árvore com blob sem normalizar o fim de linha faz TODA linha divergir
+
+A primeira passada daquela conferência devolveu **74 só nossas e 65 dele sumidas** — leitura que diria *"o
+merge comeu o índice inteiro"*. A causa é que o nosso arquivo é **CRLF** e o `git show` entrega **LF**, então
+nenhuma linha casa:
+
+```
+diff de listas ordenadas, cru          74 so nossas · 65 sumidas    <- FALSO
+o mesmo com `tr -d '\r'` nas duas        9 so nossas ·  0 sumidas    <- o real
+```
+
+🔴 **É a família já registrada, na direção contrária.** Este arquivo documenta que *"instrumento que passa
+por filtro de texto não decide sobre fim de linha"* — ali o filtro **esconde** o CR; aqui a **ausência** de
+filtro faz o fim de linha virar a diferença inteira. É o mesmo mecanismo do `cmp` contra blob que este
+arquivo já registra como *"instrumento errado"*: o git guarda LF e entrega CRLF.
+
+**A regra prática: comparação de CONTEÚDO entre árvore e blob normaliza o fim de linha primeiro; comparação
+de FIM DE LINHA lê os bytes.** Os dois nunca pelo mesmo instrumento.
+
+#### 🔴 E `git show --name-only` num commit de MERGE disse 3 onde o merge trouxe 58
+
+Medido no commit deste próprio sync, `f1c0e7d8`, que tem **dois pais** — `cc035c80` nosso e `5c3bb296`
+dele. Cinco instrumentos, **quatro respostas**:
+
+```
+git show --name-only --format= HEAD                   3   <- o DEFAULT: diff COMBINADO
+git show --name-only --format= -m HEAD             1685   (1682 distintos)
+git show --name-only --format= --first-parent HEAD    58
+git diff --name-only HEAD^1..HEAD                     58   <- o que o merge trouxe para NOS
+git diff --name-only HEAD^2..HEAD                   1627   <- o que a nossa main tem e a dele nao
+                                                    58 + 1627 = 1685, e o `-m` RECONCILIA
+```
+
+O default do `git show` num merge é o diff **combinado**, que só lista arquivo diferente de **todos**
+os pais — então os 55 que vieram idênticos do lado dele **desaparecem**. Os três que sobram são
+exatamente os que têm conteúdo dos dois lados (o índice do `hades-tf`) ou só do nosso.
+
+🔴 **Eu quase relatei *"3 arquivos no commit"* como verificação do sync**, e o 3 é **plausível** —
+que é a pior forma de errado, porque não convida a conferir. O instrumento para *"o que este merge
+trouxe"* é o diff contra o **nosso pai**, nomeado.
+
+🔴 **E a primeira redação deste bloco dizia que "não se conserta com flag" — a medição derrubou isso
+antes de o texto ser commitado.** O `--first-parent` conserta, e casa com o `git diff` no **mesmo
+58**. Afirmação sobre instrumento se mede, inclusive — e principalmente — quando é a que eu ia
+publicar como lição.
+
+**É a mesma família do `rc` depois de um cano**, que este arquivo registra em seis grafias: o sinal
+existe, responde outra pergunta, e o número que ele devolve não tem cara de errado.
 
 ## Não rode `make parity-rest` na raiz deste fork
 
