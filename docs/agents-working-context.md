@@ -37324,3 +37324,79 @@ A primeira redação do bloco novo do `CLAUDE.md` dizia que a armadilha do `git 
 Isto não é zelo de redação — é a diferença entre registrar uma lição e registrar uma crença. O número
 errado (3) era **plausível**, que é a propriedade que faz este tipo de erro sobreviver: ninguém confere um
 total que não parece estranho.
+
+---
+
+## 2026-11-21 (manhã) — o sync do #694, e o Windows local não cabe no teto de 5 min por desenho
+
+**Por que esta entrada existe.** Quatro coisas que não se derivam: por que o `panic: test timed out after
+5m0s` **aqui** não é defeito, por que eu **não** medi a árvore anterior para comparar, o que o meu pedido
+de observabilidade virou depois de ele atribuir a falha pelo nome do teste, e o 37 segundos entre `OPEN`
+e `MERGED`.
+
+### 🔴 O `panic` de 5 min aqui é plataforma, não regressão — e o número está medido
+
+```
+teto que chegou   go test -timeout 5m ./internal/generators/   (make test, ponto unico)
+o job que o usa   quality.yml `go`  ->  runs-on: ubuntu-latest  (faixa nossa: 92–121 s)
+aqui, com 5m      panic: test timed out after 5m0s     em 305,4 s
+aqui, com 25m     ok   810,474 s  =  13 min 30 s
+                  --- FAIL 0 · panic 0 · Text file busy 0 · FileLoadException 0
+```
+
+O pacote **passa** nesta máquina; ele só precisa de 13,5 min, e o teto de 5 min nunca foi para cá. O
+Windows no CI tem teto próprio — `-timeout 20m` com `-p 1 -parallel 1`, no `windows-full-suites`.
+
+🔴 **E eu NÃO medi a árvore anterior para saber se o Windows ficou mais lento.** Não é esquecimento, é
+custo: 13,5 min de controle não mudaria ação nenhuma — se o cache do pwsh copiado por chamada custar
+tempo em série, isso é escolha do upstream e não se conserta aqui, e o `windows-full-suites` do PR
+responde de graça e com autoridade. **Medição que não muda ação não se paga.** O risco, para quem ler
+o CI: o job fechou em **17m49s** no #350, **antes** desta mudança, contra teto de 20m — a margem é
+estreita e o `-p 1 -parallel 1` serializa justamente o custo novo.
+
+### O pedido do stderr ficou sem resposta — e é mais estreito do que eu o enquadrei
+
+Ele fechou a REQ inteira entre 19:38 e 22:30 de 20/11 (nove commits, revisão do hefesto aprovando) e
+**não** mexeu no descarte: `6 chamadas de runGuardLine · 3 capturam · 3 descartam`, com o
+`code, _, captured` na L875. Os três documentos novos — review de 190 linhas, REQ e roadmap — têm zero
+menções a `RC0`, `stderr`, `descarta` ou `TFB`.
+
+🔴 **Mas ele ATRIBUIU a falha que eu chamei de inatribuível, e pelo nome do teste:** *"A falha restante
+do `after` (`PSInheritedState … guard não rodou`) é da mesma família `pwsh`."* Ali o nome carregou a
+informação que o stderr daria. Então o custo real do descarte é estreito: só os braços **POSIX**
+`RC0-allow` / `RC1-deny-normalizado` / `trackfw-ausente`, onde nem o nome, nem `MINUS1`, nem `PANIC`
+desambiguam — e o caso é o nosso de 20/11, `sh-e/RC0-allow`, **um**. Insistir hoje exigiria issue nova,
+porque o PR mesclou; e a honestidade manda registrar que o pedido perdeu urgência, não que estava errado.
+
+### A leitura do estresse: ele chegou às 19:38, eu por volta do mesmo minuto
+
+O commit `1da704d8` (19:38) diz *"ETXTBSY 1→0; exit -1 é o pwsh abortando"* — a mesma conclusão que eu
+derivei dos artefatos. **Não é convergência: é o que os números impõem**, e ele tinha os step summaries
+enquanto eu tinha os `out.log`. A oferta que eu fiz de levar essa leitura ao #694 teria sido redundante,
+e fica registrado para não repetir o reflexo de oferecer antes de checar se o outro já escreveu.
+
+A causa que **nenhum** de nós dois havia nomeado é dele: `ProfileOptimization.StartProfile` escrevendo
+`StartupProfileData-*` em `$XDG_CACHE_HOME/powershell`, com instâncias paralelas lendo enquanto outra
+grava. E o conserto dele veio em dois passos, com o primeiro **declarado como troca de flake**
+(*"cache vazio por chamada põe todo `pwsh` em partida a frio: 0,12 s → 1,48 s"*) em vez de marcado ✅.
+
+### 🔴 37 segundos entre `OPEN` e `MERGED`, e o `ls-remote` soube primeiro
+
+```
+08:58:21  ele mesclou o #694
+08:58:2x  minha leitura:  gh pr view -> state=OPEN, mergeable=UNKNOWN/UNKNOWN
+          e, na MESMA chamada:  ls-remote da branch -> VAZIO
+08:58:58  releitura:      state=MERGED, merge=36dacd42
+```
+
+**Os dois sinais discordaram, e o certo era o do `ls-remote`** — a branch já tinha sido apagada pelo
+merge enquanto a API do PR ainda recalculava. `mergeable=UNKNOWN/UNKNOWN` com `updatedAt` no minuto
+corrente é o delator. É a janela mais estreita já registrada aqui para *"releia o head entre medir e
+relatar"*: as anteriores foram 2 min (#688), 12 min (#690) e 2 h 41 (o Defender).
+
+### Armadilha de shell que me pegou duas vezes hoje
+
+`grep -c .` devolvendo **0** sai com `rc=1`, e numa cadeia `&&` isso **aborta o resto** — a conferência
+de retenção imprimiu `0` e engoliu os três passos seguintes, inclusive o que criava o arquivo que o
+`comm` ia ler. O remédio é `|| true` no fim, ou passos separados por `;`. Mesma família do `$?` depois
+de um `if`: o código de saída existe e fala de outra coisa.
