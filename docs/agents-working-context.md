@@ -37400,3 +37400,72 @@ relatar"*: as anteriores foram 2 min (#688), 12 min (#690) e 2 h 41 (o Defender)
 de retenção imprimiu `0` e engoliu os três passos seguintes, inclusive o que criava o arquivo que o
 `comm` ia ler. O remédio é `|| true` no fim, ou passos separados por `;`. Mesma família do `$?` depois
 de um `if`: o código de saída existe e fala de outra coisa.
+
+---
+
+## 2026-11-23 (manhã) — o passo 2 da tripla destravou, e o remédio do `gemini_cli_legacy` virou no-op no default
+
+**Por que esta entrada existe.** Três coisas que não se derivam: a medição do binário publicado contra o do
+PATH na mesma árvore e no mesmo minuto, por que a rota foi `npm pack` e não `npm i -g`, e o efeito colateral
+do #697 sobre o remédio que esta casa declinou em novembro.
+
+### 🔴 O `6b28e547` finalmente está em release publicada — e o conserto está medido por efeito
+
+Desde 18/11 o passo 2 da tripla estava bloqueado por uma razão derivável: nenhuma tag publicada continha o
+commit da forma nova de linha de hook. Hoje contém.
+
+```
+git tag --contains 6b28e547    v11.8.0  v11.8.1      <- era VAZIO por cinco dias
+npm view trackfw version       11.8.1
+```
+
+**A medição, na árvore viva, com o binário do PATH como controle no MESMO minuto:**
+
+```
+11.8.1 publicado   rc=0  ·  0 violations  ·  14 avisos    <- ACEITA os nossos hooks de projeto
+11.7.0 do PATH     rc=1  ·  6 violations                  <- recusa .claude .codex .gemini, 2 cada
+--version          "trackfw 11.8.1", rc=0                 <- prova de EXECUCAO, licao do Defender
+```
+
+🔴 **A rota foi `npm pack @trackfw-bin/win32-x64@11.8.1` em diretório vazio, e o PATH NÃO foi tocado.** O
+`npm i -g` é o passo 2 de verdade e muda a cerca de **todos** os projetos desta máquina — então medir por ele
+seria executar a ação para descobrir se ela serve. A rota do `npm pack` está registrada no `CLAUDE.md` desde
+10/11, quando o Defender bloqueava binário recém-compilado; ela serve aqui por outra razão, que é não mexer
+no que decide a cerca.
+
+**Os 10 avisos globais de D18-legacy continuam de pé com o binário novo**, e isso é o esperado em vez de
+defeito: eles falam de arquivo que vive **fora do git**, e nada os reescreveu. É o passo 3 que os endereça.
+
+### 🔴 O remédio que o `gemini_cli_legacy` imprime deixou de silenciá-lo no default — derivação, não medição
+
+O aviso manda `run trackfw agents install --targets antigravity`. O default de `--scope` ali é **global**
+(lido do `--help` dos dois binários, idêntico), e o [#697](https://github.com/kgsaran/trackfw/pull/697) passou
+a proibir escopo global de escrever regra ou hook sob o `ProjectRoot`:
+
+```go
+// internal/commands/integrations_flags.go
+if operation == "install" && opts.scope == "project" {    // era: if operation == "install"
+    // D1/D2, ADR-2026-11-21: global scope must never write under manager.ProjectRoot
+```
+
+Em outubro eu medi em fixture descartável que esse comando escrevia `.agents/hooks.json` (888 bytes) e zerava
+o aviso. **Era o defeito que o #697 corrigiu** — então, da 11.8.1 em diante, o remédio só funciona com
+`--scope project` explícito, que é justamente o que escreve no projeto. É a família da
+[#530](https://github.com/kgsaran/trackfw/issues/530): aviso cujo remédio não o silencia.
+
+🔴 **Declarado: isto é DERIVAÇÃO do diff mais o texto do `--help`, não medição por efeito** — e a razão de não
+medir é a mesma de sempre nesta casa: rodar o comando no default escreveria no home **real** desta máquina,
+mudando a cerca de todos os projetos para responder a uma pergunta de leitura.
+
+### A previsão como autoteste bateu, e o dois-pontos enganou de novo com filtro novo
+
+Antes de rodar o script eu derivei **RETIDO 14 · PRODUTO 10 · 24 no merge** — os 15 de `docs/` menos o
+`docs/cli-parity.md`, que o script exclui da retenção por ser contrato de produto lido por gate dele. O
+script devolveu exatamente isso.
+
+🔴 **E a conferência do índice do `hades-tf` quase saiu errada por âncora.** `git diff --name-only
+31043b51..upstream/main -- .claude` devolveu **10**, o que se leria como *"o merge vai mexer na memória de
+agente"*. Ancorado na **base de merge** dá **0**, e a lista estagiada confirma: o merge não tocou `.claude`.
+Os 10 eram **as nossas 9 notas mais o índice** aparecendo como diferença, porque o dois-pontos responde *"o
+que ele tem que nós não temos"*. Quinta grafia da mesma armadilha neste arquivo, a primeira com filtro de
+caminho em `.claude`.
