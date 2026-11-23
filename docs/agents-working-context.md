@@ -37469,3 +37469,98 @@ agente"*. Ancorado na **base de merge** dá **0**, e a lista estagiada confirma:
 Os 10 eram **as nossas 9 notas mais o índice** aparecendo como diferença, porque o dois-pontos responde *"o
 que ele tem que nós não temos"*. Quinta grafia da mesma armadilha neste arquivo, a primeira com filtro de
 caminho em `.claude`.
+
+---
+
+## 2026-11-23 (tarde) — a tripla rodada de ponta a ponta, e duas sondas que mediram NADA
+
+**Por que esta entrada existe.** Três coisas que não se derivam: a razão da ordem dos passos, até hoje
+apenas **afirmada** pela regra e agora **medida**; as duas sondas vácuas, uma salva pelo controle negativo
+e a outra não; e o que ficou deliberadamente de fora, com a razão de alçada.
+
+### 🔴 A ORDEM dos passos deixou de ser afirmação e passou a ser medição
+
+A regra dos quatro passos sempre disse *"rodar o harness com versão anterior reescreve a linha velha"*.
+Isso era leitura do mecanismo, não medição. Hoje, com a linha de base tirada **antes** do `npm i -g`:
+
+```
+trackfw update harness --dry-run, binario do PATH 11.7.0   updated=0  skipped=35  missing=1
+o mesmo comando, binario do PATH 11.8.1                    updated=10 skipped=25  missing=4
+forma da linha nos 5 arquivos globais, ANTES               4 guard cada · 0 na forma nova · 4 na legacy
+```
+
+🔴 **Rodar o passo 3 antes do passo 2 seria no-op PELO CRITÉRIO DO PRÓPRIO BINÁRIO VELHO** — ele diz
+`updated=0` porque a linha que ele escreveria é a que já está lá. Vinte linhas de guard legacy ficariam
+no lugar, e o `validate` continuaria acusando, sem que nada no comando sugerisse por quê.
+
+**O efeito do passo 3, provado por forma e não pelo resumo:**
+
+```
+                              ANTES      DEPOIS
+forma nova (#687), por arquivo   0 de 4     4 de 4      nos cinco: .claude .codex .gemini .cursor .copilot
+forma legacy                     4 de 4     0 de 4
+JSON valido                        —        ok nos cinco
+validate pelo PATH            rc=1 · 6 violations    rc=0 · 4 avisos
+validate pela arvore          rc=0 · 14 avisos       rc=0 · 4 avisos    <- os dois CONVERGIRAM
+  global scope                    10         0
+```
+
+**Sexta ocorrência da regra da tripla, e a primeira EXECUTADA porque o passo 2 estava destravado** — as
+cinco anteriores tinham o passo 2 bloqueado por não haver release publicada com a forma nova. A versão
+saiu derivada (`npm view trackfw version` = 11.8.1, `git tag --contains 6b28e547` = v11.8.0 v11.8.1) e
+**não** escrita.
+
+### 🔴 `--global` não existe em `guard git-branch` — e três leituras pareciam certas
+
+```
+trackfw guard git-branch --global < payload     rc=2 em TODOS os quatro
+  a razao real                                  "Error: unknown flag: --global"
+  push · commit · add  ->  rc=2                 <- o veredito que eu QUERIA ver
+  status               ->  rc=2                 <- e nao podia, e foi quem delatou
+```
+
+🔴 **Sem o controle negativo no conjunto, eu teria publicado *"o guard global recusa corretamente"* sobre
+quatro execuções que nunca chegaram ao guard.** A flag mora em `guard credential --global`, onde o default
+é `block` — ali o payload benigno dá `rc=0` nos dois escopos. Família de *zero com sonda errada é
+cegueira*, na variante mais traiçoeira: **o número plausível vem do mecanismo errado.**
+
+A medição que vale é a sem flag, e ela fecha nos dois shells:
+
+| | `push` | `commit` | `add -A` | `status` |
+|---|---|---|---|---|
+| Bash | 2 | 2 | 2 | **0** |
+| PowerShell | 2 | 2 | 2 | **0** |
+
+E pelo hook real: `git commit --dry-run` dá `PreToolUse:Bash hook error` e `PreToolUse:PowerShell hook
+error`; `git status` sai 0 com o `git log` respondendo.
+
+### 🔴 Caminho em grafia MSYS dentro de PowerShell: `rc=0` de um cmdlet que FALHOU
+
+```
+'/c/Users/.../p-status.json' dentro de powershell  ->  C:\c\Users\...  PathNotFound
+$LASTEXITCODE impresso                             ->  0        <- e do Get-Content que falhou
+o trackfw                                          ->  nunca invocado
+```
+
+O `CLAUDE.md` já registra que `/c/...` **dentro de código Python** não resolve; esta é a grafia em
+**PowerShell**, e o modo de falha é pior, porque o `$LASTEXITCODE` de um cmdlet falho é indistinguível de
+um guard que liberou. A versão que mede tem `Test-Path -LiteralPath` **antes** da chamada, para ausência
+de arquivo sair como `medicao vacua` em vez de `rc=0`.
+
+### O que ficou de fora, com a razão
+
+```
+missing   1 ANTES  ->  4 DEPOIS      os tres novos sao alvos que o #692 criou
+  antigravity-credential-guard  }  ~/.gemini/config/hooks.json   <- a IDE ESTA instalada aqui (D8)
+  antigravity-git-branch-guard  }
+  windsurf-credential-guard        ausencia, nao defasagem: o Windsurf nao esta nesta maquina
+  opencode-guard                   ~/.config/opencode/plugins/trackfw-guard.js
+```
+
+🔴 **`--install-missing` não foi usado, e o `opencode-guard` é a exposição viva:** o OpenCode está
+instalado aqui desde 17/11 e sob ele `git commit` na `main` não é bloqueado. O plugin existe no produto
+desde a Wave 5, e instalá-lo muda a cerca **global** desta máquina — decisão do usuário, não minha. Os
+cinco arquivos globais foram copiados para o scratchpad antes do passo 3.
+
+**Os 4 avisos que sobraram** são 3 isenções por corte mais o `gemini_cli_legacy`, cujo remédio impresso
+virou no-op no default a partir do #697 — registrado na entrada da manhã.
