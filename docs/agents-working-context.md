@@ -37564,3 +37564,98 @@ cinco arquivos globais foram copiados para o scratchpad antes do passo 3.
 
 **Os 4 avisos que sobraram** são 3 isenções por corte mais o `gemini_cli_legacy`, cujo remédio impresso
 virou no-op no default a partir do #697 — registrado na entrada da manhã.
+
+---
+
+## 2026-11-23 (noite) — o sync do #700, e a previsão que reconciliou no total mascarando dois erros
+
+**Por que esta entrada existe.** Quatro coisas que não se derivam: por que o meu autoteste passou pelo
+total e falhou nas partes, por que `scaffold.go` mudar **não** exigiu a tripla, as três preocupações que
+eu havia nomeado e que a medição desarmou uma a uma, e a segunda ocorrência do `--version` não
+discriminar binário — hoje com a árvore **à frente** do publicado.
+
+### 🔴 Total que reconcilia NÃO valida as partes
+
+Escrevi a previsão como autoteste, e ela errou:
+
+```
+eu previ        RETIDO 14  ·  PRODUTO 28        14 + 28 = 42   <- o total BATEU
+o script deu    RETIDO 15  ·  PRODUTO 27        15 + 27 = 42   <- o mesmo total
+a derivacao     docs/ 14 (eu disse 13)  ·  site/ 13 (eu disse 14)
+```
+
+**Dois erros de um, em direções opostas.** O total ficou certo por compensação, e foi justamente ele
+que eu usei como critério de confiança. 🔴 **A soma não é o instrumento — o número por balde é**, e foi
+o script que pegou, exatamente o que o autoteste existe para fazer. A lição vale além desta conta:
+sempre que uma verificação tem um total e as partes, as partes é que decidem; o total pode estar certo
+por duas razões erradas.
+
+### 🔴 `scaffold.go` mudou e a forma da linha de hook NÃO mudou — medido por efeito
+
+O discriminante da tripla é *"arquivos de hook no intervalo"*, derivado da base de merge, e deu **0**.
+Mas este sync tocou `internal/generators/scaffold.go`, que é **quem gera** a linha — então o
+discriminante por diff olha os arquivos de hook **dele**, não o gerador, e um gerador novo poderia
+pedir a tripla sem que nenhum `.json` aparecesse no intervalo.
+
+**O que resolve é o efeito, não o diff:**
+
+```
+validate depois do sync      0 violacoes · 4 avisos · rc=0
+  de que: global scope       0        <- se a forma tivesse mudado, os 10 voltariam
+  gemini_cli_legacy          1    ·    isencoes 3
+```
+
+🔴 **`global scope: 0` é a prova de que a forma é a mesma.** O discriminante por diff continua útil
+como leitura prévia (ele diz se há **dívida nova** antes de mesclar), mas quem fecha a pergunta é o
+`validate` depois.
+
+**E a cerca foi medida por efeito, porque `internal/commands/guard.go` mudou** — com o binário da
+árvore reconstruído pelo sync: `push`/`commit`/`add -A` saem **2**, `status` sai **0**.
+
+### As três preocupações de 14:06, desarmadas uma a uma pela medição
+
+Ao ler o #700 ainda aberto, eu nomeei três riscos. Nenhum se realizou, e as razões importam:
+
+```
+.claude/agent-memory/ com 3 arquivos     sao TODOS do zeus-tf, inclusive o MEMORY.md DELE
+                                          o indice do hades-tf nao foi tocado
+                                          conferido: 9 linhas so nossas · 0 dele sumidas
+"merge do trackfw.yaml seguro" no titulo  o trackfw.yaml NAO esta no intervalo (0)
+                                          a mudanca e em internal/config, o CODIGO que faz o merge
+CLAUDE.md no intervalo                    0   -> nenhum julgamento como no #550
+```
+
+🔴 **A segunda linha é a que mais enganaria:** o título do PR fala do `trackfw.yaml`, e a leitura
+natural é *"ele vai mexer no nosso"*. O arquivo não está no diff; o que muda é como o produto trata
+config na próxima vez que alguém rodar `init`. **Título de PR não é lista de arquivos.**
+
+### 🔴 Segunda ocorrência do dia: `--version` não discrimina binário, agora com a árvore À FRENTE
+
+```
+arvore     trackfw 11.8.1        21.631.488 bytes
+publicado  trackfw 11.8.1        15.180.288 bytes     (npm pack, stripped)
+cmp        DIFEREM
+a arvore carrega   fc2e8979, que nenhuma tag publicada contem
+ultima tag         v11.8.1
+```
+
+De manhã o mecanismo apareceu na direção oposta — publicado e árvore ambos dizendo `11.7.0` com o bump
+para 11.8.0 vivendo no #695 não mesclado. **É a mesma causa, e ela recorre por construção:** entre uma
+release e a seguinte, a árvore carrega commits de produto enquanto o arquivo de versão ainda nomeia a
+última tag. Então `--version` **nunca** discrimina árvore de publicado nesse intervalo; o que discrimina
+é `cmp` dos bytes, ou `git tag --contains <commit>`.
+
+### O custo medido do sync
+
+```
+PRODUTO 27  ·  governanca RETIDA 15  ·  42 no merge
+  site/ 13   internal/ 9   .claude/agent-memory/ 3   docs/cli-parity.md 1   README.md 1
+  internal/commands  guard.go init.go + 2 de teste
+  internal/config    config.go + config_merge_key_test.go
+  internal/generators scaffold.go + trackfw_config_merge_test.go
+  internal/i18n      locales/en-US.json
+docs/ NOVOS dele que entraram     0        roadmaps nossos em wip/   0
+```
+
+**A branch de fechamento de governança dele já existe** (`chore/fechamento-req-2026-11-22-onboarding`),
+então o próximo sync é o de sempre: 1 commit, docs retidos, no-op de produto.
