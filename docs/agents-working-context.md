@@ -38079,3 +38079,110 @@ nomes, não o `ok`**: `-run` que não casa nada também imprime `ok`.
   São árvores diferentes com o mesmo conteúdo de conserto, e o que está medido **aqui** é o `8b110e0e`.
 - As três issues (#704, #705, #707) seguiam **abertas** depois do merge. A branch `chore/fechamento-…` dele cita
   `#704` e `#705`; a #707 não aparece nela.
+
+## 2026-11-25 (noite) — o #354 mesclou com o vermelho CONHECIDO, e a janela de macOS fechou no push do próprio merge
+
+O [#354](https://github.com/lourivalgarciajunior/trackfw/pull/354) mesclou às **15:36 local** (`45da4e1d`), fechando o
+ciclo que começou com o sync do #700 em 23/11. **Quem viu a falha foi o usuário**, não um instrumento nosso: a
+varredura anterior tinha deixado os dois checks em `pending`, e eu havia dito que não consultaria o CI.
+
+### O vermelho era o par de macOS, e o critério 5 o cobriu POR NOME
+
+```
+o vermelho    shim-byte-identity (macos-latest)  +  shim-byte-identity-gate
+assinatura    macos  cancelled  901 s  runner [VAZIO]
+              ubuntu success     22 s  runner atribuido   <- nao e o conteudo do job
+              gate   failure      3 s  (cascata por SHIM_RESULT: abandoned)
+na main       O MESMO PAR, com a MESMA assinatura, no ultimo quality.yml dela
+              run 45666955476, head c38998bf
+```
+
+Os cinco critérios, derivados **antes** de qualquer conclusão e em chamada separada do merge:
+
+| | |
+|---|---|
+| conjunto completo | **28 linhas / 26 nomes / 2 duplicatas** (as nossas) · 26 pass + 2 fail + **0 pendente** |
+| head | remoto == local == `53090bfe` |
+| attempt | **1**, `event=pull_request` |
+| vermelho fora do conhecido | **nenhum** |
+| diff toca produto | **`windows-full-suites` PASS** — o ratchet dos 5 nomes passou, nada novo entrou |
+
+🔴 **E o total de linhas subiu de 27 para 28 entre duas leituras do MESMO head**, porque o `shim-byte-identity-gate`
+só nasce depois da matriz. É a propriedade já registrada em 19/11 — *o total de linhas não se compara entre
+corridas* —, agora por outra causa: não é matriz colapsando, é job que `needs` outro e ainda não existia. **A
+derivação `linhas − nomes` sobreviveu intacta nas duas leituras: 2.**
+
+### 🔴 O "gate AUSENTE" do censo era LEITURA CEDO DEMAIS, e o contador é o discriminante
+
+O censo marcou `🔴 ANOMALIA: gate AUSENTE` no push do merge, às 15:36. **Não era a classe *job perdido*:**
+
+```
+latest_check_runs_count = 20   ·   listados no suite = 20     -> NENHUM job ausente
+status do suite                in_progress  (os outros jobs ainda corriam)
+o gate                         `needs` a matriz, e a matriz levava os ~900 s do braco de macOS
+```
+
+*Ausência que cura é leitura; ausência que persiste é job que nunca existiu* — esta curou. É o **ponto cego de
+~15 min** que o próprio censo documenta (*"não meça o censo logo depois de mesclar"*), e ele mordeu pela segunda
+vez: a primeira foi em 17/11, quando publiquei `17/11 (2)` e eram três.
+
+### ✅ A janela de macOS FECHOU, e a transição foi medida com runner e número
+
+```
+abandono  18:12:48Z -> 18:27:49Z   cancelled  901 s  runner [VAZIO]      (o PR,   15:12 local)
+verde     18:42:10Z -> 18:42:38Z   success     28 s  runner=1000018337   (o push, 15:36 local)
+vao       14 min 21 s
+```
+
+A janela abriu em **23/11 12:15** e fechou aqui, com **6 abandonos**. O censo, com denominador que reconcilia:
+
+```
+12 run(s) de quality.yml:  VERDE 1 · ABANDONADO 6 · DISPENSADO 4 · INDETERMINADO 1   = 12
+abandonos   23/11 12:15 · 23/11 13:27 · 23/11 19:03 · 25/11 09:48 · 25/11 14:38 · 25/11 15:12
+```
+
+🔴 **É a segunda vez na história deste acervo em que a volta do pool é medida com runner e número** — a primeira
+foi 17/11, também em `success` de **28 s**. Os fechamentos de 03/11 e 06/11 tiveram vãos de 39 min e 2 h 56 min sem
+corrida no meio, então a transição não foi observada. Aqui o vão é o **mais curto já registrado**, e mesmo assim a
+transição continua **dentro** dele: o medido é `abandonado → verde com runner`, não o instante em que o pool voltou.
+
+🔴 **Isso NÃO declara a condição resolvida**, e a ressalva é a que salvou a leitura de 08/11: o precedente medido é
+de **1 abandono em 76 braços ao longo de 15 dias**, e dois dias de verde já foram indistinguíveis do vão entre
+janelas. *"Fechou"* quer dizer **sem abandono desde então**, e nada mais.
+
+**Consequência prática, e ela é informação, não arrependimento:** o nosso merge foi a **última corrida da janela**.
+Esperados 25 min, o PR teria fechado com os 28 verdes — mas, com a janela aberta, esperar o pool é indistinguível de
+esperar indefinidamente, que é precisamente por que o critério 5 existe.
+
+### 🔴 Eu inventei um sha de 40 caracteres, e a consulta voltou VAZIA
+
+```
+gh api ".../actions/runs?head_sha=45da4e1d2f6f3a34d1d9ba45f4e9e6ab0e5a0d1e"   ->  nenhuma linha
+git rev-parse 45da4e1d                                   ->  45da4e1d3953ed9aaa20176d082332a3eb9d089e
+```
+
+Eu precisava do sha completo (a API exige 40), li o curto na tela e **completei o resto**. A resposta vazia, lida
+sem cuidado, diria *"não há run nenhum nesse head"* — e havia quatro. Só não virou conclusão porque a linha de
+fallback *"se vazio, o sha de 40 está errado — derivo do git"* estava no mesmo comando. 🔴 **Enésima grafia de *zero
+com sonda errada é cegueira*, e a mais barata de evitar: sha de 40 se deriva com `git rev-parse`, nunca se digita.**
+
+### Duas coisas pequenas que o merge trouxe
+
+```
+deploy-docs.yml no push do merge   event=push · attempt=1 · completed/SUCCESS
+  (os ativos de site/ mudaram; o Pages segue habilitado desde 17/11 08:29)
+version.go                          11.9.0   <- correto: o bump para 11.9.1 esta na branch
+                                                `chore/fechamento-…` dele, que NAO mesclou
+```
+
+### O acervo, e o estado do upstream às 15:38
+
+```
+main            45da4e1d  ·  handoff 38081 linhas  ·  1 branch  ·  1 ref  ·  arvore limpa
+PRs nossos      ZERO abertos
+commits a trazer do upstream   0      <- primeira vez em sete varreduras
+```
+
+🔴 **As três issues (#704, #705, #707) seguem abertas**, e a varredura as pinta como *"bola do nosso lado"* pelo
+braço de *quem comentou por último*. A branch de fechamento dele cita `#704` e `#705`; a **#707 não aparece nela** —
+é a que ele reescreveu a AC, então fecha num ML posterior. **Nada ali espera ação daqui.**
