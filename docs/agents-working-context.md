@@ -37674,3 +37674,111 @@ Linha vazia no segundo comando = o `AliasBomb` continua de pé, e o #354 continu
 O R-6 da REQ dele — write-scope no OpenCode, com nomes minúsculos (`write`, `edit`, `patch`) — **não foi medido**, e
 está na issue como oferta de ambiente: o OpenCode está instalado nesta máquina desde 17/11, linha v2. Medi-lo seria
 fazer o ML dele.
+
+## 2026-11-25 (manhã) — ele aceitou as três, e consertou a minha sugestão de conserto, que era vácua
+
+Às 08:04 ele respondeu as três issues nossas no mesmo minuto — [#704](https://github.com/kgsaran/trackfw/issues/704),
+[#705](https://github.com/kgsaran/trackfw/issues/705) e [#707](https://github.com/kgsaran/trackfw/issues/707) —,
+abriu REQ para cada uma e pôs as duas correções no
+[#709](https://github.com/kgsaran/trackfw/pull/709), que às 09:10 estava **draft**. A `main` dele andou 6 commits
+(`f09c7114` → `89595de1`), que são o write-scope do #706 mais o fechamento do #708.
+
+### 🔴 A minha sugestão de conserto do #704 NUNCA PODERIA FALHAR, e quem pegou foi ele
+
+A issue propunha trocar as cinco comparações de campo por asserção de **forma**:
+
+```go
+if cfg.REQDir == "" || cfg.RoadmapDir == "" || len(cfg.ADRDirs) == 0 { t.Errorf(...) }
+```
+
+e afirmava, com estas palavras, que *"ela ainda pega um `parse()` que termina sem erro e devolve config vazia"*.
+**É falso.** Conferido no código dele, não aceito de palavra:
+
+```
+internal/config/config.go, func defaults()
+  ADRDirs: []string{"docs/adr"}   REQDir: "docs/req"
+  RoadmapDir: "docs/roadmaps"     RoadmapNamespacing: "flat"
+e o teste parte de   cfg := defaults()
+=> a config NUNCA esta vazia, logo a assercao e VACUA
+```
+
+A resposta dele diz o mesmo em uma linha — *"`defaults()` já preenche esses campos, então ela passaria sempre"* — e
+está registrada num commit próprio: `b9bae814  ML-1A de #704 ajustado (defaults() torna 'não vazio' vácuo)`.
+
+🔴 **É a classe que este arquivo documenta como *verde sem denominador*, publicada por mim num repositório alheio
+como sugestão de conserto.** O que o conserto dele faz, e que a minha sugestão não fazia: afirma só a propriedade do
+nome (o `parse()` do real termina sem erro) e acrescenta **fixture de consumidor no formato do nosso** mais
+contra-braço partindo de `ProjectConfig{}`. Asserção de forma sobre estrutura **pré-preenchida** não é cobertura — é
+decoração que passa.
+
+### O conserto do #704 FECHA para nós, medido por efeito com contra-braço
+
+Ele dizer que consertou não é o que destrava o nosso #354. O que destrava é o teste dele rodando com o **nosso**
+`trackfw.yaml`. Medido em worktree da branch dele, com o nosso arquivo copiado por cima:
+
+| | `TestAliasBomb_Budget_RealTrackfwYaml` |
+|---|---|
+| yaml **dele** (reproduz o CI dele) | PASS — controle |
+| yaml **nosso**, teste **novo** | **PASS** |
+| yaml **nosso**, teste **antigo** de `upstream/main` | **FAIL** — as 3 linhas 516/525/528 |
+| yaml nosso, teste novo restaurado | PASS — a diferença é o **código do teste** |
+
+```
+denominador: 12 testes de AliasBomb rodaram, 12 PASS
+  dois NOVOS:  TestAliasBomb_Budget_ConsumerFixture  ·  TestAliasBomb_Budget_CounterArm
+pacote internal/config inteiro, com o nosso yaml:  ok
+```
+
+🔴 **O `ok` da primeira passada não foi aceito:** `-run` que não casa nada também imprime `ok`. Os 12 nomes são o
+denominador, e a quarta linha da tabela existe porque sem ela *"passou"* poderia ser propriedade do worktree.
+
+### O que ele fez com cada uma
+
+```
+#704  REQ propria + conserto no #709. Ampliou o nosso censo: 6 outros testes leem arquivo
+      versionado, mas afirmam SINCRONIA ENTRE ARQUIVOS, que um fork herda intacta —
+      causa outra, registrada como residual. Sai no patch 11.9.1.
+#705  a linha exata, conferida no codigo dele:
+        run `trackfw agents install --targets antigravity --scope project`
+      com teste que REPROVOU contra a mensagem antiga. Refez o censo para skills install,
+      update e update harness — a parte que eu declarei nao ter varrido — e e a unica.
+#707  REESCREVEU a AC pela medicao: incluir MultiEdit no matcher SEMPRE, sem esperar prova
+      de emissao, citando o #528 como o custo de um nome que falta. E aceitou a oferta do
+      OpenCode desta maquina para o braco real do R-6.
+```
+
+### Duas armadilhas minhas no meio da medição, as duas apanhadas na hora
+
+```
+rc=0 que era do `tail`, nao do `git worktree remove`     <- setima grafia do cano
+  o `fatal: ... use --force` estava na saida, e o rc impresso ao lado dizia 0
+git show repondo o trackfw.yaml em LF numa arvore CRLF
+  diff de CONTEUDO vazio  ·  sujeira so de fim de linha  ·  `git diff --stat` so com warning
+```
+
+O hook recusou o `git checkout -- <path>` que eu ia usar para limpar o worktree, e **não contornei**: repus os dois
+arquivos por escrita byte-fiel, normalizei o fim de linha com `perl -i -pe 's/\r?\n/\r\n/'`, e o worktree saiu **sem
+`--force`**, com a árvore viva em 0 arquivos sujos.
+
+### O caminho de desbloqueio do #354, e ele não é uma data
+
+```
+#709 mescla  ->  sync  ->  o AliasBomb deixa de reprovar aqui
+```
+
+Nada a sincronizar com proveito em 25/11 09:1x: os 6 commits da `main` são o write-scope, e o que nos destrava está
+no #709, que estava **draft**. O derivável:
+
+```bash
+git diff --name-only upstream/main..upstream/fix/teste-de-orcamento-de-alias-afirma-trackfw-yaml-deste-repositorio -- internal/config
+gh pr view 709 --repo kgsaran/trackfw --json state,isDraft
+```
+
+Linha presente no primeiro e `MERGED` no segundo = o conserto chegou à `main` dele e o sync destrava o #354.
+
+### Higiene do nosso acervo, no mesmo movimento
+
+O #355 mesclou às 09:19 (`0fbce3e4`) com o conjunto completo pela derivação — **27 linhas / 25 nomes / 2
+duplicatas**, as nossas de sempre, 26 `pass` e 1 `skipping` (`shim-byte-identity`, dispensado pelo #669 por diff de
+documentação). A derivação e o merge foram em **chamadas separadas**. Depois, `branch prune --remote --apply` apagou a
+branch nas duas pontas e **manteve** a do #354, que tem PR aberto — o veredito dele nomeia a razão de cada linha.
