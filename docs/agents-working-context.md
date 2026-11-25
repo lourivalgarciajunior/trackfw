@@ -37963,3 +37963,119 @@ ultima linha   identica nas duas pontas
 
 Os dois números do mesmo objeto em unidades diferentes já enganaram antes (89 de diferença, lido como truncamento).
 **Compare codepoint com codepoint**, e a diferença contra os bytes é informação, não defeito.
+
+## 2026-11-25 (fim de tarde) — o #709 mesclou e o bloqueio do #354 CAIU, e a resolução do handoff custou duas armadilhas de fim de linha
+
+Ele mesclou o [#709](https://github.com/kgsaran/trackfw/pull/709) às **14:29 local** (17:29:03Z), por squash, e publicou a
+branch `chore/fechamento-req-2026-11-24-…` um minuto depois com o bump para **11.9.1**. A `main` dele foi de
+`89595de1` para `8b110e0e`, **7 commits** sobre a nossa base de merge.
+
+🔴 **Ele mesclou nove minutos antes de eu mesclar o nosso #357, e eu não vi** — a varredura anterior era das 13:16,
+e a janela foi gasta no nosso próprio trabalho. **A sexta leitura foi a que pagou; as cinco anteriores, não.** Isso
+não valida reler de 40 em 40 minutos: valida que o evento chega quando chega, e é por isso que a entrada anterior
+recomenda a linha derivável em vez da varredura.
+
+### O conserto está na `main` dele, conferido por efeito
+
+```
+internal/config/config.go  ·  internal/config/config_merge_key_test.go
+internal/validator/validator_gemini_cli_legacy.go  (+3 de guard)
+TestAliasBomb_Budget_ConsumerFixture / _CounterArm na main dele:  8 ocorrencia(s)
+```
+
+E a regra da tripla **não** foi exigida, derivada ancorada na base de merge — nunca na leitura anterior, que é o erro
+de 18/11:
+
+```
+git diff --name-only $(git merge-base HEAD upstream/main)..upstream/main \
+  -- .claude/settings.json .codex/hooks.json .gemini/settings.json   ->  0
+```
+
+### 🔴 O #354 estava CONFLICTING/DIRTY, e a causa é apêndice contra apêndice
+
+A branch dele e a nossa `main` apendaram no **mesmo fim** do `docs/agents-working-context.md`: a branch com a entrada
+de 23/11 (noite), a `main` com as três de 24/11 e 25/11. **Resolução: união em ordem cronológica**, montada por fatia
+de **bytes** a partir das duas fontes CRLF, nunca do blob.
+
+```
+base (comum)      37566 linhas
++ entrada do #354    95     <- 23/11, ANTES das tres da main
++ as tres da main   304
+= resolvido        37965     e as 4 entradas saem em ordem no grep
+
+CR=37969  CRLF=37965  LF puro 0  CR-SOLTO 4        <- os 4 CRs de conteudo intactos
+cmp do instalado contra o resolvido: IDENTICO  ·  merge commit a446f64d, com DOIS pais
+```
+
+#### 🔴 Primeira armadilha: o arquivo EM CONFLITO sai do git em LF
+
+```
+o arquivo com os marcadores   CR=4  LF=37965  CRLF=1  LF-only=37964
+```
+
+Então a resolução óbvia — tirar os três marcadores e converter com `perl -i -pe 's/\r?\n/\r\n/'` — **colapsaria um
+CR solto, 4 → 3**: um `\r\r\n` virado em `\r\n` pela conversão para LF **já parece CRLF**, e a volta não o restaura.
+É o defeito que este arquivo registra como *"um CR colapsado"*, chegando por outra porta — e desta vez o instrumento
+que decidiu foi `CR − CRLF` **antes** de eu escrever, não depois.
+
+🔴 **E o blob não era o problema:** `.md` **não** tem `text=auto` no `.gitattributes` (só `*.go`, `*.js`, `*.mjs`,
+`*.mts`, `*.py` têm), então os bytes são guardados literais — conferido no commitado: `CR=37969 CRLF=37965`, CR-solto
+**4**. **A normalização foi do driver de merge, não dos atributos**, o que é distinção que muda o remédio: não há
+atributo a consertar.
+
+#### 🔴 Segunda armadilha: o `sed` comeu os CRLF da fatia, e a contagem de LINHAS estava CERTA
+
+```
+uniao v1, montada com `sed -n '1,37566p'`    37965 linhas  ·  CRLF=96     <- devia ser 37566
+uniao v2, montada com head/tail              37965 linhas  ·  CRLF=37965  ·  CR-solto 4
+```
+
+**O número de linhas bateu nas duas**, o que torna o erro invisível a quem conta linhas — a pior forma de errado,
+porque não convida a conferir. É a armadilha já escrita (*"o `sed` do MSYS converte CRLF em modo texto"*), agora na
+direção de **escrita** em vez de leitura. `head -n` e `tail -n +N` são fiéis, e foram **medidos em separado antes de
+serem usados**:
+
+```
+head -n 37566    linhas=37566  CRLF=37566  CR-solto=4
+tail -n +37567   linhas=304    CRLF=304    CR-solto=0
+```
+
+🔴 **O `git checkout --theirs` não foi usado, e não por preferência:** o hook recusa `git checkout -- <path>`, e **não
+se contorna o hook**. A versão CRLF da `main` veio da própria árvore de trabalho (`git checkout main` + `cp`), e a
+fatia da branch de um `tail -n 95` tirado **antes** do merge — ou seja, as duas fontes são bytes que já existiam em
+disco, não blob reconstituído.
+
+### O sync, e o custo medido pelo próprio script
+
+```
+PRODUTO 46  ·  governanca RETIDA 44  (de 90 no merge)        46 + 44 = 90
+go build ./...   exit 0
+validate         0 antes · 0 depois
+copia do PATH    N/A: o contorno dos shims nao esta em vigor — nada a refazer
+estado           preparado e NAO commitado, como o script faz por desenho
+```
+
+Entre os 46 vieram o write-scope do #706 (`internal/guard/writescope.go`, `credential.go`) e os ativos de `site/`
+(gif, webm, png do quickstart e do guard) — este último grupo é o que explica a proporção alta de produto num sync
+cujo conteúdo substantivo é pequeno.
+
+### 🔴 O que decide: o `AliasBomb` com o NOSSO `trackfw.yaml`
+
+```
+12 RUN · 12 PASS · 0 FAIL · rc=0
+  TestAliasBomb_Budget_RealTrackfwYaml      PASS   <- era o bloqueio do #354
+  TestAliasBomb_Budget_ConsumerFixture      PASS   <- fixture de consumidor, nova
+  TestAliasBomb_Budget_CounterArm           PASS   <- contra-braco, novo
+o nosso yaml, intacto: req_dir docs/requisições · governance_mode strict · roadmap_namespacing by_agent
+```
+
+**Os três campos que reprovavam nas linhas `516/525/528` continuam exatamente como estão** — o que mudou foi o
+teste, não o nosso `trackfw.yaml`, que é precisamente o conserto que a #704 pedia. 🔴 **O denominador são os 12
+nomes, não o `ok`**: `-run` que não casa nada também imprime `ok`.
+
+### Limites declarados
+
+- A medição de consumidor que foi ao #709 em 13:19 é do `074e529d`; o que mesclou é o **squash** dele, `8b110e0e`.
+  São árvores diferentes com o mesmo conteúdo de conserto, e o que está medido **aqui** é o `8b110e0e`.
+- As três issues (#704, #705, #707) seguiam **abertas** depois do merge. A branch `chore/fechamento-…` dele cita
+  `#704` e `#705`; a #707 não aparece nela.
