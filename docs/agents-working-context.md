@@ -37782,3 +37782,89 @@ O #355 mesclou às 09:19 (`0fbce3e4`) com o conjunto completo pela derivação �
 duplicatas**, as nossas de sempre, 26 `pass` e 1 `skipping` (`shim-byte-identity`, dispensado pelo #669 por diff de
 documentação). A derivação e o merge foram em **chamadas separadas**. Depois, `branch prune --remote --apply` apagou a
 branch nas duas pontas e **manteve** a do #354, que tem PR aberto — o veredito dele nomeia a razão de cada linha.
+
+## 2026-11-25 (tarde) — cinco varreduras idênticas viraram polling, e a saída foi AGIR em vez de reler
+
+Entre 09:10 e 13:16 o usuário pediu a varredura do upstream **cinco vezes**, e as cinco devolveram o mesmo estado.
+🔴 **Não é instrumento cego — é o upstream parado**, e o discriminante que prova isso é mais barato que a varredura
+inteira:
+
+```
+                   09:10      09:49      10:21      12:04      13:16
+#709 head        074e529d   074e529d   074e529d   074e529d   074e529d
+#709 updatedAt    11:19Z     11:19Z     11:19Z     11:19Z     11:19Z   = 08:19 local
+commits sobre a main dele    8          8          8          8
+main do upstream             89595de1, tip 08:00  ·  commits a trazer: 6
+cemiterio                    0 nas cinco
+nossas issues                3 de 3 com o ultimo comentario dele de 08:04
+```
+
+**`updatedAt` do PR é o campo que decide, e ele não se move com push** — ou seja, head igual **mais** `updatedAt`
+igual separa *"ele empurrou e eu não vi"* de *"ele não tocou"*. Com um dos dois sozinho a leitura seria ambígua.
+
+### 🔴 A conclusão operacional: medição que não muda ação não se paga
+
+Cinco leituras em 4 h 06, zero mudança de estado, zero ação nossa habilitada. O registro desta casa já tinha o
+número do caminho automático — a vigia armada por `Monitor` custou **três janelas de 30 min com zero eventos** mais
+limpeza de órfã a cada expiração, e foi desarmada por isso em 03/11. 🔴 **O que faltava escrever é que a leitura
+avulsa sofre do mesmo defeito quando a cadência de quem pergunta é mais rápida que a de quem trabalha do outro
+lado.** Foi dito ao usuário em vez de a sexta varredura ser rodada, com as duas saídas (a linha derivável de dois
+segundos, ou armar a vigia) e uma terceira que **não é leitura**: comentar a medição no PR dele.
+
+```powershell
+gh pr view 709 --repo kgsaran/trackfw --json state,isDraft,updatedAt
+```
+
+### O que foi feito com a autorização dele: a medição foi ao #709
+
+Comentário [7167794435](https://github.com/kgsaran/trackfw/pull/709#issuecomment-7167794435), **com a palavra do
+usuário** — comentar em repositório alheio não está na autorização de merge, que é escopada ao nosso fork. Levou os
+quatro braços do `074e529d`, o contra-braço com a saída crua (as 3 linhas `516/525/528`, que são exatamente o
+vermelho do nosso #354 hoje), o denominador de 12 testes de `AliasBomb`, a minha vacuidade na #704 conferida no
+código dele, e **três limites declarados** — só o `074e529d` vale, os 6 residuais dele não foram medidos (causa
+outra, um fork herda a sincronia intacta), e o #705 foi lido no código, não por efeito.
+
+A última linha diz, com estas palavras, que **a dependência é só nossa — não é pedido de prazo**.
+
+### 🔴 O `rc=1` do GraphQL NÃO foi retentado em cima da suposição
+
+```
+tentativa 1   rc=1   "GraphQL: Something went wrong while executing your query"
+                     incidente FFCE:AD9DC:1ED09F0:2DFD6B5:6B070A91
+VERIFICACAO   gh api .../issues/709/comments  ->  rc=0  ·  corpo `[]`  ·  2 bytes
+tentativa 2   rc=0   e a listagem passou a ter 1 (UM) comentario
+```
+
+**500 transiente pode ter escrito**, então retentar sem listar primeiro arriscava comentário duplicado em PR alheio.
+A contagem `1` depois do sucesso é a prova de que não duplicou — não a ausência de erro na primeira.
+
+🔴 **E o head foi relido ENTRE medir e postar**, que é a regra cobrada em 16/11 depois de eu comentar o #688
+descrevendo estado morto dois minutos após ele empurrar: medi às 09:1x, postei às 13:19, e o `074e529d` foi
+confirmado às 13:19, no minuto da postagem.
+
+### O SHA da medição não estava no handoff de manhã, e foi recuperado pelo reflog
+
+A entrada de 25/11 (manhã) descreve os quatro braços em *"worktree da branch dele"* e **não nomeia o commit** — o
+defeito de forma que a memória `medição de branch alheia leva o SHA` existe para impedir. O worktree já havia sido
+removido; a prova veio da ref de rastreamento:
+
+```
+git reflog show refs/remotes/upstream/fix/teste-de-orcamento-de-alias-…
+  074e529d  @{0}: fetch upstream --prune: storing head      <- UMA entrada, so ela
+git rev-parse da mesma ref                                   074e529dbbbe…
+```
+
+**Uma única entrada de reflog** quer dizer que a ref nunca teve outro valor nesta máquina, logo o worktree saiu do
+`074e529d`. Recuperável desta vez; 🔴 **o registro vai no momento da medição**, porque `fetch --prune` ou uma
+segunda busca teriam apagado a evidência.
+
+### Byte e codepoint, pela terceira vez
+
+```
+corpo local    3152 bytes  ·  3068 codepoints        3152 - 3068 = 84, o excesso de UTF-8 multibyte
+corpo remoto   3068 codepoints  (.body|length do jq)
+ultima linha   identica nas duas pontas
+```
+
+Os dois números do mesmo objeto em unidades diferentes já enganaram antes (89 de diferença, lido como truncamento).
+**Compare codepoint com codepoint**, e a diferença contra os bytes é informação, não defeito.
