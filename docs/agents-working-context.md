@@ -37564,3 +37564,113 @@ cinco arquivos globais foram copiados para o scratchpad antes do passo 3.
 
 **Os 4 avisos que sobraram** são 3 isenções por corte mais o `gemini_cli_legacy`, cujo remédio impresso
 virou no-op no default a partir do #697 — registrado na entrada da manhã.
+
+## 2026-11-24 (noite) — a sonda canônica deu o veredito OPOSTO, e o controle negativo a derrubou antes de publicar
+
+Ele abriu a `REQ-2026-11-24` (write-scope não cobre `MultiEdit` no Claude Code nem o OpenCode) às 19:05, na branch
+`fix/guard-write-scope-re-enraizado-trackfw-yaml-aninhado`, e a AC1 dela pede exatamente uma medição que esta máquina
+tem e a VM dele não: *"medido se o Claude Code atual emite `MultiEdit`, com a versão e o payload registrados"*, com a
+Motivation declarando **sem confirmação oficial**. Medido, e levado à
+[#707](https://github.com/kgsaran/trackfw/issues/707).
+
+### 🔴 O instrumento que parece canônico declara TIPO, não NOME — e deu zero para ferramenta que existe
+
+A primeira sonda foi o `sdk-tools.d.ts` do pacote publicado (173 KB, dentro do `@anthropic-ai/claude-code` 2.1.319),
+que tem toda a cara de ser a declaração do conjunto de ferramentas:
+
+```
+MultiEdit      0      <- a leitura que eu ia publicar
+NotebookEdit   0      <- CONTROLE: ferramenta que EXISTE, e deu zero tambem
+```
+
+O arquivo declara **tipo de entrada** — `FileEditInput`, `FileWriteInput`, `NotebookEditInput` —, não nome de
+ferramenta, e `MultiEdit` não tem tipo próprio ali. 🔴 **Sem o controle, o `0` entraria como *"a ferramenta não existe
+mais na 2.1.319"***, que é conclusão mais forte do que o dado sustenta, e seria publicada numa issue do upstream como
+resposta à AC1 dele.
+
+É a enésima grafia de *zero com sonda errada é cegueira*, e a variante nova é a pior de ler: **o instrumento errado
+era o que tinha a aparência de autoridade** — arquivo de declaração, publicado no mesmo pacote, com nome que diz
+`sdk-tools`. O controle não foi zelo; foi o que separou medição de palpite.
+
+### O instrumento certo é o binário, e ali o veredito inverte
+
+```
+bin/claude.exe (344 MB, 2.1.319)      MultiEdit 9  ·  NotebookEdit 21  ·  NotebookRead 7
+  var NC=["Write","Edit","MultiEdit","NotebookEdit"], sg=new Set(NC)
+  Ie={Read:"Reading",Write:"Writing",Edit:"Editing",MultiEdit:"Editing",...}
+  MultiEdit:{input:"file_path",responseMembers:["filePath"]}
+  prosa de permissao:  "...an Edit/Write/MultiEdit deny rule covers..."
+```
+
+`MultiEdit` é membro do conjunto de ferramentas de escrita e **alvo declarado de regra de permissão** — não é string
+morta, e um matcher que a inclua não é peso morto.
+
+🔴 **E o segundo controle impede a leitura fácil:** `NotebookRead` — ferramenta que também não é oferecida — está no
+mesmo binário, em `filePatternTools` e com erro próprio. **Presença da string não é prova de emissão.** Então a
+medição responde **metade** da AC1 dele e declara a outra: a ferramenta não está no conjunto oferecido nesta sessão,
+logo **não há payload para registrar**.
+
+### O R-5 confirmado num consumidor, e o precedente que diz o preço
+
+```
+matchers de write-scope gerados pelo produto
+  PreToolUse   'Write|Edit'   ·   'Write|Edit|NotebookEdit'   ·   PostToolUse 'Write|Edit'
+MultiEdit no .claude/settings.json do projeto    0
+MultiEdit no ~/.claude/settings.json global      0
+```
+
+O matcher não cobre, como ele diz. **A exposição aqui em 24/11 era zero por ausência do emissor, não por cobertura** —
+propriedade desta versão e deste harness, não do desenho.
+
+🔴 **E este fork já pagou essa conta por outro nome:** o `"matcher": "Bash"` que não cobria a ferramenta `PowerShell`
+ficou **53 dias** com a cerca aberta no caminho que ninguém exercitava, e o conserto foi o #528 dele. Matcher é casado
+contra o **nome da ferramenta**, então nome ausente é porta aberta no instante em que o emissor aparece — e o emissor
+é condição de versão, que muda sem avisar.
+
+### O que a branch dele fez entre 17:17 e 19:05, e o que não fez
+
+```
+8 commits — Wave 2 REPROVADA pelo red team dele, com ressalvas, e iterada
+  28c03d8c  Wave 2 revisada (REPROVA) · ADR emendado (D3 raiz, D5, D6, ADS, 8dot3)
+  249804fb  ML-2C   raiz nega yaml nao regular · leases monotonicos
+  f38d1c60  ML-2F   8dot3 com hash no D1
+  fd5cb1f1  ML-2G   wrapper de credencial no inventario do Windows
+  5f218d17  "Confirmado pelo KG em 2026-11-24"  <- `mode: warn` NAO rebaixa o global
+```
+
+A emenda do último é de 7 linhas e vale: a ressalva *"o KG pode reverter esta parte sem mexer em D1–D3"* virou
+**confirmação**. O endurecimento do escopo global que a leitura da tarde mediu como candidato ficou **decidido**.
+
+🔴 **O que NÃO mudou é o que trava o nosso [#354](https://github.com/lourivalgarciajunior/trackfw/pull/354):**
+
+```
+internal/config no delta da branch sobre main                    0 arquivo(s)
+mencoes a 704 / 705 / AliasBomb / RealTrackfwYaml
+  nas mensagens dos 8 commits                                    0 0 0 0
+  no conteudo do diff                                            0 0 0 0
+arquivos de hook na branch (discriminante da tripla)             0
+```
+
+O teste do `AliasBomb` segue intacto e publicado na v11.9.0, e não havia sync a rodar: a `main` dele parada em
+`f09c7114`, a branch sem PR.
+
+**O derivável, para não depender desta entrada:**
+
+```bash
+bash scripts/leitura-avulsa-do-upstream.sh
+git diff --name-only upstream/main..upstream/fix/guard-write-scope-re-enraizado-trackfw-yaml-aninhado -- internal/config
+```
+
+Linha vazia no segundo comando = o `AliasBomb` continua de pé, e o #354 continua bloqueado.
+
+### Três issues nossas abertas lá, bola do lado dele nas três
+
+```
+#704  AliasBomb — BLOQUEIA o nosso #354        sem comentario
+#705  gemini_cli_legacy sem --scope            sem comentario
+#707  MultiEdit na 2.1.319 (esta entrada)      aberta 24/11 19:1x
+```
+
+O R-6 da REQ dele — write-scope no OpenCode, com nomes minúsculos (`write`, `edit`, `patch`) — **não foi medido**, e
+está na issue como oferta de ambiente: o OpenCode está instalado nesta máquina desde 17/11, linha v2. Medi-lo seria
+fazer o ML dele.
