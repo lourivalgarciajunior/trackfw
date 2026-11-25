@@ -382,13 +382,31 @@ three, not to claim the broader 31-key set is resolved.
 
 <!-- trackfw-contract: none reason=a própria seção declara que docs/cli-parity.md não contrata prosa de documentação (site/guide), só comportamento de CLI; registrada apenas como paper trail de uma limpeza -->
 
-`site/guide/commands.md` and `site/en/guide/commands.md` are pt/en mirrors of the same command
-reference; `docs/cli-parity.md` does not contract them, because this document pins **CLI
-behavior**, not documentation prose. ML-2B (same roadmap as the other items in this section)
-removed `trackfw plugins` (no longer exists, ADR-2026-08-15) and added `changelog` and `commit`
-(existed but were undocumented) to both files, verified against the real `trackfw --help` output
-rather than `README.md`. Registered here only so the cleanup has a paper trail; it is not a new
-clause of the parity contract.
+`site/guide/commands.md` (English, root) and `site/pt/guide/commands.md` (pt-BR) are the two
+locale mirrors of the same command reference; `docs/cli-parity.md` does not contract them,
+because this document pins **CLI behavior**, not documentation prose. ML-2B (same roadmap as the
+other items in this section) removed `trackfw plugins` (no longer exists, ADR-2026-08-15) and
+added `changelog` and `commit` (existed but were undocumented) to both files, verified against
+the real `trackfw --help` output rather than `README.md`. Registered here only so the cleanup
+has a paper trail; it is not a new clause of the parity contract.
+
+### `trackfw init` flag behaviour (D1 and D2, ADR-2026-11-22)
+
+<!-- trackfw-contract: gate=internal/commands/init_flags_both_paths_test.go -->
+
+Every flag that `trackfw init` accepts has the same effect with and without a TTY (D1):
+
+- `--brownfield`: read on the **non-TTY path** (D1 fix). Sets `governance_mode: lenient` and
+  `lenient_until: <today+30d>` in `trackfw.yaml` when no `trackfw.yaml` exists yet.
+- `--ai-tools`: when explicitly passed on the **TTY path** (`--Changed`), the AI-tools wizard
+  group is hidden and the flag value is used directly (D1 fix).
+- `--identity-preset`, `--forge`, `--scope`: honoured on both paths (pre-existing).
+
+D2 — `--brownfield` only writes governance keys when `trackfw.yaml` does not yet exist. With
+an existing `trackfw.yaml`, the command proceeds normally (merges non-governance keys, installs
+agents) but prints `"⚠ governance keys not modified — edit trackfw.yaml directly to enable
+lenient mode"` to stdout and exits with rc=0 without writing `governance_mode` or
+`lenient_until`.
 
 ## Canonical governance references
 
@@ -6614,22 +6632,27 @@ mecanismo ativo.
 
 `scripts/trackfw-credential-guard.sh` é um thin shim que chama `trackfw guard credential` (projeto)
 ou `trackfw guard credential --global` (global). A lógica de detecção e leitura de `mode` vive
-inteiramente em Go (`internal/guard/credential.go`). Os dois escopos divergem no **fallback** quando
-`credential_guard.mode` não está presente no `trackfw.yaml`:
+inteiramente em Go (`internal/guard/credential.go`). Os dois escopos têm **padrão de modo** diferentes
+e calculam o **modo efetivo** de forma monotônica (D4, ADR-2026-11-24):
 
-| Escopo | Função Go | Fallback sem `trackfw.yaml`/sem a chave | `trackfw.yaml` com `credential_guard.mode` explícito no cwd |
+| Escopo | Função Go | Padrão sem yaml/sem chave | Modo efetivo |
 |---|---|---|---|
-| Projeto | `RunCredential` | `warn` | Respeitado (`warn` ou `block`) |
-| Global | `RunCredentialGlobal` | `block` | Respeitado (`warn` ou `block`) |
+| Projeto | `RunCredential` | `warn` | O mais estrito entre `warn` e todos os valores lidos do cwd até a raiz do FS via `credWalkStrictestMode` |
+| Global | `RunCredentialGlobal` | `block` | Hardcoded `block` — não chama `credWalkStrictestMode`, não lê nenhum yaml |
 
 Pontos pinados:
 
-- **A leitura de `credential_guard.mode` é a mesma nos dois escopos** via `ReadCredentialGuardMode`
-  (`internal/guard/credential.go`) — lê `trackfw.yaml` **do cwd de onde o hook disparou** (o projeto
-  atual), não de um arquivo de config global (`~/.trackfw/config.yaml` não existe — decisão mantida:
-  não vale a complexidade de uma segunda fonte de configuração só para isto). Um usuário que já
-  configurou `credential_guard.mode: warn` explicitamente em `trackfw.yaml` **não vê nenhuma
-  mudança de comportamento**.
+- **D4 — modo efetivo de projeto é o mais estrito da cadeia:** `credWalkStrictestMode` sobe do cwd
+  até a raiz do sistema de arquivos lendo `credential_guard.mode` de cada `trackfw.yaml` encontrado;
+  o modo efetivo é o mais estrito entre `warn` (padrão de projeto) e todos os valores lidos
+  (`block` > `warn`). Um yaml não-regular (diretório, FIFO) na cadeia de raiz nega via rc=2
+  antes da seleção de modo — `findProjectRootSafe` retorna erro e o chamador nega imediatamente
+  (D3).
+  **Escopo global não usa este mecanismo:** `RunCredentialGlobal` hardcodes `block` diretamente.
+- **A leitura de `credential_guard.mode` é usada apenas no escopo de projeto** via
+  `ReadCredentialGuardMode` (`internal/guard/credential.go`). Escopo global não lê yaml.
+  Config global (`~/.trackfw/config.yaml`) não existe — decisão mantida: não vale a complexidade de
+  uma segunda fonte de configuração só para isto.
 - **Comportamento do leitor** (spec de 8 passos, D1 ADR-2026-11-05, emendado pelo ML-2C/C9):
   cabeçalho `credential_guard:` na coluna 0 (BOM removido); a varredura continua até a próxima
   chave de topo (linha não-indentada, não comentada, não-vazia) — sem limite fixo de linhas (C9:
@@ -6638,11 +6661,15 @@ Pontos pinados:
   (`internal/guard/credential_mode_test.go`) e
   `TestConvergence_ExtractCredentialGuardMode_ValidatorEqualsGuard`
   (`internal/validator/validator_credential_guard_integrity_test.go`).
-- **Só o fallback (ausência de `trackfw.yaml`, ou `trackfw.yaml` sem a chave) diverge entre escopos**:
-  projeto → `warn`; global → `block` (abortar a tool call, exit 2).
-- **`ROADMAP_DIR` em escopo global permanece o caminho fixo `docs/roadmaps`** (sem ler
-  `roadmap_dir:` de `trackfw.yaml`, já que não há garantia de o arquivo existir) e o attention
-  signal só é gravado se esse diretório já existir.
+- **Padrão por escopo:** projeto → `warn` (sem yaml ou sem chave); global → `block`. O modo efetivo
+  nunca fica abaixo do padrão do escopo.
+- **Escopo global nunca grava attention JSON** (D4, ADR-2026-11-24): `RunCredentialGlobal`
+  hardcodes `block` e retorna rc=2 diretamente via `os.Exit(2)` — o ramo `warn` (que gravaria o
+  attention signal) é inalcançável. O attention signal só é gravado no escopo de projeto em modo
+  `warn`.
+- **O shim de projeto sobe pelos ancestrais** (D4, ADR-2026-11-24): `scripts/trackfw-credential-guard.sh`
+  substitui `[ -f trackfw.yaml ] || exit 0` por uma subida de ancestrais em POSIX sh; o cwd num
+  subdiretório não desliga mais o guard de projeto.
 - **v8 tem implementação única em Go** — as constantes `credentialGuardProjectTail`,
   `credentialGuardGlobalTail` e `credentialGuardModeResolution` foram removidas do
   `internal/generators/scaffold.go` em ML-1A (ADR-2026-11-05): eram código morto, pois o script
@@ -10440,7 +10467,7 @@ Windsurf e Amazon Q **permanecem com violation-grade** (`warnOnly=false` na mesm
 Quando o projeto tem guard do Gemini CLI (`.gemini/settings.json` com marcador de credential guard) mas **nenhum** guard do Antigravity (`.agents/hooks.json` com marcador de credential guard), emite um warning:
 
 ```
-Gemini CLI is legacy for individual accounts since 2026-06-18 (D7, ADR-2026-11-18): project has Gemini CLI guard (.gemini/settings.json) but no Antigravity guard (.agents/hooks.json); run `trackfw agents install --targets antigravity`
+Gemini CLI is legacy for individual accounts since 2026-06-18 (D7, ADR-2026-11-18): project has Gemini CLI guard (.gemini/settings.json) but no Antigravity guard (.agents/hooks.json); run `trackfw agents install --targets antigravity --scope project`
 ```
 
 **Lógica de silêncio:**

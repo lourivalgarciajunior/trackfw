@@ -37565,6 +37565,101 @@ cinco arquivos globais foram copiados para o scratchpad antes do passo 3.
 **Os 4 avisos que sobraram** são 3 isenções por corte mais o `gemini_cli_legacy`, cujo remédio impresso
 virou no-op no default a partir do #697 — registrado na entrada da manhã.
 
+---
+
+## 2026-11-23 (noite) — o sync do #700, e a previsão que reconciliou no total mascarando dois erros
+
+**Por que esta entrada existe.** Quatro coisas que não se derivam: por que o meu autoteste passou pelo
+total e falhou nas partes, por que `scaffold.go` mudar **não** exigiu a tripla, as três preocupações que
+eu havia nomeado e que a medição desarmou uma a uma, e a segunda ocorrência do `--version` não
+discriminar binário — hoje com a árvore **à frente** do publicado.
+
+### 🔴 Total que reconcilia NÃO valida as partes
+
+Escrevi a previsão como autoteste, e ela errou:
+
+```
+eu previ        RETIDO 14  ·  PRODUTO 28        14 + 28 = 42   <- o total BATEU
+o script deu    RETIDO 15  ·  PRODUTO 27        15 + 27 = 42   <- o mesmo total
+a derivacao     docs/ 14 (eu disse 13)  ·  site/ 13 (eu disse 14)
+```
+
+**Dois erros de um, em direções opostas.** O total ficou certo por compensação, e foi justamente ele
+que eu usei como critério de confiança. 🔴 **A soma não é o instrumento — o número por balde é**, e foi
+o script que pegou, exatamente o que o autoteste existe para fazer. A lição vale além desta conta:
+sempre que uma verificação tem um total e as partes, as partes é que decidem; o total pode estar certo
+por duas razões erradas.
+
+### 🔴 `scaffold.go` mudou e a forma da linha de hook NÃO mudou — medido por efeito
+
+O discriminante da tripla é *"arquivos de hook no intervalo"*, derivado da base de merge, e deu **0**.
+Mas este sync tocou `internal/generators/scaffold.go`, que é **quem gera** a linha — então o
+discriminante por diff olha os arquivos de hook **dele**, não o gerador, e um gerador novo poderia
+pedir a tripla sem que nenhum `.json` aparecesse no intervalo.
+
+**O que resolve é o efeito, não o diff:**
+
+```
+validate depois do sync      0 violacoes · 4 avisos · rc=0
+  de que: global scope       0        <- se a forma tivesse mudado, os 10 voltariam
+  gemini_cli_legacy          1    ·    isencoes 3
+```
+
+🔴 **`global scope: 0` é a prova de que a forma é a mesma.** O discriminante por diff continua útil
+como leitura prévia (ele diz se há **dívida nova** antes de mesclar), mas quem fecha a pergunta é o
+`validate` depois.
+
+**E a cerca foi medida por efeito, porque `internal/commands/guard.go` mudou** — com o binário da
+árvore reconstruído pelo sync: `push`/`commit`/`add -A` saem **2**, `status` sai **0**.
+
+### As três preocupações de 14:06, desarmadas uma a uma pela medição
+
+Ao ler o #700 ainda aberto, eu nomeei três riscos. Nenhum se realizou, e as razões importam:
+
+```
+.claude/agent-memory/ com 3 arquivos     sao TODOS do zeus-tf, inclusive o MEMORY.md DELE
+                                          o indice do hades-tf nao foi tocado
+                                          conferido: 9 linhas so nossas · 0 dele sumidas
+"merge do trackfw.yaml seguro" no titulo  o trackfw.yaml NAO esta no intervalo (0)
+                                          a mudanca e em internal/config, o CODIGO que faz o merge
+CLAUDE.md no intervalo                    0   -> nenhum julgamento como no #550
+```
+
+🔴 **A segunda linha é a que mais enganaria:** o título do PR fala do `trackfw.yaml`, e a leitura
+natural é *"ele vai mexer no nosso"*. O arquivo não está no diff; o que muda é como o produto trata
+config na próxima vez que alguém rodar `init`. **Título de PR não é lista de arquivos.**
+
+### 🔴 Segunda ocorrência do dia: `--version` não discrimina binário, agora com a árvore À FRENTE
+
+```
+arvore     trackfw 11.8.1        21.631.488 bytes
+publicado  trackfw 11.8.1        15.180.288 bytes     (npm pack, stripped)
+cmp        DIFEREM
+a arvore carrega   fc2e8979, que nenhuma tag publicada contem
+ultima tag         v11.8.1
+```
+
+De manhã o mecanismo apareceu na direção oposta — publicado e árvore ambos dizendo `11.7.0` com o bump
+para 11.8.0 vivendo no #695 não mesclado. **É a mesma causa, e ela recorre por construção:** entre uma
+release e a seguinte, a árvore carrega commits de produto enquanto o arquivo de versão ainda nomeia a
+última tag. Então `--version` **nunca** discrimina árvore de publicado nesse intervalo; o que discrimina
+é `cmp` dos bytes, ou `git tag --contains <commit>`.
+
+### O custo medido do sync
+
+```
+PRODUTO 27  ·  governanca RETIDA 15  ·  42 no merge
+  site/ 13   internal/ 9   .claude/agent-memory/ 3   docs/cli-parity.md 1   README.md 1
+  internal/commands  guard.go init.go + 2 de teste
+  internal/config    config.go + config_merge_key_test.go
+  internal/generators scaffold.go + trackfw_config_merge_test.go
+  internal/i18n      locales/en-US.json
+docs/ NOVOS dele que entraram     0        roadmaps nossos em wip/   0
+```
+
+**A branch de fechamento de governança dele já existe** (`chore/fechamento-req-2026-11-22-onboarding`),
+então o próximo sync é o de sempre: 1 commit, docs retidos, no-op de produto.
+
 ## 2026-11-24 (noite) — a sonda canônica deu o veredito OPOSTO, e o controle negativo a derrubou antes de publicar
 
 Ele abriu a `REQ-2026-11-24` (write-scope não cobre `MultiEdit` no Claude Code nem o OpenCode) às 19:05, na branch
@@ -37868,3 +37963,119 @@ ultima linha   identica nas duas pontas
 
 Os dois números do mesmo objeto em unidades diferentes já enganaram antes (89 de diferença, lido como truncamento).
 **Compare codepoint com codepoint**, e a diferença contra os bytes é informação, não defeito.
+
+## 2026-11-25 (fim de tarde) — o #709 mesclou e o bloqueio do #354 CAIU, e a resolução do handoff custou duas armadilhas de fim de linha
+
+Ele mesclou o [#709](https://github.com/kgsaran/trackfw/pull/709) às **14:29 local** (17:29:03Z), por squash, e publicou a
+branch `chore/fechamento-req-2026-11-24-…` um minuto depois com o bump para **11.9.1**. A `main` dele foi de
+`89595de1` para `8b110e0e`, **7 commits** sobre a nossa base de merge.
+
+🔴 **Ele mesclou nove minutos antes de eu mesclar o nosso #357, e eu não vi** — a varredura anterior era das 13:16,
+e a janela foi gasta no nosso próprio trabalho. **A sexta leitura foi a que pagou; as cinco anteriores, não.** Isso
+não valida reler de 40 em 40 minutos: valida que o evento chega quando chega, e é por isso que a entrada anterior
+recomenda a linha derivável em vez da varredura.
+
+### O conserto está na `main` dele, conferido por efeito
+
+```
+internal/config/config.go  ·  internal/config/config_merge_key_test.go
+internal/validator/validator_gemini_cli_legacy.go  (+3 de guard)
+TestAliasBomb_Budget_ConsumerFixture / _CounterArm na main dele:  8 ocorrencia(s)
+```
+
+E a regra da tripla **não** foi exigida, derivada ancorada na base de merge — nunca na leitura anterior, que é o erro
+de 18/11:
+
+```
+git diff --name-only $(git merge-base HEAD upstream/main)..upstream/main \
+  -- .claude/settings.json .codex/hooks.json .gemini/settings.json   ->  0
+```
+
+### 🔴 O #354 estava CONFLICTING/DIRTY, e a causa é apêndice contra apêndice
+
+A branch dele e a nossa `main` apendaram no **mesmo fim** do `docs/agents-working-context.md`: a branch com a entrada
+de 23/11 (noite), a `main` com as três de 24/11 e 25/11. **Resolução: união em ordem cronológica**, montada por fatia
+de **bytes** a partir das duas fontes CRLF, nunca do blob.
+
+```
+base (comum)      37566 linhas
++ entrada do #354    95     <- 23/11, ANTES das tres da main
++ as tres da main   304
+= resolvido        37965     e as 4 entradas saem em ordem no grep
+
+CR=37969  CRLF=37965  LF puro 0  CR-SOLTO 4        <- os 4 CRs de conteudo intactos
+cmp do instalado contra o resolvido: IDENTICO  ·  merge commit a446f64d, com DOIS pais
+```
+
+#### 🔴 Primeira armadilha: o arquivo EM CONFLITO sai do git em LF
+
+```
+o arquivo com os marcadores   CR=4  LF=37965  CRLF=1  LF-only=37964
+```
+
+Então a resolução óbvia — tirar os três marcadores e converter com `perl -i -pe 's/\r?\n/\r\n/'` — **colapsaria um
+CR solto, 4 → 3**: um `\r\r\n` virado em `\r\n` pela conversão para LF **já parece CRLF**, e a volta não o restaura.
+É o defeito que este arquivo registra como *"um CR colapsado"*, chegando por outra porta — e desta vez o instrumento
+que decidiu foi `CR − CRLF` **antes** de eu escrever, não depois.
+
+🔴 **E o blob não era o problema:** `.md` **não** tem `text=auto` no `.gitattributes` (só `*.go`, `*.js`, `*.mjs`,
+`*.mts`, `*.py` têm), então os bytes são guardados literais — conferido no commitado: `CR=37969 CRLF=37965`, CR-solto
+**4**. **A normalização foi do driver de merge, não dos atributos**, o que é distinção que muda o remédio: não há
+atributo a consertar.
+
+#### 🔴 Segunda armadilha: o `sed` comeu os CRLF da fatia, e a contagem de LINHAS estava CERTA
+
+```
+uniao v1, montada com `sed -n '1,37566p'`    37965 linhas  ·  CRLF=96     <- devia ser 37566
+uniao v2, montada com head/tail              37965 linhas  ·  CRLF=37965  ·  CR-solto 4
+```
+
+**O número de linhas bateu nas duas**, o que torna o erro invisível a quem conta linhas — a pior forma de errado,
+porque não convida a conferir. É a armadilha já escrita (*"o `sed` do MSYS converte CRLF em modo texto"*), agora na
+direção de **escrita** em vez de leitura. `head -n` e `tail -n +N` são fiéis, e foram **medidos em separado antes de
+serem usados**:
+
+```
+head -n 37566    linhas=37566  CRLF=37566  CR-solto=4
+tail -n +37567   linhas=304    CRLF=304    CR-solto=0
+```
+
+🔴 **O `git checkout --theirs` não foi usado, e não por preferência:** o hook recusa `git checkout -- <path>`, e **não
+se contorna o hook**. A versão CRLF da `main` veio da própria árvore de trabalho (`git checkout main` + `cp`), e a
+fatia da branch de um `tail -n 95` tirado **antes** do merge — ou seja, as duas fontes são bytes que já existiam em
+disco, não blob reconstituído.
+
+### O sync, e o custo medido pelo próprio script
+
+```
+PRODUTO 46  ·  governanca RETIDA 44  (de 90 no merge)        46 + 44 = 90
+go build ./...   exit 0
+validate         0 antes · 0 depois
+copia do PATH    N/A: o contorno dos shims nao esta em vigor — nada a refazer
+estado           preparado e NAO commitado, como o script faz por desenho
+```
+
+Entre os 46 vieram o write-scope do #706 (`internal/guard/writescope.go`, `credential.go`) e os ativos de `site/`
+(gif, webm, png do quickstart e do guard) — este último grupo é o que explica a proporção alta de produto num sync
+cujo conteúdo substantivo é pequeno.
+
+### 🔴 O que decide: o `AliasBomb` com o NOSSO `trackfw.yaml`
+
+```
+12 RUN · 12 PASS · 0 FAIL · rc=0
+  TestAliasBomb_Budget_RealTrackfwYaml      PASS   <- era o bloqueio do #354
+  TestAliasBomb_Budget_ConsumerFixture      PASS   <- fixture de consumidor, nova
+  TestAliasBomb_Budget_CounterArm           PASS   <- contra-braco, novo
+o nosso yaml, intacto: req_dir docs/requisições · governance_mode strict · roadmap_namespacing by_agent
+```
+
+**Os três campos que reprovavam nas linhas `516/525/528` continuam exatamente como estão** — o que mudou foi o
+teste, não o nosso `trackfw.yaml`, que é precisamente o conserto que a #704 pedia. 🔴 **O denominador são os 12
+nomes, não o `ok`**: `-run` que não casa nada também imprime `ok`.
+
+### Limites declarados
+
+- A medição de consumidor que foi ao #709 em 13:19 é do `074e529d`; o que mesclou é o **squash** dele, `8b110e0e`.
+  São árvores diferentes com o mesmo conteúdo de conserto, e o que está medido **aqui** é o `8b110e0e`.
+- As três issues (#704, #705, #707) seguiam **abertas** depois do merge. A branch `chore/fechamento-…` dele cita
+  `#704` e `#705`; a #707 não aparece nela.
