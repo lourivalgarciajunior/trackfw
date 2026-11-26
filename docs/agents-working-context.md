@@ -38378,3 +38378,125 @@ prune           dry-run lido PRIMEIRO, depois --apply: 1 apagada, `main` protegi
 a 11.9.1 muda o **comportamento** do guard (#706), e quem decide a cerca desta máquina é **o binário que o PATH
 entrega**. A tripla se paga quando houver release no npm, com o passo 2 derivado de `npm view trackfw version` cruzado
 com `git tag --contains` — nunca chumbado.
+
+## 2026-11-26 (fim de tarde) — a branch de bootstrap dele muda a nossa cerca em QUATRO formas, e o par de binários é quem diz quais
+
+Varredura às **17:31 local**, pelo `leitura-avulsa-do-upstream.sh`. O braço de branches — o que entrou no script em
+09/11 justamente porque a `main` dele estava parada e só a branch de trabalho respondia *"ele andou?"* — foi o único a
+acusar: `🔴 tip NÃO está neste checkout`. Os outros quatro braços disseram parado (`main` em `1650d0c6`, **0 commits a
+trazer**, 0 PRs abertos).
+
+```
+fix/bootstrap-de-repositorio-novo-publicar-branch-padrao-e-init-git
+  11 commits · 26/11 10:12 -> 17:09 local · +5528 -38 em 41 arquivo(s)
+  REQ-2026-11-26 · ADR-2026-11-26 · roadmap em wip/
+  PR aberto para ela:  gh pr list --head … -> []      <- trabalho em curso, nao entrega
+```
+
+### 🔴 A REQ dele é o mecanismo que a nossa memória já registrava — e a fonte é OUTRA
+
+A `repo-novo-sem-commit-raiz` diz que o `trackfw commit` falha sem HEAD e o hook bloqueia o resto, e que o contorno
+foi a Contents API mais `reset --soft`. A motivação dele não cita o fork: é relato do **KG** num projeto novo
+(`improve-driving`), reproduzido com o binário **11.9.1** em sandbox isolado. Mesmo mecanismo, duas descobertas
+independentes — e as palavras da REQ são as da nossa memória:
+
+```
+init roda numa pasta sem git (rc=0) e NAO cria o repositorio
+nenhuma rota governada publica a branch padrao:
+  git commit / git push brutos   -> bloqueados pelo guard
+  trackfw commit / push / ship   -> recusam main/master
+sem origin/main, a barreira bloqueia ml_scope e o validate avisa "severity anchor unavailable"
+```
+
+### A cerca muda aqui — medido por efeito, os DOIS binários no MESMO minuto
+
+Binário dele compilado de `c9cfa73d`, em worktree descartável fora do repo; o nosso `bin/trackfw` (11.9.1) como
+controle, com os mesmos payloads e o mesmo `rc` lido sem cano.
+
+```
+                                        nosso 11.9.1   branch
+git status                       (ctrl -)      0          0     =
+git commit -m x                  (ctrl +)      2          2     =
+git checkout --orphan novo                     2          2     =      ja coberto
+git worktree add --orphan /t/x                 2          2     =      ja coberto
+git switch --orphan novo                       0          2     MUDOU
+git symbolic-ref HEAD refs/heads/x             0          2     MUDOU
+git symbolic-ref refs/remotes/origin/HEAD .    0          2     MUDOU
+gh repo create x --push                        0          2     MUDOU
+gh repo create x                 (contra-br)   0          0     =
+```
+
+🔴 **Quatro formas novas, duas já cobertas — e é o PAR que separa as duas coisas.** Só com a coluna da branch, as seis
+negações pareceriam todas novidade; `checkout --orphan` e `worktree add --orphan` já saíam 2 no nosso binário, e o
+corpus de roadmap daqui registra o primeiro desde agosto como *"efeito colateral do ML-4B"*.
+
+**O discriminante leitura/escrita foi medido, e casa com o comentário do código dele** — não foi inferido do `rc`:
+
+```
+1 posicional   symbolic-ref HEAD · --short HEAD · -q HEAD · refs/remotes/origin/HEAD   rc=0
+2 posicionais  symbolic-ref HEAD refs/heads/x                                          rc=2
+--delete       symbolic-ref --delete HEAD                                              rc=2
+gitbranch.go:1113  "Write form: 2+ positionals · Delete form: --delete · Read forms: 1 positional"
+```
+
+### O impacto nos nossos scripts é ZERO, e a única escrita não é atingida por DUAS razões
+
+```
+gh repo create             0 arquivo(s)
+switch/worktree --orphan   0
+symbolic-ref               7 arquivos — todos LEITURA, ou testdata de corpus
+  a unica ESCRITA          check-release-tag-parity.sh:1180
+```
+
+Aquela linha é forma de escrita e cairia na negação nova, **e mesmo assim não é atingida**: o guard é hook sobre
+**payload de ferramenta**, não sobre linha dentro de script — o payload ali é `bash scripts/…` —, e aquele gate **não
+roda nesta máquina** de qualquer forma, pelo ponto cego do `ln -s` já registrado. As duas razões são independentes, o
+que é mais forte que uma.
+
+### O custo do sync, derivado por merge de ensaio antes de haver PR
+
+```
+git merge --no-commit --no-ff <branch dele>   ->  rc=1, 3 conflitos
+  docs/adr/ADR-2026-08-22-…   docs/adr/ADR-2026-10-10-…   vault/notes/index.md
+conflito de PRODUTO   ZERO        <- os 3 sao retidos pelo upstream-sync.sh
+```
+
+**Forma do #557, não do #550:** nenhum arquivo para decidir à mão, e os 24 arquivos de `internal/` entram inteiros. O
+`vault/notes/index.md` é o índice compartilhado que o limite de 22/10 nomeia — ele aparece porque os dois lados
+apendam, e o git mescla.
+
+### ✅ A #707: ele respondeu em 25/11 08:04, e não há bola nossa
+
+O sweep diz *"a bola é nossa, 1 de 1"* porque o último comentário é dele — **artefato do braço *quem comentou por
+último***, não pendência. Ele aceitou a medição, disse que os controles (`NotebookRead`/`NotebookEdit` com zero
+ocorrências no `.d.ts`) **descartam as duas leituras fáceis**, reescreveu a AC no #709 para incluir `MultiEdit` nos
+matchers **sempre, sem esperar prova de que a ferramenta é emitida** — *"a camada de permissão reconhece o nome,
+incluir não custa nada, e o #528 mostrou quanto custa um nome que falta no matcher"* — e vai aceitar a nossa oferta do
+**OpenCode instalado** para o braço real do R-6 quando a REQ entrar em execução.
+
+### E uma nota do vault dele que vale para a NOSSA prática de medição
+
+`git-insteadof-reescreve-de-novo-no-ls-remote-2026-11-26`: `git remote get-url --push` devolve a URL **já reescrita**
+por `insteadOf`, e passá-la a `git ls-remote --heads <url>` faz o git reescrever **outra vez** — então a checagem *"o
+remoto está vazio"* media um destino e o push chegava a outro. Duas regras bastam para divergir: encadeadas (`A→X`,
+`X→Y`) ou combinadas (`pushInsteadOf A→B` com `insteadOf B→C`).
+
+🔴 **A regra geral dele é da família que esta casa mais paga:** *"para medir o que uma operação git vai fazer, consulte
+pela mesma resolução que a operação usa — nunca passe a um segundo comando git uma URL que já foi resolvida"*. É a
+mesma forma do dois-pontos contra base de merge e do `cat -A` depois do `sed`: **o instrumento responde outra
+pergunta.** O nosso sweep lê `ls-remote` **pelo nome do remote**, não por URL resolvida, e `ls-remote --symref origin`
+sai `rc=0` no guard novo.
+
+### O estado do acervo, e o que NÃO foi feito
+
+```
+main            4de54286  ·  trackfw 11.9.1  ·  branches locais: so main (antes desta)
+upstream        1650d0c6  ·  commits a trazer: 0  ·  PRs abertos la: 0  ·  cemiterio 0
+worktrees       os dois de medicao removidos SEM --force
+Defender        0 deteccao hoje — a ultima e de 19/11; o binario da branch compilou E EXECUTOU
+                (trackfw 11.9.1, 21 689 344 bytes), que e o instrumento
+```
+
+🔴 **Não há sync a rodar, e isto não é adiamento:** a branch **não tem PR**, e o nosso critério é
+`sync só com produto ou release`. O que está medido é o **custo** e o **efeito na cerca** de código que já existe —
+não há previsão aqui sobre o que ele vai mesclar, que é o que a regra de 14/11 proíbe.
