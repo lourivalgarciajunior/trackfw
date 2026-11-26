@@ -2545,9 +2545,19 @@ a janela FECHOU naquele run — nenhum abandono depois dele.
 ```
 
 Com `ABANDONADO 0` ele agora **não afirma fechamento**: diz que o conjunto pode ser curto demais para
-alcançar o último abandono, e manda aumentar o `N` até a linha trocar. **Limite declarado:** o braço
-"o run mais novo é um abandono" não foi exercitado — o `N` sempre ancora no mais novo, e no acervo
-daquele dia o mais novo era verde. Os outros dois foram medidos nas duas direções.
+alcançar o último abandono, e manda aumentar o `N` até a linha trocar.
+
+✅ **O terceiro braço FOI exercitado em 26/11/2026, e pelo acervo real** — este parágrafo o declarava não
+exercitado, porque até então o `N` sempre ancorava num verde. No run do nosso #359 o mais novo passou a ser
+um abandono, e o censo imprimiu, sem ninguém o reler:
+
+```
+ultimo abandono   26/11 13:21  pull_request bd264783 · 0 run(s) mais novos que ele
+🔴 o run MAIS NOVO do conjunto e um abandono: a janela esta ABERTA.
+```
+
+🔴 **Limite que cai por USO vale mais que limite fechado por sonda plantada**, porque a fixture é o acervo de
+verdade. Os três braços estão medidos; o que não se exercitou ainda é conjunto **vazio** (`N` menor que 1).
 
 #### 🔴 O laço que esta seção publicava NÃO via abandono real — medido em 09/11/2026
 
