@@ -38283,3 +38283,98 @@ branches la         3 (a de fechamento foi apagada no merge)  ·  cemiterio 0
 🔴 **As três issues (#704, #705, #707) seguem ABERTAS**, e o #710 não tinha palavra-chave de fechamento — só
 citação em prosa no título, que o GitHub não interpreta. **Medido antes do merge dele**, por varredura de
 `closes/fixes/resolves #N` no corpo: zero. O fechamento é à mão, dele, e nada ali espera ação daqui.
+
+## 2026-11-26 (tarde) — o #359 mesclou com o par de macOS vermelho, e o censo exercitou o braço que estava declarado NÃO exercitado
+
+O [#359](https://github.com/lourivalgarciajunior/trackfw/pull/359) mesclou às **14:40 local** em `82a9a89e`, e a `main`
+passou à **11.9.1**. O vermelho era o par de macOS, e as três medições abaixo são o que decidiu mesclar — nenhuma
+delas é leitura do verde do resto.
+
+### A assinatura inteira, lida no run e não no `gh pr checks`
+
+```
+run 45858050821  ·  pull_request  ·  attempt=1  ·  suite 124070401184
+  shim-byte-identity (macos-latest)   cancelled   902 s   runner=[]            <- VAZIO
+  shim-byte-identity (ubuntu-latest)  success      27 s   runner=1000018420    <- o CONTROLE
+  shim-byte-identity-gate             failure       3 s   cascata
+  latest_check_runs_count=21   ==   21 listados     -> NAO e job perdido
+conjunto   28 linhas / 26 nomes / 2 duplicatas (gates-locais, gates-windows)
+```
+
+🔴 **O braço de Ubuntu verde em 27 s, com runner atribuído, é o que prova que não é o conteúdo do job** — e o
+`latest_check_runs_count` concordando com a listagem é o que separa **abandono** de **job perdido**, a distinção que
+custou a medição de 13/11. Os outros 26 passaram, incluindo `windows-full-suites` em 15 min, `go` em 3 min, os quatro
+shards do `parity` e o `parity` agregador.
+
+### ✅ O autoteste do #669 fechou: primeiro PR com produto, matriz rodou, braço entrou na fila
+
+Eu havia derivado, ao abrir o PR, que a dispensa do #669 **não** alcançaria — o diff toca `CHANGELOG.md`,
+`internal/version/version.go`, `npm/` e `pypi/`, que estão fora do conjunto inerte. O `classify` rodou em **10 s** e
+não dispensou; a matriz expandiu nos quatro shards; o braço de macOS foi para a fila e foi abandonado.
+
+🔴 **Isto é autoteste, não profecia:** o classificador já existia na nossa árvore e o diff era nosso, então a
+derivação era conferível antes de a corrida começar — a mesma distinção que este arquivo publica para a proporção do
+sync.
+
+### 🔴 A janela de macOS REABRIU, e o censo disparou por si num braço inédito
+
+```
+censo de 14   VERDE 3 · ABANDONADO 6 · DISPENSADO 5 · INDETERMINADO 0   =  14 de 14
+ultimo abandono   26/11 13:21  pull_request bd264783
+  0 run(s) mais novos que ele
+🔴 o run MAIS NOVO do conjunto e um abandono: a janela esta ABERTA.
+```
+
+Ela havia **fechado ontem às 15:36**, com verde de 28 s e `runner=1000018337`. Reabriu hoje às **13:21**, no primeiro
+PR com produto depois daquilo — vão de **21 h 45 min**.
+
+🔴 **E o braço que imprimiu esse veredito estava declarado NÃO exercitado no `CLAUDE.md`**: *"o braço 'o run mais novo
+é um abandono' não foi exercitado — o `N` sempre ancora no mais novo, e no acervo daquele dia o mais novo era verde"*.
+Hoje ele é, e o censo acertou sem ninguém o reler. **Limite declarado que caiu por uso**, não por sonda plantada — a
+forma mais forte, porque a fixture é o acervo real.
+
+### 🔴 O critério 5 NÃO alcançava — a `main` estava VERDE
+
+```
+ultimo quality.yml da MAIN   45686387656  push a34e010b  success     <- VERDE
+conjunto conhecido           VAZIO para o par de macOS
+```
+
+A derivação é **por workflow**, nunca `per_page=1` — e com a `main` verde os dois nomes **não** estão no conjunto
+conhecido. Pela letra da autorização, *"job vermelho fora do conjunto conhecido NÃO se mescla"*.
+
+**Mesclei por palavra do usuário** (*"verifique e merge"*), que é a mesma saída do #314 e do #326/#327: autorização
+pela **causa medida** em vez de pelo nome. Com o resto do protocolo intacto — `head` conferido (`bd264783` igual a
+`git rev-parse HEAD`), `attempt=1`, e **derivação numa chamada, leitura, mescla em outra**.
+
+### ✅ Ele fechou a #704 e a #705 à mão, às 13:23 — a medição de *"sem palavra-chave"* confirmada por efeito
+
+```
+#704   CLOSED / COMPLETED   26/11 13:23:26 local
+#705   CLOSED / COMPLETED   26/11 13:23:28 local      <- dois segundos depois
+#707   OPEN                 (medicao do MultiEdit para a AC1 da REQ-2026-11-24 DELE)
+nossas issues abertas no upstream   3 -> 1
+```
+
+A entrada de hoje cedo mediu, **antes** do merge dele, que o #710 não tinha `closes/fixes/resolves #N` no corpo — só
+citação em prosa no título, que o GitHub não interpreta — e concluiu que o fechamento seria à mão, dele. **Foi.** Dois
+segundos entre os dois é assinatura de fechamento manual em sequência, não de automação.
+
+🔴 **E ele fechou AS DUAS enquanto o CI do nosso PR corria:** o braço de macOS entrou na fila às 13:22 e foi
+abandonado às 13:37. A varredura das 12:51 dizia três abertas e estava certa naquele instante; a das 14:37 diz uma.
+**Quarta vez em dois dias** em que a leitura e o evento dele se cruzam por minutos — e o argumento é sempre o mesmo: a
+cadência da varredura não controla a dele.
+
+### O estado do acervo
+
+```
+main            82a9a89e  ·  trackfw 11.9.1  ·  branches locais: so main
+upstream        1650d0c6  ·  commits a trazer: 0  ·  PRs abertos la: 0  ·  cemiterio 0
+validate        0 violacoes · 4 avisos · rc=0
+prune           dry-run lido PRIMEIRO, depois --apply: 1 apagada, `main` protegida NO PRODUTO
+```
+
+🔴 **A cerca segue NÃO medida por efeito**, pela razão da entrada anterior: o intervalo não tinha arquivo de hook, mas
+a 11.9.1 muda o **comportamento** do guard (#706), e quem decide a cerca desta máquina é **o binário que o PATH
+entrega**. A tripla se paga quando houver release no npm, com o passo 2 derivado de `npm view trackfw version` cruzado
+com `git tag --contains` — nunca chumbado.
