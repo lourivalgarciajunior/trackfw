@@ -38186,3 +38186,100 @@ commits a trazer do upstream   0      <- primeira vez em sete varreduras
 🔴 **As três issues (#704, #705, #707) seguem abertas**, e a varredura as pinta como *"bola do nosso lado"* pelo
 braço de *quem comentou por último*. A branch de fechamento dele cita `#704` e `#705`; a **#707 não aparece nela** —
 é a que ele reescreveu a AC, então fecha num ML posterior. **Nada ali espera ação daqui.**
+
+## 2026-11-26 — o sync da 11.9.1, e a derivação concordou com o script arquivo por arquivo
+
+O [#710](https://github.com/kgsaran/trackfw/pull/710) dele mesclou em **25/11 às 16:53 local** (19:53:10Z) —
+**quatro minutos** depois da minha última varredura, que disse *"parado há 1 h 03"* e estava certa naquele
+instante. É a terceira vez no dia em que a leitura e o evento se cruzam por poucos minutos, e é o argumento de que
+a cadência da varredura não controla a dele.
+
+### A proporção foi DERIVADA antes de rodar o script, como autoteste
+
+```
+previsto por mim   PRODUTO 5 · RETIDO 6 · 11 no merge
+dito pelo script   PRODUTO 5 · RETIDO 6 · 11 no merge      <- concordaram, arquivo a arquivo
+
+PRODUTO   CHANGELOG.md · internal/version/version.go
+          npm/package.json · npm/package-lock.json · pypi/pyproject.toml
+RETIDO    docs/req/ (2) · docs/roadmaps/done/ (2) · .trackfw-log-entries/ (2)
+```
+
+🔴 **Isto é autoteste, não profecia** — a distinção que este arquivo já publica: se o script discordasse, um dos
+dois estaria errado e eu quereria saber qual **antes** de commitar a medição. Concordaram.
+
+```
+go build ./...   exit 0        validate   0 antes · 0 depois
+tripla de hook   NAO exigida — 0 arquivo no intervalo, ancorado na BASE DE MERGE (8b110e0e)
+copia do PATH    N/A: o contorno dos shims nao esta em vigor
+merge commit     22085f97, com DOIS pais (a34e010b + 1650d0c6)
+```
+
+### A retenção alcançou ADIÇÃO, não só conflito — medido por efeito
+
+```
+git diff --cached --name-only a34e010b -- docs/   ->  0 arquivo(s)
+```
+
+Os **2 REQs e os 2 roadmaps novos** dele não entraram. É a propriedade já registrada em 20/11 (*"a retenção
+alcança adição, não só conflito"*), re-medida num intervalo em que ela é o grosso do que havia para trazer: 6 dos
+11 arquivos.
+
+### O efeito, medido no binário e não lido do diff
+
+```
+var Version        11.9.0 -> 11.9.1
+npm/package.json   11.9.1     ·     pypi/pyproject.toml   11.9.1
+./bin/trackfw --version        trackfw 11.9.1
+validate           0 violacoes · 4 avisos · rc=0
+```
+
+### ✅ As nossas duas correções estão no CHANGELOG dele, nomeadas
+
+O cabeçalho da versão diz, com estas palavras: *"Correções de segurança nos guards e **duas correções relatadas
+por consumidor da v11.9.0**"*. O consumidor somos nós.
+
+```
+`gemini_cli_legacy`: o aviso agora sugere `--scope project`. Sem `--scope`, o comando
+  caia em `global` fora de um terminal e nao resolvia o aviso.          (#705, #709)
+Teste de orcamento de alias: o teste lia o `trackfw.yaml` real e exigia os valores DESTE
+  repositorio, por isso reprovava em qualquer projeto com config propria. Agora afirma
+  so que a leitura termina sem erro, e um teste com yaml de consumidor confere os
+  valores lidos.                                                        (#704, #709)
+```
+
+🔴 **A segunda linha é o arco inteiro fechado em dois dias:** a #704 nasceu de o nosso `AliasBomb` reprovar no sync
+do #700 em 23/11, foi medida aqui com contra-braço, levada como issue, consertada por ele, re-medida por efeito
+com o **nosso** `trackfw.yaml` (12 RUN · 12 PASS), e agora está escrita no CHANGELOG dele como correção de
+consumidor.
+
+### E a 11.9.1 traz o #706, que NÃO é nosso e importa mais
+
+Um subagente podia criar `.claude/trackfw.yaml`, **reenraizar o guard de write-scope** e, na escrita seguinte,
+alterar o `.claude/settings.json` — **onde ficam os próprios hooks**. O conserto recusa caminho com componente
+`trackfw.yaml`, inclusive nas grafias NTFS (`:stream`, ponto e espaço finais, 8dot3), e faz `trackfw.yaml`
+ilegível **bloquear** em vez de contar como ausente. Junto, o modo efetivo do guard de credencial passou a ser **o
+mais estrito da cadeia**: um `mode: warn` no projeto não rebaixa mais o hook global.
+
+🔴 **Isto é a cerca desta máquina ficando mais estrita, e vale saber de cor:** o caminho fechado é exatamente o de
+*"escrever no arquivo que guarda os hooks"*, que é o modo de falha que apaga a cerca em vez de disparar.
+
+### 🔴 Limite declarado: a cerca NÃO foi medida por efeito
+
+O intervalo não tem arquivo de hook, então a regra da tripla não foi exigida. **Mas a 11.9.1 muda o
+comportamento do guard** (#706), e quem decide a cerca desta máquina é **o binário que o PATH entrega**, não o da
+árvore. O PATH segue na versão publicada anterior; a tripla se paga quando houver release no npm, pela regra dos
+quatro passos — e o passo 2 não leva número chumbado, deriva-se de `npm view trackfw version` cruzado com
+`git tag --contains`.
+
+### O estado do acervo
+
+```
+main antes do PR    a34e010b  ·  branch chore/sync-do-710-release-11-9-1
+upstream            1650d0c6, tip de 25/11 16:53  ·  PRs abertos la: 0
+branches la         3 (a de fechamento foi apagada no merge)  ·  cemiterio 0
+```
+
+🔴 **As três issues (#704, #705, #707) seguem ABERTAS**, e o #710 não tinha palavra-chave de fechamento — só
+citação em prosa no título, que o GitHub não interpreta. **Medido antes do merge dele**, por varredura de
+`closes/fixes/resolves #N` no corpo: zero. O fechamento é à mão, dele, e nada ali espera ação daqui.
