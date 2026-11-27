@@ -38590,3 +38590,161 @@ Defender        0 deteccao hoje — a ultima e de 19/11; o binario de 1358e0e0 c
 **0 commits a trazer**, e o #711 é **draft**. A #707 aparece como *"bola nossa"* pelo artefato do braço *quem
 comentou por último* — ele já respondeu em 25/11 —, sem pendência nossa. **Nenhuma previsão aqui sobre o que ele
 vai mesclar**, que é o que a regra de 14/11 proíbe.
+
+## 2026-11-27 (meio-dia) — o #711 mesclou, o sync rodou, e a cerca desta máquina está DUAS coisas atrás
+
+A varredura das **12:36 local** achou a frente fechada: o **#711** mesclou às **11:10** (saiu do draft que a
+varredura das 08:08 encontrou), o **#712** marcou a REQ `Done` e o roadmap em `done/` às **11:36**, e a branch já
+não existe no remoto. Pela primeira vez desde 19/11 havia sync a rodar.
+
+```
+#711  MERGED  11:10 local  ·  squash 56aec825  ·  +5549 -38 em 42 arq
+#712            11:36 local  ·  428f6a12  chore(governance): REQ-2026-11-26 Done
+main do upstream   1650d0c6 -> 428f6a12   ·  commits a trazer: 2  ·  PRs abertos la: 1 -> 0
+cemiterio 0  ·  a branch de bootstrap apagada pelo --delete-branch do merge dele
+```
+
+### 🔴 A medição do par de binários re-ancorou pela TERCEIRA vez — e agora por EFEITO, no produto
+
+```
+git diff 1358e0e0..upstream/main -- internal/guard/   ->  0 arquivo(s)
+```
+
+O squash **não tocou o guard**. E isso deixou de ser derivação: com o `bin/trackfw` reconstruído pelo sync, os
+**13 payloads** saem idênticos ao que o binário da branch dava, três passadas cada:
+
+```
+as quatro MUDOU (novas no #711)                      rc=2  nas quatro
+  switch --orphan · symbolic-ref HEAD · symbolic-ref refs/remotes/origin/HEAD · gh repo create --push
+as duas JA COBERTAS                                  rc=2  (checkout --orphan, worktree add --orphan)
+o VALOR da flag    --push=true 2   ·   --push=false 0   ·   --push 2   ·   sem flag 0
+aninhamento        bash -c "gh repo create x --push"  rc=2
+controles          git status 0 · symbolic-ref --short HEAD 0 · git commit -m x 2
+```
+
+A mensagem nomeia a decisão, o que fecha o discriminante sem inferência:
+
+```
+trackfw: gh repo create --push blocked — the --push flag publishes the default branch before trackfw
+governance is in place, bypassing the governed bootstrap push (D3, ADR-2026-11-26).
+```
+
+### 🔴 O autoteste do sync DISCORDOU da minha previsão — e o errado era o meu classificador
+
+Antes de rodar eu previ `PRODUTO 24 · RETIDO 19`. O script disse `PRODUTO 28 · RETIDO 15`, e **os dois somam 43**,
+logo a divergência era de **classificador**, não de conjunto. Os 4 de diferença, nomeados:
+
+```
+.claude/agent-memory/zeus-tf/MEMORY.md
+.claude/agent-memory/zeus-tf/feedback_fechar_issue_relates_no_fechamento.md
+.claude/agent-memory/zeus-tf/feedback_gate_de_wave_inclui_pacotes_de_contrato.md
+docs/cli-parity.md
+```
+
+São **exactamente as duas exceções que este arquivo já documenta**: `.claude/agent-memory/` não é retido (medição
+de 10/10 — reter congelaria a memória dos agentes dele, e 107 de 116 são dele), e `docs/cli-parity.md` não é retido
+desde 16/09, por ser contrato de produto lido por gate dele. O meu prefixo (`docs/` ∪ `vault/` ∪
+`.claude/agent-memory/`) é **mais largo** que a retenção real.
+
+🔴 **É o espelho da lição do predicado, na direção contrária:** lá o meu predicado era *mais estrito* que o da
+regra e publicou alarme falso; aqui era *mais largo* e publicaria custo de sync errado. Nas duas, o discriminante é
+o **predicado medido** — e a retenção se deriva do `GOVERNANCA_FORA_DE_DOCS` do script mais as duas exceções, nunca
+de um prefixo escrito à mão. **E o autoteste pagou o próprio custo**, que é a razão de ele existir: a discordância
+apareceu antes do commit, não depois.
+
+### A tripla NÃO foi exigida, e isso se derivou da BASE DE MERGE
+
+```
+BASE=$(git merge-base HEAD upstream/main)   ->  1650d0c6
+git diff --name-only "$BASE"..upstream/main -- .claude/settings.json .codex/hooks.json .gemini/settings.json
+  ->  0 arquivo(s)
+```
+
+Ancorar na minha leitura anterior em vez da base é o engano de 18/11, que deu o veredito oposto no mesmo acervo.
+
+### 🔴 O achado do dia: o PATH entrega a 11.8.1, e a cerca está DUAS coisas atrás
+
+```
+npm ls -g --depth=0        trackfw@11.8.1          <- o que decide a cerca desta maquina
+npm view trackfw version   11.9.1
+git tag --contains 56aec825   (vazio)              <- nenhuma tag publicada tem o bootstrap
+```
+
+São **duas** defasagens independentes, e só a segunda era conhecida:
+
+1. **Instalado atrás do publicado.** Entre `v11.8.1` e `v11.9.1` mudaram **8 arquivos de `internal/guard/`**, todos
+   do **#706** (*"write-scope and credential guard resolve trackfw.yaml monotonically"*, REQ-2026-11-23) —
+   `credential.go`, `writescope.go` e os testes. As notas de vault daquele intervalo nomeiam o mecanismo:
+   `write-scope-raiz-aninhada-trackfw-yaml-re-enraiza-guard-2026-11-24` e
+   `yaml-node-alias-bomb-bypass-interface-limit-2026-11-22`.
+2. **Publicado atrás do mesclado.** As quatro formas do bootstrap não estão em release nenhuma.
+
+🔴 **E a medição por efeito é a forma mais forte de *"o `--version` não acusa"* que este arquivo já registrou:**
+**dois binários dizendo `trackfw 11.9.1`, com veredito OPOSTO em 5 dos 13 payloads.**
+
+```
+                                   nossa arvore 11.9.1   publicado 11.9.1
+as quatro MUDOU                           2                   0
+o VALOR da flag (--push=true)             2                   0
+as duas JA COBERTAS                       2                   2
+bytes                              21 689 344           15 201 792
+```
+
+O publicado veio por `npm pack @trackfw-bin/win32-x64@11.9.1` em diretório próprio e vazio, que é a rota já
+registrada para não disparar o Defender — **sem `npm i -g`**, porque trocar o binário do PATH muda a cerca de
+**todos** os projetos desta máquina e isso é decisão do usuário, não da medição.
+
+🔴 **O remédio é o passo 2 da tripla, e o número se DERIVA** (`npm view trackfw version` × `git tag --contains`),
+nunca se escreve aqui — este arquivo já apodreceu três vezes por chumbar versão. **Não foi aplicado**: não foi
+pedido, e é configuração global.
+
+**Um transiente declarado, não explicado:** a primeira passada da sonda no binário publicado devolveu `rc=2` para
+`gh repo create x --push=false`, e **não reproduz** — 1 medição direta mais 3 passadas do script dão `rc=0`. Causa
+desconhecida, como no `validate 1 antes · 0 depois` do sync do #557. 🔴 **Foi essa discordância que me fez re-medir
+o NOSSO binário**, e aí a afirmação que eu havia publicado no #362 — *"o guard lê o valor da flag"* — ficou
+confirmada por três passadas e pela mensagem de negação, em vez de ficar pendurada numa leitura única.
+
+### A verificação do sync
+
+```
+proporcao        PRODUTO 28 · governanca RETIDA 15  (de 43 no merge)      28 + 15 = 43
+conflito de PRODUTO    ZERO     ·    docs/ e vault/ NOVOS dele que entraram: 0
+CLAUDE.md e trackfw.yaml        retidos (0 no diff estagiado)
+roadmaps em wip/                0        <- a blindagem de escopo segue intacta
+indice do hades-tf              9 linhas so nossas · 0 dele sumiram
+                                (vacuo por construcao: o arquivo nao esta no intervalo — vale como controle)
+go build ./...                  rc=0     ·    validate  0 violacoes · 4 avisos · rc=0
+gates                           run-local-gates: 16 executado(s) · 0 falha(s) · rc=0
+                                lido pela POS-CONDICAO (a linha `rc=` NO ARQUIVO, 32 de 32),
+                                nunca pelo exit code da notificacao de tarefa
+```
+
+🔴 **Os 4 avisos são os mesmos de antes do sync** — nenhuma regra nova acendeu, embora o
+`internal/validator/validator_credential_guard_integrity.go` esteja entre os 28 de produto. Silêncio com a regra
+presente, que nesta casa se lê como **premissa satisfeita** só quando há contra-braço; aqui não houve sonda, então
+o que está afirmado é `0 violações · 4 avisos`, não que a regra esteja viva.
+
+### Duas armadilhas de instrumento, as duas de hoje
+
+- 🔴 **`grep -c` devolvendo 0 sai com rc=1 e ABORTA cadeia `&&`.** Metade de uma conferência não rodou, e o
+  `echo "validate rc=$?"` seguinte imprimiu `rc=1` para um `validate` que **nunca executou** — o arquivo de saída
+  não existia. Terceiro estado, não zero; a conferência foi refeita com `;`.
+- 🔴 **A conversão de caminho do MSYS mentiu no `git show`**: `upstream/main:.claude/...` virou
+  `upstream\main;.claude\...`, a perna do upstream devolveu **nada**, e o `comm` publicou **"70 linhas só nossas"**
+  num índice que tem 9. Com `MSYS_NO_PATHCONV=1`, 9 e 0. Terceira grafia da mesma família neste arquivo, agora
+  dentro de uma conferência de retenção — onde o número falso teria a cara de *"o merge comeu o índice"*.
+
+### O estado, e o que NÃO foi feito
+
+```
+sync       preparado e NAO commitado pelo script; o commit carrega a medicao
+branch     chore/sync-do-711-... nascida do head do #362 (--from HEAD), para que os dois
+           apendices ao handoff nao colidam
+#362       26 linhas / 24 nomes / 2 duplicatas · 21 pass · 1 skipping · 4 PENDING
+           NAO mesclado: o critério é conjunto COMPLETO, e a autorização é sobre pedir
+```
+
+🔴 **O #362 não foi mesclado com 4 pendentes**, embora o pedido fosse para mesclar: a autorização de 08/10 é sobre
+**pedir**, não sobre o critério, e esta casa já pagou por mesclar com 11 pendentes no #327 — ali a causa foi pôr a
+derivação e o `gh pr merge` na mesma chamada. O `shim-byte-identity` saiu **`skipping`** e o gate `pass`, que é o
+autoteste do #669 fechando para PR de documentação; os 4 pendentes são o resto da matriz.
