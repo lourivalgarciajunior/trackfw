@@ -38500,3 +38500,93 @@ Defender        0 deteccao hoje — a ultima e de 19/11; o binario da branch com
 🔴 **Não há sync a rodar, e isto não é adiamento:** a branch **não tem PR**, e o nosso critério é
 `sync só com produto ou release`. O que está medido é o **custo** e o **efeito na cerca** de código que já existe —
 não há previsão aqui sobre o que ele vai mesclar, que é o que a regra de 14/11 proíbe.
+
+## 2026-11-27 (manhã) — o #711 abriu como DRAFT, e o guard NÃO mudou desde o SHA que eu publiquei
+
+Varredura às **08:08 local**. A branch de bootstrap que a entrada de ontem mediu virou PR — e a regra do SHA,
+que ontem parecia zelo, é quem decidiu que a medição publicada continua valendo em vez de ter de ser refeita.
+
+```
+sweep   main 1650d0c6 · 0 commits a trazer · cemiterio 0
+        PRs abertos la: 1  (eram 0 ontem)  ->  #711
+        braco de branches: tip 1358e0e0 NAO esta neste checkout
+#711    OPEN · draft=TRUE · base=main · criado 27/11 07:50 local
+        head 1358e0e0 · +5549 -38 em 42 arquivo(s)
+        ML 0A..2F ✅  ·  ML-3A (replay, make quality, CI) ✅ fechado as 08:05
+```
+
+### 🔴 A regra do SHA pagou o próprio custo — e o custo dela é uma linha
+
+A entrada de ontem gravou a medição do par de binários em **`c9cfa73d`**. O tip de hoje é `1358e0e0`.
+Re-ancorado, por derivação e não por releitura do diff:
+
+```
+commits no intervalo c9cfa73d..1358e0e0        1
+  docs(governance): ML-3A concluido (CI verde no #711) + memoria de gate de wave
+  arquivos: .claude/agent-memory/zeus-tf/MEMORY.md
+            .claude/agent-memory/zeus-tf/feedback_gate_de_wave_inclui_pacotes_de_contrato.md
+            docs/roadmaps/wip/ROADMAP-2026-11-26-…
+git diff c9cfa73d..1358e0e0 -- internal/guard/   VAZIO     <- o guard NAO mudou
+os quatro MUDOU, re-medidos em 1358e0e0          rc=2 nos quatro
+```
+
+🔴 **Sem o SHA escrito, as duas saídas erradas estavam disponíveis e nenhuma delas acusa:** dizer *"confirmado"*
+sobre código que andou, ou remedir tudo do zero sem saber se precisava. É a mesma forma que esta casa já aplica a
+número de versão e a contagem de check — **o nome do ponteiro não é o que se mediu** —, agora exercitada com um
+dia de distância, que é o prazo mínimo em que ela serve para algo.
+
+### O corpo do PR nomeou dois braços que eu não havia sondado — e os dois fecham
+
+```
+bash -c "gh repo create x --push"   (aninhado)   rc=2   <- o aninhamento nao evade
+gh repo create x --push=false       (permitido)  rc=0
+gh repo create x --push=true                     rc=2
+gh repo create x                    (contra-br)  rc=0
+git status                          (controle -)  rc=0
+git symbolic-ref --short HEAD       (leitura)     rc=0
+```
+
+🔴 **O guard lê o VALOR da flag, não a presença dela.** A sonda de ontem tinha só o contra-braço **sem** flag, que
+é o controle **raso** desta pergunta: ele não distinguia *"nega a flag"* de *"nega o valor"*. Terceira vez nesta
+casa em que o caso mínimo que faltava era justamente o discriminante — e as duas direções só aparecem porque o
+**corpo do PR dele** as nomeia, o que é um argumento a favor de ler o PR antes de declarar a medição fechada.
+
+### Um dado cruzado sobre o macOS, no mesmo dia — e ele NÃO fecha a nossa janela
+
+```
+CI dele no #711, 1 leitura  17 pass · 6 pending (4 shards, parity-other-gates, windows-full-suites)
+  shim-byte-identity (macos-latest)   PASS em 31 s      <- o braco DELE, com runner
+  shim-byte-identity (ubuntu-latest)  PASS em 26 s      <- o controle, ao lado
+nosso ultimo abandono       26/11 13:21  pull_request bd264783
+```
+
+🔴 **Isto é dado na mesma direção, não veredito:** quem decide a nossa janela é o `censo-macos.sh` sobre o
+**nosso** acervo, e PR de documentação não paga fila — então não houve corrida nossa que medisse desde ontem. O
+que o dado faz é apontar para onde a medição de 06/11 já aponta: a escassez é de **conta**, não do pool, porque a
+conta dele recebe runner no período em que a nossa não recebia. **A janela segue ABERTA** pelo critério derivável,
+nunca por data.
+
+### 🔴 O sweep imprimiu `#711 -> OPEN` sem dizer que é DRAFT — lacuna de instrumento
+
+Nenhum braço do `leitura-avulsa-do-upstream.sh` reporta **estado de rascunho**, `updatedAt`, comentário ou review
+nos PRs **dele**. Eu só soube do `draft=true` por um `gh pr view` à parte, e a diferença não é cosmética: PR em
+rascunho **não é entrega**, e pelo critério `sync só com produto ou release` ele não muda nada do nosso lado.
+
+**Compensação enquanto o braço não existe:** emparelhe a varredura com um `gh pr view <N>` na **mesma chamada**.
+Não virou braço hoje porque mexer no script é trabalho de produto nosso e não foi pedido — fica declarado aqui, que
+é onde a próxima sessão o encontra.
+
+### O estado do acervo, e o que NÃO foi feito
+
+```
+main            ac5e6224  ·  trackfw 11.9.1  ·  branches locais: so main (antes desta)
+upstream        1650d0c6  ·  commits a trazer: 0  ·  nossas issues abertas la: 1 (#707)
+worktree        o de medicao removido SEM --force  ·  arvore limpa
+Defender        0 deteccao hoje — a ultima e de 19/11; o binario de 1358e0e0 compilou
+                E EXECUTOU (trackfw 11.9.1, 21 689 344 bytes), que e o instrumento
+```
+
+🔴 **Continua não havendo sync a rodar**, e por dois motivos independentes: a `main` dele está em `1650d0c6` com
+**0 commits a trazer**, e o #711 é **draft**. A #707 aparece como *"bola nossa"* pelo artefato do braço *quem
+comentou por último* — ele já respondeu em 25/11 —, sem pendência nossa. **Nenhuma previsão aqui sobre o que ele
+vai mesclar**, que é o que a regra de 14/11 proíbe.
