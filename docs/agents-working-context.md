@@ -38748,3 +38748,195 @@ branch     chore/sync-do-711-... nascida do head do #362 (--from HEAD), para que
 **pedir**, não sobre o critério, e esta casa já pagou por mesclar com 11 pendentes no #327 — ali a causa foi pôr a
 derivação e o `gh pr merge` na mesma chamada. O `shim-byte-identity` saiu **`skipping`** e o gate `pass`, que é o
 autoteste do #669 fechando para PR de documentação; os 4 pendentes são o resto da matriz.
+
+## 2026-11-27 (tarde) — o passo 2 da tripla rodou, a cerca saiu da defasagem 1, e TRÊS armadilhas do PowerShell quase publicaram "cerca inerte"
+
+A entrada do meio-dia fechou com o `#363` aberto e o achado de que o PATH entregava a **11.8.1**. O
+usuário mandou rodar o passo 2, e ele rodou às **16:07 local**. O número foi **derivado**, nunca escrito:
+
+```
+instalado antes              trackfw@11.8.1          <- o PATH, que e quem decide a cerca
+npm view trackfw version     11.9.1
+git tag --contains c80543d4  v11.9.1                 <- o #706 ESTA na release
+git tag --contains 56aec825  (vazio)                 <- o bootstrap NAO esta em nenhuma
+npm i -g trackfw@11.9.1      changed 2 packages, rc=0
+depois                       11.9.1 em Git Bash, PowerShell e npm ls -g
+```
+
+🔴 **O binário instalado é byte a byte o que eu havia medido por `npm pack`** — `cmp` idêntico, 15 201 792
+bytes —, então a medição das **5 de 13** do meio-dia transfere sem nova derivação, e não foi preciso
+remedir o par. A nossa árvore segue divergente (21 677 056 bytes, porque tem o #711).
+
+### O passo 3 não era necessário, e isso reconcilia com a tripla não ter sido exigida
+
+```
+trackfw update harness --dry-run    updated=0 · skipped=35 · missing=4 · failed=0
+```
+
+`updated=0` casa com os **0** arquivos de hook no intervalo desde a base de merge — a derivação que a
+entrada do meio-dia fez antes do sync. Os 4 `missing` são os deliberadamente deixados: `antigravity-*`
+(dois, pelo D8, com a IDE instalada aqui), `windsurf` (ausência, não defasagem) e `opencode-guard`
+(lacuna de cerca viva desde 17/11).
+
+### Passo 4 — prova por efeito pela linha de hook REAL, nos dois shells
+
+As **12** linhas de guard foram **extraídas do `settings.json`**, não digitadas, e cada uma identificada
+pelo subcomando que chama — porque `rc=0` num guard de credencial sobre `git push` é resposta certa a
+**outra pergunta**, não falha aberta:
+
+```
+                                        Bash         PowerShell
+git-branch  PROJETO e GLOBAL   push/commit/add -A    rc=2 DENY    rc=2 DENY
+                               status/log            rc=0         rc=0
+credential  contra-braco       BLOQUEOU a minha propria chamada de Bash
+write-scope sob agent_id       5 negacoes · docs/qualquer.md rc=0 · no-op por contrato
+validate    pelo PATH          0 violacoes · 4 avisos · rc=0
+            pela arvore        saida IDENTICA, no mesmo minuto
+```
+
+🔴 **O contra-braço de credencial provou-se pelo caminho mais forte que existe: a cerca recusou a minha
+própria medição.** O payload que eu mandava carregava um cabeçalho PEM de teste, e o `PreToolUse` real
+devolveu `blocked - possible PEM private key detected in tool payload`, pela linha **global** de 342
+bytes. **Não remontei a string para escapar do detector** — contornar o hook está vetado, inclusive para
+medir a nossa própria cerca.
+
+**O `write-scope` reconcilia com armadilha que este arquivo JÁ declarava.** Sob `agent_id` ele nega os
+cinco caminhos congelados e libera `docs/qualquer.md`; para o agente **principal** fica silencioso até
+sobre o handoff. Isso parecia contradizer o `--help`, que diz *"always includes"* — e não contradiz: as
+2 ocorrências do marcador no nosso handoff estão em **prosa**, na linha 31457+, e a janela do guard é de
+**10 linhas no topo**. Premissa não satisfeita, não regra inerte. **Nada a levar ao upstream.**
+
+### 🔴 Três armadilhas do PowerShell, e a minha hipótese sobre a primeira foi REFUTADA
+
+A primeira passada do braço de PowerShell deu **`rc=0` em tudo**, inclusive no que bloqueia. Lido como
+veredito, diria **cerca inerte** num ambiente onde ela estava bloqueando.
+
+1. **`Get-Content` devolve `String` DECORADA** com as note-properties do provider, e o `ConvertTo-Json`
+   serializa o **objeto**:
+
+   ```
+   "command":{"value":"git push origin main","PSPath":"C:\\...","ReadCount":3}
+   ```
+
+   O guard não acha texto de comando e passa em silêncio. 🔴 **Pior que o zero de sempre:** o JSON é
+   **válido**, o campo **existe**, e o texto aparece **lá dentro** — quem conferir o JSON a olho conclui
+   que o payload está certo. O conserto é `[string]$raw`, mais pós-condição da **forma** do payload.
+2. **A minha hipótese foi refutada por medição.** Eu culpei o `*> $null` por mascarar o `rc`, que seria
+   a sétima grafia do `cano-mascara-exit-code`. Medidos os **quatro** redirecionamentos no mesmo payload
+   e na mesma linha — `*> $null`, `> $null 2> $null`, `| Out-File`, `| Out-Null` —, **todos dão `rc=2`**.
+   Hipótese sobre instrumento se **mede**, inclusive quando é a que eu ia publicar como lição.
+3. **PS 5.1 lê `.ps1` sem BOM na codepage ANSI.** Os bytes UTF-8 de um travessão decodificam numa
+   sequência que **contém aspa dupla**, e o literal quebra com `ParserError` em cascata apontando
+   **linhas sãs**. Script de sonda em ASCII por padrão.
+
+**O que achou foi o diagnóstico por CAMADAS** — guard direto, controle benigno, linha polyglot sem
+redirecionamento —, que separa *"a cerca está silenciosa"* de *"a minha sonda não chegou lá"*. As duas
+armadilhas duráveis foram gravadas em memória como `powershell-mente-na-minha-propria-sonda`.
+
+### O #363 mesclou às 17:27, com o vermelho classificado por CAUSA — e foi palavra do usuário
+
+```
+conjunto   28 linhas / 26 nomes / 2 duplicatas (gates-locais, gates-windows)
+           26 pass · 2 fail · head 43f9c038 casando com o local · attempt=1
+macos-latest    cancelled   902 s   runner=[]            <- abandono na fila
+ubuntu-latest   success      22 s   runner=1000018614    <- o controle, no MESMO run
+gate            failure       5 s                        <- cascata
+```
+
+🔴 **O conjunto conhecido da `main` estava VAZIO** — os cinco workflows dela, derivados **por workflow**,
+todos `success` —, então os dois nomes vermelhos ficavam **fora** dele e o critério 5 **não alcançava por
+nome**. É o caso do #314. Mesclar com o vermelho conhecido **por causa** foi **decisão do usuário**,
+pedida e dada, como em 09/11 no #326/#327 — **não** extensão do critério.
+
+**A `main` mesclada foi conferida, e não por fé:** o merge combinou **duas** árvores, porque o `43f9c038`
+do sync não continha o `b6b9ceb1` do #362. `go build` rc=0, `validate` 0 violações · 4 avisos · rc=0,
+`branch prune` com dry-run lido antes do `--apply` e a `main` protegida **no produto**.
+
+### O que o passo 2 fechou, e o que NÃO fechou
+
+```
+defasagem 1  instalado atras do publicado   FECHADA   (os 8 internal/guard/ do #706 entraram)
+defasagem 2  publicado atras do mesclado    ABERTA    as quatro formas do bootstrap: rc=0
+```
+
+🔴 **A defasagem 1 está fechada por DERIVAÇÃO da tag, não por efeito**, e isso é decisão: o mecanismo do
+#706 é `trackfw.yaml` aninhado re-enraizando o guard e bomba de alias de YAML, e **não se constrói o
+artefato que neutraliza a cerca**, nem para medir a nossa. O que está medido por efeito é o `write-scope`
+funcionando no caminho pretendido.
+
+**A defasagem 2 não tem remédio nosso** — depende de o mantenedor tagear. O critério é derivável:
+
+```bash
+git tag --contains 56aec825
+```
+
+Vazio = segue aberta. Quando nomear uma tag, o passo 2 se repete com o número que o `npm view` devolver.
+
+---
+
+## 2026-11-28 (13:07) — ele não andou, e a #707 é oferta NÃO vencida, conferida em vez de lembrada
+
+```
+main do upstream   428f6a12   ·  commits a trazer 0   ·  o tip de 27/11 11:36 (o #712)
+PRs abertos la     0          ·  na janela do daemon: 15
+branches no remoto 3          ·  main + duas de outubro (10/10 e 12/10, 1 commit cada)
+cemiterio          0          ·  os cinco bracos responderam
+```
+
+**Não há sync a rodar**, pela regra de 02/11: intervalo vazio é no-op.
+
+### A #707 aparece como "bola nossa", e dessa vez o veredito foi MEDIDO
+
+O braço de *quem comentou por último* a marca porque ele respondeu em **25/11 08:04**. A entrada de
+27/11 (manhã) declarou *"sem pendência nossa"* — e declarar não é conferir. O comentário integral é um
+**aceite condicionado**:
+
+> *"Quando essa REQ entrar em execução, vamos aceitar a sua oferta do OpenCode instalado para o braço
+> real do R-6."*
+
+Então o que decide é se a REQ entrou em execução. **Não entrou:**
+
+```
+REQ-2026-11-24-guard-de-write-scope-nao-cobre-multiedit-no-claude-code-nem-o-opencode   status: Open
+o roadmap dela                   docs/roadmaps/BACKLOG/
+o unico **Status:** do arquivo   ⬜ Pending   (ML-0A, threat model)
+Wave 1                           sem ML decomposto
+o PR #709 que ele citou          MERGED 25/11, e de outras duas issues (#704, #705)
+```
+
+A oferta **não está vencida**, e o *"bola nossa"* segue sendo artefato do braço — agora com o estado do
+acervo dele na mão.
+
+### 🔴 Duas armadilhas de leitura no caminho, as duas pegas por olhar as LINHAS
+
+- **Três REQs compartilham a data `2026-11-24`**, e o meu `head -1` leu a do `gemini_cli_legacy`, já
+  `Done`. Eu quase reportei *"a REQ está Done"* sobre o arquivo errado. Mesma família do `grep 'ML-5'`
+  na REQ quando os MLs estavam no roadmap: **o nome parecia o certo**.
+- **A contagem crua acusou "1 ML em andamento"**, o que inverteria o veredito. Os três casamentos de
+  `Em andamento`/`Concluído`/`Pendente` eram **a linha de legenda** do próprio roadmap (linha 22). O
+  discriminante foi `grep '\*\*Status:\*\*'`, que devolve **uma** linha.
+
+### O braço de macOS de ontem saiu VERDE nas duas corridas da `main`
+
+```
+27/11 17:27  push  045d6816  VERDE        <- o merge do #363
+27/11 13:10  push  b6b9ceb1  VERDE        <- o merge do #362
+27/11 13:08  PR    43f9c038  ABANDONADO   <- o que o usuario autorizou por causa
+censo (N=12)  VERDE 5 · ABANDONADO 3 · DISPENSADO 4 · INDETERMINADO 0   =   12 de 12
+```
+
+🔴 **Isto REFORÇA a classificação de ontem em vez de só confirmá-la:** o `push` do **mesmo conteúdo**,
+4 h 19 min depois, recebeu runner e passou. O vermelho do #363 era a **fila**, não o diff — e o braço de
+Ubuntu verde em 22 s no mesmo run já apontava para lá.
+
+**O censo recusou declarar resolução** pelos 2 runs limpos, citando o precedente de 1 abandono em 76
+braços. E o censo foi rodado **no dia seguinte**, de propósito: ler logo depois de um merge cai no ponto
+cego de ~15 min que em 17/11 me fez publicar `(2)` onde eram 3.
+
+**Consequência prática, derivável e não escrita como estado:** com a `main` verde nos cinco workflows, o
+conjunto conhecido do próximo PR volta a sair **vazio**, e um abandono novo cairá outra vez **fora** do
+critério por nome. A derivação é a de sempre, por workflow:
+
+```bash
+gh api "repos/lourivalgarciajunior/trackfw/actions/runs?branch=main&per_page=60" --jq '.workflow_runs[]|"\(.path)\t\(.id)\t\(.conclusion)"' | sort -u -t$'\t' -k1,1
+```
